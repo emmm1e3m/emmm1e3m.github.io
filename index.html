@@ -1,0 +1,358 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>字母站刷波工具mini版</title>
+    <style>
+        :root {
+            --primary-gradient: linear-gradient(135deg, #F19483 0%, #EE3F4D 100%);
+            --glass-bg: rgba(255, 255, 255, 0.95);
+            --text-color: #333;
+            --secondary-text: #666;
+            --border-radius: 12px;
+        }
+
+        * { box-sizing: border-box; margin: 0; padding: 0; -webkit-tap-highlight-color: transparent; }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+            background: var(--primary-gradient);
+            min-height: 100vh;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            color: var(--text-color);
+            padding: 20px;
+        }
+
+        .container {
+            background: var(--glass-bg);
+            width: 100%;
+            max-width: 480px;
+            padding: 25px;
+            border-radius: var(--border-radius);
+            box-shadow: 0 10px 30px rgba(238, 63, 77, 0.3);
+            display: flex;
+            flex-direction: column;
+            gap: 15px;
+        }
+
+        h1 {
+            font-size: 22px;
+            text-align: center;
+            color: #EE3F4D;
+            margin-bottom: 5px;
+            font-weight: 800;
+        }
+
+        .card {
+            background: #fff;
+            border: 1px solid #eee;
+            border-radius: 8px;
+            padding: 12px;
+        }
+
+        label {
+            display: block;
+            margin-bottom: 6px;
+            font-weight: 600;
+            color: var(--secondary-text);
+            font-size: 13px;
+        }
+
+        select, textarea {
+            width: 100%;
+            padding: 10px;
+            border: 2px solid #F19483;
+            border-radius: 8px;
+            font-size: 14px;
+            background: #fff;
+            outline: none;
+            transition: all 0.3s;
+            font-family: inherit;
+        }
+
+        textarea {
+            height: 100px;
+            resize: none;
+            font-family: monospace;
+        }
+
+        select:focus, textarea:focus { border-color: #EE3F4D; }
+
+        .btn {
+            width: 100%;
+            padding: 14px;
+            border: none;
+            border-radius: 50px;
+            font-size: 16px;
+            font-weight: bold;
+            color: white;
+            cursor: pointer;
+            transition: transform 0.1s, opacity 0.3s;
+            background: var(--primary-gradient);
+            box-shadow: 0 4px 15px rgba(238, 63, 77, 0.4);
+        }
+
+        .btn:active { transform: scale(0.98); }
+        .btn.stop { background: #666; box-shadow: none; }
+
+        .status-bar {
+            display: flex;
+            justify-content: space-between;
+            font-size: 13px;
+            color: var(--secondary-text);
+            margin-top: 4px;
+        }
+
+        .status-value { font-weight: bold; color: #EE3F4D; }
+
+        #log-window {
+            height: 200px;
+            background: #1e1e1e;
+            color: #ffffff;
+            border-radius: 8px;
+            padding: 10px;
+            font-family: "Menlo", "Monaco", "Courier New", monospace;
+            font-size: 11px;
+            overflow-y: auto;
+            line-height: 1.4;
+        }
+
+        .log-entry { margin-bottom: 3px; border-bottom: 1px solid #333; padding-bottom: 2px; }
+        .log-time { color: #888; margin-right: 5px; }
+        .log-warn { color: #ffeb3b; }
+        .log-error { color: #ff5252; }
+        .hidden { display: none; }
+    </style>
+</head>
+<body>
+
+<div class="container">
+    <div>
+        <h1>🔥 字母站刷波工具mini版 🔥</h1>
+        <p style="text-align: center; color: #888; font-size: 12px;" id="mode-tag">请确保此浏览器曾经访问过（最好登录访问过）字母站</p>
+    </div>
+
+    <!-- 收藏夹模式 UI -->
+    <div id="fav-ui" class="card hidden">
+        <label for="fav-select">选择目标收藏夹</label>
+        <select id="fav-select">
+            <option value="3374555721">🚀 6倍速收藏夹</option>
+            <option value="3682220021">🔥 冲热收藏夹</option>
+        </select>
+    </div>
+
+    <!-- 调试模式 UI -->
+    <div id="manual-ui" class="card hidden">
+        <label for="bv-input">手动输入BV号 (每行一个)</label>
+        <textarea id="bv-input" placeholder="BV1xx...&#10;BV2xx..."></textarea>
+    </div>
+
+    <button id="action-btn" class="btn">开始运行</button>
+
+    <div class="card">
+        <div class="status-bar">
+            <span>待刷视频: <span id="video-count" class="status-value">0</span></span>
+            <span>下次循环: <span id="next-run" class="status-value">--:--</span></span>
+        </div>
+        <div class="status-bar">
+            <span>累计播放: <span id="success-count" class="status-value">0</span></span>
+            <span>当前状态: <span id="status-text">停止</span></span>
+        </div>
+    </div>
+
+    <div id="log-window"></div>
+</div>
+
+<script>
+    /**
+     * 调试开关
+     * true: 使用下方文本框输入的BV号
+     * false: 使用下拉框选择的收藏夹
+     */
+    const DEBUG_MANUAL_MODE = true; 
+
+    const CONFIG = {
+        intervalMinutes: 5,
+        apiProxy: 'https://api.allorigins.win/raw?url=',
+    };
+
+    let state = {
+        isRunning: false,
+        videos: [],
+        countdownId: null,
+        totalSent: 0
+    };
+
+    const el = {
+        btn: document.getElementById('action-btn'),
+        favUi: document.getElementById('fav-ui'),
+        manualUi: document.getElementById('manual-ui'),
+        favSelect: document.getElementById('fav-select'),
+        bvInput: document.getElementById('bv-input'),
+        log: document.getElementById('log-window'),
+        count: document.getElementById('video-count'),
+        nextRun: document.getElementById('next-run'),
+        success: document.getElementById('success-count'),
+        status: document.getElementById('status-text'),
+        modeTag: document.getElementById('mode-tag')
+    };
+
+    // 初始化界面
+    if (DEBUG_MANUAL_MODE) {
+        el.manualUi.classList.remove('hidden');
+        el.modeTag.innerText = "🛠️ 调试模式：手动输入";
+        el.bvInput.value = "BV1yAsxePEpf"; // 默认填一个示例
+    } else {
+        el.favUi.classList.remove('hidden');
+    }
+
+    function log(msg, type = 'info') {
+        const time = new Date().toLocaleTimeString('zh-CN', {hour12: false});
+        const entry = document.createElement('div');
+        entry.className = 'log-entry';
+        let colorClass = type === 'warn' ? 'log-warn' : (type === 'error' ? 'log-error' : '');
+        entry.innerHTML = `<span class="log-time">[${time}]</span><span class="${colorClass}">${msg}</span>`;
+        el.log.appendChild(entry);
+        el.log.scrollTop = el.log.scrollHeight;
+    }
+
+    // 获取视频列表（收藏夹模式）
+    async function fetchFavVideos(mediaId) {
+        log(`正在抓取收藏夹 ${mediaId}...`);
+        try {
+            const url = encodeURIComponent(`https://api.bilibili.com/x/v3/fav/resource/list?media_id=${mediaId}&pn=1&ps=20&order=mtime&type=0&platform=web`);
+            const resp = await fetch(`${CONFIG.apiProxy}${url}`);
+            const data = await resp.json();
+            const list = data.data ? data.data.medias : [];
+            state.videos = list.map(v => ({ bvid: v.bv_id, title: v.title }));
+        } catch (e) {
+            log("抓取收藏夹失败", "error");
+        }
+    }
+
+    // 处理视频列表（手动模式）
+    function parseManualVideos() {
+        const text = el.bvInput.value.trim();
+        if (!text) return;
+        const bvs = text.split(/\n+/);
+        state.videos = bvs.map(bv => ({ bvid: bv.trim(), title: bv.trim() }));
+    }
+
+    // 补全 AID/CID
+    async function enrichVideoData() {
+        log(`正在解析视频元数据 (${state.videos.length}个)...`);
+        let count = 0;
+        for (let v of state.videos) {
+            try {
+                const url = encodeURIComponent(`https://api.bilibili.com/x/web-interface/view?bvid=${v.bvid}`);
+                const resp = await fetch(`${CONFIG.apiProxy}${url}`);
+                const res = await resp.json();
+                if (res.code === 0) {
+                    v.aid = res.data.aid;
+                    v.cid = res.data.cid;
+                    v.title = res.data.title;
+                    count++;
+                }
+            } catch (e) {}
+            await new Promise(r => setTimeout(r, 330));
+        }
+        log(`解析完成，有效视频: ${count}`);
+        el.count.innerText = count;
+    }
+
+    // 执行点击
+    async function runBoostCycle() {
+        if (!state.isRunning) return;
+        log(`>>> 开始一轮播放请求...`);
+        el.status.innerText = "正在请求";
+
+        for (let v of state.videos) {
+            if (!state.isRunning) break;
+            if (!v.aid || !v.cid) continue;
+
+            try {
+                const params = new URLSearchParams({
+                    aid: v.aid, cid: v.cid, bvid: v.bvid,
+                    part: '1', jsonp: 'jsonp', type: '1', sub_type: '0'
+                });
+
+                await fetch('https://api.bilibili.com/x/click-interface/click/web/h5', {
+                    method: 'POST',
+                    mode: 'no-cors',
+                    headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+                    body: params
+                });
+
+                state.totalSent++;
+                el.success.innerText = state.totalSent;
+                log(`发送成功: ${v.title.substring(0, 12)}...`);
+            } catch (e) {
+                log(`请求异常: ${v.bvid}`, "error");
+            }
+            await new Promise(r => setTimeout(r, 800 + Math.random() * 1000));
+        }
+
+        if (state.isRunning) {
+            log(`本轮结束，等待下次循环`);
+            startCountdown(CONFIG.intervalMinutes * 60);
+        }
+    }
+
+    function startCountdown(seconds) {
+        el.status.innerText = "休眠中";
+        let remaining = seconds;
+        clearInterval(state.countdownId);
+        state.countdownId = setInterval(() => {
+            if (remaining <= 0) {
+                clearInterval(state.countdownId);
+                runBoostCycle();
+                return;
+            }
+            const m = Math.floor(remaining / 60).toString().padStart(2, '0');
+            const s = (remaining % 60).toString().padStart(2, '0');
+            el.nextRun.innerText = `${m}:${s}`;
+            remaining--;
+        }, 1000);
+    }
+
+    async function start() {
+        state.isRunning = true;
+        el.btn.innerText = "停止运行";
+        el.btn.classList.add('stop');
+        el.bvInput.disabled = true;
+        el.favSelect.disabled = true;
+
+        if (DEBUG_MANUAL_MODE) {
+            parseManualVideos();
+        } else {
+            await fetchFavVideos(el.favSelect.value);
+        }
+
+        if (state.videos.length > 0) {
+            await enrichVideoData();
+            runBoostCycle();
+        } else {
+            log("未发现有效视频", "error");
+            stop();
+        }
+    }
+
+    function stop() {
+        state.isRunning = false;
+        clearInterval(state.countdownId);
+        el.btn.innerText = "开始运行";
+        el.btn.classList.remove('stop');
+        el.bvInput.disabled = false;
+        el.favSelect.disabled = false;
+        el.status.innerText = "已停止";
+        log("任务已停止", "warn");
+    }
+
+    el.btn.addEventListener('click', () => state.isRunning ? stop() : start());
+    log("已就绪");
+</script>
+</body>
+</html>
