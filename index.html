@@ -99,7 +99,6 @@
     };
 
     // === 代理池配置 ===
-    // 自动按顺序尝试，直到成功
     const PROXY_LIST = [
         { name: '线路1', url: (target) => `https://api.codetabs.com/v1/proxy?quest=${target}` },
         { name: '线路2', url: (target) => `https://corsproxy.io/?${target}` },
@@ -149,26 +148,20 @@
         el.log.scrollTop = el.log.scrollHeight;
     }
 
-    // === 智能请求函数：自动轮询代理 ===
     async function smartFetch(targetUrl) {
         const encodedUrl = encodeURIComponent(targetUrl);
-        
         for (let proxy of PROXY_LIST) {
             if (!state.isRunning) break;
             const finalUrl = proxy.url(encodedUrl);
             try {
-                // log(`尝试 ${proxy.name}...`);
                 const resp = await fetch(finalUrl);
-                if (resp.status === 403 || resp.status === 429) {
-                    throw new Error(`Status ${resp.status}`);
-                }
                 const data = await resp.json();
-                return data; // 成功拿到数据，直接返回
+                return data;
             } catch (e) {
-                log(`${proxy.name} 失败: ${e.message}, 切换下一条...`, 'warn');
+                // 静默失败，切换代理
             }
         }
-        throw new Error("所有代理线路均无法连接B站接口，请过段时间再次尝试");
+        throw new Error("所有代理线路均无法连接B站接口");
     }
 
     async function fetchFavVideos(mediaId) {
@@ -176,11 +169,10 @@
         try {
             const url = `https://api.bilibili.com/x/v3/fav/resource/list?media_id=${mediaId}&pn=1&ps=20&order=mtime&type=0&platform=web`;
             const data = await smartFetch(url);
-            
             const list = data.data ? data.data.medias : [];
             state.videos = list.map(v => ({ bvid: v.bv_id, title: v.title }));
         } catch (e) {
-            log(`抓取收藏夹彻底失败: ${e.message}`, "error");
+            log(`抓取收藏夹失败: ${e.message}`, "error");
         }
     }
 
@@ -194,30 +186,22 @@
     async function enrichVideoData() {
         log(`正在解析视频CID (${state.videos.length}个)...`);
         let count = 0;
-        
         for (let v of state.videos) {
             if (!state.isRunning) break;
-
             try {
                 const url = `https://api.bilibili.com/x/web-interface/view?bvid=${v.bvid}`;
                 const res = await smartFetch(url);
-                
                 if (res.code === 0) {
                     v.aid = res.data.aid;
                     v.cid = res.data.cid;
                     v.title = res.data.title;
                     count++;
-                } else {
-                    log(`${v.bvid} 接口返回错误: ${res.code}`, 'warn');
                 }
             } catch (e) {
-                log(`${v.bvid} 解析失败: ${e.message}`, 'error');
+                log(`${v.bvid} 解析失败`, 'warn');
             }
-            // 每次成功后稍微等一下，保护代理不被秒封
-            await new Promise(r => setTimeout(r, 1000));
+            await new Promise(r => setTimeout(r, 800));
         }
-        
-        log(`解析完成，有效视频: ${count}`);
         el.count.innerText = count;
     }
 
@@ -226,33 +210,62 @@
         log(`>>> 开始发送播放请求...`, 'success');
         el.status.innerText = "正在请求";
 
-        let sentInThisRound = 0;
         for (let v of state.videos) {
             if (!state.isRunning) break;
             if (!v.aid || !v.cid) continue;
 
             try {
-                const params = new URLSearchParams({
-                    aid: v.aid, cid: v.cid, bvid: v.bvid,
-                    part: '1', jsonp: 'jsonp', type: '1', sub_type: '0'
+                const startTs = Math.floor(Date.now() / 1000);
+
+                // 1. 发送 h5 点击进入 (Initial Click)
+                const h5Params = new URLSearchParams({
+                    aid: v.aid, cid: v.cid, bvid: v.bvid, mid: '0',
+                    part: '1', jsonp: 'jsonp', type: '1', sub_type: '0',
+                    dt: '2', start_ts: startTs, played_time: '0', realtime: '0'
                 });
 
-                // 播放请求直连B站 (这是最重要的部分，且不会被代理影响)
                 await fetch('https://api.bilibili.com/x/click-interface/click/web/h5', {
-                    method: 'POST',
-                    mode: 'no-cors',
+                    method: 'POST', mode: 'no-cors',
                     headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
-                    body: params
+                    body: h5Params
+                });
+
+                // 2. 立即发送 0秒 心跳 (Start Heartbeat)
+                const hbParams0 = new URLSearchParams({
+                    aid: v.aid, cid: v.cid, bvid: v.bvid, mid: '0',
+                    played_time: '0', realtime: '0', start_ts: startTs,
+                    type: '1', dt: '2', play_type: '1'
+                });
+
+                await fetch('https://api.bilibili.com/x/click-interface/click/web/heartbeat', {
+                    method: 'POST', mode: 'no-cors',
+                    headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+                    body: hbParams0
+                });
+
+                // 3. 模拟观看 (等待几秒后发送进度心跳，这是计入播放量的关键)
+                await new Promise(r => setTimeout(r, 3000)); 
+
+                const hbParams15 = new URLSearchParams({
+                    aid: v.aid, cid: v.cid, bvid: v.bvid, mid: '0',
+                    played_time: '15', realtime: '15', start_ts: startTs,
+                    type: '1', dt: '2', play_type: '1'
+                });
+
+                await fetch('https://api.bilibili.com/x/click-interface/click/web/heartbeat', {
+                    method: 'POST', mode: 'no-cors',
+                    headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+                    body: hbParams15
                 });
 
                 state.totalSent++;
-                sentInThisRound++;
                 el.success.innerText = state.totalSent;
                 log(`[√] ${v.title.substring(0, 10)}...`);
             } catch (e) {
                 log(`请求异常: ${v.bvid}`, "error");
             }
-            await new Promise(r => setTimeout(r, 1500 + Math.random() * 1000));
+            // 随机间隔 1-2秒
+            await new Promise(r => setTimeout(r, 1000 + Math.random() * 1000));
         }
 
         if (state.isRunning) {
@@ -293,16 +306,14 @@
 
         if (state.videos.length > 0) {
             await enrichVideoData();
-            
-            const validCount = state.videos.filter(v => v.cid).length;
-            if (validCount > 0) {
+            if (state.videos.filter(v => v.cid).length > 0) {
                 runBoostCycle();
             } else {
-                log("没有获取到任何有效的CID，无法开始", "error");
+                log("无有效视频，请检查网络", "error");
                 stop();
             }
         } else {
-            log("未发现有效视频", "error");
+            log("未发现视频", "error");
             stop();
         }
     }
@@ -319,7 +330,7 @@
     }
 
     el.btn.addEventListener('click', () => state.isRunning ? stop() : start());
-    log("系统就绪 - 支持3条线路自动切换");
+    log("已就绪");
 </script>
 </body>
 </html>
