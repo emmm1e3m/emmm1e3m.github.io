@@ -59,11 +59,11 @@
 <div class="container">
     <div>
         <h1>🥕字母站刷波工具网页版🥕</h1>
-        <p style="text-align: center; color: #888; font-size: 12px;" id="mode-tag">请确保此浏览器最近已访问（最好登录访问）过字母站</p>
+        <p style="text-align: center; color: #888; font-size: 12px;" id="mode-tag">SUperView_mini</p>
     </div>
 
     <div id="fav-ui" class="card hidden">
-        <label for="fav-select">选择目标收藏夹</label>
+        <label for="fav-select">选择收藏夹以开始</label>
         <select id="fav-select">
             <option value="3374555721">🚀 6倍速收藏夹</option>
             <option value="3682220021">🔥 冲热收藏夹</option>
@@ -128,7 +128,7 @@
 
     if (DEBUG_MANUAL_MODE) {
         el.manualUi.classList.remove('hidden');
-        el.modeTag.innerText = "🛠️ 调试模式：手动输入";
+        el.modeTag.innerText = "🛠️ 调试模式";
         el.bvInput.value = "BV1yAsxePEpf"; 
     } else {
         el.favUi.classList.remove('hidden');
@@ -165,14 +165,14 @@
     }
 
     async function fetchFavVideos(mediaId) {
-        log(`正在抓取收藏夹 ${mediaId}...`);
+        log(`正在解析收藏夹 ${mediaId}...`);
         try {
             const url = `https://api.bilibili.com/x/v3/fav/resource/list?media_id=${mediaId}&pn=1&ps=20&order=mtime&type=0&platform=web`;
             const data = await smartFetch(url);
             const list = data.data ? data.data.medias : [];
             state.videos = list.map(v => ({ bvid: v.bv_id, title: v.title }));
         } catch (e) {
-            log(`抓取收藏夹失败: ${e.message}`, "error");
+            log(`解析收藏夹失败: ${e.message}`, "error");
         }
     }
 
@@ -184,7 +184,7 @@
     }
 
     async function enrichVideoData() {
-        log(`正在解析视频CID (${state.videos.length}个)...`);
+        log(`正在解析视频信息 (${state.videos.length}个)...`);
         let count = 0;
         for (let v of state.videos) {
             if (!state.isRunning) break;
@@ -192,9 +192,22 @@
                 const url = `https://api.bilibili.com/x/web-interface/view?bvid=${v.bvid}`;
                 const res = await smartFetch(url);
                 if (res.code === 0) {
-                    v.aid = res.data.aid;
-                    v.cid = res.data.cid;
-                    v.title = res.data.title;
+                    const d = res.data;
+                    v.aid = d.aid;
+                    v.cid = d.cid;
+                    v.title = d.title;
+                    
+                    // --- 核心修改：补全 Python 脚本所需的 mid 和 type ---
+                    v.mid = d.owner ? d.owner.mid : 0;
+                    
+                    // 参考 Python 逻辑：d['desc_v2'][0]['type'] if d.get('desc_v2') else '1'
+                    if (d.desc_v2 && d.desc_v2.length > 0) {
+                        v.type = d.desc_v2[0].type;
+                    } else {
+                        v.type = 1;
+                    }
+                    // ---------------------------------------------
+                    
                     count++;
                 }
             } catch (e) {
@@ -215,52 +228,33 @@
             if (!v.aid || !v.cid) continue;
 
             try {
-                const startTs = Math.floor(Date.now() / 1000);
-
-                // 1. 发送 h5 点击进入 (Initial Click)
-                const h5Params = new URLSearchParams({
-                    aid: v.aid, cid: v.cid, bvid: v.bvid, mid: '0',
-                    part: '1', jsonp: 'jsonp', type: '1', sub_type: '0',
-                    dt: '2', start_ts: startTs, played_time: '0', realtime: '0'
+                // --- 核心修改：严格对齐 bili_core.py 的 POST Data ---
+                // Python: aid, cid, bvid, part='1', mid, jsonp='jsonp', type, sub_type='0'
+                
+                const postData = new URLSearchParams({
+                    'aid': v.aid,
+                    'cid': v.cid,
+                    'bvid': v.bvid,
+                    'part': '1',
+                    'mid': v.mid,       // 动态获取的 mid
+                    'jsonp': 'jsonp',
+                    'type': v.type,     // 动态获取的 type
+                    'sub_type': '0'
                 });
 
+                // Python 逻辑中只请求了 click/web/h5，未请求 heartbeat
                 await fetch('https://api.bilibili.com/x/click-interface/click/web/h5', {
-                    method: 'POST', mode: 'no-cors',
+                    method: 'POST', 
+                    mode: 'no-cors', // 浏览器限制，必须使用 no-cors
                     headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
-                    body: h5Params
+                    body: postData
                 });
 
-                // 2. 立即发送 0秒 心跳 (Start Heartbeat)
-                const hbParams0 = new URLSearchParams({
-                    aid: v.aid, cid: v.cid, bvid: v.bvid, mid: '0',
-                    played_time: '0', realtime: '0', start_ts: startTs,
-                    type: '1', dt: '2', play_type: '1'
-                });
-
-                await fetch('https://api.bilibili.com/x/click-interface/click/web/heartbeat', {
-                    method: 'POST', mode: 'no-cors',
-                    headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
-                    body: hbParams0
-                });
-
-                // 3. 模拟观看 (等待几秒后发送进度心跳，这是计入播放量的关键)
-                await new Promise(r => setTimeout(r, 3000)); 
-
-                const hbParams3 = new URLSearchParams({
-                    aid: v.aid, cid: v.cid, bvid: v.bvid, mid: '0',
-                    played_time: '3', realtime: '3', start_ts: startTs,
-                    type: '1', dt: '2', play_type: '1'
-                });
-
-                await fetch('https://api.bilibili.com/x/click-interface/click/web/heartbeat', {
-                    method: 'POST', mode: 'no-cors',
-                    headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
-                    body: hbParams3
-                });
+                // --------------------------------------------------
 
                 state.totalSent++;
                 el.success.innerText = state.totalSent;
-                log(`[√] ${v.title.substring(0, 10)}...`);
+                log(`[√] 已播放: ${v.title.substring(0, 10)}...`);
             } catch (e) {
                 log(`请求异常: ${v.bvid}`, "error");
             }
