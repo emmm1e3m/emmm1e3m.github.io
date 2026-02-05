@@ -218,7 +218,8 @@
             const left = (i % cols) * CONFIG.winW;
             const top = Math.floor(i / cols) * CONFIG.winH;
 
-            const url = `https://www.bilibili.com/video/${v.bvid}/?autoplay=1`;
+            // 修复移动端静音问题：添加 &muted=0 参数尝试强制开启声音
+            const url = `https://www.bilibili.com/video/${v.bvid}/?autoplay=1&muted=0`;
             
             // 修复：移除了 'noopener=yes'。
             // 解释：带有 noopener 时，window.open 会返回 null，导致代码误判为“被拦截”。
