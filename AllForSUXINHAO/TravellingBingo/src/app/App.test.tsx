@@ -352,13 +352,19 @@ function deferred<T>() {
   return { promise, resolve, reject }
 }
 
+async function startNewJourney() {
+  const start = await screen.findByRole('button', { name: '开始新旅程' })
+  await waitFor(() => expect(start).toBeEnabled())
+  fireEvent.click(start)
+}
+
 async function unlockDebugAndStart() {
   const titleTrigger = screen.getByRole('button', { name: /连续激活五次/ })
   for (let activation = 0; activation < 5; activation += 1) fireEvent.click(titleTrigger)
   fireEvent.change(screen.getByLabelText('暗号'), { target: { value: 'TravellingBingo' } })
   fireEvent.click(screen.getByRole('button', { name: '打开门牌' }))
   await waitFor(() => expect(screen.queryByRole('dialog')).not.toBeInTheDocument())
-  fireEvent.click(screen.getByRole('button', { name: '开始新旅程' }))
+  await startNewJourney()
 }
 
 describe('旅行饼狗应用控制器', () => {
@@ -426,8 +432,7 @@ describe('旅行饼狗应用控制器', () => {
 
   it('休息 effect 会把新的日夜过场 key 传给房间 UI', async () => {
     render(<App />)
-    const start = await screen.findByRole('button', { name: '开始新旅程' })
-    fireEvent.click(start)
+    await startNewJourney()
 
     fireEvent.click(screen.getByRole('button', { name: '让饼狗休息' }))
 
@@ -437,7 +442,7 @@ describe('旅行饼狗应用控制器', () => {
 
   it('补充物品后使用沉浸式反馈，并原子更新苹果与库存', async () => {
     render(<App />)
-    fireEvent.click(await screen.findByRole('button', { name: '开始新旅程' }))
+    await startNewJourney()
 
     fireEvent.click(screen.getByRole('button', { name: '补充普通便当' }))
 
@@ -499,7 +504,7 @@ describe('旅行饼狗应用控制器', () => {
     vi.mocked(createBingoSave).mockReturnValueOnce(pendingExport.promise)
 
     render(<App />)
-    fireEvent.click(await screen.findByRole('button', { name: '开始新旅程' }))
+    await startNewJourney()
     fireEvent.click(screen.getByRole('button', { name: '备份' }))
     await waitFor(() => expect(createBingoSave).toHaveBeenCalledOnce())
 
@@ -523,7 +528,7 @@ describe('旅行饼狗应用控制器', () => {
     vi.mocked(createBingoSave).mockReturnValueOnce(pendingExport.promise)
 
     render(<App />)
-    fireEvent.click(await screen.findByRole('button', { name: '开始新旅程' }))
+    await startNewJourney()
     fireEvent.click(screen.getByRole('button', { name: '离开' }))
     fireEvent.click(screen.getByRole('button', { name: '下载存档并离开' }))
     await waitFor(() => expect(createBingoSave).toHaveBeenCalledOnce())
@@ -618,7 +623,7 @@ describe('旅行饼狗应用控制器', () => {
     } as Awaited<ReturnType<typeof createBingoSave>>)
 
     render(<App />)
-    fireEvent.click(await screen.findByRole('button', { name: '开始新旅程' }))
+    await startNewJourney()
     fireEvent.click(screen.getByRole('button', { name: '备份' }))
 
     await waitFor(() => expect(createBingoSave).toHaveBeenCalledOnce())
@@ -763,6 +768,7 @@ describe('旅行饼狗应用控制器', () => {
 
     render(<App />)
     const start = await screen.findByRole('button', { name: '开始新旅程' })
+    await waitFor(() => expect(start).toBeEnabled())
     fireEvent.change(screen.getByLabelText('读取 .bingo 存档'), {
       target: { files: [new File(['pending'], 'pending.bingo')] },
     })
