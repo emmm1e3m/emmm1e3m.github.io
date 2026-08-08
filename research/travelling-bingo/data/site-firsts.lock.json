@@ -1,0 +1,72 @@
+{
+  "schemaVersion": 1,
+  "catalogId": "bilibili-all-site-number-one-8",
+  "verifiedAt": "2026-08-08T07:04:30.809Z",
+  "itemCount": 8,
+  "items": [
+    {
+      "id": "site-first-power",
+      "bvid": "BV1D23262EaD",
+      "posterKind": "designed-poster",
+      "originalPath": "resources/raw/travelling-bingo/site-firsts/originals/power.heic",
+      "byteLength": 846694,
+      "sha256": "d909c51890dac0a11e054333c66dea5b491e352ec297db459c091cc1bd783a0c"
+    },
+    {
+      "id": "site-first-hey-mama",
+      "bvid": "BV179v1B2Emc",
+      "posterKind": "designed-poster",
+      "originalPath": "resources/raw/travelling-bingo/site-firsts/originals/hey-mama.jpg",
+      "byteLength": 401924,
+      "sha256": "00c31d7e6c79c2db33aef3af4bf2f4bea0d37140c52f7b019545b8f09e19c811"
+    },
+    {
+      "id": "site-first-xi",
+      "bvid": "BV1Dx3i6nEm8",
+      "posterKind": "designed-poster",
+      "originalPath": "resources/raw/travelling-bingo/site-firsts/originals/xi.heic",
+      "byteLength": 1969842,
+      "sha256": "228798f0dff28efac27e30be58e132b02ce7bed193d0f721713f163f80f30760"
+    },
+    {
+      "id": "site-first-yuan-yu-chou",
+      "bvid": "BV1fjpAzmE1T",
+      "posterKind": "designed-poster",
+      "originalPath": "resources/raw/travelling-bingo/site-firsts/originals/yuan-yu-chou.heic",
+      "byteLength": 270119,
+      "sha256": "d6fc9049d8bb6f244e96824a976f269ef198d83ff442db9b7e109750ea26c99f"
+    },
+    {
+      "id": "site-first-dawn-in-my-soul",
+      "bvid": "BV1i7LM6oErE",
+      "posterKind": "designed-poster",
+      "originalPath": "resources/raw/travelling-bingo/site-firsts/originals/dawn-in-my-soul.heic",
+      "byteLength": 728183,
+      "sha256": "1dd74ac3c85e560a3459190e759048164c6c653df35588bae750f76a2064ce05"
+    },
+    {
+      "id": "site-first-make-a-wish",
+      "bvid": "BV1MbZnYoEk1",
+      "posterKind": "video-cover-fallback",
+      "originalPath": "resources/raw/travelling-bingo/site-firsts/originals/make-a-wish-cover.jpg",
+      "byteLength": 271593,
+      "sha256": "12ef122592df8fc39588e0cba30e96af3ab645b3532ad556f180d75fd431c667"
+    },
+    {
+      "id": "site-first-talk-worthy-talk-dirty",
+      "bvid": "BV1rtDRBJE7s",
+      "posterKind": "designed-poster",
+      "originalPath": "resources/raw/travelling-bingo/site-firsts/originals/talk-worthy-talk-dirty.heic",
+      "byteLength": 433212,
+      "sha256": "a61bcb176aae875b4e6e8fbe981ae1d69dcb1992088123a2835d96fceb16a3e1"
+    },
+    {
+      "id": "site-first-dynamite",
+      "bvid": "BV1cfCSYfEo3",
+      "posterKind": "video-cover-fallback",
+      "originalPath": "resources/raw/travelling-bingo/site-firsts/originals/dynamite-cover.jpg",
+      "byteLength": 252520,
+      "sha256": "e2e7fd06cfe862bb1b0dbc986089de9fb0a90768d2689db452f12c571fc567e5"
+    }
+  ]
+}

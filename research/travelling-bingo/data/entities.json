@@ -1,0 +1,110 @@
+{
+  "schemaVersion": 1,
+  "accessedAt": "2026-08-08",
+  "records": [
+    {
+      "id": "su-xinhao",
+      "entityType": "person",
+      "canonicalName": "苏新皓",
+      "facts": [
+        {
+          "statement": "苏新皓是 TOP登陆少年组合成员，公开所属公司为北京时代峰峻。",
+          "evidenceType": "official",
+          "sourceUrl": "https://weibo.com/u/7449968177",
+          "confidence": "high",
+          "usageScope": ["人物卡", "项目背景"]
+        },
+        {
+          "statement": "出生日期记录为 2007-01-12。",
+          "evidenceType": "official-plus-secondary-cross-check",
+          "sourceUrl": "https://baike.sogou.com/m/fullLemma?g_ut=3&lid=177452530",
+          "confidence": "medium-high",
+          "caveat": "正式上线文案前应补存官方生日帖的稳定快照。",
+          "usageScope": ["人物时间线"]
+        },
+        {
+          "statement": "苏新皓曾在采访中提到会利用空闲时间学习拍摄剪辑，并拍摄舞蹈与生活视频。",
+          "evidenceType": "interview-self-description",
+          "sourceUrl": "https://weibo.com/ttarticle/p/show?id=2309405213643515232356",
+          "publishedAt": "2025-09-22",
+          "confidence": "high",
+          "caveat": "这是兴趣和本人自述，不应扩写成专业职称。",
+          "usageScope": ["人物卡", "旅行明信片文案灵感"]
+        },
+        {
+          "statement": "信号灯是苏新皓确定的粉丝名。",
+          "evidenceType": "user-confirmed-fact",
+          "confidence": "high",
+          "usageScope": ["人物卡", "游戏文案", "粉丝叙事"]
+        },
+        {
+          "statement": "苏新皓是组合 C 位与唯一 ACE。",
+          "evidenceType": "user-confirmed-fact",
+          "confidence": "high",
+          "usageScope": ["人物卡", "游戏文案", "粉丝叙事"]
+        },
+        {
+          "statement": "苏新皓在公司资源分配与发展中遭遇打压。",
+          "evidenceType": "user-confirmed-fact",
+          "confidence": "high",
+          "usageScope": ["游戏文案", "粉丝叙事"]
+        }
+      ]
+    },
+    {
+      "id": "top-transform-project",
+      "entityType": "group",
+      "canonicalName": "TOP登陆少年组合",
+      "aliases": ["TransfOrm Project"],
+      "facts": [
+        {
+          "statement": "官方成团欢迎帖发布于 2024-08-29，列出朱志鑫、张泽禹、张极、左航、苏新皓五名成员。",
+          "evidenceType": "official",
+          "sourceUrl": "https://www.weibo.com/7854957897/5072501119910210",
+          "publishedAt": "2024-08-29",
+          "confidence": "high",
+          "usageScope": ["组合背景"]
+        }
+      ]
+    },
+    {
+      "id": "bing-dog",
+      "entityType": "fan-created-character",
+      "canonicalName": "饼狗",
+      "aliases": ["饼狗 Bingo", "苹果头套小狗"],
+      "facts": [
+        {
+          "statement": "饼狗是与苏新皓相关的粉丝二创角色，不应标为时代峰峻、TOP 或苏新皓官方吉祥物。",
+          "evidenceType": "primary-fan-creator-and-public-record",
+          "sourceUrl": "https://k.sina.cn/article_6358319495_17afc418704001h776.html",
+          "publishedAt": "2026-01-07",
+          "confidence": "medium-high",
+          "usageScope": ["免责声明", "角色说明"]
+        },
+        {
+          "statement": "公开视觉为白色小狗样角色，戴红色苹果头套，顶部有绿色芽叶。",
+          "evidenceType": "visual-observation",
+          "sourceUrl": "https://k.sina.cn/article_6358319495_17afc418704001h776.html",
+          "publishedAt": "2026-01-07",
+          "confidence": "medium-high",
+          "caveat": "“苹果头套小狗”只是描述性别名。",
+          "usageScope": ["图片替代文本", "角色检索标签"]
+        },
+        {
+          "statement": "不晚于 2025-10-17 已有饼狗四季插画台历的公开记录。",
+          "evidenceType": "public-fan-creator-record",
+          "sourceUrl": "https://www.sina.cn/news/detail/5222805388137193.html",
+          "publishedAt": "2025-10-17",
+          "confidence": "high",
+          "caveat": "不能据此断言该日是角色诞生日或首次发布日。",
+          "usageScope": ["来源时间线"]
+        }
+      ]
+    }
+  ],
+  "excludedClaims": [
+    "饼狗是官方吉祥物或官方设定",
+    "2025-10-17 是饼狗诞生日",
+    "动态粉丝数、互动数、销量和热搜阅读量"
+  ]
+}

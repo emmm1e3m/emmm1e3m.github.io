@@ -1,0 +1,10 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" role="img" aria-labelledby="title">
+  <title id="title">旅行饼狗苹果图标</title>
+  <rect width="512" height="512" rx="112" fill="#fff7ed"/>
+  <path d="M268 135c15-53 54-75 98-79-5 42-35 79-83 83" fill="#5f8f3d"/>
+  <path d="M256 156c91-75 202 6 184 122-17 108-102 177-184 177S89 386 72 278c-18-116 93-197 184-122Z" fill="#d94b5f"/>
+  <path d="M177 239c13-21 31-34 54-39l25 37 25-37c23 5 41 18 54 39l-12 98c-4 36-33 64-67 64s-63-28-67-64Z" fill="#fffaf2"/>
+  <circle cx="218" cy="286" r="10" fill="#3f2f2b"/>
+  <circle cx="294" cy="286" r="10" fill="#3f2f2b"/>
+  <path d="M247 319c6 7 12 7 18 0" fill="none" stroke="#3f2f2b" stroke-linecap="round" stroke-width="10"/>
+</svg>

@@ -1,0 +1,328 @@
+{
+  "schemaVersion": 1,
+  "generatedFrom": "bilibili-all-site-number-one-8",
+  "itemCount": 8,
+  "items": [
+    {
+      "id": "site-first-power",
+      "category": "site-first",
+      "title": "POWER 直拍",
+      "alt": "苏新皓《POWER 直拍》B站全站排行榜最高第 1 纪念海报",
+      "source": {
+        "platform": "bilibili",
+        "url": "https://www.bilibili.com/video/BV1D23262EaD/",
+        "accessedAt": "2026-08-08T16:00:00+08:00"
+      },
+      "rights": "user-confirmed-authorized",
+      "images": [
+        {
+          "width": 480,
+          "height": 679,
+          "path": "assets/collectibles/site-firsts/site-first-power-480.webp",
+          "byteLength": 80076,
+          "mime": "image/webp"
+        },
+        {
+          "width": 960,
+          "height": 1358,
+          "path": "assets/collectibles/site-firsts/site-first-power-960.webp",
+          "byteLength": 214090,
+          "mime": "image/webp"
+        },
+        {
+          "width": 1600,
+          "height": 2263,
+          "path": "assets/collectibles/site-firsts/site-first-power-1600.webp",
+          "byteLength": 412230,
+          "mime": "image/webp"
+        }
+      ],
+      "tags": ["全站第一", "说唱跳"],
+      "metadata": {
+        "bvid": "BV1D23262EaD",
+        "programCategory": "说唱跳",
+        "posterKind": "designed-poster"
+      }
+    },
+    {
+      "id": "site-first-hey-mama",
+      "category": "site-first",
+      "title": "Hey Mama 四机位直拍",
+      "alt": "苏新皓《Hey Mama 四机位直拍》B站全站排行榜最高第 1 纪念海报",
+      "source": {
+        "platform": "bilibili",
+        "url": "https://www.bilibili.com/video/BV179v1B2Emc/",
+        "accessedAt": "2026-08-08T16:00:00+08:00"
+      },
+      "rights": "user-confirmed-authorized",
+      "images": [
+        {
+          "width": 480,
+          "height": 721,
+          "path": "assets/collectibles/site-firsts/site-first-hey-mama-480.webp",
+          "byteLength": 68098,
+          "mime": "image/webp"
+        },
+        {
+          "width": 960,
+          "height": 1442,
+          "path": "assets/collectibles/site-firsts/site-first-hey-mama-960.webp",
+          "byteLength": 184480,
+          "mime": "image/webp"
+        },
+        {
+          "width": 1080,
+          "height": 1622,
+          "path": "assets/collectibles/site-firsts/site-first-hey-mama-1080.webp",
+          "byteLength": 224578,
+          "mime": "image/webp"
+        }
+      ],
+      "tags": ["全站第一", "纯舞"],
+      "metadata": {
+        "bvid": "BV179v1B2Emc",
+        "programCategory": "纯舞",
+        "posterKind": "designed-poster"
+      }
+    },
+    {
+      "id": "site-first-xi",
+      "category": "site-first",
+      "title": "囍 直拍",
+      "alt": "苏新皓《囍 直拍》B站全站排行榜最高第 1 纪念海报",
+      "source": {
+        "platform": "bilibili",
+        "url": "https://www.bilibili.com/video/BV1Dx3i6nEm8/",
+        "accessedAt": "2026-08-08T16:00:00+08:00"
+      },
+      "rights": "user-confirmed-authorized",
+      "images": [
+        {
+          "width": 480,
+          "height": 640,
+          "path": "assets/collectibles/site-firsts/site-first-xi-480.webp",
+          "byteLength": 77566,
+          "mime": "image/webp"
+        },
+        {
+          "width": 960,
+          "height": 1280,
+          "path": "assets/collectibles/site-firsts/site-first-xi-960.webp",
+          "byteLength": 212044,
+          "mime": "image/webp"
+        },
+        {
+          "width": 1600,
+          "height": 2133,
+          "path": "assets/collectibles/site-firsts/site-first-xi-1600.webp",
+          "byteLength": 467744,
+          "mime": "image/webp"
+        }
+      ],
+      "tags": ["全站第一", "国风"],
+      "metadata": {
+        "bvid": "BV1Dx3i6nEm8",
+        "programCategory": "国风",
+        "posterKind": "designed-poster"
+      }
+    },
+    {
+      "id": "site-first-yuan-yu-chou",
+      "category": "site-first",
+      "title": "愿与愁 直拍",
+      "alt": "苏新皓《愿与愁 直拍》B站全站排行榜最高第 1 纪念海报",
+      "source": {
+        "platform": "bilibili",
+        "url": "https://www.bilibili.com/video/BV1fjpAzmE1T/",
+        "accessedAt": "2026-08-08T16:00:00+08:00"
+      },
+      "rights": "user-confirmed-authorized",
+      "images": [
+        {
+          "width": 480,
+          "height": 638,
+          "path": "assets/collectibles/site-firsts/site-first-yuan-yu-chou-480.webp",
+          "byteLength": 64696,
+          "mime": "image/webp"
+        },
+        {
+          "width": 960,
+          "height": 1275,
+          "path": "assets/collectibles/site-firsts/site-first-yuan-yu-chou-960.webp",
+          "byteLength": 192734,
+          "mime": "image/webp"
+        },
+        {
+          "width": 1200,
+          "height": 1594,
+          "path": "assets/collectibles/site-firsts/site-first-yuan-yu-chou-1200.webp",
+          "byteLength": 281086,
+          "mime": "image/webp"
+        }
+      ],
+      "tags": ["全站第一", "弹唱"],
+      "metadata": {
+        "bvid": "BV1fjpAzmE1T",
+        "programCategory": "弹唱",
+        "posterKind": "designed-poster"
+      }
+    },
+    {
+      "id": "site-first-dawn-in-my-soul",
+      "category": "site-first",
+      "title": "Dawn in my soul",
+      "alt": "苏新皓《Dawn in my soul》B站全站排行榜最高第 1 纪念海报",
+      "source": {
+        "platform": "bilibili",
+        "url": "https://www.bilibili.com/video/BV1i7LM6oErE/",
+        "accessedAt": "2026-08-08T16:00:00+08:00"
+      },
+      "rights": "user-confirmed-authorized",
+      "images": [
+        {
+          "width": 480,
+          "height": 665,
+          "path": "assets/collectibles/site-firsts/site-first-dawn-in-my-soul-480.webp",
+          "byteLength": 86110,
+          "mime": "image/webp"
+        },
+        {
+          "width": 960,
+          "height": 1330,
+          "path": "assets/collectibles/site-firsts/site-first-dawn-in-my-soul-960.webp",
+          "byteLength": 225586,
+          "mime": "image/webp"
+        },
+        {
+          "width": 1600,
+          "height": 2217,
+          "path": "assets/collectibles/site-firsts/site-first-dawn-in-my-soul-1600.webp",
+          "byteLength": 409764,
+          "mime": "image/webp"
+        }
+      ],
+      "tags": ["全站第一", "原创"],
+      "metadata": {
+        "bvid": "BV1i7LM6oErE",
+        "programCategory": "原创",
+        "posterKind": "designed-poster"
+      }
+    },
+    {
+      "id": "site-first-make-a-wish",
+      "category": "site-first",
+      "title": "Make A Wish 自制 MV",
+      "alt": "苏新皓《Make A Wish 自制 MV》B站全站排行榜最高第 1 纪念视频封面",
+      "source": {
+        "platform": "bilibili",
+        "url": "https://www.bilibili.com/video/BV1MbZnYoEk1/",
+        "accessedAt": "2026-08-08T16:00:00+08:00"
+      },
+      "rights": "user-confirmed-authorized",
+      "images": [
+        {
+          "width": 480,
+          "height": 271,
+          "path": "assets/collectibles/site-firsts/site-first-make-a-wish-480.webp",
+          "byteLength": 30784,
+          "mime": "image/webp"
+        },
+        {
+          "width": 626,
+          "height": 354,
+          "path": "assets/collectibles/site-firsts/site-first-make-a-wish-626.webp",
+          "byteLength": 41544,
+          "mime": "image/webp"
+        }
+      ],
+      "tags": ["全站第一", "自制"],
+      "metadata": {
+        "bvid": "BV1MbZnYoEk1",
+        "programCategory": "自制",
+        "posterKind": "video-cover-fallback"
+      }
+    },
+    {
+      "id": "site-first-talk-worthy-talk-dirty",
+      "category": "site-first",
+      "title": "Talk WORTHY? Talk DIRTY! 直拍",
+      "alt": "苏新皓《Talk WORTHY? Talk DIRTY! 直拍》B站全站排行榜最高第 1 纪念海报",
+      "source": {
+        "platform": "bilibili",
+        "url": "https://www.bilibili.com/video/BV1rtDRBJE7s/",
+        "accessedAt": "2026-08-08T16:00:00+08:00"
+      },
+      "rights": "user-confirmed-authorized",
+      "images": [
+        {
+          "width": 480,
+          "height": 640,
+          "path": "assets/collectibles/site-firsts/site-first-talk-worthy-talk-dirty-480.webp",
+          "byteLength": 59324,
+          "mime": "image/webp"
+        },
+        {
+          "width": 960,
+          "height": 1280,
+          "path": "assets/collectibles/site-firsts/site-first-talk-worthy-talk-dirty-960.webp",
+          "byteLength": 150214,
+          "mime": "image/webp"
+        },
+        {
+          "width": 1600,
+          "height": 2133,
+          "path": "assets/collectibles/site-firsts/site-first-talk-worthy-talk-dirty-1600.webp",
+          "byteLength": 294692,
+          "mime": "image/webp"
+        }
+      ],
+      "tags": ["全站第一", "唱跳"],
+      "metadata": {
+        "bvid": "BV1rtDRBJE7s",
+        "programCategory": "唱跳",
+        "posterKind": "designed-poster"
+      }
+    },
+    {
+      "id": "site-first-dynamite",
+      "category": "site-first",
+      "title": "Dynamite Cover",
+      "alt": "苏新皓《Dynamite Cover》B站全站排行榜最高第 1 纪念视频封面",
+      "source": {
+        "platform": "bilibili",
+        "url": "https://www.bilibili.com/video/BV1cfCSYfEo3/",
+        "accessedAt": "2026-08-08T16:00:00+08:00"
+      },
+      "rights": "user-confirmed-authorized",
+      "images": [
+        {
+          "width": 480,
+          "height": 360,
+          "path": "assets/collectibles/site-firsts/site-first-dynamite-480.webp",
+          "byteLength": 15246,
+          "mime": "image/webp"
+        },
+        {
+          "width": 960,
+          "height": 719,
+          "path": "assets/collectibles/site-firsts/site-first-dynamite-960.webp",
+          "byteLength": 39518,
+          "mime": "image/webp"
+        },
+        {
+          "width": 1280,
+          "height": 959,
+          "path": "assets/collectibles/site-firsts/site-first-dynamite-1280.webp",
+          "byteLength": 59572,
+          "mime": "image/webp"
+        }
+      ],
+      "tags": ["全站第一", "纯唱"],
+      "metadata": {
+        "bvid": "BV1cfCSYfEo3",
+        "programCategory": "纯唱",
+        "posterKind": "video-cover-fallback"
+      }
+    }
+  ]
+}

@@ -1,0 +1,39 @@
+{
+  "schemaVersion": 1,
+  "rights": "user-confirmed-authorized",
+  "generatedAt": "2026-08-08",
+  "room": {
+    "alt": "阳光下的两层铲铲饼屋，包含床、电脑、衣架、电子琴、唱片机、冰箱、展示墙和出口",
+    "images": [
+      {
+        "width": 960,
+        "height": 640,
+        "path": "assets/game/chan-chan-house-960.webp",
+        "byteLength": 142828,
+        "mime": "image/webp"
+      },
+      {
+        "width": 1536,
+        "height": 1024,
+        "path": "assets/game/chan-chan-house-1536.webp",
+        "byteLength": 294900,
+        "mime": "image/webp"
+      }
+    ]
+  },
+  "mascotSprites": {
+    "alt": "戴红色苹果头套的白色小狗饼狗四种状态",
+    "layout": {
+      "columns": 2,
+      "rows": 2
+    },
+    "poses": ["idle", "travel", "stream", "celebrate"],
+    "image": {
+      "width": 1024,
+      "height": 1024,
+      "path": "assets/game/bingo-sprites-v2.webp",
+      "byteLength": 110272,
+      "mime": "image/webp"
+    }
+  }
+}

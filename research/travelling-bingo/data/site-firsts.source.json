@@ -1,0 +1,97 @@
+{
+  "schemaVersion": 1,
+  "catalogId": "bilibili-all-site-number-one-8",
+  "retrievedAt": "2026-08-08T16:00:00+08:00",
+  "rights": "user-confirmed-authorized",
+  "selectionRule": "八个条目均由 B 站官方详情接口的 history_rank=1 核验；没有独立海报的两个条目使用视频原始封面。",
+  "items": [
+    {
+      "id": "site-first-power",
+      "category": "说唱跳",
+      "title": "POWER 直拍",
+      "bvid": "BV1D23262EaD",
+      "sourceVideoUrl": "https://www.bilibili.com/video/BV1D23262EaD/",
+      "sourceApiUrl": "https://api.bilibili.com/x/web-interface/view?bvid=BV1D23262EaD",
+      "sourceCoverUrl": "https://i0.hdslb.com/bfs/archive/6a5bd608470ff24d8456474ef73883f0db809088.jpg",
+      "posterKind": "designed-poster",
+      "originalPath": "resources/raw/travelling-bingo/site-firsts/originals/power.heic"
+    },
+    {
+      "id": "site-first-hey-mama",
+      "category": "纯舞",
+      "title": "Hey Mama 四机位直拍",
+      "bvid": "BV179v1B2Emc",
+      "sourceVideoUrl": "https://www.bilibili.com/video/BV179v1B2Emc/",
+      "sourceApiUrl": "https://api.bilibili.com/x/web-interface/view?bvid=BV179v1B2Emc",
+      "sourceCoverUrl": "https://i0.hdslb.com/bfs/archive/5af9e1869d9898fd64b9085ff66a27cfd3df17c4.jpg",
+      "posterKind": "designed-poster",
+      "originalPath": "resources/raw/travelling-bingo/site-firsts/originals/hey-mama.jpg"
+    },
+    {
+      "id": "site-first-xi",
+      "category": "国风",
+      "title": "囍 直拍",
+      "bvid": "BV1Dx3i6nEm8",
+      "sourceVideoUrl": "https://www.bilibili.com/video/BV1Dx3i6nEm8/",
+      "sourceApiUrl": "https://api.bilibili.com/x/web-interface/view?bvid=BV1Dx3i6nEm8",
+      "sourceCoverUrl": "https://i2.hdslb.com/bfs/archive/c9eb3a424e6815a3f0183fcba5705b60d30fc010.jpg",
+      "posterKind": "designed-poster",
+      "originalPath": "resources/raw/travelling-bingo/site-firsts/originals/xi.heic"
+    },
+    {
+      "id": "site-first-yuan-yu-chou",
+      "category": "弹唱",
+      "title": "愿与愁 直拍",
+      "bvid": "BV1fjpAzmE1T",
+      "sourceVideoUrl": "https://www.bilibili.com/video/BV1fjpAzmE1T/",
+      "sourceApiUrl": "https://api.bilibili.com/x/web-interface/view?bvid=BV1fjpAzmE1T",
+      "sourceCoverUrl": "https://i2.hdslb.com/bfs/archive/cc7fb8feae4f9a54334b8d9e4a26ce12a5e8a889.jpg",
+      "posterKind": "designed-poster",
+      "originalPath": "resources/raw/travelling-bingo/site-firsts/originals/yuan-yu-chou.heic"
+    },
+    {
+      "id": "site-first-dawn-in-my-soul",
+      "category": "原创",
+      "title": "Dawn in my soul",
+      "bvid": "BV1i7LM6oErE",
+      "sourceVideoUrl": "https://www.bilibili.com/video/BV1i7LM6oErE/",
+      "sourceApiUrl": "https://api.bilibili.com/x/web-interface/view?bvid=BV1i7LM6oErE",
+      "sourceCoverUrl": "https://i2.hdslb.com/bfs/archive/32632fbc43b58edfbecb6bebbfd55ec61c309680.jpg",
+      "posterKind": "designed-poster",
+      "originalPath": "resources/raw/travelling-bingo/site-firsts/originals/dawn-in-my-soul.heic"
+    },
+    {
+      "id": "site-first-make-a-wish",
+      "category": "自制",
+      "title": "Make A Wish 自制 MV",
+      "bvid": "BV1MbZnYoEk1",
+      "sourceVideoUrl": "https://www.bilibili.com/video/BV1MbZnYoEk1/",
+      "sourceApiUrl": "https://api.bilibili.com/x/web-interface/view?bvid=BV1MbZnYoEk1",
+      "sourceCoverUrl": "https://i0.hdslb.com/bfs/archive/f73ece32c85dd72a2f81a07f8afb2eb87752f574.jpg",
+      "posterKind": "video-cover-fallback",
+      "originalPath": "resources/raw/travelling-bingo/site-firsts/originals/make-a-wish-cover.jpg"
+    },
+    {
+      "id": "site-first-talk-worthy-talk-dirty",
+      "category": "唱跳",
+      "title": "Talk WORTHY? Talk DIRTY! 直拍",
+      "bvid": "BV1rtDRBJE7s",
+      "sourceVideoUrl": "https://www.bilibili.com/video/BV1rtDRBJE7s/",
+      "sourceApiUrl": "https://api.bilibili.com/x/web-interface/view?bvid=BV1rtDRBJE7s",
+      "sourceCoverUrl": "https://i1.hdslb.com/bfs/archive/32726639587c274602dbeae81ca27008c96cc3cb.jpg",
+      "posterKind": "designed-poster",
+      "originalPath": "resources/raw/travelling-bingo/site-firsts/originals/talk-worthy-talk-dirty.heic"
+    },
+    {
+      "id": "site-first-dynamite",
+      "category": "纯唱",
+      "title": "Dynamite Cover",
+      "bvid": "BV1cfCSYfEo3",
+      "sourceVideoUrl": "https://www.bilibili.com/video/BV1cfCSYfEo3/",
+      "sourceApiUrl": "https://api.bilibili.com/x/web-interface/view?bvid=BV1cfCSYfEo3",
+      "sourceCoverUrl": "https://i1.hdslb.com/bfs/archive/3c14396e26878628e921e1cf0104ff5240e06da1.jpg",
+      "posterKind": "video-cover-fallback",
+      "originalPath": "resources/raw/travelling-bingo/site-firsts/originals/dynamite-cover.jpg"
+    }
+  ]
+}

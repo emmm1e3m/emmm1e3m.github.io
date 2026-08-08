@@ -1,0 +1,1186 @@
+{
+  "schemaVersion": 1,
+  "generatedFrom": "weibo-million-shot-posters-latest-30-strict",
+  "itemCount": 30,
+  "items": [
+    {
+      "id": "million-shot-152",
+      "category": "million-shot",
+      "title": "POWER",
+      "alt": "苏新皓《POWER》第 152 支百万直拍纪念海报",
+      "source": {
+        "platform": "weibo",
+        "url": "https://weibo.com/7760819929/Rc0y1htl1",
+        "publishedAt": "2026-08-05T18:26:20+08:00",
+        "accessedAt": "2026-08-08T15:30:00+08:00"
+      },
+      "rights": "user-confirmed-authorized",
+      "images": [
+        {
+          "width": 480,
+          "height": 640,
+          "path": "assets/collectibles/million-shots/million-shot-152-480.webp",
+          "byteLength": 40510,
+          "mime": "image/webp"
+        },
+        {
+          "width": 960,
+          "height": 1280,
+          "path": "assets/collectibles/million-shots/million-shot-152-960.webp",
+          "byteLength": 94032,
+          "mime": "image/webp"
+        },
+        {
+          "width": 1600,
+          "height": 2133,
+          "path": "assets/collectibles/million-shots/million-shot-152-1600.webp",
+          "byteLength": 166530,
+          "mime": "image/webp"
+        }
+      ],
+      "tags": ["百万直拍", "POWER"],
+      "metadata": {
+        "sequence": 152
+      }
+    },
+    {
+      "id": "million-shot-151",
+      "category": "million-shot",
+      "title": "囍",
+      "alt": "苏新皓《囍》第 151 支百万直拍纪念海报",
+      "source": {
+        "platform": "weibo",
+        "url": "https://weibo.com/7760819929/RbzzrjHuH",
+        "publishedAt": "2026-08-02T21:45:40+08:00",
+        "accessedAt": "2026-08-08T15:30:00+08:00"
+      },
+      "rights": "user-confirmed-authorized",
+      "images": [
+        {
+          "width": 480,
+          "height": 679,
+          "path": "assets/collectibles/million-shots/million-shot-151-480.webp",
+          "byteLength": 58850,
+          "mime": "image/webp"
+        },
+        {
+          "width": 960,
+          "height": 1358,
+          "path": "assets/collectibles/million-shots/million-shot-151-960.webp",
+          "byteLength": 153558,
+          "mime": "image/webp"
+        },
+        {
+          "width": 1600,
+          "height": 2263,
+          "path": "assets/collectibles/million-shots/million-shot-151-1600.webp",
+          "byteLength": 298870,
+          "mime": "image/webp"
+        }
+      ],
+      "tags": ["百万直拍", "囍"],
+      "metadata": {
+        "sequence": 151
+      }
+    },
+    {
+      "id": "million-shot-150",
+      "category": "million-shot",
+      "title": "囍",
+      "alt": "苏新皓《囍》第 150 支百万直拍纪念海报",
+      "source": {
+        "platform": "weibo",
+        "url": "https://weibo.com/7760819929/Rb7RPgQK1",
+        "publishedAt": "2026-07-30T23:14:03+08:00",
+        "accessedAt": "2026-08-08T15:30:00+08:00"
+      },
+      "rights": "user-confirmed-authorized",
+      "images": [
+        {
+          "width": 480,
+          "height": 680,
+          "path": "assets/collectibles/million-shots/million-shot-150-480.webp",
+          "byteLength": 65100,
+          "mime": "image/webp"
+        },
+        {
+          "width": 904,
+          "height": 1280,
+          "path": "assets/collectibles/million-shots/million-shot-150-904.webp",
+          "byteLength": 128814,
+          "mime": "image/webp"
+        }
+      ],
+      "tags": ["百万直拍", "囍"],
+      "metadata": {
+        "sequence": 150
+      }
+    },
+    {
+      "id": "million-shot-149",
+      "category": "million-shot",
+      "title": "千疮百孔",
+      "alt": "苏新皓《千疮百孔》第 149 支百万直拍纪念海报",
+      "source": {
+        "platform": "weibo",
+        "url": "https://weibo.com/7760819929/R8iCBidhz",
+        "publishedAt": "2026-07-12T09:05:51+08:00",
+        "accessedAt": "2026-08-08T15:30:00+08:00"
+      },
+      "rights": "user-confirmed-authorized",
+      "images": [
+        {
+          "width": 480,
+          "height": 640,
+          "path": "assets/collectibles/million-shots/million-shot-149-480.webp",
+          "byteLength": 57682,
+          "mime": "image/webp"
+        },
+        {
+          "width": 960,
+          "height": 1280,
+          "path": "assets/collectibles/million-shots/million-shot-149-960.webp",
+          "byteLength": 157040,
+          "mime": "image/webp"
+        },
+        {
+          "width": 1600,
+          "height": 2133,
+          "path": "assets/collectibles/million-shots/million-shot-149-1600.webp",
+          "byteLength": 302360,
+          "mime": "image/webp"
+        }
+      ],
+      "tags": ["百万直拍", "千疮百孔"],
+      "metadata": {
+        "sequence": 149
+      }
+    },
+    {
+      "id": "million-shot-148",
+      "category": "million-shot",
+      "title": "ECHO！",
+      "alt": "苏新皓《ECHO！》第 148 支百万直拍纪念海报",
+      "source": {
+        "platform": "weibo",
+        "url": "https://weibo.com/7760819929/R75btlZ7q",
+        "publishedAt": "2026-07-04T09:03:00+08:00",
+        "accessedAt": "2026-08-08T15:30:00+08:00"
+      },
+      "rights": "user-confirmed-authorized",
+      "images": [
+        {
+          "width": 480,
+          "height": 640,
+          "path": "assets/collectibles/million-shots/million-shot-148-480.webp",
+          "byteLength": 62352,
+          "mime": "image/webp"
+        },
+        {
+          "width": 960,
+          "height": 1280,
+          "path": "assets/collectibles/million-shots/million-shot-148-960.webp",
+          "byteLength": 165450,
+          "mime": "image/webp"
+        },
+        {
+          "width": 1600,
+          "height": 2134,
+          "path": "assets/collectibles/million-shots/million-shot-148-1600.webp",
+          "byteLength": 364626,
+          "mime": "image/webp"
+        }
+      ],
+      "tags": ["百万直拍", "ECHO！"],
+      "metadata": {
+        "sequence": 148
+      }
+    },
+    {
+      "id": "million-shot-147",
+      "category": "million-shot",
+      "title": "Do you love me",
+      "alt": "苏新皓《Do you love me》第 147 支百万直拍纪念海报",
+      "source": {
+        "platform": "weibo",
+        "url": "https://weibo.com/7760819929/R6Dy1AORa",
+        "publishedAt": "2026-07-01T10:41:38+08:00",
+        "accessedAt": "2026-08-08T15:30:00+08:00"
+      },
+      "rights": "user-confirmed-authorized",
+      "images": [
+        {
+          "width": 480,
+          "height": 320,
+          "path": "assets/collectibles/million-shots/million-shot-147-480.webp",
+          "byteLength": 22558,
+          "mime": "image/webp"
+        },
+        {
+          "width": 960,
+          "height": 640,
+          "path": "assets/collectibles/million-shots/million-shot-147-960.webp",
+          "byteLength": 57160,
+          "mime": "image/webp"
+        },
+        {
+          "width": 1600,
+          "height": 1067,
+          "path": "assets/collectibles/million-shots/million-shot-147-1600.webp",
+          "byteLength": 115186,
+          "mime": "image/webp"
+        }
+      ],
+      "tags": ["百万直拍", "Do you love me"],
+      "metadata": {
+        "sequence": 147
+      }
+    },
+    {
+      "id": "million-shot-141",
+      "category": "million-shot",
+      "title": "浪漫主义Day2个人直拍",
+      "alt": "苏新皓《浪漫主义Day2个人直拍》第 141 支百万直拍纪念海报",
+      "source": {
+        "platform": "weibo",
+        "url": "https://weibo.com/7760819929/R1jpLfVAq",
+        "publishedAt": "2026-05-27T10:14:50+08:00",
+        "accessedAt": "2026-08-08T15:30:00+08:00"
+      },
+      "rights": "user-confirmed-authorized",
+      "images": [
+        {
+          "width": 480,
+          "height": 640,
+          "path": "assets/collectibles/million-shots/million-shot-141-480.webp",
+          "byteLength": 58726,
+          "mime": "image/webp"
+        },
+        {
+          "width": 960,
+          "height": 1280,
+          "path": "assets/collectibles/million-shots/million-shot-141-960.webp",
+          "byteLength": 170298,
+          "mime": "image/webp"
+        },
+        {
+          "width": 1417,
+          "height": 1890,
+          "path": "assets/collectibles/million-shots/million-shot-141-1417.webp",
+          "byteLength": 334980,
+          "mime": "image/webp"
+        }
+      ],
+      "tags": ["百万直拍", "浪漫主义Day2个人直拍"],
+      "metadata": {
+        "sequence": 141
+      }
+    },
+    {
+      "id": "million-shot-135",
+      "category": "million-shot",
+      "title": "浪漫主义Day1个人直拍",
+      "alt": "苏新皓《浪漫主义Day1个人直拍》第 135 支百万直拍纪念海报",
+      "source": {
+        "platform": "weibo",
+        "url": "https://weibo.com/7760819929/R00g2fwMo",
+        "publishedAt": "2026-05-18T19:38:23+08:00",
+        "accessedAt": "2026-08-08T15:30:00+08:00"
+      },
+      "rights": "user-confirmed-authorized",
+      "images": [
+        {
+          "width": 480,
+          "height": 679,
+          "path": "assets/collectibles/million-shots/million-shot-135-480.webp",
+          "byteLength": 46606,
+          "mime": "image/webp"
+        },
+        {
+          "width": 960,
+          "height": 1358,
+          "path": "assets/collectibles/million-shots/million-shot-135-960.webp",
+          "byteLength": 115492,
+          "mime": "image/webp"
+        },
+        {
+          "width": 1600,
+          "height": 2263,
+          "path": "assets/collectibles/million-shots/million-shot-135-1600.webp",
+          "byteLength": 218814,
+          "mime": "image/webp"
+        }
+      ],
+      "tags": ["百万直拍", "浪漫主义Day1个人直拍"],
+      "metadata": {
+        "sequence": 135
+      }
+    },
+    {
+      "id": "million-shot-134",
+      "category": "million-shot",
+      "title": "Dangerous",
+      "alt": "苏新皓《Dangerous》第 134 支百万直拍纪念海报",
+      "source": {
+        "platform": "weibo",
+        "url": "https://weibo.com/7760819929/QFHdanVwm",
+        "publishedAt": "2026-05-17T01:37:35+08:00",
+        "accessedAt": "2026-08-08T15:30:00+08:00"
+      },
+      "rights": "user-confirmed-authorized",
+      "images": [
+        {
+          "width": 480,
+          "height": 679,
+          "path": "assets/collectibles/million-shots/million-shot-134-480.webp",
+          "byteLength": 51208,
+          "mime": "image/webp"
+        },
+        {
+          "width": 960,
+          "height": 1358,
+          "path": "assets/collectibles/million-shots/million-shot-134-960.webp",
+          "byteLength": 127928,
+          "mime": "image/webp"
+        },
+        {
+          "width": 1600,
+          "height": 2263,
+          "path": "assets/collectibles/million-shots/million-shot-134-1600.webp",
+          "byteLength": 240224,
+          "mime": "image/webp"
+        }
+      ],
+      "tags": ["百万直拍", "Dangerous"],
+      "metadata": {
+        "sequence": 134
+      }
+    },
+    {
+      "id": "million-shot-133",
+      "category": "million-shot",
+      "title": "Hey MaMa",
+      "alt": "苏新皓《Hey MaMa》第 133 支百万直拍纪念海报",
+      "source": {
+        "platform": "weibo",
+        "url": "https://weibo.com/7760819929/QDFkPcoHt",
+        "publishedAt": "2026-05-03T17:10:21+08:00",
+        "accessedAt": "2026-08-08T15:30:00+08:00"
+      },
+      "rights": "user-confirmed-authorized",
+      "images": [
+        {
+          "width": 480,
+          "height": 640,
+          "path": "assets/collectibles/million-shots/million-shot-133-480.webp",
+          "byteLength": 39152,
+          "mime": "image/webp"
+        },
+        {
+          "width": 960,
+          "height": 1280,
+          "path": "assets/collectibles/million-shots/million-shot-133-960.webp",
+          "byteLength": 91248,
+          "mime": "image/webp"
+        },
+        {
+          "width": 1080,
+          "height": 1440,
+          "path": "assets/collectibles/million-shots/million-shot-133-1080.webp",
+          "byteLength": 106420,
+          "mime": "image/webp"
+        }
+      ],
+      "tags": ["百万直拍", "Hey MaMa"],
+      "metadata": {
+        "sequence": 133
+      }
+    },
+    {
+      "id": "million-shot-132",
+      "category": "million-shot",
+      "title": "Talk Worthy",
+      "alt": "苏新皓《Talk Worthy》第 132 支百万直拍纪念海报",
+      "source": {
+        "platform": "weibo",
+        "url": "https://weibo.com/7760819929/QDiT2mKqh",
+        "publishedAt": "2026-05-01T08:01:28+08:00",
+        "accessedAt": "2026-08-08T15:30:00+08:00"
+      },
+      "rights": "user-confirmed-authorized",
+      "images": [
+        {
+          "width": 480,
+          "height": 679,
+          "path": "assets/collectibles/million-shots/million-shot-132-480.webp",
+          "byteLength": 52292,
+          "mime": "image/webp"
+        },
+        {
+          "width": 960,
+          "height": 1357,
+          "path": "assets/collectibles/million-shots/million-shot-132-960.webp",
+          "byteLength": 237516,
+          "mime": "image/webp"
+        },
+        {
+          "width": 1600,
+          "height": 2262,
+          "path": "assets/collectibles/million-shots/million-shot-132-1600.webp",
+          "byteLength": 621780,
+          "mime": "image/webp"
+        }
+      ],
+      "tags": ["百万直拍", "Talk Worthy"],
+      "metadata": {
+        "sequence": 132
+      }
+    },
+    {
+      "id": "million-shot-131",
+      "category": "million-shot",
+      "title": "Worth it",
+      "alt": "苏新皓《Worth it》第 131 支百万直拍纪念海报",
+      "source": {
+        "platform": "weibo",
+        "url": "https://weibo.com/7760819929/QDd8pgWBU",
+        "publishedAt": "2026-04-30T17:22:51+08:00",
+        "accessedAt": "2026-08-08T15:30:00+08:00"
+      },
+      "rights": "user-confirmed-authorized",
+      "images": [
+        {
+          "width": 480,
+          "height": 640,
+          "path": "assets/collectibles/million-shots/million-shot-131-480.webp",
+          "byteLength": 61240,
+          "mime": "image/webp"
+        },
+        {
+          "width": 960,
+          "height": 1280,
+          "path": "assets/collectibles/million-shots/million-shot-131-960.webp",
+          "byteLength": 169270,
+          "mime": "image/webp"
+        },
+        {
+          "width": 1417,
+          "height": 1890,
+          "path": "assets/collectibles/million-shots/million-shot-131-1417.webp",
+          "byteLength": 307686,
+          "mime": "image/webp"
+        }
+      ],
+      "tags": ["百万直拍", "Worth it"],
+      "metadata": {
+        "sequence": 131
+      }
+    },
+    {
+      "id": "million-shot-129",
+      "category": "million-shot",
+      "title": "Talk Worthy/Dirty",
+      "alt": "苏新皓《Talk Worthy/Dirty》第 129 支百万直拍纪念海报",
+      "source": {
+        "platform": "weibo",
+        "url": "https://weibo.com/7760819929/QBaHPCqoN",
+        "publishedAt": "2026-04-17T07:31:17+08:00",
+        "accessedAt": "2026-08-08T15:30:00+08:00"
+      },
+      "rights": "user-confirmed-authorized",
+      "images": [
+        {
+          "width": 480,
+          "height": 679,
+          "path": "assets/collectibles/million-shots/million-shot-129-480.webp",
+          "byteLength": 57394,
+          "mime": "image/webp"
+        },
+        {
+          "width": 960,
+          "height": 1358,
+          "path": "assets/collectibles/million-shots/million-shot-129-960.webp",
+          "byteLength": 127022,
+          "mime": "image/webp"
+        },
+        {
+          "width": 1600,
+          "height": 2263,
+          "path": "assets/collectibles/million-shots/million-shot-129-1600.webp",
+          "byteLength": 219018,
+          "mime": "image/webp"
+        }
+      ],
+      "tags": ["百万直拍", "Talk Worthy/Dirty"],
+      "metadata": {
+        "sequence": 129
+      }
+    },
+    {
+      "id": "million-shot-128",
+      "category": "million-shot",
+      "title": "playground",
+      "alt": "苏新皓《playground》第 128 支百万直拍纪念海报",
+      "source": {
+        "platform": "weibo",
+        "url": "https://weibo.com/7760819929/QA7tilW5s",
+        "publishedAt": "2026-04-10T09:26:55+08:00",
+        "accessedAt": "2026-08-08T15:30:00+08:00"
+      },
+      "rights": "user-confirmed-authorized",
+      "images": [
+        {
+          "width": 480,
+          "height": 681,
+          "path": "assets/collectibles/million-shots/million-shot-128-480.webp",
+          "byteLength": 36300,
+          "mime": "image/webp"
+        },
+        {
+          "width": 960,
+          "height": 1363,
+          "path": "assets/collectibles/million-shots/million-shot-128-960.webp",
+          "byteLength": 115212,
+          "mime": "image/webp"
+        },
+        {
+          "width": 1165,
+          "height": 1654,
+          "path": "assets/collectibles/million-shots/million-shot-128-1165.webp",
+          "byteLength": 164876,
+          "mime": "image/webp"
+        }
+      ],
+      "tags": ["百万直拍", "playground"],
+      "metadata": {
+        "sequence": 128
+      }
+    },
+    {
+      "id": "million-shot-124",
+      "category": "million-shot",
+      "title": "死了都要爱",
+      "alt": "苏新皓《死了都要爱》第 124 支百万直拍纪念海报",
+      "source": {
+        "platform": "weibo",
+        "url": "https://weibo.com/7760819929/QqgrYafyg",
+        "publishedAt": "2026-02-04T13:55:20+08:00",
+        "accessedAt": "2026-08-08T15:30:00+08:00"
+      },
+      "rights": "user-confirmed-authorized",
+      "images": [
+        {
+          "width": 480,
+          "height": 339,
+          "path": "assets/collectibles/million-shots/million-shot-124-480.webp",
+          "byteLength": 24788,
+          "mime": "image/webp"
+        },
+        {
+          "width": 960,
+          "height": 679,
+          "path": "assets/collectibles/million-shots/million-shot-124-960.webp",
+          "byteLength": 67072,
+          "mime": "image/webp"
+        },
+        {
+          "width": 1600,
+          "height": 1132,
+          "path": "assets/collectibles/million-shots/million-shot-124-1600.webp",
+          "byteLength": 149180,
+          "mime": "image/webp"
+        }
+      ],
+      "tags": ["百万直拍", "死了都要爱"],
+      "metadata": {
+        "sequence": 124
+      }
+    },
+    {
+      "id": "million-shot-123",
+      "category": "million-shot",
+      "title": "就是现在",
+      "alt": "苏新皓《就是现在》第 123 支百万直拍纪念海报",
+      "source": {
+        "platform": "weibo",
+        "url": "https://weibo.com/7760819929/QpY1ukT4C",
+        "publishedAt": "2026-02-02T15:00:39+08:00",
+        "accessedAt": "2026-08-08T15:30:00+08:00"
+      },
+      "rights": "user-confirmed-authorized",
+      "images": [
+        {
+          "width": 480,
+          "height": 651,
+          "path": "assets/collectibles/million-shots/million-shot-123-480.webp",
+          "byteLength": 59618,
+          "mime": "image/webp"
+        },
+        {
+          "width": 960,
+          "height": 1303,
+          "path": "assets/collectibles/million-shots/million-shot-123-960.webp",
+          "byteLength": 160794,
+          "mime": "image/webp"
+        },
+        {
+          "width": 1600,
+          "height": 2171,
+          "path": "assets/collectibles/million-shots/million-shot-123-1600.webp",
+          "byteLength": 475886,
+          "mime": "image/webp"
+        }
+      ],
+      "tags": ["百万直拍", "就是现在"],
+      "metadata": {
+        "sequence": 123
+      }
+    },
+    {
+      "id": "million-shot-122",
+      "category": "million-shot",
+      "title": "爱丫爱丫",
+      "alt": "苏新皓《爱丫爱丫》第 122 支百万直拍纪念海报",
+      "source": {
+        "platform": "weibo",
+        "url": "https://weibo.com/7760819929/QpY10fP8y",
+        "publishedAt": "2026-02-02T14:59:26+08:00",
+        "accessedAt": "2026-08-08T15:30:00+08:00"
+      },
+      "rights": "user-confirmed-authorized",
+      "images": [
+        {
+          "width": 480,
+          "height": 640,
+          "path": "assets/collectibles/million-shots/million-shot-122-480.webp",
+          "byteLength": 58038,
+          "mime": "image/webp"
+        },
+        {
+          "width": 960,
+          "height": 1280,
+          "path": "assets/collectibles/million-shots/million-shot-122-960.webp",
+          "byteLength": 127740,
+          "mime": "image/webp"
+        },
+        {
+          "width": 1080,
+          "height": 1440,
+          "path": "assets/collectibles/million-shots/million-shot-122-1080.webp",
+          "byteLength": 148490,
+          "mime": "image/webp"
+        }
+      ],
+      "tags": ["百万直拍", "爱丫爱丫"],
+      "metadata": {
+        "sequence": 122
+      }
+    },
+    {
+      "id": "million-shot-121",
+      "category": "million-shot",
+      "title": "Blow",
+      "alt": "苏新皓《Blow》第 121 支百万直拍纪念海报",
+      "source": {
+        "platform": "weibo",
+        "url": "https://weibo.com/7760819929/QpVQmgRms",
+        "publishedAt": "2026-02-02T09:27:44+08:00",
+        "accessedAt": "2026-08-08T15:30:00+08:00"
+      },
+      "rights": "user-confirmed-authorized",
+      "images": [
+        {
+          "width": 480,
+          "height": 679,
+          "path": "assets/collectibles/million-shots/million-shot-121-480.webp",
+          "byteLength": 41184,
+          "mime": "image/webp"
+        },
+        {
+          "width": 960,
+          "height": 1358,
+          "path": "assets/collectibles/million-shots/million-shot-121-960.webp",
+          "byteLength": 116300,
+          "mime": "image/webp"
+        },
+        {
+          "width": 1600,
+          "height": 2263,
+          "path": "assets/collectibles/million-shots/million-shot-121-1600.webp",
+          "byteLength": 326792,
+          "mime": "image/webp"
+        }
+      ],
+      "tags": ["百万直拍", "Blow"],
+      "metadata": {
+        "sequence": 121
+      }
+    },
+    {
+      "id": "million-shot-120",
+      "category": "million-shot",
+      "title": "on",
+      "alt": "苏新皓《on》第 120 支百万直拍纪念海报",
+      "source": {
+        "platform": "weibo",
+        "url": "https://weibo.com/7760819929/QpIovuqIG",
+        "publishedAt": "2026-01-31T23:13:25+08:00",
+        "accessedAt": "2026-08-08T15:30:00+08:00"
+      },
+      "rights": "user-confirmed-authorized",
+      "images": [
+        {
+          "width": 480,
+          "height": 679,
+          "path": "assets/collectibles/million-shots/million-shot-120-480.webp",
+          "byteLength": 84240,
+          "mime": "image/webp"
+        },
+        {
+          "width": 960,
+          "height": 1357,
+          "path": "assets/collectibles/million-shots/million-shot-120-960.webp",
+          "byteLength": 328540,
+          "mime": "image/webp"
+        },
+        {
+          "width": 1600,
+          "height": 2262,
+          "path": "assets/collectibles/million-shots/million-shot-120-1600.webp",
+          "byteLength": 877138,
+          "mime": "image/webp"
+        }
+      ],
+      "tags": ["百万直拍", "on"],
+      "metadata": {
+        "sequence": 120
+      }
+    },
+    {
+      "id": "million-shot-119",
+      "category": "million-shot",
+      "title": "我要飞",
+      "alt": "苏新皓《我要飞》第 119 支百万直拍纪念海报",
+      "source": {
+        "platform": "weibo",
+        "url": "https://weibo.com/7760819929/QotZpib85",
+        "publishedAt": "2026-01-23T20:42:49+08:00",
+        "accessedAt": "2026-08-08T15:30:00+08:00"
+      },
+      "rights": "user-confirmed-authorized",
+      "images": [
+        {
+          "width": 480,
+          "height": 679,
+          "path": "assets/collectibles/million-shots/million-shot-119-480.webp",
+          "byteLength": 66888,
+          "mime": "image/webp"
+        },
+        {
+          "width": 690,
+          "height": 976,
+          "path": "assets/collectibles/million-shots/million-shot-119-690.webp",
+          "byteLength": 118918,
+          "mime": "image/webp"
+        }
+      ],
+      "tags": ["百万直拍", "我要飞"],
+      "metadata": {
+        "sequence": 119
+      }
+    },
+    {
+      "id": "million-shot-118",
+      "category": "million-shot",
+      "title": "美杜莎",
+      "alt": "苏新皓《美杜莎》第 118 支百万直拍纪念海报",
+      "source": {
+        "platform": "weibo",
+        "url": "https://weibo.com/7760819929/QmMQOwXJJ",
+        "publishedAt": "2026-01-12T17:03:14+08:00",
+        "accessedAt": "2026-08-08T15:30:00+08:00"
+      },
+      "rights": "user-confirmed-authorized",
+      "images": [
+        {
+          "width": 480,
+          "height": 270,
+          "path": "assets/collectibles/million-shots/million-shot-118-480.webp",
+          "byteLength": 33480,
+          "mime": "image/webp"
+        },
+        {
+          "width": 960,
+          "height": 540,
+          "path": "assets/collectibles/million-shots/million-shot-118-960.webp",
+          "byteLength": 82034,
+          "mime": "image/webp"
+        },
+        {
+          "width": 1080,
+          "height": 608,
+          "path": "assets/collectibles/million-shots/million-shot-118-1080.webp",
+          "byteLength": 97100,
+          "mime": "image/webp"
+        }
+      ],
+      "tags": ["百万直拍", "美杜莎"],
+      "metadata": {
+        "sequence": 118
+      }
+    },
+    {
+      "id": "million-shot-117",
+      "category": "million-shot",
+      "title": "Hey Mama",
+      "alt": "苏新皓《Hey Mama》第 117 支百万直拍纪念海报",
+      "source": {
+        "platform": "weibo",
+        "url": "https://weibo.com/7760819929/QlarCo0dj",
+        "publishedAt": "2026-01-02T01:26:28+08:00",
+        "accessedAt": "2026-08-08T15:30:00+08:00"
+      },
+      "rights": "user-confirmed-authorized",
+      "images": [
+        {
+          "width": 480,
+          "height": 320,
+          "path": "assets/collectibles/million-shots/million-shot-117-480.webp",
+          "byteLength": 31278,
+          "mime": "image/webp"
+        },
+        {
+          "width": 960,
+          "height": 640,
+          "path": "assets/collectibles/million-shots/million-shot-117-960.webp",
+          "byteLength": 83302,
+          "mime": "image/webp"
+        },
+        {
+          "width": 1600,
+          "height": 1066,
+          "path": "assets/collectibles/million-shots/million-shot-117-1600.webp",
+          "byteLength": 173072,
+          "mime": "image/webp"
+        }
+      ],
+      "tags": ["百万直拍", "Hey Mama"],
+      "metadata": {
+        "sequence": 117
+      }
+    },
+    {
+      "id": "million-shot-116",
+      "category": "million-shot",
+      "title": "Heymama",
+      "alt": "苏新皓《Heymama》第 116 支百万直拍纪念海报",
+      "source": {
+        "platform": "weibo",
+        "url": "https://weibo.com/7760819929/Qlap32pjQ",
+        "publishedAt": "2026-01-02T01:20:07+08:00",
+        "accessedAt": "2026-08-08T15:30:00+08:00"
+      },
+      "rights": "user-confirmed-authorized",
+      "images": [
+        {
+          "width": 480,
+          "height": 721,
+          "path": "assets/collectibles/million-shots/million-shot-116-480.webp",
+          "byteLength": 64388,
+          "mime": "image/webp"
+        },
+        {
+          "width": 960,
+          "height": 1441,
+          "path": "assets/collectibles/million-shots/million-shot-116-960.webp",
+          "byteLength": 182530,
+          "mime": "image/webp"
+        },
+        {
+          "width": 1600,
+          "height": 2402,
+          "path": "assets/collectibles/million-shots/million-shot-116-1600.webp",
+          "byteLength": 405992,
+          "mime": "image/webp"
+        }
+      ],
+      "tags": ["百万直拍", "Heymama"],
+      "metadata": {
+        "sequence": 116
+      }
+    },
+    {
+      "id": "million-shot-115",
+      "category": "million-shot",
+      "title": "骁",
+      "alt": "苏新皓《骁》第 115 支百万直拍纪念海报",
+      "source": {
+        "platform": "weibo",
+        "url": "https://weibo.com/7760819929/Ql4CgmFnC",
+        "publishedAt": "2026-01-01T10:36:13+08:00",
+        "accessedAt": "2026-08-08T15:30:00+08:00"
+      },
+      "rights": "user-confirmed-authorized",
+      "images": [
+        {
+          "width": 480,
+          "height": 679,
+          "path": "assets/collectibles/million-shots/million-shot-115-480.webp",
+          "byteLength": 35492,
+          "mime": "image/webp"
+        },
+        {
+          "width": 960,
+          "height": 1358,
+          "path": "assets/collectibles/million-shots/million-shot-115-960.webp",
+          "byteLength": 87164,
+          "mime": "image/webp"
+        },
+        {
+          "width": 1280,
+          "height": 1810,
+          "path": "assets/collectibles/million-shots/million-shot-115-1280.webp",
+          "byteLength": 126582,
+          "mime": "image/webp"
+        }
+      ],
+      "tags": ["百万直拍", "骁"],
+      "metadata": {
+        "sequence": 115
+      }
+    },
+    {
+      "id": "million-shot-114",
+      "category": "million-shot",
+      "title": "For you",
+      "alt": "苏新皓《For you》第 114 支百万直拍纪念海报",
+      "source": {
+        "platform": "weibo",
+        "url": "https://weibo.com/7760819929/Qk1A5iKnw",
+        "publishedAt": "2025-12-25T13:02:18+08:00",
+        "accessedAt": "2026-08-08T15:30:00+08:00"
+      },
+      "rights": "user-confirmed-authorized",
+      "images": [
+        {
+          "width": 480,
+          "height": 679,
+          "path": "assets/collectibles/million-shots/million-shot-114-480.webp",
+          "byteLength": 64284,
+          "mime": "image/webp"
+        },
+        {
+          "width": 960,
+          "height": 1358,
+          "path": "assets/collectibles/million-shots/million-shot-114-960.webp",
+          "byteLength": 211748,
+          "mime": "image/webp"
+        },
+        {
+          "width": 1200,
+          "height": 1698,
+          "path": "assets/collectibles/million-shots/million-shot-114-1200.webp",
+          "byteLength": 313286,
+          "mime": "image/webp"
+        }
+      ],
+      "tags": ["百万直拍", "For you"],
+      "metadata": {
+        "sequence": 114
+      }
+    },
+    {
+      "id": "million-shot-113",
+      "category": "million-shot",
+      "title": "身骑白马",
+      "alt": "苏新皓《身骑白马》第 113 支百万直拍纪念海报",
+      "source": {
+        "platform": "weibo",
+        "url": "https://weibo.com/7760819929/QjJUBzF5R",
+        "publishedAt": "2025-12-23T16:03:25+08:00",
+        "accessedAt": "2026-08-08T15:30:00+08:00"
+      },
+      "rights": "user-confirmed-authorized",
+      "images": [
+        {
+          "width": 480,
+          "height": 853,
+          "path": "assets/collectibles/million-shots/million-shot-113-480.webp",
+          "byteLength": 57740,
+          "mime": "image/webp"
+        },
+        {
+          "width": 900,
+          "height": 1600,
+          "path": "assets/collectibles/million-shots/million-shot-113-900.webp",
+          "byteLength": 133404,
+          "mime": "image/webp"
+        }
+      ],
+      "tags": ["百万直拍", "身骑白马"],
+      "metadata": {
+        "sequence": 113
+      }
+    },
+    {
+      "id": "million-shot-112",
+      "category": "million-shot",
+      "title": "走在路上突然收到了快乐邀请",
+      "alt": "苏新皓《走在路上突然收到了快乐邀请》第 112 支百万直拍纪念海报",
+      "source": {
+        "platform": "weibo",
+        "url": "https://weibo.com/7760819929/QiPlouZUb",
+        "publishedAt": "2025-12-17T16:02:51+08:00",
+        "accessedAt": "2026-08-08T15:30:00+08:00"
+      },
+      "rights": "user-confirmed-authorized",
+      "images": [
+        {
+          "width": 480,
+          "height": 687,
+          "path": "assets/collectibles/million-shots/million-shot-112-480.webp",
+          "byteLength": 56550,
+          "mime": "image/webp"
+        },
+        {
+          "width": 960,
+          "height": 1373,
+          "path": "assets/collectibles/million-shots/million-shot-112-960.webp",
+          "byteLength": 143264,
+          "mime": "image/webp"
+        },
+        {
+          "width": 1600,
+          "height": 2288,
+          "path": "assets/collectibles/million-shots/million-shot-112-1600.webp",
+          "byteLength": 276578,
+          "mime": "image/webp"
+        }
+      ],
+      "tags": ["百万直拍", "走在路上突然收到了快乐邀请"],
+      "metadata": {
+        "sequence": 112
+      }
+    },
+    {
+      "id": "million-shot-111",
+      "category": "million-shot",
+      "title": "英雄；kick it",
+      "alt": "苏新皓《英雄；kick it》第 111 支百万直拍纪念海报",
+      "source": {
+        "platform": "weibo",
+        "url": "https://weibo.com/7760819929/QeQ6nvITy",
+        "publishedAt": "2025-11-21T10:37:23+08:00",
+        "accessedAt": "2026-08-08T15:30:00+08:00"
+      },
+      "rights": "user-confirmed-authorized",
+      "images": [
+        {
+          "width": 480,
+          "height": 320,
+          "path": "assets/collectibles/million-shots/million-shot-111-480.webp",
+          "byteLength": 20128,
+          "mime": "image/webp"
+        },
+        {
+          "width": 960,
+          "height": 640,
+          "path": "assets/collectibles/million-shots/million-shot-111-960.webp",
+          "byteLength": 55644,
+          "mime": "image/webp"
+        },
+        {
+          "width": 1600,
+          "height": 1067,
+          "path": "assets/collectibles/million-shots/million-shot-111-1600.webp",
+          "byteLength": 108024,
+          "mime": "image/webp"
+        }
+      ],
+      "tags": ["百万直拍", "英雄；kick it"],
+      "metadata": {
+        "sequence": 111
+      }
+    },
+    {
+      "id": "million-shot-110",
+      "category": "million-shot",
+      "title": "paranoia",
+      "alt": "苏新皓《paranoia》第 110 支百万直拍纪念海报",
+      "source": {
+        "platform": "weibo",
+        "url": "https://weibo.com/7760819929/Qe7OwiAPk",
+        "publishedAt": "2025-11-16T17:52:30+08:00",
+        "accessedAt": "2026-08-08T15:30:00+08:00"
+      },
+      "rights": "user-confirmed-authorized",
+      "images": [
+        {
+          "width": 480,
+          "height": 291,
+          "path": "assets/collectibles/million-shots/million-shot-110-480.webp",
+          "byteLength": 33366,
+          "mime": "image/webp"
+        },
+        {
+          "width": 960,
+          "height": 581,
+          "path": "assets/collectibles/million-shots/million-shot-110-960.webp",
+          "byteLength": 94124,
+          "mime": "image/webp"
+        },
+        {
+          "width": 1600,
+          "height": 968,
+          "path": "assets/collectibles/million-shots/million-shot-110-1600.webp",
+          "byteLength": 219006,
+          "mime": "image/webp"
+        }
+      ],
+      "tags": ["百万直拍", "paranoia"],
+      "metadata": {
+        "sequence": 110
+      }
+    },
+    {
+      "id": "million-shot-108",
+      "category": "million-shot",
+      "title": "Survivors",
+      "alt": "苏新皓《Survivors》第 108 支百万直拍纪念海报",
+      "source": {
+        "platform": "weibo",
+        "url": "https://weibo.com/7760819929/Qbd9eE7nv",
+        "publishedAt": "2025-10-28T13:56:22+08:00",
+        "accessedAt": "2026-08-08T15:30:00+08:00"
+      },
+      "rights": "user-confirmed-authorized",
+      "images": [
+        {
+          "width": 480,
+          "height": 561,
+          "path": "assets/collectibles/million-shots/million-shot-108-480.webp",
+          "byteLength": 35048,
+          "mime": "image/webp"
+        },
+        {
+          "width": 960,
+          "height": 1122,
+          "path": "assets/collectibles/million-shots/million-shot-108-960.webp",
+          "byteLength": 76044,
+          "mime": "image/webp"
+        },
+        {
+          "width": 1220,
+          "height": 1426,
+          "path": "assets/collectibles/million-shots/million-shot-108-1220.webp",
+          "byteLength": 102392,
+          "mime": "image/webp"
+        }
+      ],
+      "tags": ["百万直拍", "Survivors"],
+      "metadata": {
+        "sequence": 108
+      }
+    }
+  ]
+}
