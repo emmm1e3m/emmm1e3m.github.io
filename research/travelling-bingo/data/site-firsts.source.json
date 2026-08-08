@@ -15,7 +15,19 @@
       "sourceApiUrl": "https://api.bilibili.com/x/web-interface/view?bvid=BV1D23262EaD",
       "sourceCoverUrl": "https://i0.hdslb.com/bfs/archive/6a5bd608470ff24d8456474ef73883f0db809088.jpg",
       "posterKind": "designed-poster",
-      "originalPath": "resources/raw/travelling-bingo/site-firsts/originals/power.heic"
+      "originalPath": "resources/raw/travelling-bingo/site-firsts/originals/power.heic",
+      "video": {
+        "bvid": "BV1D23262EaD",
+        "title": "【苏新皓｜4K直拍】POWER 直拍｜梦寐以求·演唱会",
+        "authorName": "JUSTSU_苏新皓",
+        "authorMid": 3546749647980910,
+        "publishedAt": "2026-08-02T10:00:00.000+08:00",
+        "durationSeconds": 240,
+        "coverUrl": "https://i0.hdslb.com/bfs/archive/6a5bd608470ff24d8456474ef73883f0db809088.jpg",
+        "sourceUrl": "https://www.bilibili.com/video/BV1D23262EaD/",
+        "favoriteId": 3489626721,
+        "favoriteOrder": 3
+      }
     },
     {
       "id": "site-first-hey-mama",
@@ -27,7 +39,19 @@
       "sourceApiUrl": "https://api.bilibili.com/x/web-interface/view?bvid=BV179v1B2Emc",
       "sourceCoverUrl": "https://i0.hdslb.com/bfs/archive/5af9e1869d9898fd64b9085ff66a27cfd3df17c4.jpg",
       "posterKind": "designed-poster",
-      "originalPath": "resources/raw/travelling-bingo/site-firsts/originals/hey-mama.jpg"
+      "originalPath": "resources/raw/travelling-bingo/site-firsts/originals/hey-mama.jpg",
+      "video": {
+        "bvid": "BV179v1B2Emc",
+        "title": "【苏新皓｜4K直拍】Hey Mama 四机位直拍｜2026 TF家族新年音乐会·荣耀 DAY3",
+        "authorName": "JUSTSU_苏新皓",
+        "authorMid": 3546749647980910,
+        "publishedAt": "2025-12-29T06:26:23.000+08:00",
+        "durationSeconds": 198,
+        "coverUrl": "https://i0.hdslb.com/bfs/archive/5af9e1869d9898fd64b9085ff66a27cfd3df17c4.jpg",
+        "sourceUrl": "https://www.bilibili.com/video/BV179v1B2Emc/",
+        "favoriteId": 3489626721,
+        "favoriteOrder": 7
+      }
     },
     {
       "id": "site-first-xi",
@@ -39,7 +63,19 @@
       "sourceApiUrl": "https://api.bilibili.com/x/web-interface/view?bvid=BV1Dx3i6nEm8",
       "sourceCoverUrl": "https://i2.hdslb.com/bfs/archive/c9eb3a424e6815a3f0183fcba5705b60d30fc010.jpg",
       "posterKind": "designed-poster",
-      "originalPath": "resources/raw/travelling-bingo/site-firsts/originals/xi.heic"
+      "originalPath": "resources/raw/travelling-bingo/site-firsts/originals/xi.heic",
+      "video": {
+        "bvid": "BV1Dx3i6nEm8",
+        "title": "【苏新皓｜4K直拍】囍 直拍｜梦寐以求·演唱会",
+        "authorName": "JUSTSU_苏新皓",
+        "authorMid": 3546749647980910,
+        "publishedAt": "2026-07-28T13:46:58.000+08:00",
+        "durationSeconds": 610,
+        "coverUrl": "https://i2.hdslb.com/bfs/archive/c9eb3a424e6815a3f0183fcba5705b60d30fc010.jpg",
+        "sourceUrl": "https://www.bilibili.com/video/BV1Dx3i6nEm8/",
+        "favoriteId": 3489626721,
+        "favoriteOrder": 4
+      }
     },
     {
       "id": "site-first-yuan-yu-chou",
@@ -51,7 +87,19 @@
       "sourceApiUrl": "https://api.bilibili.com/x/web-interface/view?bvid=BV1fjpAzmE1T",
       "sourceCoverUrl": "https://i2.hdslb.com/bfs/archive/cc7fb8feae4f9a54334b8d9e4a26ce12a5e8a889.jpg",
       "posterKind": "designed-poster",
-      "originalPath": "resources/raw/travelling-bingo/site-firsts/originals/yuan-yu-chou.heic"
+      "originalPath": "resources/raw/travelling-bingo/site-firsts/originals/yuan-yu-chou.heic",
+      "video": {
+        "bvid": "BV1fjpAzmE1T",
+        "title": "【苏新皓｜4K直拍】愿与愁 直拍 “我们不回头”",
+        "authorName": "JUSTSU_苏新皓",
+        "authorMid": 3546749647980910,
+        "publishedAt": "2025-09-14T21:23:11.000+08:00",
+        "durationSeconds": 301,
+        "coverUrl": "https://i2.hdslb.com/bfs/archive/cc7fb8feae4f9a54334b8d9e4a26ce12a5e8a889.jpg",
+        "sourceUrl": "https://www.bilibili.com/video/BV1fjpAzmE1T/",
+        "favoriteId": 3489626721,
+        "favoriteOrder": 2
+      }
     },
     {
       "id": "site-first-dawn-in-my-soul",
@@ -63,7 +111,19 @@
       "sourceApiUrl": "https://api.bilibili.com/x/web-interface/view?bvid=BV1i7LM6oErE",
       "sourceCoverUrl": "https://i2.hdslb.com/bfs/archive/32632fbc43b58edfbecb6bebbfd55ec61c309680.jpg",
       "posterKind": "designed-poster",
-      "originalPath": "resources/raw/travelling-bingo/site-firsts/originals/dawn-in-my-soul.heic"
+      "originalPath": "resources/raw/travelling-bingo/site-firsts/originals/dawn-in-my-soul.heic",
+      "video": {
+        "bvid": "BV1i7LM6oErE",
+        "title": "【苏新皓】原创英文单曲《Dawn in my soul》｜灵魂深处的曙光 双向奔赴的告白",
+        "authorName": "苏新皓的时光胶囊",
+        "authorMid": 1210409821,
+        "publishedAt": "2026-05-19T13:12:28.000+08:00",
+        "durationSeconds": 237,
+        "coverUrl": "https://i2.hdslb.com/bfs/archive/32632fbc43b58edfbecb6bebbfd55ec61c309680.jpg",
+        "sourceUrl": "https://www.bilibili.com/video/BV1i7LM6oErE/",
+        "favoriteId": 3489626721,
+        "favoriteOrder": 5
+      }
     },
     {
       "id": "site-first-make-a-wish",
@@ -75,7 +135,19 @@
       "sourceApiUrl": "https://api.bilibili.com/x/web-interface/view?bvid=BV1MbZnYoEk1",
       "sourceCoverUrl": "https://i0.hdslb.com/bfs/archive/f73ece32c85dd72a2f81a07f8afb2eb87752f574.jpg",
       "posterKind": "video-cover-fallback",
-      "originalPath": "resources/raw/travelling-bingo/site-firsts/originals/make-a-wish-cover.jpg"
+      "originalPath": "resources/raw/travelling-bingo/site-firsts/originals/make-a-wish-cover.jpg",
+      "video": {
+        "bvid": "BV1MbZnYoEk1",
+        "title": "【苏新皓】自制MV cover NCT U 《Make A Wish》，堪比专业制作，难道他真的是天才？",
+        "authorName": "苏新皓的时光胶囊",
+        "authorMid": 1210409821,
+        "publishedAt": "2025-03-31T17:11:50.000+08:00",
+        "durationSeconds": 100,
+        "coverUrl": "https://i0.hdslb.com/bfs/archive/f73ece32c85dd72a2f81a07f8afb2eb87752f574.jpg",
+        "sourceUrl": "https://www.bilibili.com/video/BV1MbZnYoEk1/",
+        "favoriteId": 3489626721,
+        "favoriteOrder": 8
+      }
     },
     {
       "id": "site-first-talk-worthy-talk-dirty",
@@ -87,7 +159,19 @@
       "sourceApiUrl": "https://api.bilibili.com/x/web-interface/view?bvid=BV1rtDRBJE7s",
       "sourceCoverUrl": "https://i1.hdslb.com/bfs/archive/32726639587c274602dbeae81ca27008c96cc3cb.jpg",
       "posterKind": "designed-poster",
-      "originalPath": "resources/raw/travelling-bingo/site-firsts/originals/talk-worthy-talk-dirty.heic"
+      "originalPath": "resources/raw/travelling-bingo/site-firsts/originals/talk-worthy-talk-dirty.heic",
+      "video": {
+        "bvid": "BV1rtDRBJE7s",
+        "title": "【苏新皓｜4K直拍】Talk WORTHY? Talk DIRTY! 直拍｜浪漫主义·演唱会",
+        "authorName": "JUSTSU_苏新皓",
+        "authorMid": 3546749647980910,
+        "publishedAt": "2026-04-13T03:19:53.000+08:00",
+        "durationSeconds": 542,
+        "coverUrl": "https://i1.hdslb.com/bfs/archive/32726639587c274602dbeae81ca27008c96cc3cb.jpg",
+        "sourceUrl": "https://www.bilibili.com/video/BV1rtDRBJE7s/",
+        "favoriteId": 3489626721,
+        "favoriteOrder": 6
+      }
     },
     {
       "id": "site-first-dynamite",
@@ -99,7 +183,19 @@
       "sourceApiUrl": "https://api.bilibili.com/x/web-interface/view?bvid=BV1cfCSYfEo3",
       "sourceCoverUrl": "https://i1.hdslb.com/bfs/archive/3c14396e26878628e921e1cf0104ff5240e06da1.jpg",
       "posterKind": "video-cover-fallback",
-      "originalPath": "resources/raw/travelling-bingo/site-firsts/originals/dynamite-cover.jpg"
+      "originalPath": "resources/raw/travelling-bingo/site-firsts/originals/dynamite-cover.jpg",
+      "video": {
+        "bvid": "BV1cfCSYfEo3",
+        "title": "【登陆少年】苏新皓《Dynamite》Cover",
+        "authorName": "登陆少年组合",
+        "authorMid": 3546657239075200,
+        "publishedAt": "2024-10-19T00:07:09.000+08:00",
+        "durationSeconds": 183,
+        "coverUrl": "https://i1.hdslb.com/bfs/archive/3c14396e26878628e921e1cf0104ff5240e06da1.jpg",
+        "sourceUrl": "https://www.bilibili.com/video/BV1cfCSYfEo3/",
+        "favoriteId": 3489626721,
+        "favoriteOrder": 9
+      }
     }
   ]
 }

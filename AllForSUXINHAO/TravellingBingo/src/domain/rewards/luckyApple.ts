@@ -1,23 +1,39 @@
-import type { GameProbabilities } from '../game/gameBalance'
-import type { ActivityKind, CollectionCatalog, CollectibleCategory, GameState } from '../game/types'
+import {
+  addProbabilityBonus,
+  APPLE_LUNCHBOX_FRIEND_BONUS,
+  type GameProbabilities,
+} from '../game/gameBalance'
+import type {
+  ActivityKind,
+  CollectionCatalog,
+  CollectibleActivityKind,
+  CollectibleCategory,
+  GameState,
+  ItemId,
+} from '../game/types'
 
-const CATEGORY_BY_ACTIVITY: Readonly<Record<ActivityKind, CollectibleCategory>> = {
+const CATEGORY_BY_ACTIVITY: Readonly<Record<CollectibleActivityKind, CollectibleCategory>> = {
   travel: 'postcard',
   stream: 'million-shot',
   trend: 'site-first',
 }
 
-const PROBABILITY_BY_ACTIVITY: Readonly<Record<ActivityKind, keyof GameProbabilities>> = {
-  travel: 'postcard',
-  stream: 'millionShot',
-  trend: 'siteFirst',
-}
+const PROBABILITY_BY_ACTIVITY: Readonly<Record<CollectibleActivityKind, keyof GameProbabilities>> =
+  {
+    travel: 'postcard',
+    stream: 'millionShot',
+    trend: 'siteFirst',
+  }
 
 export type LuckyAppleAvailability =
   | { canUse: true }
   | {
       canUse: false
-      reason: 'drop-already-guaranteed' | 'category-complete'
+      reason:
+        | 'activity-not-collectible'
+        | 'friend-result-guaranteed'
+        | 'drop-already-guaranteed'
+        | 'category-complete'
       message: string
     }
 
@@ -26,7 +42,28 @@ export function getLuckyAppleAvailability(
   state: Pick<GameState, 'gameBalance' | 'collections'>,
   kind: ActivityKind,
   catalog: CollectionCatalog,
+  supplyId?: ItemId | null,
 ): LuckyAppleAvailability {
+  if (kind === 'music' || kind === 'rest') {
+    return {
+      canUse: false,
+      reason: 'activity-not-collectible',
+      message: '这项活动不会发现收藏，不需要带幸运苹果。',
+    }
+  }
+  if (
+    kind === 'travel' &&
+    addProbabilityBonus(
+      state.gameBalance.probabilities.travelFriend,
+      supplyId === 'travel-apple' ? APPLE_LUNCHBOX_FRIEND_BONUS : 0,
+    ) >= 1
+  ) {
+    return {
+      canUse: false,
+      reason: 'friend-result-guaranteed',
+      message: '这次一定会遇见朋友，不会出现明信片，幸运苹果留到下次吧。',
+    }
+  }
   const probabilityKey = PROBABILITY_BY_ACTIVITY[kind]
   if (state.gameBalance.probabilities[probabilityKey] >= 1) {
     return {
@@ -53,6 +90,7 @@ export function canUseLuckyApple(
   state: Pick<GameState, 'gameBalance' | 'collections'>,
   kind: ActivityKind,
   catalog: CollectionCatalog,
+  supplyId?: ItemId | null,
 ): boolean {
-  return getLuckyAppleAvailability(state, kind, catalog).canUse
+  return getLuckyAppleAvailability(state, kind, catalog, supplyId).canUse
 }

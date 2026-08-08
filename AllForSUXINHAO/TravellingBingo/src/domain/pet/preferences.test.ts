@@ -29,15 +29,42 @@ describe('饼狗活动偏好', () => {
     }
   })
 
-  it('活动后只消耗对应偏好，三项都耗尽时进入疲惫状态', () => {
-    const initial = { travel: true, stream: true, trend: true }
+  it('三个兴趣都能独立成为愿意或拒绝项，并覆盖拒绝 0/1/2 项', () => {
+    const values = {
+      travel: new Set<boolean>(),
+      computer: new Set<boolean>(),
+      music: new Set<boolean>(),
+    }
+    const refusalCounts = new Set<number>()
+
+    for (let sequence = 0; sequence < 300; sequence += 1) {
+      const preferences = generateActivityPreferences('preference-coverage', sequence).preferences
+      values.travel.add(preferences.travel)
+      values.computer.add(preferences.computer)
+      values.music.add(preferences.music)
+      refusalCounts.add(Object.values(preferences).filter((willing) => !willing).length)
+    }
+
+    expect(values).toEqual({
+      travel: new Set([true, false]),
+      computer: new Set([true, false]),
+      music: new Set([true, false]),
+    })
+    expect(refusalCounts).toEqual(new Set([0, 1, 2]))
+  })
+
+  it('刷播与冲热共享电脑意愿，三项兴趣都耗尽时进入疲惫状态', () => {
+    const initial = { travel: true, computer: true, music: true }
     const afterTravel = exhaustActivityPreference(initial, 'travel')
     const afterStream = exhaustActivityPreference(afterTravel, 'stream')
     const afterTrend = exhaustActivityPreference(afterStream, 'trend')
+    const afterMusic = exhaustActivityPreference(afterTrend, 'music')
 
-    expect(afterTravel).toEqual({ travel: false, stream: true, trend: true })
+    expect(afterTravel).toEqual({ travel: false, computer: true, music: true })
+    expect(afterStream.computer).toBe(false)
+    expect(afterTrend).toEqual(afterStream)
     expect(initial.travel).toBe(true)
     expect(isPetTired(afterStream)).toBe(false)
-    expect(isPetTired(afterTrend)).toBe(true)
+    expect(isPetTired(afterMusic)).toBe(true)
   })
 })

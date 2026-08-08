@@ -47,7 +47,7 @@ export const PITY_THRESHOLDS = {
   trend: Number.POSITIVE_INFINITY,
 } as const
 
-export const FRIEND_EVENT_IDS = [
+export const FRIEND_IDS = [
   'class-representative-bing',
   'san-hao-rabbit',
   'xin-hao-rabbit',
@@ -55,7 +55,11 @@ export const FRIEND_EVENT_IDS = [
   'bili-bing',
 ] as const
 
+/** @deprecated V3 统一称为 FRIEND_IDS；保留旧名供 V1/V2 schema 使用。 */
+export const FRIEND_EVENT_IDS = FRIEND_IDS
+
 export const MAX_APPLES = 9_999_999
+export const MAX_COMPANION_DAYS = 9_999_999
 export const MAX_ITEM_STACK = 9_999
 export const MAX_DEBUG_ACTIVITY_DURATION_MS = 30 * 24 * 60 * 60 * 1_000
 export const PET_ENCOURAGEMENT_APPLE_COST = 2

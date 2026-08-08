@@ -4,6 +4,8 @@ import { fileURLToPath } from 'node:url'
 
 import sharp from 'sharp'
 
+import { assertFavoriteVideo } from '../research/bilibili-video-catalog-core.mjs'
+
 const workspaceRoot = resolve(fileURLToPath(new URL('../..', import.meta.url)))
 const manifestPath = resolve(
   workspaceRoot,
@@ -27,6 +29,9 @@ if (outputRoot !== expectedOutputRoot || !outputRoot.startsWith(`${workspaceRoot
 }
 
 const manifest = JSON.parse(await readFile(manifestPath, 'utf8'))
+for (const item of manifest.items) {
+  assertFavoriteVideo(item.video, `${item.id}.video`)
+}
 await rm(outputRoot, { recursive: true, force: true })
 await mkdir(outputRoot, { recursive: true })
 await mkdir(resolve(publicDataPath, '..'), { recursive: true })
@@ -75,6 +80,7 @@ for (const item of manifest.items) {
     tags: ['百万直拍', item.title],
     metadata: {
       sequence: item.sequence,
+      video: item.video,
     },
   })
 }

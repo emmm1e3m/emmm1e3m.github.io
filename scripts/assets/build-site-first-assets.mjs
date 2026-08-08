@@ -7,6 +7,8 @@ import { fileURLToPath } from 'node:url'
 
 import sharp from 'sharp'
 
+import { assertFavoriteVideo } from '../research/bilibili-video-catalog-core.mjs'
+
 const execFileAsync = promisify(execFile)
 const workspaceRoot = resolve(fileURLToPath(new URL('../..', import.meta.url)))
 const manifestPath = resolve(
@@ -79,6 +81,12 @@ const manifest = JSON.parse(await readFile(manifestPath, 'utf8'))
 if (new Set(manifest.items.map((item) => item.id)).size !== manifest.items.length) {
   throw new Error('全站第一来源清单存在重复 ID')
 }
+for (const item of manifest.items) {
+  assertFavoriteVideo(item.video, `${item.id}.video`)
+  if (item.video.bvid !== item.bvid || item.video.sourceUrl !== item.sourceVideoUrl) {
+    throw new Error(`${item.id}.video 与原有 bvid/sourceVideoUrl 不一致`)
+  }
+}
 const chronology = [...manifest.items].sort((left, right) => left.chronology - right.chronology)
 if (
   chronology.some(
@@ -143,6 +151,7 @@ try {
         chronology: item.chronology,
         programCategory: item.category,
         posterKind: item.posterKind,
+        video: item.video,
       },
     })
     console.log(`已生成 ${item.id}`)

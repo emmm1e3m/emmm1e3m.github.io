@@ -96,14 +96,14 @@ describe('三任务自动刷新板', () => {
 
   it('同一事件最多推进一条任务，且需要不同对象的任务不会重复计数', () => {
     const initial = withTasks(createInitialGameState({ now: 0, seed: 'one-event' }), [
-      task('room-stroll'),
+      task('two-melodies'),
       task('piano-time'),
       task('wardrobe-choice'),
     ])
     const once = successful(
       reduceGame(
         initial,
-        { type: 'task/event', event: { type: 'room-visited', area: 'piano' }, now: 100 },
+        { type: 'task/event', event: { type: 'piano-note-played', noteId: 'C4' }, now: 100 },
         catalog,
       ),
     ).state
@@ -114,13 +114,122 @@ describe('三任务自动刷新板', () => {
     const repeated = successful(
       reduceGame(
         once,
-        { type: 'task/event', event: { type: 'room-visited', area: 'piano' }, now: 101 },
+        { type: 'task/event', event: { type: 'piano-note-played', noteId: 'C4' }, now: 101 },
         catalog,
       ),
     ).state
     expect(repeated.tasks.active[0].progress).toBe(1)
     // 第一条无法再吃同一个 key 后，同一事件仍只允许推进后面的第一条匹配任务。
     expect(repeated.tasks.active[1].progress).toBe(1)
+  })
+
+  it('音乐任务只认真实琴键或用户主动打开的播放器，不把走到设施当成观看', () => {
+    const pianoState = withTasks(createInitialGameState({ now: 0, seed: 'music-events' }), [
+      task('piano-time'),
+      task('wardrobe-choice'),
+      task('greet-bingo'),
+    ])
+    const merelyVisited = successful(
+      reduceGame(
+        pianoState,
+        { type: 'task/event', event: { type: 'room-visited', area: 'piano' }, now: 100 },
+        catalog,
+      ),
+    ).state
+    expect(merelyVisited.tasks.active[0].progress).toBe(0)
+    const notePlayed = successful(
+      reduceGame(
+        merelyVisited,
+        { type: 'task/event', event: { type: 'piano-note-played', noteId: 'C4' }, now: 101 },
+        catalog,
+      ),
+    ).state
+    expect(notePlayed.tasks.active[0].progress).toBe(1)
+
+    const recordState = withTasks(createInitialGameState({ now: 0, seed: 'record-events' }), [
+      task('record-time'),
+      task('wardrobe-choice'),
+      task('greet-bingo'),
+    ])
+    const opened = successful(
+      reduceGame(
+        recordState,
+        {
+          type: 'task/event',
+          event: { type: 'record-player-opened', bvid: 'BV-demo' },
+          now: 102,
+        },
+        catalog,
+      ),
+    ).state
+    expect(opened.tasks.active[0].progress).toBe(1)
+    expect(opened.tasks.active[0].seenKeys).toEqual(['video:BV-demo'])
+  })
+
+  it('唱片与收藏入口中的同一 BV 统一去重，只计一次', () => {
+    let state = withTasks(createInitialGameState({ now: 0, seed: 'two-sounds' }), [
+      task('two-melodies'),
+      task('wardrobe-choice'),
+      task('greet-bingo'),
+    ])
+    for (const [index, event] of [
+      { type: 'record-player-opened', bvid: 'BV-same' } as const,
+      {
+        type: 'collection-player-opened',
+        collectionId: 'million-1',
+        bvid: 'BV-same',
+      } as const,
+    ].entries()) {
+      state = successful(
+        reduceGame(state, { type: 'task/event', event, now: 200 + index }, catalog),
+      ).state
+    }
+
+    expect(state.tasks.active[0].progress).toBe(1)
+    expect(state.tasks.active[0].seenKeys).toEqual(['video:BV-same'])
+  })
+
+  it('不同 BV 可以分别计入视频任务', () => {
+    let state = withTasks(createInitialGameState({ now: 0, seed: 'two-videos' }), [
+      task('two-melodies'),
+      task('wardrobe-choice'),
+      task('greet-bingo'),
+    ])
+    for (const [index, event] of [
+      { type: 'record-player-opened', bvid: 'BV-one' } as const,
+      {
+        type: 'collection-player-opened',
+        collectionId: 'million-1',
+        bvid: 'BV-two',
+      } as const,
+    ].entries()) {
+      state = successful(
+        reduceGame(state, { type: 'task/event', event, now: 300 + index }, catalog),
+      ).state
+    }
+
+    expect(state.tasks.active[0].progress).toBe(2)
+    expect(state.tasks.active[0].seenKeys).toEqual(['video:BV-one', 'video:BV-two'])
+  })
+
+  it('钢琴仍按 piano:noteId 去重', () => {
+    let state = withTasks(createInitialGameState({ now: 0, seed: 'piano-keys' }), [
+      task('two-melodies'),
+      task('wardrobe-choice'),
+      task('greet-bingo'),
+    ])
+    for (const [index, event] of [
+      { type: 'piano-note-played', noteId: 'C4' } as const,
+      { type: 'piano-note-played', noteId: 'C4' } as const,
+      { type: 'piano-note-played', noteId: 'D4' } as const,
+    ].entries()) {
+      state = successful(
+        reduceGame(state, { type: 'task/event', event, now: 400 + index }, catalog),
+      ).state
+    }
+
+    expect(state.tasks.active[0].progress).toBe(2)
+    expect(state.tasks.active[0].seenKeys).toEqual(['piano:C4', 'piano:D4'])
   })
 
   it('每条完成即时奖励苹果，第三条完成后原子刷新全新三条', () => {
@@ -217,6 +326,14 @@ describe('三任务自动刷新板', () => {
 
   it('展示 helper 从任务库取稳定文案与进度', () => {
     const entry = task('revisit-two', 1)
+    expect(getTaskPresentation('record-time')).toEqual({
+      title: '看看一张唱片',
+      description: '主动打开唱片播放器看看',
+    })
+    expect(getTaskPresentation('two-melodies')).toEqual({
+      title: '逛逛音乐角落',
+      description: '弹响不同琴键，或打开不同视频看看',
+    })
     expect(getTaskPresentation(entry.taskId)).toEqual({
       title: '重温两份回忆',
       description: '查看两份不同的收藏',

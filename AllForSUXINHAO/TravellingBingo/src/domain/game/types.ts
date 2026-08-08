@@ -1,13 +1,22 @@
 import type { FRIEND_EVENT_IDS, ITEM_IDS } from './constants'
-import type { GameBalance, ProbabilityKey } from './gameBalance'
+import type { GameBalance, GameBalanceV2, ProbabilityKey } from './gameBalance'
 
-export type ActivityKind = 'travel' | 'stream' | 'trend'
+export type LegacyActivityKind = 'travel' | 'stream' | 'trend'
+
+export type ActivityKind = LegacyActivityKind | 'music' | 'rest'
+
+export type CollectibleActivityKind = LegacyActivityKind
+
+export type PetInterest = 'travel' | 'computer' | 'music'
 
 export type ActivityPhase = 'idle' | 'running' | 'ready'
 
 export type ItemId = (typeof ITEM_IDS)[number]
 
-export type FriendEventId = (typeof FRIEND_EVENT_IDS)[number]
+export type FriendId = (typeof FRIEND_EVENT_IDS)[number]
+
+/** @deprecated V3 统一使用 FriendId。 */
+export type FriendEventId = FriendId
 
 export type CollectibleCategory = 'postcard' | 'million-shot' | 'site-first'
 
@@ -27,6 +36,16 @@ export interface CollectionEntry {
   duplicateCount: number
 }
 
+export interface FriendEntry {
+  id: FriendId
+  firstMetAt: number
+  lastMetAt: number
+  encounterCount: number
+  totalGiftApples: number
+}
+
+export type FriendCollection = Partial<Record<FriendId, FriendEntry>>
+
 export type Inventory = Record<ItemId, number>
 
 /** 仅用于识别和迁移 Demo 0.1 的严格 v1 存档。 */
@@ -44,11 +63,24 @@ export interface PlannedCollectionReward {
  * 字段形状暂时兼容 v1 UI；v2 中苹果与保底字段固定为 0/false/null。
  * 收藏结果在活动开始时落盘，之后修改 DEBUG 概率也不会改写结果。
  */
-export interface RewardPlan {
+export interface RewardPlanV2 {
   baseApples: 0
   modifierApples: 0
   collection: PlannedCollectionReward | null
   friendEventId: FriendEventId | null
+  guaranteedByPity: false
+  pityAfterClaim: null
+}
+
+/**
+ * V3 仍保留 base/modifier 字段以兼容奖励展示：睡觉苹果写入 base，好友赠礼写入 modifier。
+ */
+export interface RewardPlan {
+  baseApples: number
+  modifierApples: number
+  collection: PlannedCollectionReward | null
+  friendId: FriendId | null
+  giftItemId: ItemId | null
   guaranteedByPity: false
   pityAfterClaim: null
 }
@@ -61,6 +93,17 @@ export interface ActivityRun {
   endsAt: number
   rewardSeed: string
   rewardPlan: RewardPlan
+  supplyId: ItemId | null
+  usedLuckyApple: boolean
+}
+
+export interface ActivityRunV2 {
+  runId: string
+  kind: LegacyActivityKind
+  startedAt: number
+  endsAt: number
+  rewardSeed: string
+  rewardPlan: RewardPlanV2
   supplyId: ItemId
   usedLuckyApple: boolean
 }
@@ -74,11 +117,19 @@ export interface LegacyRewardPlan {
   pityAfterClaim: number | null
 }
 
-export interface LegacyActivityRun extends Omit<ActivityRun, 'rewardPlan'> {
+export interface LegacyActivityRun extends Omit<ActivityRunV2, 'rewardPlan'> {
   rewardPlan: LegacyRewardPlan
 }
 
 export interface ActivityCounters {
+  travel: number
+  stream: number
+  trend: number
+  music: number
+  rest: number
+}
+
+export interface LegacyActivityCounters {
   travel: number
   stream: number
   trend: number
@@ -87,6 +138,13 @@ export interface ActivityCounters {
 export interface GameStatistics {
   started: ActivityCounters
   claimed: ActivityCounters
+  applesEarned: number
+  duplicateRewards: number
+}
+
+export interface LegacyGameStatistics {
+  started: LegacyActivityCounters
+  claimed: LegacyActivityCounters
   applesEarned: number
   duplicateRewards: number
 }
@@ -119,11 +177,20 @@ export type RoomArea =
 
 export type PetLocation = 'center' | RoomArea | 'outside'
 
-export type ActivityPreferences = Record<ActivityKind, boolean>
+export type ActivityPreferences = Record<PetInterest, boolean>
+
+export type ActivityPreferencesV2 = Record<LegacyActivityKind, boolean>
 
 export interface PetState {
   location: PetLocation
   preferences: ActivityPreferences
+  tired: boolean
+  restCount: number
+}
+
+export interface PetStateV2 {
+  location: PetLocation
+  preferences: ActivityPreferencesV2
   tired: boolean
   restCount: number
 }
@@ -173,6 +240,10 @@ export type TaskEvent =
       collectionId: string
       category: CollectibleCategory
     }
+  | { type: 'piano-note-played'; noteId: string }
+  /** 只确认用户主动请求打开播放器；不代表 iframe 已加载或视频实际播放、播完。 */
+  | { type: 'record-player-opened'; bvid: string }
+  | { type: 'collection-player-opened'; collectionId: string; bvid: string }
   | { type: 'stage-test-opened' }
 
 /** Demo 0.1 的业务载荷，字段必须由严格 v1 schema 验证后才可迁移。 */
@@ -189,7 +260,7 @@ export interface GameStateV1 {
   collections: Record<string, CollectionEntry>
   activeActivity: LegacyActivityRun | null
   pity: PityState
-  statistics: GameStatistics
+  statistics: LegacyGameStatistics
   random: LegacyPersistentRandomState
 }
 
@@ -204,6 +275,28 @@ export interface GameStateV2 {
   }
   inventory: Inventory
   collections: Record<string, CollectionEntry>
+  activeActivity: ActivityRunV2 | null
+  pet: PetStateV2
+  tasks: TaskBoard
+  gameBalance: GameBalanceV2
+  statistics: LegacyGameStatistics
+  random: PersistentRandomState
+}
+
+export interface GameStateV3 {
+  schemaVersion: 3
+  profile: {
+    createdAt: number
+    debug: boolean
+    displayName: string
+    companionDays: number
+  }
+  economy: {
+    apples: number
+  }
+  inventory: Inventory
+  collections: Record<string, CollectionEntry>
+  friends: FriendCollection
   activeActivity: ActivityRun | null
   pet: PetState
   tasks: TaskBoard
@@ -212,7 +305,7 @@ export interface GameStateV2 {
   random: PersistentRandomState
 }
 
-export type GameState = GameStateV2
+export type GameState = GameStateV3
 
 export interface ActivityTiming {
   phase: ActivityPhase
@@ -231,7 +324,9 @@ export interface ClaimSummary {
     total: number
   }
   collection: (PlannedCollectionReward & { duplicate: boolean }) | null
-  friendEventId: FriendEventId | null
+  friendId: FriendId | null
+  giftItemId: ItemId | null
+  giftApples: number
   guaranteedByPity: boolean
 }
 
@@ -251,6 +346,7 @@ export type GameErrorCode =
   | 'MISSING_REQUIRED_ITEM'
   | 'INVENTORY_LIMIT_REACHED'
   | 'APPLE_LIMIT_REACHED'
+  | 'COMPANION_DAY_LIMIT_REACHED'
   | 'INVALID_SUPPLY'
   | 'EMPTY_COLLECTION_POOL'
   | 'LUCKY_APPLE_NOT_USEFUL'
@@ -273,12 +369,12 @@ export type GameAction =
       /** 兼容旧 UI；新 DEBUG 面板应改用 debug/duration-set。 */
       debugDurationMs?: number
     }
+  | { type: 'activity/cancel'; runId: string; now: number }
   | { type: 'activity/claim'; runId: string; now: number }
   | { type: 'item/purchase'; itemId: ItemId; quantity?: number }
   | { type: 'room/interact'; area: RoomArea; now: number }
   | { type: 'pet/move'; location: PetLocation }
-  | { type: 'pet/rest'; now: number }
-  | { type: 'pet/encourage'; kind: ActivityKind }
+  | { type: 'pet/encourage'; interest: PetInterest }
   | { type: 'task/event'; event: TaskEvent; now: number }
   | { type: 'debug/apples-adjust'; delta: number }
   | { type: 'debug/item-adjust'; itemId: ItemId; delta: number }
@@ -292,6 +388,7 @@ export type GameAction =
 
 export type GameEffect =
   | { type: 'activity-started'; activity: ActivityRun }
+  | { type: 'activity-cancelled'; activity: ActivityRun; cancelledAt: number }
   | { type: 'activity-claimed'; summary: ClaimSummary }
   | { type: 'item-purchased'; itemId: ItemId; quantity: number; applesSpent: number }
   | { type: 'pet-moved'; location: PetLocation }
@@ -301,7 +398,7 @@ export type GameEffect =
       preferences: ActivityPreferences
       replayKey: number
     }
-  | { type: 'pet-encouraged'; kind: ActivityKind; applesSpent: number }
+  | { type: 'pet-encouraged'; interest: PetInterest; applesSpent: number }
   | {
       type: 'task-progressed'
       instanceId: string

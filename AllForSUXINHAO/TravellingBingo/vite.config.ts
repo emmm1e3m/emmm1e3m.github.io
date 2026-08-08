@@ -39,6 +39,7 @@ export default defineConfig({
           '**/*.{js,css,html,json}',
           'assets/fonts/*.woff2',
           'assets/game/*.webp',
+          'assets/friends/*.webp',
           'assets/collectibles/**/*-480.webp',
         ],
         // 只有 Vite/Rollup 产出的内容哈希 JS/CSS 才能省略 revision。

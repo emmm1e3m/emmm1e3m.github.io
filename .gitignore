@@ -23,6 +23,7 @@ Thumbs.db
 
 # 授权原图与字体母版保留在本机；仓库与 Pages 只使用可复现的 Web 衍生资源。
 resources/raw/travelling-bingo/million-shots/*.jpg
+resources/raw/travelling-bingo/postcards/
 resources/raw/travelling-bingo/fonts/*.ttf
 resources/raw/travelling-bingo/fonts/*.otf
 research/travelling-bingo/data/*.tmp.json

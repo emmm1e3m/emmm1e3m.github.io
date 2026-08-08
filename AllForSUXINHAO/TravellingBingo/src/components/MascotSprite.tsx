@@ -1,4 +1,4 @@
-import type { CSSProperties, MouseEventHandler } from 'react'
+import type { CSSProperties, MouseEventHandler, Ref } from 'react'
 
 import { publicAsset } from '@/app/assets'
 
@@ -25,6 +25,7 @@ interface MascotSpriteProps {
   expanded?: boolean
   controls?: string
   style?: CSSProperties
+  actorRef?: Ref<HTMLButtonElement>
 }
 
 const LEGACY_POSES = new Set<MascotPose>(['idle', 'travel', 'stream', 'celebrate'])
@@ -56,6 +57,7 @@ export function MascotSprite({
   expanded,
   controls,
   style,
+  actorRef,
 }: MascotSpriteProps) {
   const sprite = (
     <span
@@ -70,6 +72,7 @@ export function MascotSprite({
   if (onActivate) {
     return (
       <button
+        ref={actorRef}
         type="button"
         className={`mascot-actor ${className}`.trim()}
         aria-label={label}

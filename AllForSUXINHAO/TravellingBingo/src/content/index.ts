@@ -1,6 +1,7 @@
 export {
   calculateCollectionProgress,
   getCollectibleById,
+  getFriendById,
   mergeContentCatalogs,
   type CollectionProgress,
   type CollectionProgressGroup,
@@ -15,6 +16,9 @@ export {
 } from './loader'
 export {
   collectibleImageSchema,
+  bilibiliVideoCatalogSchema,
+  bilibiliVideoSchema,
+  bvidSchema,
   collectibleItemSchema,
   millionShotCatalogSchema,
   millionShotItemSchema,
@@ -24,7 +28,13 @@ export {
   remoteCollectibleItemSchema,
   siteFirstCatalogSchema,
   siteFirstItemSchema,
+  friendCatalogSchema,
+  friendIdSchema,
+  friendImageSchema,
+  friendItemSchema,
   type CollectibleCategory,
+  type BilibiliVideo,
+  type BilibiliVideoCatalogSource,
   type CollectibleImage,
   type CollectibleItem,
   type MillionShotCatalogSource,
@@ -34,4 +44,7 @@ export {
   type RemoteCollectibleItem,
   type SiteFirstCatalogSource,
   type SiteFirstItem,
+  type FriendCatalogSource,
+  type FriendId,
+  type FriendItem,
 } from './schema'

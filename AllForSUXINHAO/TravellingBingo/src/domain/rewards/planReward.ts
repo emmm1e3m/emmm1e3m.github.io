@@ -3,13 +3,18 @@ import {
   addProbabilityBonus,
   APPLE_LUNCHBOX_FRIEND_BONUS,
   DEFAULT_GAME_BALANCE,
+  FRIEND_GIFT_APPLES_BY_ID,
+  FRIEND_GIFT_ITEM_BY_ID,
   LUCKY_APPLE_COLLECTION_DROP_BONUS,
+  REST_COMPLETION_APPLES,
   type GameProbabilities,
 } from '../game/gameBalance'
 import type {
   ActivityKind,
   CollectionCatalog,
+  CollectibleActivityKind,
   CollectibleCategory,
+  FriendId,
   ItemId,
   PityState,
   PlannedCollectionReward,
@@ -24,21 +29,35 @@ export interface RewardPlanningInput {
   pity?: PityState
   catalog: CollectionCatalog
   ownedCollectionIds: ReadonlySet<string>
-  supplyId: ItemId
+  knownFriendIds?: ReadonlySet<FriendId>
+  supplyId: ItemId | null
   usedLuckyApple: boolean
   probabilities?: Readonly<GameProbabilities>
 }
 
-const COLLECTION_CATEGORY_BY_ACTIVITY: Record<ActivityKind, CollectibleCategory> = {
+const COLLECTION_CATEGORY_BY_ACTIVITY: Record<CollectibleActivityKind, CollectibleCategory> = {
   travel: 'postcard',
   stream: 'million-shot',
   trend: 'site-first',
 }
 
-const PROBABILITY_BY_ACTIVITY: Record<ActivityKind, keyof GameProbabilities> = {
+const PROBABILITY_BY_ACTIVITY: Record<CollectibleActivityKind, keyof GameProbabilities> = {
   travel: 'postcard',
   stream: 'millionShot',
   trend: 'siteFirst',
+}
+
+function isCollectibleActivity(kind: ActivityKind): kind is CollectibleActivityKind {
+  return kind === 'travel' || kind === 'stream' || kind === 'trend'
+}
+
+function chooseFriend(
+  cursor: RandomCursor,
+  candidates: readonly FriendId[],
+): { id: FriendId; cursor: RandomCursor } | null {
+  if (candidates.length === 0) return null
+  const selected = randomInteger(cursor, 0, candidates.length - 1)
+  return { id: candidates[selected.value], cursor: selected.cursor }
 }
 
 function chooseRandomUnowned(
@@ -75,47 +94,76 @@ function planCollection(
 }
 
 /**
- * 奖励只依赖传入的持久种子、开始时收藏和当时的概率快照。
- * v2 活动不产生苹果，也没有首次固定掉落或保底。
+ * 奖励只依赖持久种子、开始时收藏/好友图鉴和当时的概率快照。
+ * V3 没有首次固定掉落或保底；休息苹果和好友礼物在开始时一并固化。
  */
 export function planActivityReward(input: RewardPlanningInput): RewardPlan {
   let cursor = createRandomCursor(input.rewardSeed)
   const probabilities = input.probabilities ?? DEFAULT_GAME_BALANCE.probabilities
-  const category = COLLECTION_CATEGORY_BY_ACTIVITY[input.kind]
-  const drop = nextRandom(cursor)
-  cursor = drop.cursor
-  const dropChance = addProbabilityBonus(
-    probabilities[PROBABILITY_BY_ACTIVITY[input.kind]],
-    input.usedLuckyApple ? LUCKY_APPLE_COLLECTION_DROP_BONUS : 0,
-  )
-  const shouldDrop = drop.value < dropChance
-
+  let baseApples = 0
+  let modifierApples = 0
   let collection: PlannedCollectionReward | null = null
-  if (shouldDrop) {
-    const selected = planCollection(cursor, category, input.catalog, input.ownedCollectionIds)
-    collection = selected.collection
-    cursor = selected.cursor
+  let friendId: FriendId | null = null
+  let giftItemId: ItemId | null = null
+
+  if (input.kind === 'rest') {
+    baseApples = REST_COMPLETION_APPLES
   }
 
-  let friendEventId: RewardPlan['friendEventId'] = null
+  if (input.kind === 'music') {
+    const knownFriends = FRIEND_EVENT_IDS.filter((id) => input.knownFriendIds?.has(id) === true)
+    if (knownFriends.length > 0) {
+      const friendRoll = nextRandom(cursor)
+      cursor = friendRoll.cursor
+      if (friendRoll.value < probabilities.musicFriend) {
+        const selected = chooseFriend(cursor, knownFriends)
+        if (selected !== null) {
+          friendId = selected.id
+          modifierApples = FRIEND_GIFT_APPLES_BY_ID[selected.id]
+          cursor = selected.cursor
+        }
+      }
+    }
+  }
+
   if (input.kind === 'travel') {
     const friendRoll = nextRandom(cursor)
     cursor = friendRoll.cursor
     const friendChance = addProbabilityBonus(
-      probabilities.friend,
+      probabilities.travelFriend,
       input.supplyId === 'travel-apple' ? APPLE_LUNCHBOX_FRIEND_BONUS : 0,
     )
     if (friendRoll.value < friendChance) {
-      const friendIndex = randomInteger(cursor, 0, FRIEND_EVENT_IDS.length - 1)
-      friendEventId = FRIEND_EVENT_IDS[friendIndex.value]
+      const selected = chooseFriend(cursor, FRIEND_EVENT_IDS)
+      if (selected !== null) {
+        friendId = selected.id
+        giftItemId = FRIEND_GIFT_ITEM_BY_ID[selected.id]
+        cursor = selected.cursor
+      }
+    }
+  }
+
+  // 旅行先判朋友；遇见朋友后不再判明信片，保证两个结果互斥。
+  if (isCollectibleActivity(input.kind) && friendId === null) {
+    const category = COLLECTION_CATEGORY_BY_ACTIVITY[input.kind]
+    const drop = nextRandom(cursor)
+    cursor = drop.cursor
+    const dropChance = addProbabilityBonus(
+      probabilities[PROBABILITY_BY_ACTIVITY[input.kind]],
+      input.usedLuckyApple ? LUCKY_APPLE_COLLECTION_DROP_BONUS : 0,
+    )
+    if (drop.value < dropChance) {
+      const selected = planCollection(cursor, category, input.catalog, input.ownedCollectionIds)
+      collection = selected.collection
     }
   }
 
   return {
-    baseApples: 0,
-    modifierApples: 0,
+    baseApples,
+    modifierApples,
     collection,
-    friendEventId,
+    friendId,
+    giftItemId,
     guaranteedByPity: false,
     pityAfterClaim: null,
   }

@@ -1,4 +1,4 @@
-import type { ActivityKind } from '@/domain'
+import type { ActivityKind, PetInterest } from '@/domain'
 
 import type { PanelId } from './GameHome'
 
@@ -18,11 +18,11 @@ export interface RoomArea {
   panel: PanelId
   label: string
   buttonLabel: string
-  x: number
-  y: number
-  petX: number
-  petY: number
-  activityKind?: ActivityKind
+  hotspot: { x: number; y: number }
+  /** 百分比坐标以饼狗脚底为锚点。 */
+  petFoot: { x: number; y: number }
+  activityKinds?: readonly ActivityKind[]
+  interest?: PetInterest
   petLocation:
     | 'center'
     | 'bed'
@@ -44,10 +44,9 @@ export const ROOM_AREAS: readonly RoomArea[] = [
     panel: 'rest',
     label: '床铺',
     buttonLabel: '去床边',
-    x: 22,
-    y: 19,
-    petX: 32,
-    petY: 50,
+    hotspot: { x: 22, y: 29 },
+    petFoot: { x: 27, y: 30 },
+    activityKinds: ['rest'],
     petLocation: 'bed',
   },
   {
@@ -55,11 +54,10 @@ export const ROOM_AREAS: readonly RoomArea[] = [
     panel: 'computer',
     label: '电脑',
     buttonLabel: '去电脑前',
-    x: 50,
-    y: 20,
-    petX: 42,
-    petY: 47,
-    activityKind: 'stream',
+    hotspot: { x: 52, y: 29 },
+    petFoot: { x: 53, y: 36 },
+    activityKinds: ['stream', 'trend'],
+    interest: 'computer',
     petLocation: 'computer',
   },
   {
@@ -67,21 +65,19 @@ export const ROOM_AREAS: readonly RoomArea[] = [
     panel: 'wardrobe',
     label: '衣架',
     buttonLabel: '看看衣架',
-    x: 51,
-    y: 33,
-    petX: 42,
-    petY: 49,
+    hotspot: { x: 54, y: 44 },
+    petFoot: { x: 56, y: 52 },
     petLocation: 'wardrobe',
   },
   {
     id: 'keyboard',
-    panel: 'music',
+    panel: 'piano',
     label: '电子琴',
     buttonLabel: '弹弹琴',
-    x: 15,
-    y: 75,
-    petX: 27,
-    petY: 84,
+    hotspot: { x: 17, y: 79 },
+    petFoot: { x: 27, y: 84 },
+    activityKinds: ['music'],
+    interest: 'music',
     petLocation: 'piano',
   },
   {
@@ -89,21 +85,18 @@ export const ROOM_AREAS: readonly RoomArea[] = [
     panel: 'fridge',
     label: '冰箱',
     buttonLabel: '打开冰箱',
-    x: 55,
-    y: 56,
-    petX: 54,
-    petY: 77,
+    hotspot: { x: 50, y: 59 },
+    petFoot: { x: 54, y: 77 },
     petLocation: 'fridge',
   },
   {
     id: 'recordPlayer',
-    panel: 'music',
+    panel: 'record-player',
     label: '唱片机',
     buttonLabel: '放张唱片',
-    x: 72,
-    y: 65,
-    petX: 74,
-    petY: 84,
+    hotspot: { x: 75, y: 74 },
+    petFoot: { x: 74, y: 84 },
+    interest: 'music',
     petLocation: 'record-player',
   },
   {
@@ -111,10 +104,8 @@ export const ROOM_AREAS: readonly RoomArea[] = [
     panel: 'album',
     label: '收藏墙',
     buttonLabel: '看看收藏墙',
-    x: 81,
-    y: 56,
-    petX: 83,
-    petY: 84,
+    hotspot: { x: 81, y: 60 },
+    petFoot: { x: 83, y: 84 },
     petLocation: 'collection-wall',
   },
   {
@@ -122,11 +113,10 @@ export const ROOM_AREAS: readonly RoomArea[] = [
     panel: 'travel',
     label: '房门',
     buttonLabel: '去门口',
-    x: 90,
-    y: 71,
-    petX: 87,
-    petY: 87,
-    activityKind: 'travel',
+    hotspot: { x: 92, y: 74 },
+    petFoot: { x: 87, y: 87 },
+    activityKinds: ['travel'],
+    interest: 'travel',
     petLocation: 'door',
   },
 ] as const
@@ -136,10 +126,8 @@ export const DEFAULT_ROOM_AREA = {
   panel: 'status',
   label: '房间中央',
   buttonLabel: '回房间中央',
-  x: 45,
-  y: 82,
-  petX: 45,
-  petY: 82,
+  hotspot: { x: 45, y: 82 },
+  petFoot: { x: 45, y: 82 },
   petLocation: 'center',
 } satisfies RoomArea
 
@@ -149,6 +137,8 @@ export function areaForPanel(panel: PanelId) {
 
 export function areaForActivity(kind: ActivityKind) {
   if (kind === 'travel') return ROOM_AREAS.find((area) => area.id === 'door')!
+  if (kind === 'music') return ROOM_AREAS.find((area) => area.id === 'keyboard')!
+  if (kind === 'rest') return ROOM_AREAS.find((area) => area.id === 'bed')!
   return ROOM_AREAS.find((area) => area.id === 'computer')!
 }
 

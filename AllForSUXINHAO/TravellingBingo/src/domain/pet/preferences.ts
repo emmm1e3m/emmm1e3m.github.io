@@ -1,7 +1,7 @@
-import type { ActivityKind, ActivityPreferences } from '../game/types'
+import type { ActivityKind, ActivityPreferences, PetInterest } from '../game/types'
 import { createRandomCursor, nextRandom, randomInteger } from '../rewards/prng'
 
-const ACTIVITY_KINDS: readonly ActivityKind[] = ['travel', 'stream', 'trend']
+const PET_INTERESTS: readonly PetInterest[] = ['travel', 'computer', 'music']
 
 export interface GeneratedPreferences {
   preferences: ActivityPreferences
@@ -24,7 +24,7 @@ export function generateActivityPreferences(seed: string, sequence: number): Gen
   const refusalRoll = nextRandom(cursor)
   cursor = refusalRoll.cursor
   const refusalCount = getRefusalCountForRoll(refusalRoll.value)
-  const shuffled = [...ACTIVITY_KINDS]
+  const shuffled = [...PET_INTERESTS]
 
   for (let index = shuffled.length - 1; index > 0; index -= 1) {
     const selected = randomInteger(cursor, 0, index)
@@ -36,20 +36,27 @@ export function generateActivityPreferences(seed: string, sequence: number): Gen
   return {
     preferences: {
       travel: !refused.has('travel'),
-      stream: !refused.has('stream'),
-      trend: !refused.has('trend'),
+      computer: !refused.has('computer'),
+      music: !refused.has('music'),
     },
     nextSequence: sequence + 1,
   }
 }
 
 export function isPetTired(preferences: ActivityPreferences): boolean {
-  return !ACTIVITY_KINDS.some((kind) => preferences[kind])
+  return !PET_INTERESTS.some((interest) => preferences[interest])
+}
+
+export function interestForActivity(kind: ActivityKind): PetInterest | null {
+  if (kind === 'stream' || kind === 'trend') return 'computer'
+  if (kind === 'rest') return null
+  return kind
 }
 
 export function exhaustActivityPreference(
   preferences: ActivityPreferences,
   kind: ActivityKind,
 ): ActivityPreferences {
-  return { ...preferences, [kind]: false }
+  const interest = interestForActivity(kind)
+  return interest === null ? preferences : { ...preferences, [interest]: false }
 }

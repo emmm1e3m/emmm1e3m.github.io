@@ -3,8 +3,8 @@ import { z } from 'zod'
 import { generateActivityPreferences } from '../pet/preferences'
 import { generateTaskBoard } from '../tasks/taskBoard'
 import { FRIEND_EVENT_IDS, ITEM_IDS, MAX_ITEM_STACK } from './constants'
-import { createDefaultGameBalance } from './gameBalance'
-import type { ActivityRun, CollectionCatalog, GameState, GameStateV1, Inventory } from './types'
+import { createDefaultGameBalanceV2 } from './gameBalance'
+import type { ActivityRunV2, CollectionCatalog, GameStateV1, GameStateV2, Inventory } from './types'
 
 const timestamp = z.number().int().nonnegative().safe()
 const itemId = z.enum(ITEM_IDS)
@@ -61,6 +61,16 @@ export const gameStateV1Schema: z.ZodType<GameStateV1> = z.strictObject({
       supplyId: itemId,
       usedLuckyApple: z.boolean(),
     })
+    .superRefine((activity, context) => {
+      // 旧 DEBUG 可在开始瞬间完成活动，因此允许相等，只拒绝时间倒置。
+      if (activity.endsAt < activity.startedAt) {
+        context.addIssue({
+          code: 'custom',
+          path: ['endsAt'],
+          message: '活动结束时间不能早于开始时间',
+        })
+      }
+    })
     .nullable(),
   pity: z.strictObject({
     stream: z.number().int().nonnegative().safe(),
@@ -106,7 +116,7 @@ function refundActiveSupplies(state: GameStateV1): Inventory {
 export function migrateGameStateV1(
   state: GameStateV1,
   options: MigrateGameStateV1Options,
-): GameState {
+): GameStateV2 {
   if (!Number.isSafeInteger(options.now) || options.now < 0) {
     throw new RangeError('迁移时间必须是非负安全整数毫秒时间戳')
   }
@@ -119,7 +129,7 @@ export function migrateGameStateV1(
     catalog: options.catalog,
     collections: state.collections,
   })
-  const activeActivity: ActivityRun | null =
+  const activeActivity: ActivityRunV2 | null =
     state.activeActivity === null
       ? null
       : {
@@ -152,12 +162,16 @@ export function migrateGameStateV1(
           : activeActivity === null
             ? 'center'
             : 'computer',
-      preferences: preferences.preferences,
+      preferences: {
+        travel: preferences.preferences.travel,
+        stream: preferences.preferences.computer,
+        trend: preferences.preferences.computer,
+      },
       tired: false,
       restCount: 0,
     },
     tasks: tasks.board,
-    gameBalance: createDefaultGameBalance(),
+    gameBalance: createDefaultGameBalanceV2(),
     statistics: structuredClone(state.statistics),
     random: {
       seed: state.random.seed,

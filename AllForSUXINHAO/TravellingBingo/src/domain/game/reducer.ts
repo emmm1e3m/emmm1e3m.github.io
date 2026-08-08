@@ -2,13 +2,21 @@ import { deriveActivityTiming } from '../activities/timing'
 import {
   exhaustActivityPreference,
   generateActivityPreferences,
+  interestForActivity,
   isPetTired,
 } from '../pet/preferences'
 import { hashSeed } from '../rewards/prng'
 import { planActivityReward } from '../rewards/planReward'
 import { getLuckyAppleAvailability } from '../rewards/luckyApple'
 import { applyTaskEvent } from '../tasks/taskBoard'
-import { ITEM_PRICES, MAX_APPLES, MAX_ITEM_STACK, PET_ENCOURAGEMENT_APPLE_COST } from './constants'
+import {
+  FRIEND_EVENT_IDS,
+  ITEM_PRICES,
+  MAX_APPLES,
+  MAX_COMPANION_DAYS,
+  MAX_ITEM_STACK,
+  PET_ENCOURAGEMENT_APPLE_COST,
+} from './constants'
 import {
   createDefaultGameBalance,
   isValidActivityDuration,
@@ -21,6 +29,7 @@ import type {
   ClaimSummary,
   CollectionCatalog,
   CollectibleCategory,
+  FriendCollection,
   GameAction,
   GameEffect,
   GameError,
@@ -46,35 +55,41 @@ function isValidTimestamp(value: number): boolean {
   return Number.isSafeInteger(value) && value >= 0
 }
 
-function categoryForActivity(kind: ActivityKind): CollectibleCategory {
+function categoryForActivity(kind: ActivityKind): CollectibleCategory | null {
   if (kind === 'travel') return 'postcard'
   if (kind === 'stream') return 'million-shot'
-  return 'site-first'
+  if (kind === 'trend') return 'site-first'
+  return null
 }
+
+type SupplyResolution = { ok: true; supplyId: ItemId | null } | { ok: false }
 
 function resolveSupply(
   state: GameState,
   kind: ActivityKind,
   requestedSupply: ItemId | undefined,
-): ItemId | null {
+): SupplyResolution {
+  if (kind === 'music' || kind === 'rest') {
+    return requestedSupply === undefined ? { ok: true, supplyId: null } : { ok: false }
+  }
   if (kind === 'stream') {
     return requestedSupply === undefined || requestedSupply === 'signal-headphones'
-      ? 'signal-headphones'
-      : null
+      ? { ok: true, supplyId: 'signal-headphones' }
+      : { ok: false }
   }
   if (kind === 'trend') {
     return requestedSupply === undefined || requestedSupply === 'trend-toolbox'
-      ? 'trend-toolbox'
-      : null
+      ? { ok: true, supplyId: 'trend-toolbox' }
+      : { ok: false }
   }
 
   if (requestedSupply !== undefined) {
     return requestedSupply === 'travel-basic' || requestedSupply === 'travel-apple'
-      ? requestedSupply
-      : null
+      ? { ok: true, supplyId: requestedSupply }
+      : { ok: false }
   }
-  if (state.inventory['travel-basic'] > 0) return 'travel-basic'
-  return 'travel-apple'
+  if (state.inventory['travel-basic'] > 0) return { ok: true, supplyId: 'travel-basic' }
+  return { ok: true, supplyId: 'travel-apple' }
 }
 
 function resolveDuration(
@@ -97,7 +112,20 @@ function resolveDuration(
 function activityRefusalMessage(kind: ActivityKind): string {
   if (kind === 'travel') return '饼狗今天不太想出门，先让它休息一下吧'
   if (kind === 'stream') return '饼狗今天不太想刷播，先让它休息一下吧'
-  return '饼狗今天不太想冲热，先让它休息一下吧'
+  if (kind === 'trend') return '饼狗今天不太想冲热，先让它休息一下吧'
+  if (kind === 'music') return '饼狗今天不太想弹琴，先让它休息一下吧'
+  return '饼狗已经在床边，可以安心睡一觉'
+}
+
+function locationForActivity(kind: ActivityKind): GameState['pet']['location'] {
+  if (kind === 'travel') return 'outside'
+  if (kind === 'stream' || kind === 'trend') return 'computer'
+  if (kind === 'music') return 'piano'
+  return 'bed'
+}
+
+function returnLocationForActivity(kind: ActivityKind): GameState['pet']['location'] {
+  return kind === 'travel' ? 'door' : locationForActivity(kind)
 }
 
 function startActivity(
@@ -111,28 +139,32 @@ function startActivity(
   if (!isValidTimestamp(action.now)) {
     return fail(state, 'INVALID_TIME', '活动开始时间无效')
   }
-  if (!state.pet.preferences[action.kind]) {
+  if (state.profile.companionDays >= MAX_COMPANION_DAYS) {
+    return fail(state, 'COMPANION_DAY_LIMIT_REACHED', '陪伴天数已达到存档上限')
+  }
+  const interest = interestForActivity(action.kind)
+  if (interest !== null && (state.pet.tired || !state.pet.preferences[interest])) {
     return fail(state, 'ACTIVITY_REFUSED', activityRefusalMessage(action.kind))
   }
 
   const catalogValidation = validateCollectionCatalog(catalog)
   if (!catalogValidation.ok) return fail(state, 'INVALID_CATALOG', catalogValidation.message)
   const targetCategory = categoryForActivity(action.kind)
-  if (catalog[targetCategory].length === 0) {
+  if (targetCategory !== null && catalog[targetCategory].length === 0) {
     return fail(state, 'EMPTY_COLLECTION_POOL', `${targetCategory} 收藏池为空，无法开始活动`)
   }
+  const supplyResolution = resolveSupply(state, action.kind, action.supplyId)
+  if (!supplyResolution.ok) {
+    return fail(state, 'INVALID_SUPPLY', '所选补给不能用于这个活动')
+  }
+  const supplyId = supplyResolution.supplyId
   if (action.useLuckyApple === true) {
-    const availability = getLuckyAppleAvailability(state, action.kind, catalog)
+    const availability = getLuckyAppleAvailability(state, action.kind, catalog, supplyId)
     if (!availability.canUse) {
       return fail(state, 'LUCKY_APPLE_NOT_USEFUL', availability.message)
     }
   }
-
-  const supplyId = resolveSupply(state, action.kind, action.supplyId)
-  if (supplyId === null) {
-    return fail(state, 'INVALID_SUPPLY', '所选补给不能用于这个活动')
-  }
-  if (state.inventory[supplyId] < 1) {
+  if (supplyId !== null && state.inventory[supplyId] < 1) {
     return fail(state, 'MISSING_REQUIRED_ITEM', `缺少活动补给：${supplyId}`)
   }
   if (action.useLuckyApple === true && state.inventory['lucky-apple'] < 1) {
@@ -147,17 +179,23 @@ function startActivity(
   }
 
   const sequence = state.random.sequences.reward
-  const rewardSeed = `${state.random.seed}:reward:${sequence}`
+  const advancesRewardSequence = action.kind !== 'rest'
+  const rewardSeed = advancesRewardSequence
+    ? `${state.random.seed}:reward:${sequence}`
+    : `${state.random.seed}:rest:${state.profile.companionDays}:${action.now}`
   const rewardPlan = planActivityReward({
     kind: action.kind,
     rewardSeed,
     catalog,
     ownedCollectionIds: new Set(Object.keys(state.collections)),
+    knownFriendIds: new Set(
+      FRIEND_EVENT_IDS.filter((friendId) => state.friends[friendId] !== undefined),
+    ),
     supplyId,
     usedLuckyApple: action.useLuckyApple === true,
     probabilities: state.gameBalance.probabilities,
   })
-  const runId = `run-${sequence.toString(36)}-${hashSeed(rewardSeed).toString(36)}`
+  const runId = `run-${sequence.toString(36)}-${hashSeed(`${rewardSeed}:${action.kind}:${action.now}`).toString(36)}`
   const activity: ActivityRun = {
     runId,
     kind: action.kind,
@@ -168,10 +206,8 @@ function startActivity(
     supplyId,
     usedLuckyApple: action.useLuckyApple === true,
   }
-  const nextInventory = {
-    ...state.inventory,
-    [supplyId]: state.inventory[supplyId] - 1,
-  }
+  const nextInventory = { ...state.inventory }
+  if (supplyId !== null) nextInventory[supplyId] -= 1
   if (action.useLuckyApple === true) {
     nextInventory['lucky-apple'] -= 1
   }
@@ -181,11 +217,14 @@ function startActivity(
     activeActivity: activity,
     pet: {
       ...state.pet,
-      location: action.kind === 'travel' ? 'outside' : 'computer',
+      location: locationForActivity(action.kind),
     },
     random: {
       ...state.random,
-      sequences: { ...state.random.sequences, reward: sequence + 1 },
+      sequences: {
+        ...state.random.sequences,
+        reward: sequence + (advancesRewardSequence ? 1 : 0),
+      },
     },
     statistics: {
       ...state.statistics,
@@ -197,6 +236,30 @@ function startActivity(
   }
 
   return succeed(nextState, [{ type: 'activity-started', activity }])
+}
+
+function cancelActivity(
+  state: GameState,
+  action: Extract<GameAction, { type: 'activity/cancel' }>,
+): GameTransition {
+  if (!isValidTimestamp(action.now)) return fail(state, 'INVALID_TIME', '取消时间无效')
+  const activity = state.activeActivity
+  if (activity === null) return fail(state, 'ACTIVITY_NOT_ACTIVE', '当前没有可取消的活动')
+  if (activity.runId !== action.runId) {
+    return fail(state, 'RUN_ID_MISMATCH', '取消请求与当前活动不一致')
+  }
+  if (action.now < activity.startedAt) {
+    return fail(state, 'INVALID_TIME', '取消时间不能早于活动开始时间')
+  }
+
+  return succeed(
+    {
+      ...state,
+      activeActivity: null,
+      pet: { ...state.pet, location: returnLocationForActivity(activity.kind) },
+    },
+    [{ type: 'activity-cancelled', activity, cancelledAt: action.now }],
+  )
 }
 
 function claimActivity(
@@ -213,8 +276,14 @@ function claimActivity(
   if (activity.runId !== action.runId) {
     return fail(state, 'RUN_ID_MISMATCH', '领取请求与当前活动不一致')
   }
+  if (activity.endsAt < activity.startedAt) {
+    return fail(state, 'INVALID_TIME', '活动结束时间不能早于开始时间')
+  }
   if (deriveActivityTiming(activity, action.now).phase !== 'ready') {
     return fail(state, 'ACTIVITY_NOT_READY', '活动尚未完成')
+  }
+  if (state.profile.companionDays >= MAX_COMPANION_DAYS) {
+    return fail(state, 'COMPANION_DAY_LIMIT_REACHED', '陪伴天数已达到存档上限')
   }
 
   const plannedCollection = activity.rewardPlan.collection
@@ -228,27 +297,82 @@ function claimActivity(
     }
   }
 
+  const availableAppleCapacity = MAX_APPLES - state.economy.apples
+  const baseApples = Math.min(activity.rewardPlan.baseApples, availableAppleCapacity)
+  const modifierApples = Math.min(
+    activity.rewardPlan.modifierApples,
+    availableAppleCapacity - baseApples,
+  )
+  const totalApples = baseApples + modifierApples
+
+  const nextInventory = { ...state.inventory }
+  const plannedGiftItemId = activity.rewardPlan.giftItemId
+  const awardedGiftItemId =
+    plannedGiftItemId !== null && nextInventory[plannedGiftItemId] < MAX_ITEM_STACK
+      ? plannedGiftItemId
+      : null
+  if (awardedGiftItemId !== null) nextInventory[awardedGiftItemId] += 1
+
+  const nextFriends: FriendCollection = { ...state.friends }
+  const friendId = activity.rewardPlan.friendId
+  if (friendId !== null) {
+    const previous = state.friends[friendId]
+    nextFriends[friendId] = previous
+      ? {
+          ...previous,
+          lastMetAt: action.now,
+          encounterCount: previous.encounterCount + 1,
+          totalGiftApples: previous.totalGiftApples + modifierApples,
+        }
+      : {
+          id: friendId,
+          firstMetAt: action.now,
+          lastMetAt: action.now,
+          encounterCount: 1,
+          totalGiftApples: modifierApples,
+        }
+  }
+
   const summary: ClaimSummary = {
     runId: activity.runId,
     kind: activity.kind,
-    apples: { base: 0, modifier: 0, duplicateCompensation: 0, total: 0 },
+    apples: {
+      base: baseApples,
+      modifier: modifierApples,
+      duplicateCompensation: 0,
+      total: totalApples,
+    },
     collection:
       plannedCollection === null || existingCollection !== undefined
         ? null
         : { ...plannedCollection, duplicate: false },
-    friendEventId: activity.rewardPlan.friendEventId,
+    friendId,
+    giftItemId: awardedGiftItemId,
+    giftApples: modifierApples,
     guaranteedByPity: false,
   }
-  const nextPreferences = exhaustActivityPreference(state.pet.preferences, activity.kind)
+  const rested = activity.kind === 'rest'
+  const generatedPreferences = rested
+    ? generateActivityPreferences(state.random.seed, state.random.sequences.preferences)
+    : null
+  const nextPreferences = generatedPreferences
+    ? generatedPreferences.preferences
+    : exhaustActivityPreference(state.pet.preferences, activity.kind)
+  const restCount = state.pet.restCount + (rested ? 1 : 0)
   const nextState: GameState = {
     ...state,
+    profile: { ...state.profile, companionDays: state.profile.companionDays + 1 },
+    economy: { apples: state.economy.apples + totalApples },
+    inventory: nextInventory,
     collections: nextCollections,
+    friends: nextFriends,
     activeActivity: null,
     pet: {
       ...state.pet,
-      location: activity.kind === 'travel' ? 'door' : 'computer',
+      location: returnLocationForActivity(activity.kind),
       preferences: nextPreferences,
       tired: isPetTired(nextPreferences),
+      restCount,
     },
     statistics: {
       ...state.statistics,
@@ -256,11 +380,30 @@ function claimActivity(
         ...state.statistics.claimed,
         [activity.kind]: state.statistics.claimed[activity.kind] + 1,
       },
+      applesEarned: state.statistics.applesEarned + totalApples,
       duplicateRewards: state.statistics.duplicateRewards,
     },
+    random: generatedPreferences
+      ? {
+          ...state.random,
+          sequences: {
+            ...state.random.sequences,
+            preferences: generatedPreferences.nextSequence,
+          },
+        }
+      : state.random,
   }
 
-  return succeed(nextState, [{ type: 'activity-claimed', summary }])
+  const effects: GameEffect[] = [{ type: 'activity-claimed', summary }]
+  if (generatedPreferences !== null) {
+    effects.push({
+      type: 'pet-rested',
+      restCount,
+      preferences: generatedPreferences.preferences,
+      replayKey: restCount,
+    })
+  }
+  return succeed(nextState, effects)
 }
 
 function purchaseItem(
@@ -331,42 +474,6 @@ function interactWithRoom(
   return succeed(application.state, effects)
 }
 
-function restPet(
-  state: GameState,
-  action: Extract<GameAction, { type: 'pet/rest' }>,
-): GameTransition {
-  if (!isValidTimestamp(action.now)) return fail(state, 'INVALID_TIME', '休息时间无效')
-  if (state.activeActivity !== null) {
-    return fail(state, 'PET_BUSY', '饼狗正在忙，暂时不能睡觉')
-  }
-  const generated = generateActivityPreferences(
-    state.random.seed,
-    state.random.sequences.preferences,
-  )
-  const restCount = state.pet.restCount + 1
-  const nextState: GameState = {
-    ...state,
-    pet: {
-      location: 'bed',
-      preferences: generated.preferences,
-      tired: false,
-      restCount,
-    },
-    random: {
-      ...state.random,
-      sequences: { ...state.random.sequences, preferences: generated.nextSequence },
-    },
-  }
-  return succeed(nextState, [
-    {
-      type: 'pet-rested',
-      restCount,
-      preferences: generated.preferences,
-      replayKey: restCount,
-    },
-  ])
-}
-
 function encouragePet(
   state: GameState,
   action: Extract<GameAction, { type: 'pet/encourage' }>,
@@ -374,7 +481,7 @@ function encouragePet(
   if (state.activeActivity !== null) {
     return fail(state, 'PET_BUSY', '饼狗正在忙，现在不用再鼓励它')
   }
-  if (state.pet.preferences[action.kind]) {
+  if (state.pet.preferences[action.interest]) {
     return fail(state, 'INVALID_AMOUNT', '饼狗已经很想做这件事啦')
   }
   if (state.economy.apples < PET_ENCOURAGEMENT_APPLE_COST) {
@@ -386,14 +493,14 @@ function encouragePet(
       economy: { apples: state.economy.apples - PET_ENCOURAGEMENT_APPLE_COST },
       pet: {
         ...state.pet,
-        preferences: { ...state.pet.preferences, [action.kind]: true },
+        preferences: { ...state.pet.preferences, [action.interest]: true },
         tired: false,
       },
     },
     [
       {
         type: 'pet-encouraged',
-        kind: action.kind,
+        interest: action.interest,
         applesSpent: PET_ENCOURAGEMENT_APPLE_COST,
       },
     ],
@@ -547,7 +654,9 @@ function completeActivityForDebug(
 function clearActivityForDebug(state: GameState): GameTransition {
   const denied = requireDebug(state)
   if (denied !== null) return denied
-  const location = state.activeActivity?.kind === 'travel' ? 'door' : state.pet.location
+  const location = state.activeActivity
+    ? returnLocationForActivity(state.activeActivity.kind)
+    : state.pet.location
   return succeed({ ...state, activeActivity: null, pet: { ...state.pet, location } }, [
     { type: 'debug-applied', action: 'debug/activity-clear' },
   ])
@@ -609,6 +718,8 @@ export function reduceGame(
   switch (action.type) {
     case 'activity/start':
       return startActivity(state, action, catalog)
+    case 'activity/cancel':
+      return cancelActivity(state, action)
     case 'activity/claim':
       return claimActivity(state, action)
     case 'item/purchase':
@@ -617,8 +728,6 @@ export function reduceGame(
       return interactWithRoom(state, action, catalog)
     case 'pet/move':
       return movePet(state, action)
-    case 'pet/rest':
-      return restPet(state, action)
     case 'pet/encourage':
       return encouragePet(state, action)
     case 'task/event':

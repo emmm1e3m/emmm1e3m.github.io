@@ -159,6 +159,56 @@
   gap: 0.75rem;
 }
 
+.landing-new-game {
+  width: min(100%, 520px);
+}
+
+.landing-name-field {
+  display: grid;
+  gap: 0.42rem;
+  color: #5b4038;
+  font-family: var(--landing-display);
+  font-size: 0.92rem;
+}
+
+.landing-name-field input {
+  width: 100%;
+  min-height: 52px;
+  padding: 0.7rem 0.9rem;
+  border: 1px solid rgb(105 69 57 / 42%);
+  border-radius: 15px;
+  color: #503832;
+  background: rgb(255 253 248 / 88%);
+  box-shadow: inset 0 1px 0 rgb(255 255 255 / 70%);
+  font-family: var(--landing-ui);
+  font-size: 1rem;
+}
+
+.landing-name-field input:focus-visible {
+  outline: 3px solid #236d8d;
+  outline-offset: 3px;
+}
+
+.landing-name-field input[aria-invalid='true'] {
+  border-color: var(--landing-red);
+}
+
+.landing-name-hint {
+  min-height: 1.3em;
+  margin: 0.38rem 0 0.82rem;
+  color: var(--landing-muted);
+  font-size: 0.68rem;
+}
+
+.landing-name-hint.is-error {
+  color: var(--landing-red-dark);
+}
+
+.numeric-copy {
+  font-family: 'Microsoft YaHei UI', Arial, sans-serif;
+  font-variant-numeric: tabular-nums;
+}
+
 .landing-button {
   min-height: 54px;
   display: inline-flex;
@@ -466,7 +516,8 @@
 
   .landing-intro,
   .landing-error,
-  .landing-import {
+  .landing-import,
+  .landing-new-game {
     margin-inline: auto;
   }
 
@@ -547,7 +598,7 @@
   }
 
   .landing-import dt {
-    font-size: 0.64rem;
+    font-size: 0.68rem;
   }
 
   .landing-import dd {

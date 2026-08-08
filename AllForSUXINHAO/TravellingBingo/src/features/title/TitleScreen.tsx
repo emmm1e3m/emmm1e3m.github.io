@@ -1,7 +1,8 @@
-import type { ChangeEvent } from 'react'
+import { useState, type ChangeEvent, type FormEvent } from 'react'
 
 import { publicAsset } from '@/app/assets'
 import { MascotSprite } from '@/components/MascotSprite'
+import { isValidDisplayName, MAX_DISPLAY_NAME_LENGTH } from '@/domain'
 
 import './title.css'
 
@@ -13,6 +14,8 @@ export interface ImportPreview {
   collectionCount: number
   activityLabel: string
   debug: boolean
+  displayName: string
+  companionDays: number
 }
 
 interface TitleScreenProps {
@@ -21,7 +24,7 @@ interface TitleScreenProps {
   error: string | null
   importPreview: ImportPreview | null
   debugUnlocked: boolean
-  onStart: () => void
+  onStart: (displayName: string) => void
   onFile: (file: File) => void
   onConfirmImport: () => void
   onCancelImport: () => void
@@ -30,12 +33,14 @@ interface TitleScreenProps {
 }
 
 function formatExportTime(value: number) {
-  return new Intl.DateTimeFormat('zh-CN', {
-    month: 'long',
-    day: 'numeric',
-    hour: '2-digit',
-    minute: '2-digit',
-  }).format(value)
+  const date = new Date(value)
+  const parts = [date.getFullYear(), date.getMonth() + 1, date.getDate()].map((part, index) =>
+    index === 0 ? String(part) : String(part).padStart(2, '0'),
+  )
+  const time = [date.getHours(), date.getMinutes()]
+    .map((part) => String(part).padStart(2, '0'))
+    .join(':')
+  return `${parts.join('.')} ${time}`
 }
 
 export function TitleScreen({
@@ -51,10 +56,22 @@ export function TitleScreen({
   onRetryCatalog,
   onTitleActivate,
 }: TitleScreenProps) {
+  const [displayName, setDisplayName] = useState('')
+  const [nameTouched, setNameTouched] = useState(false)
+  const normalizedName = displayName.trim()
+  const validName = isValidDisplayName(normalizedName)
+
   function handleFile(event: ChangeEvent<HTMLInputElement>) {
     const file = event.currentTarget.files?.[0]
     if (file) onFile(file)
     event.currentTarget.value = ''
+  }
+
+  function startJourney(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault()
+    setNameTouched(true)
+    if (loading || !available || !validName) return
+    onStart(normalizedName)
   }
 
   return (
@@ -93,12 +110,24 @@ export function TitleScreen({
               <strong className="landing-import__filename">{importPreview.fileName}</strong>
               <dl>
                 <div>
-                  <dt>出发时间</dt>
-                  <dd>{formatExportTime(importPreview.exportedAt)}</dd>
+                  <dt>饼狗的称呼</dt>
+                  <dd>{importPreview.displayName}</dd>
                 </div>
                 <div>
-                  <dt>背包里的苹果</dt>
-                  <dd>{importPreview.apples} 个</dd>
+                  <dt>一起走过</dt>
+                  <dd>
+                    {importPreview.companionDays === 0
+                      ? '今天刚见面'
+                      : `${importPreview.companionDays} 天`}
+                  </dd>
+                </div>
+                <div>
+                  <dt>出发时间</dt>
+                  <dd className="numeric-copy">{formatExportTime(importPreview.exportedAt)}</dd>
+                </div>
+                <div>
+                  <dt>背包里的🍎</dt>
+                  <dd className="numeric-copy">{importPreview.apples}🍎</dd>
                 </div>
                 <div>
                   <dt>收藏</dt>
@@ -115,7 +144,7 @@ export function TitleScreen({
                   type="button"
                   onClick={onConfirmImport}
                 >
-                  带它回家
+                  进入这次旅程
                 </button>
                 <button
                   className="landing-button landing-button--quiet"
@@ -127,29 +156,53 @@ export function TitleScreen({
               </div>
             </section>
           ) : (
-            <div className="landing-actions">
-              <button
-                className="landing-button landing-button--primary"
-                type="button"
-                disabled={loading || !available}
-                onClick={onStart}
-              >
-                {loading ? '正在准备饼屋…' : available ? '开始新旅程' : '收藏目录暂不可用'}
-              </button>
-              <label
-                className="landing-button landing-button--quiet"
-                aria-disabled={loading || !available}
-              >
-                读取 .bingo 存档
+            <form className="landing-new-game" onSubmit={startJourney} noValidate>
+              <label className="landing-name-field">
+                <span>想让饼狗怎么称呼你？</span>
                 <input
-                  className="visually-hidden"
-                  type="file"
-                  accept=".bingo,application/octet-stream,application/json"
-                  disabled={loading || !available}
-                  onChange={handleFile}
+                  type="text"
+                  value={displayName}
+                  autoComplete="nickname"
+                  placeholder="输入你的称呼"
+                  aria-describedby="display-name-hint"
+                  aria-invalid={nameTouched && !validName}
+                  onChange={(event) => {
+                    setDisplayName(event.currentTarget.value)
+                    setNameTouched(true)
+                  }}
                 />
               </label>
-            </div>
+              <p
+                className={`landing-name-hint ${nameTouched && !validName ? 'is-error' : ''}`}
+                id="display-name-hint"
+              >
+                {nameTouched && !validName
+                  ? `请输入 1 到 ${MAX_DISPLAY_NAME_LENGTH} 个字符的称呼`
+                  : `最多 ${MAX_DISPLAY_NAME_LENGTH} 个字符，之后也会写进存档`}
+              </p>
+              <div className="landing-actions">
+                <button
+                  className="landing-button landing-button--primary"
+                  type="submit"
+                  disabled={loading || !available}
+                >
+                  {loading ? '正在准备饼屋…' : available ? '开始新旅程' : '收藏目录暂不可用'}
+                </button>
+                <label
+                  className="landing-button landing-button--quiet"
+                  aria-disabled={loading || !available}
+                >
+                  读取 .bingo 存档
+                  <input
+                    className="visually-hidden"
+                    type="file"
+                    accept=".bingo,application/octet-stream,application/json"
+                    disabled={loading || !available}
+                    onChange={handleFile}
+                  />
+                </label>
+              </div>
+            </form>
           )}
 
           {error && (

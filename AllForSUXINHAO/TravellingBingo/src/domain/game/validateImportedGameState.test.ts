@@ -26,7 +26,8 @@ function stateWithActivity(
         baseApples: 0,
         modifierApples: 0,
         collection,
-        friendEventId: null,
+        friendId: null,
+        giftItemId: null,
         guaranteedByPity: false,
         pityAfterClaim: null,
       },
@@ -35,7 +36,9 @@ function stateWithActivity(
           ? 'travel-basic'
           : kind === 'stream'
             ? 'signal-headphones'
-            : 'trend-toolbox',
+            : kind === 'trend'
+              ? 'trend-toolbox'
+              : null,
       usedLuckyApple: false,
     },
   }
@@ -135,5 +138,125 @@ describe('导入存档与当前收藏目录的一致性', () => {
       ok: false,
       code: 'INVALID_CATALOG',
     })
+  })
+
+  it('拒绝三条任务都已完成却没有自动刷新的停滞任务板', () => {
+    const state = createInitialGameState({ now: 1_000, seed: 'stalled-task-board' })
+    for (const task of state.tasks.active) task.progress = task.target
+
+    expect(validateImportedGameState(state, catalog)).toMatchObject({
+      ok: false,
+      code: 'TASK_BOARD_STALLED',
+    })
+  })
+
+  it('拒绝疲劳标记与活动意愿互相矛盾的存档', () => {
+    const state = createInitialGameState({ now: 1_000, seed: 'fatigue-mismatch' })
+    state.pet.tired = true
+
+    expect(validateImportedGameState(state, catalog)).toMatchObject({
+      ok: false,
+      code: 'PET_FATIGUE_MISMATCH',
+    })
+  })
+
+  it('好友图鉴只保存已认识条目，并校验记录键与 ID 一致', () => {
+    const state = createInitialGameState({ now: 0, seed: 'friend-validation' })
+    const valid: GameState = {
+      ...state,
+      friends: {
+        'signal-dog': {
+          id: 'signal-dog',
+          firstMetAt: 1,
+          lastMetAt: 2,
+          encounterCount: 2,
+          totalGiftApples: 3,
+        },
+      },
+    }
+    expect(validateImportedGameState(valid, catalog)).toEqual({ ok: true })
+
+    const mismatch = structuredClone(valid)
+    mismatch.friends['signal-dog']!.id = 'bili-bing'
+    expect(validateImportedGameState(mismatch, catalog)).toMatchObject({
+      ok: false,
+      code: 'FRIEND_KEY_MISMATCH',
+    })
+
+    const unknown = structuredClone(state) as GameState & {
+      friends: Record<string, (typeof valid.friends)['signal-dog']>
+    }
+    unknown.friends['unknown-friend'] = valid.friends['signal-dog']
+    expect(validateImportedGameState(unknown, catalog)).toMatchObject({
+      ok: false,
+      code: 'UNKNOWN_FRIEND',
+    })
+  })
+
+  it('按活动类型拒绝伪造的苹果、好友或礼物奖励组合', () => {
+    const rest = stateWithActivity(null, 'rest')
+    rest.activeActivity!.rewardPlan.baseApples = 1
+    expect(validateImportedGameState(rest, catalog)).toEqual({ ok: true })
+    rest.activeActivity!.rewardPlan.friendId = 'signal-dog'
+    expect(validateImportedGameState(rest, catalog)).toMatchObject({
+      ok: false,
+      code: 'REWARD_PLAN_MISMATCH',
+    })
+
+    const stream = stateWithActivity(null, 'stream')
+    stream.activeActivity!.rewardPlan.modifierApples = 4
+    expect(validateImportedGameState(stream, catalog)).toMatchObject({
+      ok: false,
+      code: 'REWARD_PLAN_MISMATCH',
+    })
+
+    stream.activeActivity!.rewardPlan.modifierApples = 0
+    stream.activeActivity!.rewardPlan.friendId = 'signal-dog'
+    expect(validateImportedGameState(stream, catalog)).toEqual({ ok: true })
+    stream.activeActivity!.rewardPlan.giftItemId = 'travel-basic'
+    expect(validateImportedGameState(stream, catalog)).toMatchObject({
+      ok: false,
+      code: 'REWARD_PLAN_MISMATCH',
+    })
+
+    const travel = stateWithActivity(null, 'travel')
+    travel.activeActivity!.rewardPlan.friendId = 'signal-dog'
+    travel.activeActivity!.rewardPlan.giftItemId = 'travel-basic'
+    expect(validateImportedGameState(travel, catalog)).toMatchObject({
+      ok: false,
+      code: 'REWARD_PLAN_MISMATCH',
+    })
+
+    const reversed = stateWithActivity(null, 'stream')
+    reversed.activeActivity!.endsAt = reversed.activeActivity!.startedAt - 1
+    expect(validateImportedGameState(reversed, catalog)).toMatchObject({
+      ok: false,
+      code: 'ACTIVITY_TIME_INVALID',
+    })
+  })
+
+  it('音乐只接受已认识朋友及其固定苹果，旅行仍兼容 legacy 双结果', () => {
+    const music = stateWithActivity(null, 'music')
+    music.friends['signal-dog'] = {
+      id: 'signal-dog',
+      firstMetAt: 1,
+      lastMetAt: 1,
+      encounterCount: 1,
+      totalGiftApples: 0,
+    }
+    music.activeActivity!.rewardPlan.friendId = 'signal-dog'
+    music.activeActivity!.rewardPlan.modifierApples = 3
+    expect(validateImportedGameState(music, catalog)).toEqual({ ok: true })
+
+    delete music.friends['signal-dog']
+    expect(validateImportedGameState(music, catalog)).toMatchObject({
+      ok: false,
+      code: 'REWARD_PLAN_MISMATCH',
+    })
+
+    const legacyTravel = stateWithActivity({ id: 'postcard-1', category: 'postcard' }, 'travel')
+    legacyTravel.activeActivity!.rewardPlan.friendId = 'signal-dog'
+    legacyTravel.activeActivity!.rewardPlan.giftItemId = null
+    expect(validateImportedGameState(legacyTravel, catalog)).toEqual({ ok: true })
   })
 })

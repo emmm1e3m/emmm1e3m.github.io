@@ -1,6 +1,6 @@
 import { fireEvent, render, screen, within } from '@testing-library/react'
 
-import type { CollectibleItem, ContentCatalog } from '@/content'
+import type { BilibiliVideo, CollectibleItem, ContentCatalog } from '@/content'
 import { createInitialGameState, type CollectibleCategory, type GameState } from '@/domain'
 
 import { AlbumView } from './AlbumView'
@@ -30,7 +30,23 @@ const newestPostcard = collectible('postcard-new', 'postcard', '最近的明信�
 const millionShot = collectible('million-shot-unowned', 'million-shot', '未获得的百万直拍')
 const siteFirst = collectible('site-first-owned', 'site-first', '已经获得的全站第一')
 
-function contentCatalog(items: readonly CollectibleItem[]): ContentCatalog {
+const albumVideo: BilibiliVideo = {
+  bvid: 'BV1xx411c7mD',
+  title: '收藏里的测试舞台',
+  authorName: '苏新皓',
+  authorMid: 1,
+  publishedAt: '2026-06-19T12:00:00.000Z',
+  durationSeconds: 112,
+  coverUrl: 'https://i0.hdslb.com/album-video.jpg',
+  sourceUrl: 'https://www.bilibili.com/video/BV1xx411c7mD',
+  favoriteId: 1,
+  favoriteOrder: 1,
+}
+
+function contentCatalog(
+  items: readonly CollectibleItem[],
+  videos: readonly BilibiliVideo[] = [],
+): ContentCatalog {
   const categoryCounts: Record<CollectibleCategory, number> = {
     postcard: 0,
     'million-shot': 0,
@@ -44,6 +60,10 @@ function contentCatalog(items: readonly CollectibleItem[]): ContentCatalog {
     siteFirstChronology: items
       .filter((item) => item.category === 'site-first')
       .map((item) => item.id),
+    friends: [],
+    friendById: {},
+    videosByBvid: Object.fromEntries(videos.map((video) => [video.bvid, video])),
+    recordPlayerVideos: [],
   }
 }
 
@@ -70,7 +90,7 @@ describe('饼狗的收藏墙', () => {
     ])
     renderAlbum(catalog, game)
 
-    const dialog = screen.getByRole('dialog', { name: '一路珍藏的风景' })
+    const dialog = screen.getByRole('dialog', { name: '饼狗的收藏墙' })
     expect(within(dialog).getByRole('tab', { name: '明信片' })).toBeInTheDocument()
     expect(within(dialog).getByRole('tab', { name: '全站第一' })).toBeInTheDocument()
     expect(within(dialog).queryByRole('tab', { name: '百万直拍' })).not.toBeInTheDocument()
@@ -116,7 +136,6 @@ describe('饼狗的收藏墙', () => {
     rerender(<AlbumView catalog={expandedCatalog} game={game} onClose={vi.fn()} />)
 
     expect(screen.queryByText(/3\s*\/\s*4/u)).not.toBeInTheDocument()
-    expect(screen.getByText('最近遇见的回忆排在最前面')).toBeVisible()
     expect(screen.queryByText(addedLater.title)).not.toBeInTheDocument()
     expect(screen.getByRole('button', { name: /最早的明信片/u })).toBeVisible()
   })
@@ -128,5 +147,31 @@ describe('饼狗的收藏墙', () => {
     expect(screen.queryByRole('tab')).not.toBeInTheDocument()
     expect(screen.getByText('收藏墙还空着')).toBeVisible()
     expect(screen.queryByText(/\d+\s*\/\s*\d+/u)).not.toBeInTheDocument()
+  })
+
+  it('收藏详情只在主动打开播放器时传递收藏 ID 与正确 BV', () => {
+    const item = {
+      ...collectible('million-shot-video', 'million-shot', '带视频的百万直拍'),
+      metadata: { sequence: 1, video: albumVideo },
+    } as CollectibleItem
+    const catalog = contentCatalog([item], [albumVideo])
+    const game = gameWithCollections([[item.id, 1_000]])
+    const onPlayerOpened = vi.fn()
+
+    render(
+      <AlbumView catalog={catalog} game={game} onClose={vi.fn()} onPlayerOpened={onPlayerOpened} />,
+    )
+
+    fireEvent.click(screen.getByRole('button', { name: /带视频的百万直拍/u }))
+    fireEvent.click(screen.getByRole('button', { name: '打开播放器' }))
+
+    expect(onPlayerOpened).toHaveBeenCalledOnce()
+    expect(onPlayerOpened).toHaveBeenCalledWith(item.id, albumVideo.bvid)
+
+    const iframe = screen.getByTitle('收藏里的测试舞台播放器')
+    fireEvent.load(iframe)
+    fireEvent.error(iframe)
+    fireEvent.abort(iframe)
+    expect(onPlayerOpened).toHaveBeenCalledOnce()
   })
 })

@@ -1,0 +1,95 @@
+import type { ActivityRun, ActivityTiming, GameState } from '@/domain'
+
+import { ACTIVITY_COPY, formatCountdown } from './gameCopy'
+
+interface GameHudProps {
+  game: GameState
+  activity: ActivityRun | null
+  timing: ActivityTiming
+  dirty: boolean
+  inert?: boolean
+  onExit: () => void
+  onCenter: () => void
+  onFridge: () => void
+  onAlbum: () => void
+  onDebug: () => void
+}
+
+export function GameHud({
+  game,
+  activity,
+  timing,
+  dirty,
+  inert,
+  onExit,
+  onCenter,
+  onFridge,
+  onAlbum,
+  onDebug,
+}: GameHudProps) {
+  return (
+    <header className="game-hud game-hud--v3" inert={inert ? true : undefined}>
+      <div className="game-hud__leading">
+        <button
+          className="exit-button exit-button--text"
+          type="button"
+          onClick={onExit}
+          aria-label={`离开铲铲饼屋${dirty ? '，有未导出的进度' : ''}`}
+        >
+          离开
+          {dirty && <i aria-label="有未导出的进度" />}
+        </button>
+      </div>
+
+      <button className="game-hud__center" type="button" onClick={onCenter}>
+        <span>今天也要</span>
+        <strong>好好吃苹果</strong>
+        {activity && (
+          <small>
+            {ACTIVITY_COPY[activity.kind].verb} ·{' '}
+            <span className="numeric-copy">
+              {timing.phase === 'ready'
+                ? '可以看看结果啦'
+                : formatCountdown(timing.remainingSeconds)}
+            </span>
+          </small>
+        )}
+      </button>
+
+      <div className="game-hud__actions">
+        <span className="hud-companion">
+          {game.profile.displayName}陪伴饼狗已经{' '}
+          <span className="numeric-copy">{game.profile.companionDays}</span> 天
+        </span>
+        <div className="game-hud__buttons">
+          <button
+            className="apple-counter"
+            type="button"
+            onClick={onFridge}
+            aria-label={`有 ${game.economy.apples} 个苹果，打开冰箱`}
+          >
+            <strong className="numeric-copy">{game.economy.apples}🍎</strong>
+          </button>
+          <button
+            className="hud-icon hud-icon--album"
+            type="button"
+            onClick={onAlbum}
+            aria-label="打开收藏墙"
+          >
+            <span aria-hidden="true">🖼️</span>
+          </button>
+          {game.profile.debug && (
+            <button
+              className="debug-chip"
+              type="button"
+              onClick={onDebug}
+              aria-label="打开调试面板"
+            >
+              DEBUG
+            </button>
+          )}
+        </div>
+      </div>
+    </header>
+  )
+}

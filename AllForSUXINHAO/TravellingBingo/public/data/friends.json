@@ -1,0 +1,102 @@
+{
+  "schemaVersion": 1,
+  "generatedFrom": "imagegen-friend-atlas-v3",
+  "generatedAt": "2026-08-08",
+  "rights": "user-confirmed-authorized",
+  "source": {
+    "path": "resources/raw/travelling-bingo/generated/friend-atlas-v3.png",
+    "width": 1881,
+    "height": 836,
+    "byteLength": 1728529,
+    "mime": "image/png",
+    "sha256": "03e90140fdc01a9002f247730e39210063b9a0509900ddc151a27279bf0dd96c",
+    "generation": {
+      "tool": "OpenAI built-in ImageGen",
+      "mode": "multi-reference identity-preserve",
+      "promptSummary": "严格参考课代饼、三好兔、心好兔、信号狗和饼哩饼哩的已有设定，统一成五格暖色纸张角色图鉴；每位角色完整显示双手与双脚，不含文字或额外角色。"
+    }
+  },
+  "itemCount": 5,
+  "items": [
+    {
+      "id": "class-representative-bing",
+      "name": "课代饼",
+      "kind": "human-like",
+      "description": "戴着红色圆框眼镜、认真又可靠的课代饼。",
+      "alt": "课代饼的暖色手绘朋友卡",
+      "image": {
+        "path": "assets/friends/class-representative-bing.webp",
+        "width": 360,
+        "height": 560,
+        "byteLength": 21506,
+        "mime": "image/webp",
+        "sha256": "60122cddac22c8da369601e635e0d6f12cdc0113f6c65718f3d813eb5272f0c9"
+      },
+      "sourceCell": 1
+    },
+    {
+      "id": "san-hao-rabbit",
+      "name": "三好兔",
+      "kind": "rabbit",
+      "description": "暖米色、安静温柔的三好兔。",
+      "alt": "三好兔的暖色手绘朋友卡",
+      "image": {
+        "path": "assets/friends/san-hao-rabbit.webp",
+        "width": 360,
+        "height": 560,
+        "byteLength": 16986,
+        "mime": "image/webp",
+        "sha256": "6831e5212c24e3a0d1c5cb78985a872632180eb80d3591c3fe634ed33c40fc6f"
+      },
+      "sourceCell": 2
+    },
+    {
+      "id": "xin-hao-rabbit",
+      "name": "心好兔",
+      "kind": "rabbit",
+      "description": "额前有粉色小云、胸前带着爱心的心好兔。",
+      "alt": "心好兔的暖色手绘朋友卡",
+      "image": {
+        "path": "assets/friends/xin-hao-rabbit.webp",
+        "width": 360,
+        "height": 560,
+        "byteLength": 17362,
+        "mime": "image/webp",
+        "sha256": "acdb9f7f69001f3541e5a7160dc53f74a0b62656d725d5d65e077cb5787b446f"
+      },
+      "sourceCell": 3
+    },
+    {
+      "id": "signal-dog",
+      "name": "信号狗",
+      "kind": "dog",
+      "description": "粉白相间、耳朵里藏着信号纹样的信号狗。",
+      "alt": "信号狗的暖色手绘朋友卡",
+      "image": {
+        "path": "assets/friends/signal-dog.webp",
+        "width": 360,
+        "height": 560,
+        "byteLength": 19604,
+        "mime": "image/webp",
+        "sha256": "7ffd32517a7b3933af2eb7561d969aaf2efe8bdb002375a9d8b4f4e1e2a5ad88"
+      },
+      "sourceCell": 4
+    },
+    {
+      "id": "bili-bing",
+      "name": "饼哩饼哩",
+      "kind": "human-like",
+      "description": "粉色头发、白色垂耳，总爱眨眨眼的饼哩饼哩。",
+      "alt": "饼哩饼哩的暖色手绘朋友卡",
+      "image": {
+        "path": "assets/friends/bili-bing.webp",
+        "width": 360,
+        "height": 560,
+        "byteLength": 22672,
+        "mime": "image/webp",
+        "sha256": "42edb1bcb668db53deee2bee06a94904a733e48c84b7ce1e00f0ff44bbfa4b30"
+      },
+      "sourceCell": 5
+    }
+  ]
+}

@@ -14,6 +14,7 @@
     "typecheck": "tsc --project AllForSUXINHAO/TravellingBingo/tsconfig.json --noEmit",
     "lint": "eslint AllForSUXINHAO/TravellingBingo/src scripts",
     "test": "vitest run --config AllForSUXINHAO/TravellingBingo/vite.config.ts",
+    "test:video-catalog": "node --test scripts/research/bilibili-video-catalog.test.mjs",
     "test:watch": "vitest --config AllForSUXINHAO/TravellingBingo/vite.config.ts",
     "test:e2e": "playwright test --config AllForSUXINHAO/TravellingBingo/playwright.config.ts",
     "format": "prettier --write \"AllForSUXINHAO/TravellingBingo/**/*.{ts,tsx,css,html,json}\" \"scripts/**/*.mjs\" package.json",
@@ -23,13 +24,16 @@
     "assets:build": "node scripts/assets/build-web-assets.mjs",
     "assets:build:site-firsts": "node scripts/assets/build-site-first-assets.mjs",
     "assets:build:demo": "node scripts/assets/build-demo-visuals.mjs",
+    "assets:build:friends": "node scripts/assets/build-friend-assets.mjs",
     "assets:build:fonts": "node scripts/assets/build-fonts.mjs",
     "assets:build:postcards": "node scripts/assets/build-demo-postcards.mjs",
+    "assets:build:video-catalog": "node scripts/research/sync-bilibili-video-catalog.mjs",
     "assets:verify": "node scripts/assets/verify-assets.mjs",
     "site:assemble": "node scripts/site/assemble-site.mjs",
     "site:verify": "node scripts/site/verify-site.mjs",
     "research:sync:postcards": "node scripts/research/sync-postcard-catalog.mjs",
-    "verify": "npm run format:check && npm run lint && npm run typecheck && npm run test && npm run assets:verify"
+    "research:sync:bilibili": "node scripts/research/sync-bilibili-video-catalog.mjs --refresh",
+    "verify": "npm run format:check && npm run lint && npm run typecheck && npm run test && npm run test:video-catalog && npm run assets:verify"
   },
   "dependencies": {
     "react": "^19.2.8",

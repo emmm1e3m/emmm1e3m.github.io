@@ -21,3 +21,7 @@
 .mascot-sprite--celebrate {
   background-position: 100% 100%;
 }
+
+.reward-mascot > .mascot-sprite--celebrate {
+  background-size: 205% 205%;
+}

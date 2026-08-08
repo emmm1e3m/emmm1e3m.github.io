@@ -41,6 +41,14 @@ const postcardCatalogSourceIdSchema = catalogSourceIdSchema.refine(
   { message: '明信片目录必须来自 bilibilitoy-suxinhao-postcards 来源清单' },
 )
 const catalogItemCountSchema = z.number().int().positive().safe()
+export const bvidSchema = z.string().regex(/^BV[0-9A-Za-z]{10}$/)
+export const friendIdSchema = z.enum([
+  'class-representative-bing',
+  'san-hao-rabbit',
+  'xin-hao-rabbit',
+  'signal-dog',
+  'bili-bing',
+])
 
 export const collectibleImageSchema = z
   .object({
@@ -61,6 +69,68 @@ export const postcardImageSchema = collectibleImageSchema
     sha256: z.string().regex(/^[0-9a-f]{64}$/),
   })
   .strict()
+
+export const friendImageSchema = collectibleImageSchema
+  .extend({
+    path: safeRelativePathSchema.refine(
+      (value) => value.startsWith('assets/friends/') && value.endsWith('.webp'),
+      { message: '好友图片必须来自同源 friends WebP 目录' },
+    ),
+    sha256: z.string().regex(/^[0-9a-f]{64}$/),
+  })
+  .strict()
+
+export const friendItemSchema = z
+  .object({
+    id: friendIdSchema,
+    name: z.string().trim().min(1),
+    kind: z.enum(['human-like', 'rabbit', 'dog']),
+    description: z.string().trim().min(1),
+    alt: z.string().trim().min(1),
+    image: friendImageSchema,
+    sourceCell: z.number().int().positive().safe(),
+  })
+  .strict()
+
+export const bilibiliVideoSchema = z
+  .object({
+    bvid: bvidSchema,
+    title: z.string().trim().min(1),
+    authorName: z.string().trim().min(1),
+    authorMid: z.number().int().positive().safe(),
+    publishedAt: isoDateTimeSchema,
+    durationSeconds: z.number().int().positive().safe(),
+    coverUrl: httpUrlSchema,
+    sourceUrl: httpUrlSchema,
+    favoriteId: z.number().int().positive().safe(),
+    favoriteOrder: z.number().int().positive().safe(),
+  })
+  .strict()
+  .superRefine((video, context) => {
+    if (!video.sourceUrl.includes(`/video/${video.bvid}`)) {
+      context.addIssue({
+        code: 'custom',
+        path: ['sourceUrl'],
+        message: '视频来源 URL 必须与 bvid 一致',
+      })
+    }
+  })
+
+function videosMatch(
+  left: z.infer<typeof bilibiliVideoSchema>,
+  right: z.infer<typeof bilibiliVideoSchema>,
+) {
+  return (
+    left.bvid === right.bvid &&
+    left.title === right.title &&
+    left.authorName === right.authorName &&
+    left.authorMid === right.authorMid &&
+    left.publishedAt === right.publishedAt &&
+    left.durationSeconds === right.durationSeconds &&
+    left.coverUrl === right.coverUrl &&
+    left.sourceUrl === right.sourceUrl
+  )
+}
 
 const baseCollectibleFields = {
   id: z.string().regex(/^[a-z0-9]+(?:-[a-z0-9]+)*$/),
@@ -86,6 +156,7 @@ export const millionShotItemSchema = z
     metadata: z
       .object({
         sequence: z.number().int().positive(),
+        video: bilibiliVideoSchema,
       })
       .strict(),
   })
@@ -108,10 +179,20 @@ export const siteFirstItemSchema = z
         chronology: z.number().int().positive().safe(),
         programCategory: z.string().trim().min(1),
         posterKind: z.enum(['designed-poster', 'video-cover-fallback']),
+        video: bilibiliVideoSchema,
       })
       .strict(),
   })
   .strict()
+  .superRefine((item, context) => {
+    if (item.metadata.bvid !== item.metadata.video.bvid) {
+      context.addIssue({
+        code: 'custom',
+        path: ['metadata', 'video', 'bvid'],
+        message: '全站第一条目 bvid 必须与视频元数据一致',
+      })
+    }
+  })
 
 export const postcardItemSchema = z
   .object({
@@ -296,13 +377,229 @@ export const postcardCatalogSchema = z
     })
   })
 
+export const friendCatalogSchema = z
+  .object({
+    schemaVersion: z.literal(1),
+    generatedFrom: z.literal('imagegen-friend-atlas-v3'),
+    generatedAt: z.iso.date(),
+    rights: z.literal('user-confirmed-authorized'),
+    source: z
+      .object({
+        path: safeRelativePathSchema.refine(
+          (value) => value === 'resources/raw/travelling-bingo/generated/friend-atlas-v3.png',
+          { message: '好友母版路径必须指向受控 ImageGen 资源' },
+        ),
+        width: z.number().int().positive(),
+        height: z.number().int().positive(),
+        byteLength: z.number().int().positive(),
+        mime: z.literal('image/png'),
+        sha256: z.string().regex(/^[0-9a-f]{64}$/),
+        generation: z
+          .object({
+            tool: z.literal('OpenAI built-in ImageGen'),
+            mode: z.literal('multi-reference identity-preserve'),
+            promptSummary: z.string().trim().min(1),
+          })
+          .strict(),
+      })
+      .strict(),
+    itemCount: catalogItemCountSchema,
+    items: z.array(friendItemSchema).min(1),
+  })
+  .strict()
+  .superRefine((catalog, context) => {
+    addCatalogConsistencyChecks(catalog, context)
+
+    const sourceCells = new Set<number>()
+    catalog.items.forEach((item, index) => {
+      if (sourceCells.has(item.sourceCell)) {
+        context.addIssue({
+          code: 'custom',
+          path: ['items', index, 'sourceCell'],
+          message: `好友母版格位重复：${item.sourceCell}`,
+        })
+      }
+      sourceCells.add(item.sourceCell)
+    })
+  })
+
+const millionShotVideoMappingSchema = z
+  .object({
+    posterId: z.string().regex(/^million-shot-[0-9]+$/),
+    sequence: z.number().int().positive().safe(),
+    favoriteId: z.number().int().positive().safe(),
+    favoriteOrder: z.number().int().positive().safe(),
+    bvid: bvidSchema,
+  })
+  .strict()
+
+const siteFirstVideoMappingSchema = z
+  .object({
+    posterId: z.string().regex(/^site-first-[a-z0-9]+(?:-[a-z0-9]+)*$/),
+    chronology: z.number().int().positive().safe(),
+    favoriteId: z.number().int().positive().safe(),
+    favoriteOrder: z.number().int().positive().safe(),
+    bvid: bvidSchema,
+    historyRank: z.literal(1),
+  })
+  .strict()
+
+const bilibiliFolderSnapshotSchema = z
+  .object({
+    favoriteId: z.number().int().positive().safe(),
+    title: z.string().trim().min(1),
+    sourceUrl: httpUrlSchema,
+    reportedItemCount: z.number().int().nonnegative().safe(),
+    visibleItemCount: z.number().int().nonnegative().safe(),
+    latestPage: z
+      .object({
+        pageNumber: z.literal(1),
+        pageSize: z.number().int().positive().safe(),
+        items: z.array(bilibiliVideoSchema).min(1),
+      })
+      .strict(),
+  })
+  .strict()
+
+export const bilibiliVideoCatalogSchema = z
+  .object({
+    schemaVersion: z.literal(1),
+    generatedFrom: z.literal('travelling-bingo-bilibili-video-catalog'),
+    retrievedAt: isoDateTimeSchema,
+    ownerMid: z.number().int().positive().safe(),
+    folders: z
+      .object({
+        millionShots: bilibiliFolderSnapshotSchema,
+        siteFirsts: bilibiliFolderSnapshotSchema,
+      })
+      .strict(),
+    videos: z.record(bvidSchema, bilibiliVideoSchema),
+    posterMappings: z
+      .object({
+        millionShots: z.array(millionShotVideoMappingSchema).min(1),
+        siteFirsts: z.array(siteFirstVideoMappingSchema).min(1),
+      })
+      .strict(),
+    recordPlayer: z
+      .object({
+        sourceFavoriteId: z.number().int().positive().safe(),
+        selectionRule: z.string().trim().min(1),
+        items: z.array(bilibiliVideoSchema).length(7),
+      })
+      .strict(),
+  })
+  .strict()
+  .superRefine((catalog, context) => {
+    for (const [bvid, video] of Object.entries(catalog.videos)) {
+      if (video.bvid !== bvid) {
+        context.addIssue({
+          code: 'custom',
+          path: ['videos', bvid, 'bvid'],
+          message: '视频索引键必须与条目 bvid 一致',
+        })
+      }
+    }
+
+    if (catalog.recordPlayer.sourceFavoriteId !== catalog.folders.millionShots.favoriteId) {
+      context.addIssue({
+        code: 'custom',
+        path: ['recordPlayer', 'sourceFavoriteId'],
+        message: '唱片机曲库必须来自百万直拍收藏夹',
+      })
+    }
+
+    const seenRecordPlayerVideos = new Set<string>()
+
+    catalog.recordPlayer.items.forEach((video, index) => {
+      const indexed = catalog.videos[video.bvid]
+      if (indexed === undefined) {
+        context.addIssue({
+          code: 'custom',
+          path: ['recordPlayer', 'items', index, 'bvid'],
+          message: '唱片机曲目必须存在于视频索引中',
+        })
+      } else if (
+        !videosMatch(video, indexed) ||
+        video.favoriteId !== indexed.favoriteId ||
+        video.favoriteOrder !== indexed.favoriteOrder
+      ) {
+        context.addIssue({
+          code: 'custom',
+          path: ['recordPlayer', 'items', index],
+          message: '唱片机曲目必须与视频索引内容一致',
+        })
+      }
+      if (seenRecordPlayerVideos.has(video.bvid)) {
+        context.addIssue({
+          code: 'custom',
+          path: ['recordPlayer', 'items', index, 'bvid'],
+          message: '唱片机曲目不能重复',
+        })
+      }
+      seenRecordPlayerVideos.add(video.bvid)
+
+      const latestPageVideo = catalog.folders.millionShots.latestPage.items[index]
+      if (
+        latestPageVideo === undefined ||
+        !videosMatch(video, latestPageVideo) ||
+        video.favoriteId !== latestPageVideo.favoriteId ||
+        video.favoriteOrder !== latestPageVideo.favoriteOrder
+      ) {
+        context.addIssue({
+          code: 'custom',
+          path: ['recordPlayer', 'items', index],
+          message: '唱片机曲库必须按百万直拍收藏夹最新页前七项排列',
+        })
+      }
+    })
+
+    const seenPosterIds = new Set<string>()
+    for (const [category, mappings] of Object.entries(catalog.posterMappings)) {
+      mappings.forEach((mapping, index) => {
+        if (catalog.videos[mapping.bvid] === undefined) {
+          context.addIssue({
+            code: 'custom',
+            path: ['posterMappings', category, index, 'bvid'],
+            message: '海报映射指向了视频索引中不存在的 bvid',
+          })
+        }
+        if (seenPosterIds.has(mapping.posterId)) {
+          context.addIssue({
+            code: 'custom',
+            path: ['posterMappings', category, index, 'posterId'],
+            message: '每张海报只能绑定一条视频',
+          })
+        }
+        seenPosterIds.add(mapping.posterId)
+      })
+    }
+
+    for (const [folderName, folder] of Object.entries(catalog.folders)) {
+      folder.latestPage.items.forEach((video, index) => {
+        const indexed = catalog.videos[video.bvid]
+        if (indexed === undefined || !videosMatch(video, indexed)) {
+          context.addIssue({
+            code: 'custom',
+            path: ['folders', folderName, 'latestPage', 'items', index],
+            message: '收藏夹快照必须与视频索引内容一致',
+          })
+        }
+      })
+    }
+  })
+
 export type CollectibleImage = z.infer<typeof collectibleImageSchema>
 export type MillionShotItem = z.infer<typeof millionShotItemSchema>
 export type SiteFirstItem = z.infer<typeof siteFirstItemSchema>
 export type PostcardItem = z.infer<typeof postcardItemSchema>
+export type FriendItem = z.infer<typeof friendItemSchema>
+export type FriendId = z.infer<typeof friendIdSchema>
+export type BilibiliVideo = z.infer<typeof bilibiliVideoSchema>
 export type RemoteCollectibleItem = z.infer<typeof remoteCollectibleItemSchema>
 export type CollectibleItem = z.infer<typeof collectibleItemSchema>
 export type CollectibleCategory = CollectibleItem['category']
 export type MillionShotCatalogSource = z.infer<typeof millionShotCatalogSchema>
 export type SiteFirstCatalogSource = z.infer<typeof siteFirstCatalogSchema>
 export type PostcardCatalogSource = z.infer<typeof postcardCatalogSchema>
+export type FriendCatalogSource = z.infer<typeof friendCatalogSchema>
+export type BilibiliVideoCatalogSource = z.infer<typeof bilibiliVideoCatalogSchema>

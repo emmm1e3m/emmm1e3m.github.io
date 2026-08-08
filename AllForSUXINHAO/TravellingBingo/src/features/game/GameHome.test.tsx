@@ -1,7 +1,7 @@
 import { fireEvent, render, screen, waitFor, within } from '@testing-library/react'
 import { useState } from 'react'
 
-import type { CollectibleItem, ContentCatalog } from '@/content'
+import type { BilibiliVideo, CollectibleItem, ContentCatalog } from '@/content'
 import { createInitialGameState, type GameState } from '@/domain'
 
 import { STAGE_TEST_URL } from './gameCopy'
@@ -31,6 +31,42 @@ const catalog: ContentCatalog = {
   byId: { [postcard.id]: postcard },
   categoryCounts: { postcard: 1, 'million-shot': 0, 'site-first': 0 },
   siteFirstChronology: [],
+  friends: [],
+  friendById: {},
+  videosByBvid: {},
+  recordPlayerVideos: [],
+}
+
+const albumVideo: BilibiliVideo = {
+  bvid: 'BV1videoBridge',
+  title: '收藏播放器桥接测试',
+  authorName: '苏新皓',
+  authorMid: 1,
+  publishedAt: '2026-06-19T12:00:00.000Z',
+  durationSeconds: 112,
+  coverUrl: 'https://i0.hdslb.com/video-bridge.jpg',
+  sourceUrl: 'https://www.bilibili.com/video/BV1videoBridge',
+  favoriteId: 1,
+  favoriteOrder: 1,
+}
+
+const videoCollectible = {
+  ...postcard,
+  id: 'million-shot-video-bridge',
+  category: 'million-shot',
+  title: '带视频的收藏',
+  metadata: { sequence: 1, video: albumVideo },
+} as CollectibleItem
+
+const videoCatalog: ContentCatalog = {
+  items: [videoCollectible],
+  byId: { [videoCollectible.id]: videoCollectible },
+  categoryCounts: { postcard: 0, 'million-shot': 1, 'site-first': 0 },
+  siteFirstChronology: [],
+  friends: [],
+  friendById: {},
+  videosByBvid: { [albumVideo.bvid]: albumVideo },
+  recordPlayerVideos: [],
 }
 
 function collectedGame(): GameState {
@@ -47,8 +83,22 @@ function collectedGame(): GameState {
   }
 }
 
+function videoCollectedGame(): GameState {
+  const game = createInitialGameState({ now: 1_000, seed: 'video-bridge-test' })
+  return {
+    ...game,
+    collections: {
+      [videoCollectible.id]: {
+        id: videoCollectible.id,
+        firstObtainedAt: 1_000,
+        duplicateCount: 0,
+      },
+    },
+  }
+}
+
 function GameHarness() {
-  const [panel, setPanel] = useState<PanelId>('status')
+  const [panel, setPanel] = useState<PanelId | null>('status')
   return (
     <GameHome
       game={collectedGame()}
@@ -66,11 +116,55 @@ function GameHarness() {
   )
 }
 
+function RoomPanelHarness() {
+  const [panel, setPanel] = useState<PanelId | null>(null)
+  return (
+    <GameHome
+      game={collectedGame()}
+      catalog={catalog}
+      now={1_000}
+      panel={panel}
+      dirty={false}
+      reward={null}
+      onPanel={setPanel}
+      onAction={vi.fn()}
+      onExit={vi.fn()}
+      onBackup={vi.fn()}
+      onDismissReward={vi.fn()}
+    />
+  )
+}
+
+function activeGame(kind: 'music' | 'rest'): GameState {
+  const game = collectedGame()
+  return {
+    ...game,
+    activeActivity: {
+      runId: `${kind}-run`,
+      kind,
+      startedAt: 1_000,
+      endsAt: 113_000,
+      rewardSeed: `${kind}-reward`,
+      rewardPlan: {
+        baseApples: 0,
+        modifierApples: 0,
+        collection: null,
+        friendId: null,
+        giftItemId: null,
+        guaranteedByPity: false,
+        pityAfterClaim: null,
+      },
+      supplyId: null,
+      usedLuckyApple: false,
+    },
+  }
+}
+
 async function openAlbum() {
   const opener = screen.getAllByRole('button', { name: '打开收藏墙' })[0]
   opener.focus()
   fireEvent.click(opener)
-  const dialog = await screen.findByRole('dialog', { name: '一路珍藏的风景' })
+  const dialog = await screen.findByRole('dialog', { name: '饼狗的收藏墙' })
   const close = within(dialog).getByRole('button', { name: '关闭收藏墙' })
   await waitFor(() => expect(close).toHaveFocus())
   return { opener, dialog, close }
@@ -119,7 +213,7 @@ describe('收藏墙模态框', () => {
     fireEvent.keyDown(detail, { key: 'Escape' })
     await waitFor(() => expect(detail).not.toBeInTheDocument())
     await waitFor(() => expect(card).toHaveFocus())
-    expect(screen.getByRole('dialog', { name: '一路珍藏的风景' })).toBeInTheDocument()
+    expect(screen.getByRole('dialog', { name: '饼狗的收藏墙' })).toBeInTheDocument()
   })
 
   it('只展示已获得的分类和卡片，不渲染灰色待解锁内容', () => {
@@ -134,6 +228,10 @@ describe('收藏墙模态框', () => {
       byId: { [postcard.id]: postcard, [lockedMillion.id]: lockedMillion },
       categoryCounts: { postcard: 1, 'million-shot': 1, 'site-first': 0 },
       siteFirstChronology: [],
+      friends: [],
+      friendById: {},
+      videosByBvid: {},
+      recordPlayerVideos: [],
     }
     render(
       <GameHome
@@ -151,15 +249,60 @@ describe('收藏墙模态框', () => {
       />,
     )
 
-    const dialog = screen.getByRole('dialog', { name: '一路珍藏的风景' })
+    const dialog = screen.getByRole('dialog', { name: '饼狗的收藏墙' })
     expect(within(dialog).getByRole('tab', { name: '明信片' })).toBeInTheDocument()
     expect(within(dialog).queryByRole('tab', { name: '百万直拍' })).not.toBeInTheDocument()
     expect(within(dialog).queryByText('尚未获得的百万直拍')).not.toBeInTheDocument()
     expect(within(dialog).queryByText('???')).not.toBeInTheDocument()
   })
+
+  it('收藏播放器桥接事件同时携带收藏 ID 与 BV', () => {
+    const onAction = vi.fn()
+    render(
+      <GameHome
+        game={videoCollectedGame()}
+        catalog={videoCatalog}
+        now={1_000}
+        panel="album"
+        dirty={false}
+        reward={null}
+        onPanel={vi.fn()}
+        onAction={onAction}
+        onExit={vi.fn()}
+        onBackup={vi.fn()}
+        onDismissReward={vi.fn()}
+      />,
+    )
+
+    fireEvent.click(screen.getByRole('button', { name: /带视频的收藏/u }))
+    fireEvent.click(screen.getByRole('button', { name: '打开播放器' }))
+
+    expect(onAction).toHaveBeenCalledWith({
+      type: 'task/event',
+      event: {
+        type: 'collection-player-opened',
+        collectionId: videoCollectible.id,
+        bvid: albumVideo.bvid,
+      },
+      now: expect.any(Number),
+    })
+  })
 })
 
 describe('房间互动', () => {
+  it('待机时铺满房间，设施展开信息栏，点房间空白再收起', () => {
+    render(<RoomPanelHarness />)
+
+    expect(screen.queryByRole('complementary')).not.toBeInTheDocument()
+    expect(screen.getByRole('button', { name: '查看房屋玩法说明' })).toBeInTheDocument()
+
+    fireEvent.click(screen.getByRole('button', { name: '去电脑前' }))
+    expect(screen.getByRole('complementary')).toBeInTheDocument()
+
+    fireEvent.click(screen.getByRole('button', { name: '收起信息栏，查看完整房间' }))
+    expect(screen.queryByRole('complementary')).not.toBeInTheDocument()
+  })
+
   it('房间文字按钮派发原子互动，点击饼狗打开可访问菜单', () => {
     const onAction = vi.fn()
     render(
@@ -193,8 +336,9 @@ describe('房间互动', () => {
     )
   })
 
-  it('床铺按钮直接让饼狗休息', () => {
+  it('床铺按钮先移动到床边并打开休息面板', () => {
     const onAction = vi.fn()
+    const onPanel = vi.fn()
     render(
       <GameHome
         game={collectedGame()}
@@ -203,7 +347,7 @@ describe('房间互动', () => {
         panel="status"
         dirty={false}
         reward={null}
-        onPanel={vi.fn()}
+        onPanel={onPanel}
         onAction={onAction}
         onExit={vi.fn()}
         onBackup={vi.fn()}
@@ -212,7 +356,34 @@ describe('房间互动', () => {
     )
 
     fireEvent.click(screen.getByRole('button', { name: '去床边' }))
-    expect(onAction).toHaveBeenCalledWith(expect.objectContaining({ type: 'pet/rest' }))
+    expect(onPanel).toHaveBeenCalledWith('rest')
+    expect(onAction).toHaveBeenCalledWith(
+      expect.objectContaining({ type: 'room/interact', area: 'bed' }),
+    )
+  })
+
+  it('冰箱商品按钮只显示 N🍎，不重复补充文案', () => {
+    const { container } = render(
+      <GameHome
+        game={collectedGame()}
+        catalog={catalog}
+        now={1_000}
+        panel="fridge"
+        dirty={false}
+        reward={null}
+        onPanel={vi.fn()}
+        onAction={vi.fn()}
+        onExit={vi.fn()}
+        onBackup={vi.fn()}
+        onDismissReward={vi.fn()}
+      />,
+    )
+
+    const purchaseButtons = Array.from(
+      container.querySelectorAll<HTMLButtonElement>('.shop-item button'),
+    )
+    expect(purchaseButtons).toHaveLength(5)
+    for (const button of purchaseButtons) expect(button).toHaveTextContent(/^\d+🍎$/u)
   })
 
   it('旅行期间不渲染饼狗，并隐藏门口活动按钮', () => {
@@ -230,7 +401,8 @@ describe('房间互动', () => {
           baseApples: 0,
           modifierApples: 0,
           collection: null,
-          friendEventId: null,
+          friendId: null,
+          giftItemId: null,
           guaranteedByPity: false,
           pityAfterClaim: null,
         },
@@ -278,6 +450,154 @@ describe('房间互动', () => {
     await waitFor(() =>
       expect(container.querySelector('.day-night-overlay')).toHaveClass('is-playing'),
     )
+  })
+
+  it('只改变饼狗休息次数不会绕过 App 触发日夜过场', () => {
+    const game = collectedGame()
+    const props = {
+      catalog,
+      now: 1_000,
+      panel: 'status' as const,
+      dirty: false,
+      reward: null,
+      onPanel: vi.fn(),
+      onAction: vi.fn(),
+      onExit: vi.fn(),
+      onBackup: vi.fn(),
+      onDismissReward: vi.fn(),
+    }
+    const { container, rerender } = render(<GameHome {...props} game={game} />)
+
+    rerender(
+      <GameHome
+        {...props}
+        game={{ ...game, pet: { ...game.pet, restCount: game.pet.restCount + 1 } }}
+      />,
+    )
+
+    expect(container.querySelector('.game-page')).not.toHaveClass('is-sleeping')
+    expect(container.querySelector('.day-night-overlay')).not.toHaveClass('is-playing')
+  })
+
+  it('移除休息过场键时不会被当作一次成功休息', () => {
+    const game = collectedGame()
+    const props = {
+      game,
+      catalog,
+      now: 1_000,
+      panel: 'status' as const,
+      dirty: false,
+      reward: null,
+      onPanel: vi.fn(),
+      onAction: vi.fn(),
+      onExit: vi.fn(),
+      onBackup: vi.fn(),
+      onDismissReward: vi.fn(),
+    }
+    const { container, rerender } = render(<GameHome {...props} restTransitionKey={0} />)
+
+    rerender(<GameHome {...props} />)
+
+    expect(container.querySelector('.game-page')).not.toHaveClass('is-sleeping')
+    expect(container.querySelector('.day-night-overlay')).not.toHaveClass('is-playing')
+  })
+
+  it('取消或调试清除休息运行时不播放睡醒过场', () => {
+    const props = {
+      catalog,
+      now: 2_000,
+      panel: null,
+      dirty: false,
+      reward: null,
+      onPanel: vi.fn(),
+      onAction: vi.fn(),
+      onExit: vi.fn(),
+      onBackup: vi.fn(),
+      onDismissReward: vi.fn(),
+      restTransitionKey: 0,
+    }
+    const { container, rerender } = render(<GameHome {...props} game={activeGame('rest')} />)
+
+    rerender(<GameHome {...props} game={collectedGame()} />)
+
+    expect(container.querySelector('.game-page')).not.toHaveClass('is-sleeping')
+    expect(container.querySelector('.day-night-overlay')).not.toHaveClass('is-playing')
+  })
+
+  it('新活动开始会关闭饼狗菜单，领取完成后不会恢复旧菜单', () => {
+    const props = {
+      catalog,
+      now: 2_000,
+      panel: null,
+      dirty: false,
+      reward: null,
+      onPanel: vi.fn(),
+      onAction: vi.fn(),
+      onExit: vi.fn(),
+      onBackup: vi.fn(),
+      onDismissReward: vi.fn(),
+    }
+    const { rerender } = render(<GameHome {...props} game={collectedGame()} />)
+    fireEvent.click(screen.getByRole('button', { name: '饼狗，打开行动菜单' }))
+    expect(screen.getByRole('dialog', { name: '饼狗想做什么' })).toBeInTheDocument()
+
+    rerender(<GameHome {...props} game={activeGame('music')} />)
+    expect(screen.queryByRole('dialog', { name: '饼狗想做什么' })).not.toBeInTheDocument()
+
+    rerender(<GameHome {...props} game={collectedGame()} />)
+    expect(screen.queryByRole('dialog', { name: '饼狗想做什么' })).not.toBeInTheDocument()
+  })
+
+  it('休息读条一开始就暗场，饼狗脚底落在床面，并提供返回入口', () => {
+    const onPanel = vi.fn()
+    const { container } = render(
+      <GameHome
+        game={activeGame('rest')}
+        catalog={catalog}
+        now={2_000}
+        panel={null}
+        dirty={false}
+        reward={null}
+        onPanel={onPanel}
+        onAction={vi.fn()}
+        onExit={vi.fn()}
+        onBackup={vi.fn()}
+        onDismissReward={vi.fn()}
+      />,
+    )
+
+    const overlay = container.querySelector<HTMLElement>('.day-night-overlay')
+    const mascot = screen.getByRole('button', { name: /正在睡觉中的饼狗/u })
+    expect(overlay).toHaveClass('is-resting')
+    expect(Number(overlay?.style.getPropertyValue('--rest-darkness'))).toBeGreaterThan(0)
+    expect(mascot.style.getPropertyValue('--pet-x')).toBe('27%')
+    expect(mascot.style.getPropertyValue('--pet-y')).toBe('30%')
+    expect(mascot.querySelector('.mascot-sprite--sleep')).toBeInTheDocument()
+
+    fireEvent.click(screen.getByRole('button', { name: '返回' }))
+    expect(onPanel).toHaveBeenCalledWith('activity')
+  })
+
+  it('弹琴读条中仍显示琴键和房间的弹琴设施', () => {
+    render(
+      <GameHome
+        game={activeGame('music')}
+        catalog={catalog}
+        now={2_000}
+        panel="activity"
+        dirty={false}
+        reward={null}
+        onPanel={vi.fn()}
+        onAction={vi.fn()}
+        onExit={vi.fn()}
+        onBackup={vi.fn()}
+        onDismissReward={vi.fn()}
+      />,
+    )
+
+    expect(screen.getByRole('button', { name: '弹弹琴' })).toBeInTheDocument()
+    const keyboard = screen.getByRole('group', { name: 'C4 到 B5 的两八度琴键' })
+    expect(within(keyboard).getAllByRole('button')).toHaveLength(24)
   })
 })
 
@@ -341,7 +661,7 @@ describe('舞台测试与调试控件', () => {
     )
 
     expect(document.querySelector('select')).not.toBeInTheDocument()
-    expect(screen.getAllByRole('slider')).toHaveLength(4)
+    expect(screen.getAllByRole('slider')).toHaveLength(5)
     expect(screen.getByRole('button', { name: '112 秒' })).toHaveAttribute('aria-pressed', 'true')
   })
 })

@@ -10,7 +10,7 @@ export const ITEM_COPY: Record<ItemId, { name: string; note: string }> = {
 
 export const ACTIVITY_COPY: Record<
   ActivityKind,
-  { name: string; verb: string; note: string; supply: ItemId; refuse: string }
+  { name: string; verb: string; note: string; supply: ItemId | null; refuse: string }
 > = {
   travel: {
     name: '出去旅行',
@@ -22,7 +22,7 @@ export const ACTIVITY_COPY: Record<
   stream: {
     name: '认真刷播',
     verb: '刷播中',
-    note: '在电脑前好好陪伴，也许会遇见百万直拍。',
+    note: '在电脑前好好陪伴，加速百万直拍的达成。',
     supply: 'signal-headphones',
     refuse: '饼狗今天不想坐在电脑前',
   },
@@ -32,6 +32,20 @@ export const ACTIVITY_COPY: Record<
     note: '向珍贵的全站第一发起一次冲刺。',
     supply: 'trend-toolbox',
     refuse: '饼狗今天想把力气留给别的事',
+  },
+  music: {
+    name: '一起弹琴',
+    verb: '音乐时间',
+    note: '在旋律里坐一会儿，也许会有熟悉的朋友循声而来。',
+    supply: null,
+    refuse: '饼狗今天想让房间安静一点',
+  },
+  rest: {
+    name: '好好睡一觉',
+    verb: '睡觉中',
+    note: '窗外会慢慢暗下来，再和醒来的饼狗迎接新一天。',
+    supply: null,
+    refuse: '饼狗已经在床边准备好啦',
   },
 }
 

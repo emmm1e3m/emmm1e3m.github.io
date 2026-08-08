@@ -1,4 +1,6 @@
 import millionShotCatalogJson from '../../public/data/million-shot-posters.json'
+import friendCatalogJson from '../../public/data/friends.json'
+import videoCatalogJson from '../../public/data/video-catalog.json'
 import postcardCatalogJson from '../../public/data/postcards.json'
 import siteFirstCatalogJson from '../../public/data/site-firsts.json'
 
@@ -7,6 +9,9 @@ import {
   collectibleItemSchema,
   ContentCatalogLoadError,
   getCollectibleById,
+  getFriendById,
+  friendCatalogSchema,
+  bilibiliVideoCatalogSchema,
   loadContentCatalog,
   mergeContentCatalogs,
   millionShotCatalogSchema,
@@ -18,12 +23,15 @@ import {
 const millionShotCatalog = millionShotCatalogSchema.parse(millionShotCatalogJson)
 const siteFirstCatalog = siteFirstCatalogSchema.parse(siteFirstCatalogJson)
 const postcardCatalog = postcardCatalogSchema.parse(postcardCatalogJson)
+const friendCatalog = friendCatalogSchema.parse(friendCatalogJson)
+const videoCatalog = bilibiliVideoCatalogSchema.parse(videoCatalogJson)
 
 describe('收藏目录契约', () => {
   it('校验公开海报目录与真实来源明信片契约', () => {
     expect(millionShotCatalog.items).toHaveLength(millionShotCatalog.itemCount)
     expect(siteFirstCatalog.items).toHaveLength(siteFirstCatalog.itemCount)
     expect(postcardCatalog.items).toHaveLength(postcardCatalog.itemCount)
+    expect(friendCatalog.items).toHaveLength(friendCatalog.itemCount)
     expect(millionShotCatalog.itemCount).toBeGreaterThan(0)
     expect(siteFirstCatalog.itemCount).toBeGreaterThan(0)
     expect(postcardCatalog.itemCount).toBeGreaterThan(0)
@@ -32,6 +40,36 @@ describe('收藏目录契约', () => {
       /^assets\/collectibles\/postcards\/.+\.webp$/,
     )
     expect(collectibleItemSchema.parse(postcardCatalog.items[0]).category).toBe('postcard')
+  })
+
+  it('公开至少 100 张人工策展明信片，同时保留旧存档使用的稳定 ID 与标题', () => {
+    const legacyTitles = {
+      'postcard-2025-01-0002': '蓝天下的涂鸦墙',
+      'postcard-2025-05-0014': '水边小城',
+      'postcard-2025-07-0005': '收藏一场落日',
+      'postcard-2025-09-0019': '锦鲤池',
+      'postcard-2025-10-0032': '自由的风',
+      'postcard-2025-12-0005': '苹果小画',
+      'postcard-2025-12-0021': '雪林小径',
+      'postcard-2026-02-0020': '蓝天下的街角',
+      'postcard-2026-03-0010': '梦里片场',
+      'postcard-2026-03-0020': '旅途小憩',
+      'postcard-2026-04-0015': '阳光下的小狗',
+      'postcard-2026-06-0023': '山间缆车',
+    }
+
+    expect(postcardCatalog.itemCount).toBeGreaterThanOrEqual(100)
+    expect(new Set(postcardCatalog.items.map((item) => item.metadata.original.sha256)).size).toBe(
+      postcardCatalog.itemCount,
+    )
+    expect(
+      postcardCatalog.items.every(
+        (item) => item.metadata.original.width >= 960 && item.metadata.original.height >= 960,
+      ),
+    ).toBe(true)
+    for (const [id, title] of Object.entries(legacyTitles)) {
+      expect(postcardCatalog.items.find((item) => item.id === id)?.title).toBe(title)
+    }
   })
 
   it('拒绝数量声明与 items 不一致的目录', () => {
@@ -90,6 +128,24 @@ describe('收藏目录契约', () => {
     expect(parsed.items).toHaveLength(siteFirstCatalog.itemCount + 1)
   })
 
+  it('拒绝重复曲目或悬空海报视频映射', () => {
+    const duplicateTrack = structuredClone(videoCatalogJson)
+    duplicateTrack.recordPlayer.items[1] = structuredClone(duplicateTrack.recordPlayer.items[0]!)
+    expect(bilibiliVideoCatalogSchema.safeParse(duplicateTrack).success).toBe(false)
+
+    const unknownVideo = structuredClone(videoCatalogJson)
+    unknownVideo.posterMappings.millionShots[0]!.bvid = 'BV0000000000'
+    expect(bilibiliVideoCatalogSchema.safeParse(unknownVideo).success).toBe(false)
+
+    const tooShort = structuredClone(videoCatalogJson)
+    tooShort.recordPlayer.items = tooShort.recordPlayer.items.slice(0, 1)
+    expect(bilibiliVideoCatalogSchema.safeParse(tooShort).success).toBe(false)
+
+    const reversed = structuredClone(videoCatalogJson)
+    reversed.recordPlayer.items.reverse()
+    expect(bilibiliVideoCatalogSchema.safeParse(reversed).success).toBe(false)
+  })
+
   it('拒绝越过公开目录的图片路径', () => {
     const invalid = structuredClone(postcardCatalogJson)
     invalid.items[0]!.images[0]!.path = '../private/original.webp'
@@ -105,7 +161,13 @@ describe('收藏目录契约', () => {
 
 describe('目录合并与收藏进度', () => {
   it('合并真实明信片、百万直拍与全站第一', () => {
-    const catalog = mergeContentCatalogs(millionShotCatalog, siteFirstCatalog, postcardCatalog)
+    const catalog = mergeContentCatalogs(
+      millionShotCatalog,
+      siteFirstCatalog,
+      postcardCatalog,
+      friendCatalog,
+      videoCatalog,
+    )
 
     expect(catalog.items).toHaveLength(
       postcardCatalog.itemCount + millionShotCatalog.itemCount + siteFirstCatalog.itemCount,
@@ -120,10 +182,32 @@ describe('目录合并与收藏进度', () => {
     expect(getCollectibleById(catalog, 'postcard-2025-01-0002')?.category).toBe('postcard')
     expect(getCollectibleById(catalog, 'million-shot-152')?.title).toBe('POWER')
     expect(getCollectibleById(catalog, 'missing')).toBeUndefined()
+    expect(getFriendById(catalog, 'signal-dog')?.name).toBe('信号狗')
+    expect(catalog.recordPlayerVideos).toHaveLength(videoCatalog.recordPlayer.items.length)
+  })
+
+  it('拒绝海报内嵌视频与集中视频目录发生漂移', () => {
+    const driftedMillionShots = structuredClone(millionShotCatalog)
+    driftedMillionShots.items[0]!.metadata.video.title = '被篡改的视频标题'
+    expect(() =>
+      mergeContentCatalogs(
+        driftedMillionShots,
+        siteFirstCatalog,
+        postcardCatalog,
+        friendCatalog,
+        videoCatalog,
+      ),
+    ).toThrow('视频元数据与视频目录不一致')
   })
 
   it('去重已收藏 ID，并单独报告旧存档中的未知 ID', () => {
-    const catalog = mergeContentCatalogs(millionShotCatalog, siteFirstCatalog, postcardCatalog)
+    const catalog = mergeContentCatalogs(
+      millionShotCatalog,
+      siteFirstCatalog,
+      postcardCatalog,
+      friendCatalog,
+      videoCatalog,
+    )
     const progress = calculateCollectionProgress(catalog, [
       'postcard-2025-01-0002',
       'million-shot-152',
@@ -157,7 +241,7 @@ describe('运行时目录加载', () => {
     )
   })
 
-  it('并行加载三个真实资源目录并返回 ID 索引', async () => {
+  it('并行加载收藏与好友目录并返回 ID 索引', async () => {
     const requests: string[] = []
     const mockFetch = vi.fn(async (input: RequestInfo | URL) => {
       const url = String(input)
@@ -166,7 +250,11 @@ describe('运行时目录加载', () => {
         ? millionShotCatalogJson
         : url.endsWith('site-firsts.json')
           ? siteFirstCatalogJson
-          : postcardCatalogJson
+          : url.endsWith('postcards.json')
+            ? postcardCatalogJson
+            : url.endsWith('friends.json')
+              ? friendCatalogJson
+              : videoCatalogJson
       return new Response(JSON.stringify(body), {
         status: 200,
         headers: { 'Content-Type': 'application/json' },
@@ -182,8 +270,11 @@ describe('运行时目录加载', () => {
       '/AllForSUXINHAO/TravellingBingo/data/million-shot-posters.json',
       '/AllForSUXINHAO/TravellingBingo/data/site-firsts.json',
       '/AllForSUXINHAO/TravellingBingo/data/postcards.json',
+      '/AllForSUXINHAO/TravellingBingo/data/friends.json',
+      '/AllForSUXINHAO/TravellingBingo/data/video-catalog.json',
     ])
     expect(catalog.byId['postcard-2025-01-0002']?.category).toBe('postcard')
+    expect(catalog.friendById['bili-bing']?.name).toBe('饼哩饼哩')
   })
 
   it('为网络错误保留目录 URL 与原始原因', async () => {

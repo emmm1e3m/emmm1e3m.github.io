@@ -1,11 +1,14 @@
 import { describe, expect, it } from 'vitest'
 
 import { deriveActivityTiming } from '../activities/timing'
+import { interestForActivity } from '../pet/preferences'
 import { canUseLuckyApple, getLuckyAppleAvailability } from '../rewards/luckyApple'
+import { createRandomCursor, nextRandom } from '../rewards/prng'
 import {
   BASE_ACTIVITY_DURATION_MS,
   INITIAL_APPLES,
   ITEM_PRICES,
+  MAX_COMPANION_DAYS,
   PET_ENCOURAGEMENT_APPLE_COST,
 } from './constants'
 import { createInitialGameState } from './createGameState'
@@ -32,11 +35,13 @@ function withItem(state: GameState, itemId: ItemId, quantity = 1): GameState {
 }
 
 function willing(state: GameState, kind: ActivityKind): GameState {
+  const interest = interestForActivity(kind)
+  if (interest === null) return state
   return {
     ...state,
     pet: {
       ...state.pet,
-      preferences: { ...state.pet.preferences, [kind]: true },
+      preferences: { ...state.pet.preferences, [interest]: true },
       tired: false,
     },
   }
@@ -56,16 +61,39 @@ function withProbability(
   }
 }
 
-describe('旅行饼狗 v2 领域状态', () => {
-  it('新游戏使用 schema v2、112 秒活动、三条任务与三条独立随机序列', () => {
+function seedWhoseRewardRollIsBelow(limit: number, rollIndex: number): string {
+  for (let index = 0; index < 10_000; index += 1) {
+    const seed = `game-reward-boundary-${rollIndex}-${index}`
+    let cursor = createRandomCursor(`${seed}:reward:0`)
+    let value = 0
+    for (let roll = 0; roll <= rollIndex; roll += 1) {
+      const next = nextRandom(cursor)
+      cursor = next.cursor
+      value = next.value
+    }
+    if (value < limit) return seed
+  }
+  throw new Error(`没有找到小于 ${limit} 的第 ${rollIndex + 1} 次奖励随机值`)
+}
+
+describe('旅行饼狗 v3 领域状态', () => {
+  it('新游戏使用 schema v3、用户名、零天陪伴、112 秒活动与独立随机序列', () => {
     const state = createInitialGameState({ now: 1_000, seed: 'save-seed' })
 
-    expect(state.schemaVersion).toBe(2)
+    expect(state.schemaVersion).toBe(3)
+    expect(state.profile).toMatchObject({ displayName: '你', companionDays: 0 })
+    expect(state.friends).toEqual({})
     expect(state.economy.apples).toBe(INITIAL_APPLES)
     expect(state.gameBalance).toEqual(DEFAULT_GAME_BALANCE)
     expect(state.gameBalance).toEqual({
       activityDurationMs: 112_000,
-      probabilities: { postcard: 1, millionShot: 0.4, siteFirst: 0.1, friend: 0.2 },
+      probabilities: {
+        postcard: 0.65,
+        millionShot: 0.4,
+        siteFirst: 0.1,
+        travelFriend: 0.2,
+        musicFriend: 0.2,
+      },
     })
     expect(ITEM_PRICES).toEqual({
       'travel-basic': 3,
@@ -126,6 +154,24 @@ describe('旅行饼狗 v2 领域状态', () => {
     expect(result.state).toBe(refused)
     expect(result.state.inventory).toBe(refused.inventory)
     expect(result.state.random).toBe(refused.random)
+  })
+
+  it('疲劳标记会在领域层阻止活动，即使异常存档仍把该意愿记为愿意', () => {
+    const initial = createInitialGameState({ now: 0, seed: 'tired-domain-guard' })
+    const tired: GameState = {
+      ...initial,
+      pet: {
+        ...initial.pet,
+        tired: true,
+        preferences: { ...initial.pet.preferences, music: true },
+      },
+    }
+
+    const result = reduceGame(tired, { type: 'activity/start', kind: 'music', now: 100 }, catalog)
+
+    expect(result).toMatchObject({ ok: false, error: { code: 'ACTIVITY_REFUSED' } })
+    expect(result.state).toBe(tired)
+    expect(result.state.random).toBe(tired.random)
   })
 
   it('刷播和冲热都把饼狗移动到电脑，旅行期间位于屋外', () => {
@@ -218,10 +264,10 @@ describe('旅行饼狗 v2 领域状态', () => {
   it('遇见朋友概率可由同一 gameBalance 覆盖为 0% 或 100%', () => {
     const startWithFriendChance = (chance: number) => {
       let state = willing(createInitialGameState({ now: 0, seed: `friend-${chance}` }), 'travel')
-      state = withProbability(state, 'friend', chance)
+      state = withProbability(state, 'travelFriend', chance)
       return successful(
         reduceGame(state, { type: 'activity/start', kind: 'travel', now: 100 }, catalog),
-      ).state.activeActivity?.rewardPlan.friendEventId
+      ).state.activeActivity?.rewardPlan.friendId
     }
 
     expect(startWithFriendChance(0)).toBeNull()
@@ -266,16 +312,22 @@ describe('旅行饼狗 v2 领域状态', () => {
     ).toMatchObject({ ok: false, error: { code: 'DEBUG_REQUIRED' } })
 
     let debug = createInitialGameState({ now: 0, seed: 'debug', debug: true })
+    const preferences = debug.pet.preferences
     debug = successful(
       reduceGame(debug, { type: 'debug/duration-set', durationMs: 5_000 }, catalog),
     ).state
     debug = successful(
-      reduceGame(debug, { type: 'debug/probability-set', key: 'friend', value: 0.75 }, catalog),
+      reduceGame(
+        debug,
+        { type: 'debug/probability-set', key: 'travelFriend', value: 0.75 },
+        catalog,
+      ),
     ).state
     expect(debug.gameBalance).toMatchObject({
       activityDurationMs: 5_000,
-      probabilities: { friend: 0.75 },
+      probabilities: { travelFriend: 0.75 },
     })
+    expect(debug.pet.preferences).toBe(preferences)
     expect(
       reduceGame(debug, { type: 'debug/probability-set', key: 'siteFirst', value: 1.01 }, catalog),
     ).toMatchObject({ ok: false, error: { code: 'INVALID_PROBABILITY' } })
@@ -292,6 +344,7 @@ describe('旅行饼狗 v2 领域状态', () => {
 
   it('基础收藏概率已是 100% 时拒绝幸运苹果，且不消耗或推进任何状态', () => {
     let state = willing(createInitialGameState({ now: 0, seed: 'lucky-guaranteed' }), 'travel')
+    state = withProbability(state, 'postcard', 1)
     state = withItem(state, 'lucky-apple')
     const result = reduceGame(
       state,
@@ -369,22 +422,346 @@ describe('旅行饼狗 v2 领域状态', () => {
     expect(started.activeActivity?.usedLuckyApple).toBe(true)
   })
 
-  it('休息只推进偏好序列，重置心情且不改变苹果、任务或收藏奖励序列', () => {
+  it('旅行 0% 遇友和明信片时，幸运苹果加成会实际写入明信片计划', () => {
+    const seed = seedWhoseRewardRollIsBelow(0.2, 1)
+    let state = willing(createInitialGameState({ now: 0, seed, debug: true }), 'travel')
+    state = withItem(state, 'lucky-apple')
+    state = withProbability(withProbability(state, 'travelFriend', 0), 'postcard', 0)
+
+    const started = successful(
+      reduceGame(
+        state,
+        { type: 'activity/start', kind: 'travel', now: 100, useLuckyApple: true },
+        catalog,
+      ),
+    ).state
+    expect(started.activeActivity?.rewardPlan).toMatchObject({
+      friendId: null,
+      collection: { category: 'postcard' },
+    })
+  })
+
+  it.each(['music', 'rest'] as const)('%s 不接受幸运苹果且不会推进状态', (kind) => {
+    let state = willing(createInitialGameState({ now: 0, seed: `no-lucky-${kind}` }), kind)
+    state = withItem(state, 'lucky-apple')
+    const result = reduceGame(
+      state,
+      { type: 'activity/start', kind, now: 100, useLuckyApple: true },
+      catalog,
+    )
+    expect(getLuckyAppleAvailability(state, kind, catalog)).toMatchObject({
+      canUse: false,
+      reason: 'activity-not-collectible',
+    })
+    expect(result).toMatchObject({ ok: false, error: { code: 'LUCKY_APPLE_NOT_USEFUL' } })
+    expect(result.state).toBe(state)
+    expect(result.state.inventory['lucky-apple']).toBe(1)
+  })
+
+  it('旅行已必遇朋友时拒绝无效幸运苹果，苹果便当加成也计入判断', () => {
+    let state = willing(
+      createInitialGameState({ now: 0, seed: 'friend-guaranteed-lucky', debug: true }),
+      'travel',
+    )
+    state = withItem(withItem(state, 'travel-apple'), 'lucky-apple')
+    state = withProbability(state, 'travelFriend', 0.9)
+    expect(getLuckyAppleAvailability(state, 'travel', catalog, 'travel-apple')).toMatchObject({
+      canUse: false,
+      reason: 'friend-result-guaranteed',
+    })
+    const result = reduceGame(
+      state,
+      {
+        type: 'activity/start',
+        kind: 'travel',
+        now: 100,
+        supplyId: 'travel-apple',
+        useLuckyApple: true,
+      },
+      catalog,
+    )
+    expect(result).toMatchObject({ ok: false, error: { code: 'LUCKY_APPLE_NOT_USEFUL' } })
+    expect(result.state).toBe(state)
+    expect(result.state.inventory['travel-apple']).toBe(1)
+    expect(result.state.inventory['lucky-apple']).toBe(1)
+  })
+
+  it('睡觉也要完整读条；领取后才增加一天、一个苹果并推进偏好序列', () => {
     const state = createInitialGameState({ now: 0, seed: 'rest-streams' })
     const before = structuredClone(state.random.sequences)
-    const rested = successful(reduceGame(state, { type: 'pet/rest', now: 100 }, catalog))
+    const started = successful(
+      reduceGame(state, { type: 'activity/start', kind: 'rest', now: 100 }, catalog),
+    ).state
+
+    expect(started.profile.companionDays).toBe(0)
+    expect(started.economy.apples).toBe(state.economy.apples)
+    expect(started.pet.preferences).toEqual(state.pet.preferences)
+    expect(started.random.sequences).toEqual(before)
+    expect(started.pet.location).toBe('bed')
+    expect(started.activeActivity!.endsAt).toBe(100 + BASE_ACTIVITY_DURATION_MS)
+
+    const tooEarly = reduceGame(
+      started,
+      {
+        type: 'activity/claim',
+        runId: started.activeActivity!.runId,
+        now: started.activeActivity!.endsAt - 1,
+      },
+      catalog,
+    )
+    expect(tooEarly).toMatchObject({ ok: false, error: { code: 'ACTIVITY_NOT_READY' } })
+    expect(tooEarly.state).toBe(started)
+
+    const rested = successful(
+      reduceGame(
+        started,
+        {
+          type: 'activity/claim',
+          runId: started.activeActivity!.runId,
+          now: started.activeActivity!.endsAt,
+        },
+        catalog,
+      ),
+    )
 
     expect(rested.state.pet.location).toBe('bed')
     expect(rested.state.pet.restCount).toBe(1)
     expect(rested.state.pet.tired).toBe(false)
     expect(Object.values(rested.state.pet.preferences).some(Boolean)).toBe(true)
-    expect(rested.state.economy).toEqual(state.economy)
+    expect(rested.state.profile.companionDays).toBe(1)
+    expect(rested.state.economy.apples).toBe(state.economy.apples + 1)
     expect(rested.state.random.sequences).toEqual({
       reward: before.reward,
       tasks: before.tasks,
       preferences: before.preferences + 1,
     })
-    expect(rested.effects).toMatchObject([{ type: 'pet-rested', replayKey: 1 }])
+    expect(rested.effects).toMatchObject([
+      { type: 'activity-claimed', summary: { apples: { total: 1 } } },
+      { type: 'pet-rested', replayKey: 1 },
+    ])
+  })
+
+  it('陪伴天数达到上限后不能再开始扣资源，最后一天仍可正常领取', () => {
+    let capped = willing(createInitialGameState({ now: 0, seed: 'day-limit' }), 'travel')
+    capped = withItem(capped, 'lucky-apple')
+    capped = {
+      ...capped,
+      profile: { ...capped.profile, companionDays: MAX_COMPANION_DAYS },
+    }
+    const denied = reduceGame(
+      capped,
+      { type: 'activity/start', kind: 'travel', now: 100, useLuckyApple: true },
+      catalog,
+    )
+    expect(denied).toMatchObject({
+      ok: false,
+      error: { code: 'COMPANION_DAY_LIMIT_REACHED' },
+    })
+    expect(denied.state).toBe(capped)
+
+    const finalDayBase = createInitialGameState({ now: 0, seed: 'final-day' })
+    const finalDay = {
+      ...finalDayBase,
+      profile: {
+        ...finalDayBase.profile,
+        companionDays: MAX_COMPANION_DAYS - 1,
+      },
+    }
+    const started = successful(
+      reduceGame(finalDay, { type: 'activity/start', kind: 'rest', now: 100 }, catalog),
+    ).state
+    const claimed = successful(
+      reduceGame(
+        started,
+        {
+          type: 'activity/claim',
+          runId: started.activeActivity!.runId,
+          now: started.activeActivity!.endsAt,
+        },
+        catalog,
+      ),
+    )
+    expect(claimed.state.profile.companionDays).toBe(MAX_COMPANION_DAYS)
+  })
+
+  it.each(['running', 'ready'] as const)(
+    '%s 阶段取消活动都不返补给、幸运苹果或增加陪伴天数',
+    (phase) => {
+      let state = willing(createInitialGameState({ now: 0, seed: `cancel-${phase}` }), 'travel')
+      state = withItem(state, 'lucky-apple')
+      const preferences = state.pet.preferences
+      const started = successful(
+        reduceGame(
+          state,
+          { type: 'activity/start', kind: 'travel', now: 100, useLuckyApple: true },
+          catalog,
+        ),
+      ).state
+      const cancelledAt = phase === 'ready' ? started.activeActivity!.endsAt : 101
+      const randomAfterStart = started.random
+      const cancelled = successful(
+        reduceGame(
+          started,
+          { type: 'activity/cancel', runId: started.activeActivity!.runId, now: cancelledAt },
+          catalog,
+        ),
+      )
+
+      expect(cancelled.state.activeActivity).toBeNull()
+      expect(cancelled.state.inventory['travel-basic']).toBe(0)
+      expect(cancelled.state.inventory['lucky-apple']).toBe(0)
+      expect(cancelled.state.profile.companionDays).toBe(0)
+      expect(cancelled.state.pet.preferences).toBe(preferences)
+      expect(cancelled.state.random).toBe(randomAfterStart)
+      expect(cancelled.effects).toMatchObject([{ type: 'activity-cancelled', cancelledAt }])
+    },
+  )
+
+  it('取消时间不能早于活动开始时间', () => {
+    const state = willing(createInitialGameState({ now: 0, seed: 'cancel-time' }), 'travel')
+    const started = successful(
+      reduceGame(state, { type: 'activity/start', kind: 'travel', now: 100 }, catalog),
+    ).state
+    const result = reduceGame(
+      started,
+      { type: 'activity/cancel', runId: started.activeActivity!.runId, now: 99 },
+      catalog,
+    )
+    expect(result).toMatchObject({ ok: false, error: { code: 'INVALID_TIME' } })
+    expect(result.state).toBe(started)
+  })
+
+  it('刷播与冲热共享电脑意愿，完成其中一项后另一项也会被拒绝', () => {
+    let state = createInitialGameState({ now: 0, seed: 'shared-computer-interest' })
+    state = withItem(withItem(state, 'signal-headphones'), 'trend-toolbox')
+    state = willing(state, 'stream')
+    const started = successful(
+      reduceGame(state, { type: 'activity/start', kind: 'stream', now: 100 }, catalog),
+    ).state
+    const claimed = successful(
+      reduceGame(
+        started,
+        {
+          type: 'activity/claim',
+          runId: started.activeActivity!.runId,
+          now: started.activeActivity!.endsAt,
+        },
+        catalog,
+      ),
+    ).state
+
+    expect(claimed.pet.preferences.computer).toBe(false)
+    expect(
+      reduceGame(claimed, { type: 'activity/start', kind: 'trend', now: 300_000 }, catalog),
+    ).toMatchObject({ ok: false, error: { code: 'ACTIVITY_REFUSED' } })
+  })
+
+  it('旅行朋友与明信片互斥，领取后更新好友图鉴并发放确定性道具', () => {
+    let state = willing(createInitialGameState({ now: 0, seed: 'travel-friend-book' }), 'travel')
+    state = withProbability(withProbability(state, 'travelFriend', 1), 'postcard', 1)
+    const started = successful(
+      reduceGame(state, { type: 'activity/start', kind: 'travel', now: 100 }, catalog),
+    ).state
+    const plan = started.activeActivity!.rewardPlan
+    expect(plan.friendId).not.toBeNull()
+    expect(plan.collection).toBeNull()
+    expect(plan.giftItemId).not.toBeNull()
+    const giftBefore = started.inventory[plan.giftItemId!]
+
+    const claimed = successful(
+      reduceGame(
+        started,
+        {
+          type: 'activity/claim',
+          runId: started.activeActivity!.runId,
+          now: started.activeActivity!.endsAt,
+        },
+        catalog,
+      ),
+    )
+    expect(claimed.state.friends[plan.friendId!]).toMatchObject({
+      id: plan.friendId,
+      encounterCount: 1,
+      totalGiftApples: 0,
+    })
+    expect(claimed.state.inventory[plan.giftItemId!]).toBe(giftBefore + 1)
+    expect(claimed.state.profile.companionDays).toBe(1)
+    expect(claimed.effects[0]).toMatchObject({
+      type: 'activity-claimed',
+      summary: { friendId: plan.friendId, giftItemId: plan.giftItemId, giftApples: 0 },
+    })
+  })
+
+  it('电子琴只召来已认识朋友，领取后赠苹果并累计好友赠礼', () => {
+    let state = willing(createInitialGameState({ now: 0, seed: 'music-known-friend' }), 'music')
+    state = withProbability(state, 'musicFriend', 1)
+    state = {
+      ...state,
+      friends: {
+        'signal-dog': {
+          id: 'signal-dog',
+          firstMetAt: 10,
+          lastMetAt: 10,
+          encounterCount: 1,
+          totalGiftApples: 0,
+        },
+      },
+    }
+    const applesBefore = state.economy.apples
+    const started = successful(
+      reduceGame(state, { type: 'activity/start', kind: 'music', now: 100 }, catalog),
+    ).state
+    expect(started.pet.location).toBe('piano')
+    expect(started.activeActivity?.rewardPlan.friendId).toBe('signal-dog')
+
+    const claimed = successful(
+      reduceGame(
+        started,
+        {
+          type: 'activity/claim',
+          runId: started.activeActivity!.runId,
+          now: started.activeActivity!.endsAt,
+        },
+        catalog,
+      ),
+    )
+    expect(claimed.state.economy.apples).toBe(applesBefore + 3)
+    expect(claimed.state.friends['signal-dog']).toMatchObject({
+      firstMetAt: 10,
+      lastMetAt: started.activeActivity!.endsAt,
+      encounterCount: 2,
+      totalGiftApples: 3,
+    })
+    expect(claimed.effects[0]).toMatchObject({
+      summary: { friendId: 'signal-dog', giftItemId: null, giftApples: 3 },
+    })
+  })
+
+  it('好友图鉴为空时，即使音乐好友概率为 100% 也不会凭空创建好友', () => {
+    let state = willing(createInitialGameState({ now: 0, seed: 'music-empty-book' }), 'music')
+    state = withProbability(state, 'musicFriend', 1)
+    const applesBefore = state.economy.apples
+    const started = successful(
+      reduceGame(state, { type: 'activity/start', kind: 'music', now: 100 }, catalog),
+    ).state
+    expect(started.activeActivity?.rewardPlan.friendId).toBeNull()
+
+    const claimed = successful(
+      reduceGame(
+        started,
+        {
+          type: 'activity/claim',
+          runId: started.activeActivity!.runId,
+          now: started.activeActivity!.endsAt,
+        },
+        catalog,
+      ),
+    )
+    expect(claimed.state.friends).toEqual({})
+    expect(claimed.state.economy.apples).toBe(applesBefore)
+    expect(claimed.effects[0]).toMatchObject({
+      summary: { friendId: null, giftApples: 0 },
+    })
   })
 
   it('活动结束后消耗对应偏好；鼓励只花苹果，不产生任务收入', () => {
@@ -408,25 +785,30 @@ describe('旅行饼狗 v2 领域状态', () => {
     const applesBefore = claimed.economy.apples
     const tasksBefore = claimed.tasks
     const encouraged = successful(
-      reduceGame(claimed, { type: 'pet/encourage', kind: 'travel' }, catalog),
+      reduceGame(claimed, { type: 'pet/encourage', interest: 'travel' }, catalog),
     )
     expect(encouraged.state.economy.apples).toBe(applesBefore - 2)
     expect(encouraged.state.pet.preferences.travel).toBe(true)
     expect(encouraged.state.tasks).toBe(tasksBefore)
-    expect(encouraged.effects).toEqual([{ type: 'pet-encouraged', kind: 'travel', applesSpent: 2 }])
+    expect(encouraged.effects).toEqual([
+      { type: 'pet-encouraged', interest: 'travel', applesSpent: 2 },
+    ])
   })
 
-  it('活动期间不能移动或休息，失败时保持原状态引用', () => {
+  it('活动期间不能移动或开始另一段睡觉，失败时保持原状态引用', () => {
     const initial = willing(createInitialGameState({ now: 0, seed: 'busy' }), 'travel')
     const started = successful(
       reduceGame(initial, { type: 'activity/start', kind: 'travel', now: 100 }, catalog),
     ).state
     for (const action of [
       { type: 'pet/move', location: 'bed' } as const,
-      { type: 'pet/rest', now: 101 } as const,
+      { type: 'activity/start', kind: 'rest', now: 101 } as const,
     ]) {
       const result = reduceGame(started, action, catalog)
-      expect(result).toMatchObject({ ok: false, error: { code: 'PET_BUSY' } })
+      expect(result).toMatchObject({
+        ok: false,
+        error: { code: action.type === 'pet/move' ? 'PET_BUSY' : 'ACTIVITY_ALREADY_ACTIVE' },
+      })
       expect(result.state).toBe(started)
     }
   })
@@ -444,7 +826,20 @@ describe('旅行饼狗 v2 领域状态', () => {
 
   it('同一持久种子与状态产生相同奖励，睡觉和任务不会扰动奖励序列', () => {
     const base = willing(createInitialGameState({ now: 0, seed: 'independent-streams' }), 'travel')
-    const rested = successful(reduceGame(base, { type: 'pet/rest', now: 10 }, catalog)).state
+    const restStarted = successful(
+      reduceGame(base, { type: 'activity/start', kind: 'rest', now: 10 }, catalog),
+    ).state
+    const rested = successful(
+      reduceGame(
+        restStarted,
+        {
+          type: 'activity/claim',
+          runId: restStarted.activeActivity!.runId,
+          now: restStarted.activeActivity!.endsAt,
+        },
+        catalog,
+      ),
+    ).state
     const prepared = willing(rested, 'travel')
 
     const first = successful(

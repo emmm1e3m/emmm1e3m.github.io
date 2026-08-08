@@ -3,7 +3,10 @@ import { describe, expect, it } from 'vitest'
 import {
   addProbabilityBonus,
   APPLE_LUNCHBOX_FRIEND_BONUS,
+  FRIEND_GIFT_APPLES_BY_ID,
+  FRIEND_GIFT_ITEM_BY_ID,
   LUCKY_APPLE_COLLECTION_DROP_BONUS,
+  REST_COMPLETION_APPLES,
 } from '../game/gameBalance'
 import type { ActivityKind, CollectionCatalog } from '../game/types'
 import { planActivityReward } from './planReward'
@@ -41,7 +44,8 @@ const certainDrop = {
   postcard: 1,
   millionShot: 1,
   siteFirst: 1,
-  friend: 0,
+  travelFriend: 0,
+  musicFriend: 0,
 } as const
 
 function plan(
@@ -60,7 +64,9 @@ function plan(
         ? 'travel-basic'
         : kind === 'stream'
           ? 'signal-headphones'
-          : 'trend-toolbox',
+          : kind === 'trend'
+            ? 'trend-toolbox'
+            : null,
     usedLuckyApple: false,
     probabilities: certainDrop,
   })
@@ -166,7 +172,13 @@ describe('收藏奖励无重复规则', () => {
       catalog,
       ownedCollectionIds: new Set<string>(),
       supplyId: 'signal-headphones' as const,
-      probabilities: { postcard: 0, millionShot: 0, siteFirst: 0, friend: 0 },
+      probabilities: {
+        postcard: 0,
+        millionShot: 0,
+        siteFirst: 0,
+        travelFriend: 0,
+        musicFriend: 0,
+      },
     }
 
     expect(planActivityReward({ ...input, usedLuckyApple: false }).collection).toBeNull()
@@ -176,19 +188,131 @@ describe('收藏奖励无重复规则', () => {
   })
 
   it('苹果旅行便当把 0% 遇友概率提高 15 个百分点，普通便当没有加成', () => {
-    // 旅行先判定收藏；收藏概率为 0 时，第二次随机值就是朋友事件判定。
-    const rewardSeed = seedWhoseRollIsBelow(APPLE_LUNCHBOX_FRIEND_BONUS, 1)
+    const rewardSeed = seedWhoseRollIsBelow(APPLE_LUNCHBOX_FRIEND_BONUS, 0)
     const input = {
       kind: 'travel' as const,
       rewardSeed,
       catalog,
       ownedCollectionIds: new Set<string>(),
       usedLuckyApple: false,
-      probabilities: { postcard: 0, millionShot: 0, siteFirst: 0, friend: 0 },
+      probabilities: {
+        postcard: 0,
+        millionShot: 0,
+        siteFirst: 0,
+        travelFriend: 0,
+        musicFriend: 0,
+      },
     }
 
-    expect(planActivityReward({ ...input, supplyId: 'travel-basic' }).friendEventId).toBeNull()
-    expect(planActivityReward({ ...input, supplyId: 'travel-apple' }).friendEventId).not.toBeNull()
+    expect(planActivityReward({ ...input, supplyId: 'travel-basic' }).friendId).toBeNull()
+    expect(planActivityReward({ ...input, supplyId: 'travel-apple' }).friendId).not.toBeNull()
+  })
+
+  it('旅行先判朋友，命中后与明信片严格互斥并规划确定性道具', () => {
+    const reward = planActivityReward({
+      kind: 'travel',
+      rewardSeed: 'travel-mutual-exclusion',
+      catalog,
+      ownedCollectionIds: new Set(),
+      supplyId: 'travel-basic',
+      usedLuckyApple: true,
+      probabilities: {
+        postcard: 1,
+        millionShot: 1,
+        siteFirst: 1,
+        travelFriend: 1,
+        musicFriend: 1,
+      },
+    })
+
+    expect(reward.friendId).not.toBeNull()
+    expect(reward.collection).toBeNull()
+    expect(reward.giftItemId).toBe(FRIEND_GIFT_ITEM_BY_ID[reward.friendId!])
+    expect(reward.modifierApples).toBe(0)
+  })
+
+  it('音乐只会召来已经认识的朋友并按身份固定赠送苹果', () => {
+    const none = planActivityReward({
+      kind: 'music',
+      rewardSeed: 'music-no-friends',
+      catalog,
+      ownedCollectionIds: new Set(),
+      knownFriendIds: new Set(),
+      supplyId: null,
+      usedLuckyApple: false,
+      probabilities: { ...certainDrop, musicFriend: 1 },
+    })
+    expect(none.friendId).toBeNull()
+    expect(none.modifierApples).toBe(0)
+
+    const knownButNoVisit = planActivityReward({
+      kind: 'music',
+      rewardSeed: 'music-known-but-zero-chance',
+      catalog,
+      ownedCollectionIds: new Set(),
+      knownFriendIds: new Set(['signal-dog']),
+      supplyId: null,
+      usedLuckyApple: false,
+      probabilities: { ...certainDrop, musicFriend: 0 },
+    })
+    expect(knownButNoVisit.friendId).toBeNull()
+    expect(knownButNoVisit.modifierApples).toBe(0)
+
+    const known = new Set(['signal-dog'] as const)
+    const visit = planActivityReward({
+      kind: 'music',
+      rewardSeed: 'music-known-friend',
+      catalog,
+      ownedCollectionIds: new Set(),
+      knownFriendIds: known,
+      supplyId: null,
+      usedLuckyApple: false,
+      probabilities: { ...certainDrop, musicFriend: 1 },
+    })
+    expect(visit.friendId).toBe('signal-dog')
+    expect(visit.modifierApples).toBe(FRIEND_GIFT_APPLES_BY_ID['signal-dog'])
+    expect(visit.giftItemId).toBeNull()
+  })
+
+  it('旅行好友与明信片均为 0% 时，幸运苹果仍可单独带来明信片', () => {
+    const rewardSeed = seedWhoseRollIsBelow(LUCKY_APPLE_COLLECTION_DROP_BONUS, 1)
+    const reward = planActivityReward({
+      kind: 'travel',
+      rewardSeed,
+      catalog,
+      ownedCollectionIds: new Set(),
+      supplyId: 'travel-basic',
+      usedLuckyApple: true,
+      probabilities: {
+        postcard: 0,
+        millionShot: 0,
+        siteFirst: 0,
+        travelFriend: 0,
+        musicFriend: 0,
+      },
+    })
+
+    expect(reward.friendId).toBeNull()
+    expect(reward.collection).toMatchObject({ category: 'postcard' })
+  })
+
+  it('睡觉奖励固定一个苹果且不产生收藏或朋友', () => {
+    const reward = planActivityReward({
+      kind: 'rest',
+      rewardSeed: 'rest-fixed',
+      catalog,
+      ownedCollectionIds: new Set(),
+      supplyId: null,
+      usedLuckyApple: false,
+      probabilities: certainDrop,
+    })
+    expect(reward).toMatchObject({
+      baseApples: REST_COMPLETION_APPLES,
+      modifierApples: 0,
+      collection: null,
+      friendId: null,
+      giftItemId: null,
+    })
   })
 
   it('单次概率加成在边界精确相加，并统一封顶为 100%', () => {

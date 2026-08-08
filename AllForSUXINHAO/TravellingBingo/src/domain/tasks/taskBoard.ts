@@ -54,23 +54,23 @@ export const TASK_LIBRARY: Readonly<Record<TaskId, TaskTemplate>> = {
     id: 'piano-time',
     triggerGroup: 'music',
     title: '弹一小段琴',
-    description: '去电子琴旁听听声音',
+    description: '在电子琴上弹响一个音',
     target: 1,
     rewardApples: 1,
   },
   'record-time': {
     id: 'record-time',
     triggerGroup: 'music',
-    title: '放一张唱片',
-    description: '去唱片机旁听听声音',
+    title: '看看一张唱片',
+    description: '主动打开唱片播放器看看',
     target: 1,
     rewardApples: 1,
   },
   'two-melodies': {
     id: 'two-melodies',
     triggerGroup: 'music',
-    title: '换两种旋律',
-    description: '分别听听电子琴和唱片机',
+    title: '逛逛音乐角落',
+    description: '弹响不同琴键，或打开不同视频看看',
     target: 2,
     rewardApples: 2,
   },
@@ -273,6 +273,14 @@ function roomAreaKey(event: TaskEvent): RoomArea | null {
   return event.type === 'room-visited' ? event.area : null
 }
 
+function musicInteractionKey(event: TaskEvent): string | null {
+  if (event.type === 'piano-note-played') return `piano:${event.noteId}`
+  if (event.type === 'record-player-opened' || event.type === 'collection-player-opened') {
+    return `video:${event.bvid}`
+  }
+  return null
+}
+
 function progressKey(taskId: TaskId, event: TaskEvent): string | null {
   switch (taskId) {
     case 'greet-bingo':
@@ -282,13 +290,11 @@ function progressKey(taskId: TaskId, event: TaskEvent): string | null {
     case 'room-stroll':
       return roomAreaKey(event)
     case 'piano-time':
-      return roomAreaKey(event) === 'piano' ? 'piano' : null
+      return event.type === 'piano-note-played' ? `piano:${event.noteId}` : null
     case 'record-time':
-      return roomAreaKey(event) === 'record-player' ? 'record-player' : null
-    case 'two-melodies': {
-      const area = roomAreaKey(event)
-      return area === 'piano' || area === 'record-player' ? area : null
-    }
+      return event.type === 'record-player-opened' ? `video:${event.bvid}` : null
+    case 'two-melodies':
+      return musicInteractionKey(event)
     case 'wardrobe-choice':
       return roomAreaKey(event) === 'wardrobe' ? 'wardrobe' : null
     case 'open-memories':

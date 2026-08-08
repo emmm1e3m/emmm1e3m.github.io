@@ -34,22 +34,22 @@ describe('纵向房间配置', () => {
   it('热点与饼狗落点 ID 唯一、坐标唯一且都在百分比画布内', () => {
     const allAreas = [DEFAULT_ROOM_AREA, ...ROOM_AREAS]
     const ids = allAreas.map((area) => area.id)
-    const hotspotCoordinates = ROOM_AREAS.map((area) => `${area.x},${area.y}`)
-    const petCoordinates = allAreas.map((area) => `${area.petX},${area.petY}`)
+    const hotspotCoordinates = ROOM_AREAS.map((area) => `${area.hotspot.x},${area.hotspot.y}`)
+    const petCoordinates = allAreas.map((area) => `${area.petFoot.x},${area.petFoot.y}`)
 
     expect(new Set(ids).size).toBe(ids.length)
     expect(new Set(hotspotCoordinates).size).toBe(hotspotCoordinates.length)
     expect(new Set(petCoordinates).size).toBe(petCoordinates.length)
 
     for (const area of allAreas) {
-      expect(area.x).toBeGreaterThanOrEqual(0)
-      expect(area.x).toBeLessThanOrEqual(100)
-      expect(area.y).toBeGreaterThanOrEqual(0)
-      expect(area.y).toBeLessThanOrEqual(100)
-      expect(area.petX).toBeGreaterThanOrEqual(0)
-      expect(area.petX).toBeLessThanOrEqual(100)
-      expect(area.petY).toBeGreaterThanOrEqual(0)
-      expect(area.petY).toBeLessThanOrEqual(100)
+      expect(area.hotspot.x).toBeGreaterThanOrEqual(0)
+      expect(area.hotspot.x).toBeLessThanOrEqual(100)
+      expect(area.hotspot.y).toBeGreaterThanOrEqual(0)
+      expect(area.hotspot.y).toBeLessThanOrEqual(100)
+      expect(area.petFoot.x).toBeGreaterThanOrEqual(0)
+      expect(area.petFoot.x).toBeLessThanOrEqual(100)
+      expect(area.petFoot.y).toBeGreaterThanOrEqual(0)
+      expect(area.petFoot.y).toBeLessThanOrEqual(100)
     }
   })
 
@@ -62,6 +62,8 @@ describe('纵向房间配置', () => {
       travel: 'door',
       stream: 'computer',
       trend: 'computer',
+      music: 'keyboard',
+      rest: 'bed',
     }
     for (const [kind, areaId] of Object.entries(expectedActivityAreas)) {
       expect(areaForActivity(kind as ActivityKind).id).toBe(areaId)

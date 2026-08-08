@@ -1,7 +1,7 @@
 {
   "schemaVersion": 1,
-  "generatedFrom": "bilibilitoy-suxinhao-postcards-curated-demo-12",
-  "itemCount": 12,
+  "generatedFrom": "bilibilitoy-suxinhao-postcards-curated-v1",
+  "itemCount": 100,
   "source": {
     "platform": "bilibilitoy",
     "entryUrl": "https://www.bilibili.com/toy/preview/preview_5SdX8Yet/index.htm",
@@ -23,7 +23,95 @@
       "2026-03-0010",
       "2026-03-0020",
       "2026-04-0015",
-      "2026-06-0023"
+      "2026-06-0023",
+      "2025-05-0007",
+      "2025-03-0009",
+      "2025-02-0007",
+      "2025-03-0005",
+      "2025-03-0012",
+      "2025-03-0006",
+      "2025-02-0005",
+      "2025-03-0013",
+      "2025-05-0009",
+      "2025-06-0009",
+      "2025-08-0018",
+      "2025-06-0012",
+      "2025-06-0020",
+      "2025-08-0005",
+      "2025-06-0027",
+      "2025-09-0035",
+      "2025-09-0036",
+      "2025-09-0026",
+      "2025-09-0024",
+      "2025-08-0027",
+      "2025-09-0023",
+      "2025-09-0020",
+      "2025-09-0012",
+      "2025-10-0029",
+      "2025-10-0004",
+      "2025-10-0017",
+      "2025-10-0031",
+      "2025-09-0045",
+      "2025-10-0026",
+      "2025-11-0008",
+      "2025-11-0003",
+      "2025-12-0009",
+      "2025-12-0010",
+      "2025-11-0026",
+      "2025-11-0024",
+      "2025-11-0038",
+      "2025-11-0028",
+      "2025-11-0025",
+      "2025-11-0029",
+      "2025-12-0020",
+      "2025-12-0023",
+      "2025-12-0011",
+      "2025-12-0017",
+      "2025-12-0036",
+      "2025-12-0056",
+      "2025-12-0051",
+      "2025-12-0047",
+      "2026-01-0021",
+      "2026-01-0024",
+      "2026-01-0023",
+      "2026-02-0002",
+      "2026-01-0014",
+      "2026-01-0002",
+      "2026-01-0035",
+      "2026-01-0012",
+      "2026-01-0004",
+      "2026-02-0040",
+      "2026-02-0027",
+      "2026-02-0007",
+      "2026-02-0024",
+      "2026-02-0025",
+      "2026-02-0041",
+      "2026-02-0023",
+      "2026-03-0009",
+      "2026-03-0021",
+      "2026-03-0019",
+      "2026-03-0026",
+      "2026-03-0006",
+      "2026-03-0038",
+      "2026-03-0040",
+      "2026-03-0030",
+      "2026-04-0009",
+      "2026-04-0016",
+      "2026-04-0020",
+      "2026-04-0019",
+      "2026-04-0023",
+      "2026-04-0013",
+      "2026-04-0027",
+      "2026-04-0026",
+      "2026-05-0020",
+      "2026-05-0025",
+      "2026-05-0027",
+      "2026-06-0009",
+      "2026-06-0014",
+      "2026-06-0021",
+      "2026-06-0024",
+      "2026-06-0012",
+      "2026-06-0037"
     ]
   },
   "items": [
@@ -600,6 +688,4230 @@
           "format": "webp",
           "byteLength": 982040,
           "sha256": "5a7f8641d796bcce4205dacaf78d565cf5ac6295557567f2e58b1ec427d5e254"
+        }
+      }
+    },
+    {
+      "id": "postcard-2025-05-0007",
+      "category": "postcard",
+      "title": "城市倒影",
+      "alt": "苏新皓明信片《城市倒影》",
+      "caption": "三里屯逛街... 今天天气也很好",
+      "date": "2025-05-10",
+      "source": {
+        "platform": "bilibilitoy",
+        "url": "https://su-xinhao-media.oss-cn-hangzhou.aliyuncs.com/su-xinhao/2025/05/images/007-2025-05-10-250510.webp",
+        "pageUrl": "https://www.bilibili.com/toy/preview/preview_5SdX8Yet/index.htm",
+        "accessedAt": "2026-08-08T07:05:37.932Z"
+      },
+      "rights": "user-confirmed-authorized",
+      "images": [
+        {
+          "width": 480,
+          "height": 640,
+          "path": "assets/collectibles/postcards/postcard-2025-05-0007-480.webp",
+          "byteLength": 32132,
+          "mime": "image/webp",
+          "sha256": "296e732f69476f77d098a2b9bfff635db20db52801939b7cc8d31ec816c59281"
+        },
+        {
+          "width": 960,
+          "height": 1280,
+          "path": "assets/collectibles/postcards/postcard-2025-05-0007-960.webp",
+          "byteLength": 164074,
+          "mime": "image/webp",
+          "sha256": "b20023ba101177e0b7da133ac3d5478bdf67e5338fffa39b5dc0e372ce042f18"
+        }
+      ],
+      "tags": ["明信片", "城市", "光影"],
+      "metadata": {
+        "sourceId": "2025-05-0007",
+        "sourceName": "250510 (三里屯逛街... 今天天气也很好).jpg",
+        "sourceKind": "published",
+        "monthKey": "2025-05",
+        "original": {
+          "url": "https://su-xinhao-media.oss-cn-hangzhou.aliyuncs.com/su-xinhao/2025/05/images/007-2025-05-10-250510.webp",
+          "width": 1650,
+          "height": 2200,
+          "format": "webp",
+          "byteLength": 489616,
+          "sha256": "4662c1b68cd34059a112ba497b61f45409acb8fb69c1ac5637948b729d6c28a9"
+        }
+      }
+    },
+    {
+      "id": "postcard-2025-03-0009",
+      "category": "postcard",
+      "title": "雨天驾驶舱",
+      "alt": "苏新皓明信片《雨天驾驶舱》",
+      "caption": "今天我们小休一下, 下午在宿舍院子里这辆车里面坐了一会, 你们还真别说! 这个车里面好干净! 好新! 座位上真的一点灰都没有, 我真的震惊了",
+      "date": "2025-03-27",
+      "source": {
+        "platform": "bilibilitoy",
+        "url": "https://su-xinhao-media.oss-cn-hangzhou.aliyuncs.com/su-xinhao/2025/03/images/009-2025-03-27-250327.webp",
+        "pageUrl": "https://www.bilibili.com/toy/preview/preview_5SdX8Yet/index.htm",
+        "accessedAt": "2026-08-08T07:05:37.932Z"
+      },
+      "rights": "user-confirmed-authorized",
+      "images": [
+        {
+          "width": 480,
+          "height": 640,
+          "path": "assets/collectibles/postcards/postcard-2025-03-0009-480.webp",
+          "byteLength": 23454,
+          "mime": "image/webp",
+          "sha256": "082b89d4804845d1819a22a8063fc62696ea395f042af73f1bf624021d8439e9"
+        },
+        {
+          "width": 960,
+          "height": 1280,
+          "path": "assets/collectibles/postcards/postcard-2025-03-0009-960.webp",
+          "byteLength": 76128,
+          "mime": "image/webp",
+          "sha256": "4938b3d743d5824023ad37010497f1720175e3fd18b230d12ca725815fbdd9f1"
+        }
+      ],
+      "tags": ["明信片", "雨天", "旅途"],
+      "metadata": {
+        "sourceId": "2025-03-0009",
+        "sourceName": "250327 (今天我们小休一下, 下午在宿舍院子里这辆车里面坐了一会, 你们还真别说! 这个车里面好干净! 好新! 座位上真的一点灰都没有, 我真的震惊了).jpg",
+        "sourceKind": "published",
+        "monthKey": "2025-03",
+        "original": {
+          "url": "https://su-xinhao-media.oss-cn-hangzhou.aliyuncs.com/su-xinhao/2025/03/images/009-2025-03-27-250327.webp",
+          "width": 1650,
+          "height": 2200,
+          "format": "webp",
+          "byteLength": 173228,
+          "sha256": "14d6d7d0ad4b3ea37b538657c1fab6d035d768f67466870f35848c5de974aa16"
+        }
+      }
+    },
+    {
+      "id": "postcard-2025-02-0007",
+      "category": "postcard",
+      "title": "粉红街角",
+      "alt": "苏新皓明信片《粉红街角》",
+      "caption": "物料拍摄当中~ 今天的天气好好 但是这个温度一点是没有上来, 本来感觉外面会暖和一点, 搞半天这个太阳“诈骗”呢哈哈哈哈",
+      "date": "2025-02-22",
+      "source": {
+        "platform": "bilibilitoy",
+        "url": "https://su-xinhao-media.oss-cn-hangzhou.aliyuncs.com/su-xinhao/2025/02/images/007-2025-02-22-250222-JPG.webp",
+        "pageUrl": "https://www.bilibili.com/toy/preview/preview_5SdX8Yet/index.htm",
+        "accessedAt": "2026-08-08T07:05:37.932Z"
+      },
+      "rights": "user-confirmed-authorized",
+      "images": [
+        {
+          "width": 480,
+          "height": 640,
+          "path": "assets/collectibles/postcards/postcard-2025-02-0007-480.webp",
+          "byteLength": 31016,
+          "mime": "image/webp",
+          "sha256": "2fc4ce8e9b084a69b9f3f289cb87c0bc5e6b4e5bab3d99c8a0992a00f09f246e"
+        },
+        {
+          "width": 960,
+          "height": 1280,
+          "path": "assets/collectibles/postcards/postcard-2025-02-0007-960.webp",
+          "byteLength": 106346,
+          "mime": "image/webp",
+          "sha256": "107b65fdaea697347a226cdcea9d2cfb9f57171c9f535514de4d78c31e3466a2"
+        }
+      ],
+      "tags": ["明信片", "城市", "街景"],
+      "metadata": {
+        "sourceId": "2025-02-0007",
+        "sourceName": "250222 (物料拍摄当中~  今天的天气好好 但是这个温度一点是没有上来, 本来感觉外面会暖和一点,  搞半天这个太阳“诈骗”呢哈哈哈哈).JPG.jpeg",
+        "sourceKind": "published",
+        "monthKey": "2025-02",
+        "original": {
+          "url": "https://su-xinhao-media.oss-cn-hangzhou.aliyuncs.com/su-xinhao/2025/02/images/007-2025-02-22-250222-JPG.webp",
+          "width": 1650,
+          "height": 2200,
+          "format": "webp",
+          "byteLength": 258876,
+          "sha256": "348950c32ec45040f53aceeeece23a950e7a6f229628f42b3c8dc236cef68ffd"
+        }
+      }
+    },
+    {
+      "id": "postcard-2025-03-0005",
+      "category": "postcard",
+      "title": "光影镜像",
+      "alt": "苏新皓明信片《光影镜像》",
+      "caption": "今天抽时间自己练习一下舞蹈",
+      "date": "2025-03-22",
+      "source": {
+        "platform": "bilibilitoy",
+        "url": "https://su-xinhao-media.oss-cn-hangzhou.aliyuncs.com/su-xinhao/2025/03/images/005-2025-03-22-250322.webp",
+        "pageUrl": "https://www.bilibili.com/toy/preview/preview_5SdX8Yet/index.htm",
+        "accessedAt": "2026-08-08T07:05:37.932Z"
+      },
+      "rights": "user-confirmed-authorized",
+      "images": [
+        {
+          "width": 480,
+          "height": 640,
+          "path": "assets/collectibles/postcards/postcard-2025-03-0005-480.webp",
+          "byteLength": 11042,
+          "mime": "image/webp",
+          "sha256": "5d5d919ab3efabff83482bdae433ec09677958a325c00655b41bb48d54c2a813"
+        },
+        {
+          "width": 960,
+          "height": 1280,
+          "path": "assets/collectibles/postcards/postcard-2025-03-0005-960.webp",
+          "byteLength": 31506,
+          "mime": "image/webp",
+          "sha256": "9981c6b11c21d7c5b86ab4cce4248ab9bc1917090bbc8b269df79d541f3cf77d"
+        }
+      ],
+      "tags": ["明信片", "光影", "苏新皓"],
+      "metadata": {
+        "sourceId": "2025-03-0005",
+        "sourceName": "250322 (今天抽时间自己练习一下舞蹈).jpg",
+        "sourceKind": "published",
+        "monthKey": "2025-03",
+        "original": {
+          "url": "https://su-xinhao-media.oss-cn-hangzhou.aliyuncs.com/su-xinhao/2025/03/images/005-2025-03-22-250322.webp",
+          "width": 1650,
+          "height": 2200,
+          "format": "webp",
+          "byteLength": 83846,
+          "sha256": "0a0bcb7f0a57ba7a66c4a8c4962fc14a214a206f796f8077681df2e96f63266e"
+        }
+      }
+    },
+    {
+      "id": "postcard-2025-03-0012",
+      "category": "postcard",
+      "title": "黄昏街道",
+      "alt": "苏新皓明信片《黄昏街道》",
+      "caption": "这一张没问题!",
+      "date": "2025-03-29",
+      "source": {
+        "platform": "bilibilitoy",
+        "url": "https://su-xinhao-media.oss-cn-hangzhou.aliyuncs.com/su-xinhao/2025/03/images/012-2025-03-29-250329-2.webp",
+        "pageUrl": "https://www.bilibili.com/toy/preview/preview_5SdX8Yet/index.htm",
+        "accessedAt": "2026-08-08T07:05:37.932Z"
+      },
+      "rights": "user-confirmed-authorized",
+      "images": [
+        {
+          "width": 480,
+          "height": 360,
+          "path": "assets/collectibles/postcards/postcard-2025-03-0012-480.webp",
+          "byteLength": 22754,
+          "mime": "image/webp",
+          "sha256": "e296a477c0d430b20e1354db56e920f1b1bb3ea2cd33533da9956f7d212bd7bc"
+        },
+        {
+          "width": 960,
+          "height": 720,
+          "path": "assets/collectibles/postcards/postcard-2025-03-0012-960.webp",
+          "byteLength": 75804,
+          "mime": "image/webp",
+          "sha256": "421ba5f9265e51b928b14169f1057a076781f70bb727a6406451ff54aa431620"
+        }
+      ],
+      "tags": ["明信片", "黄昏", "街景"],
+      "metadata": {
+        "sourceId": "2025-03-0012",
+        "sourceName": "250329 2(这一张没问题!).jpg",
+        "sourceKind": "published",
+        "monthKey": "2025-03",
+        "original": {
+          "url": "https://su-xinhao-media.oss-cn-hangzhou.aliyuncs.com/su-xinhao/2025/03/images/012-2025-03-29-250329-2.webp",
+          "width": 2200,
+          "height": 1650,
+          "format": "webp",
+          "byteLength": 253038,
+          "sha256": "c6275896d32f6f8861a74469915885809fc1ed6462c37c776ab198cce235a939"
+        }
+      }
+    },
+    {
+      "id": "postcard-2025-03-0006",
+      "category": "postcard",
+      "title": "桌边小宇宙",
+      "alt": "苏新皓明信片《桌边小宇宙》",
+      "caption": "很喜欢这个本子, 有什么重要的想法我都记里面,这样印象深刻一下",
+      "date": "2025-03-24",
+      "source": {
+        "platform": "bilibilitoy",
+        "url": "https://su-xinhao-media.oss-cn-hangzhou.aliyuncs.com/su-xinhao/2025/03/images/006-2025-03-24-250324.webp",
+        "pageUrl": "https://www.bilibili.com/toy/preview/preview_5SdX8Yet/index.htm",
+        "accessedAt": "2026-08-08T07:05:37.932Z"
+      },
+      "rights": "user-confirmed-authorized",
+      "images": [
+        {
+          "width": 480,
+          "height": 640,
+          "path": "assets/collectibles/postcards/postcard-2025-03-0006-480.webp",
+          "byteLength": 39732,
+          "mime": "image/webp",
+          "sha256": "56fb513bced6c6cf866f2aa2e95bbf91b0a6ea5073245a100683cbc266b21876"
+        },
+        {
+          "width": 960,
+          "height": 1280,
+          "path": "assets/collectibles/postcards/postcard-2025-03-0006-960.webp",
+          "byteLength": 137186,
+          "mime": "image/webp",
+          "sha256": "6924f2a2598755a06b911eec6d141a499881e8284a6b26d085d6d054f305c6c9"
+        }
+      ],
+      "tags": ["明信片", "静物", "手账"],
+      "metadata": {
+        "sourceId": "2025-03-0006",
+        "sourceName": "250324 (很喜欢这个本子, 有什么重要的想法我都记里面,这样印象深刻一下).jpg",
+        "sourceKind": "published",
+        "monthKey": "2025-03",
+        "original": {
+          "url": "https://su-xinhao-media.oss-cn-hangzhou.aliyuncs.com/su-xinhao/2025/03/images/006-2025-03-24-250324.webp",
+          "width": 1650,
+          "height": 2200,
+          "format": "webp",
+          "byteLength": 332024,
+          "sha256": "a35df6ce40256a95db9d0d8a089c29beace3572b75d144793e3de7de53a3a351"
+        }
+      }
+    },
+    {
+      "id": "postcard-2025-02-0005",
+      "category": "postcard",
+      "title": "手绘背包",
+      "alt": "苏新皓明信片《手绘背包》",
+      "caption": "收到礼物!感谢!哈哈哈哈喜欢, 新的书包涂鸦完成",
+      "date": "2025-02-17",
+      "source": {
+        "platform": "bilibilitoy",
+        "url": "https://su-xinhao-media.oss-cn-hangzhou.aliyuncs.com/su-xinhao/2025/02/images/005-2025-02-17-250217.webp",
+        "pageUrl": "https://www.bilibili.com/toy/preview/preview_5SdX8Yet/index.htm",
+        "accessedAt": "2026-08-08T07:05:37.932Z"
+      },
+      "rights": "user-confirmed-authorized",
+      "images": [
+        {
+          "width": 480,
+          "height": 720,
+          "path": "assets/collectibles/postcards/postcard-2025-02-0005-480.webp",
+          "byteLength": 40738,
+          "mime": "image/webp",
+          "sha256": "4f50220a9830a7b659f713864c28d5d34605baa7e606d35c6b726ff97c9b0218"
+        },
+        {
+          "width": 960,
+          "height": 1440,
+          "path": "assets/collectibles/postcards/postcard-2025-02-0005-960.webp",
+          "byteLength": 144038,
+          "mime": "image/webp",
+          "sha256": "3679f6b7432968c3e426d4ba95122e3b122227ad36ce1295d497c0b0fac0fc6a"
+        }
+      ],
+      "tags": ["明信片", "画作", "静物"],
+      "metadata": {
+        "sourceId": "2025-02-0005",
+        "sourceName": "250217 (收到礼物!感谢!哈哈哈哈喜欢, 新的书包涂鸦完成).jpg",
+        "sourceKind": "published",
+        "monthKey": "2025-02",
+        "original": {
+          "url": "https://su-xinhao-media.oss-cn-hangzhou.aliyuncs.com/su-xinhao/2025/02/images/005-2025-02-17-250217.webp",
+          "width": 1467,
+          "height": 2200,
+          "format": "webp",
+          "byteLength": 303654,
+          "sha256": "a1562e07fbc8927681767a556db58af80e2fb145eb48cca3ee9c129e92375dd2"
+        }
+      }
+    },
+    {
+      "id": "postcard-2025-03-0013",
+      "category": "postcard",
+      "title": "暖光工作台",
+      "alt": "苏新皓明信片《暖光工作台》",
+      "caption": "cover结尾的那张图",
+      "date": "2025-03-30",
+      "source": {
+        "platform": "bilibilitoy",
+        "url": "https://su-xinhao-media.oss-cn-hangzhou.aliyuncs.com/su-xinhao/2025/03/images/013-2025-03-30-250330-cover.webp",
+        "pageUrl": "https://www.bilibili.com/toy/preview/preview_5SdX8Yet/index.htm",
+        "accessedAt": "2026-08-08T07:05:37.932Z"
+      },
+      "rights": "user-confirmed-authorized",
+      "images": [
+        {
+          "width": 480,
+          "height": 640,
+          "path": "assets/collectibles/postcards/postcard-2025-03-0013-480.webp",
+          "byteLength": 30592,
+          "mime": "image/webp",
+          "sha256": "8c2d5b768621ba599875a14a7a0ac4f57ca3fcb818364556803bb83a9606045c"
+        },
+        {
+          "width": 960,
+          "height": 1280,
+          "path": "assets/collectibles/postcards/postcard-2025-03-0013-960.webp",
+          "byteLength": 94898,
+          "mime": "image/webp",
+          "sha256": "a0873b293e4af6fe535da0a6941eec6f0fac8dcc800e9e510401038d4053eb45"
+        }
+      ],
+      "tags": ["明信片", "工作台", "光影"],
+      "metadata": {
+        "sourceId": "2025-03-0013",
+        "sourceName": "250330 (cover结尾的那张图).jpg",
+        "sourceKind": "published",
+        "monthKey": "2025-03",
+        "original": {
+          "url": "https://su-xinhao-media.oss-cn-hangzhou.aliyuncs.com/su-xinhao/2025/03/images/013-2025-03-30-250330-cover.webp",
+          "width": 1650,
+          "height": 2200,
+          "format": "webp",
+          "byteLength": 204802,
+          "sha256": "990c4637b8651b4761c6fc37bd2bbb42dbcaff56d3b98aa3592774be4d802d19"
+        }
+      }
+    },
+    {
+      "id": "postcard-2025-05-0009",
+      "category": "postcard",
+      "title": "飞越落日",
+      "alt": "苏新皓明信片《飞越落日》",
+      "caption": "它看着有点难过~",
+      "date": "2025-05-12",
+      "source": {
+        "platform": "bilibilitoy",
+        "url": "https://su-xinhao-media.oss-cn-hangzhou.aliyuncs.com/su-xinhao/2025/05/images/009-2025-05-12-250512.webp",
+        "pageUrl": "https://www.bilibili.com/toy/preview/preview_5SdX8Yet/index.htm",
+        "accessedAt": "2026-08-08T07:05:37.932Z"
+      },
+      "rights": "user-confirmed-authorized",
+      "images": [
+        {
+          "width": 480,
+          "height": 302,
+          "path": "assets/collectibles/postcards/postcard-2025-05-0009-480.webp",
+          "byteLength": 6356,
+          "mime": "image/webp",
+          "sha256": "336930d679a819aa57ef28c3d20ecda06d6fcd1aefdfab60231bdc2929b135d3"
+        },
+        {
+          "width": 960,
+          "height": 604,
+          "path": "assets/collectibles/postcards/postcard-2025-05-0009-960.webp",
+          "byteLength": 27558,
+          "mime": "image/webp",
+          "sha256": "d9808f7bb07332d4c39abff3b21ee38c139e26bb20a1c76b5914151d355b7352"
+        }
+      ],
+      "tags": ["明信片", "落日", "旅行"],
+      "metadata": {
+        "sourceId": "2025-05-0009",
+        "sourceName": "250512 (它看着有点难过~).jpg",
+        "sourceKind": "published",
+        "monthKey": "2025-05",
+        "original": {
+          "url": "https://su-xinhao-media.oss-cn-hangzhou.aliyuncs.com/su-xinhao/2025/05/images/009-2025-05-12-250512.webp",
+          "width": 2200,
+          "height": 1384,
+          "format": "webp",
+          "byteLength": 199458,
+          "sha256": "d9ae50ec059de7d1bee9aa1018eaf53b38ec70b50bdd9885a2a5a2aeba68b4fb"
+        }
+      }
+    },
+    {
+      "id": "postcard-2025-06-0009",
+      "category": "postcard",
+      "title": "百叶窗里的倒影",
+      "alt": "苏新皓明信片《百叶窗里的倒影》",
+      "caption": "这个教室我们来这里拍了好几次了都",
+      "date": "2025-06-08",
+      "source": {
+        "platform": "bilibilitoy",
+        "url": "https://su-xinhao-media.oss-cn-hangzhou.aliyuncs.com/su-xinhao/2025/06/images/009-2025-06-08-250608.webp",
+        "pageUrl": "https://www.bilibili.com/toy/preview/preview_5SdX8Yet/index.htm",
+        "accessedAt": "2026-08-08T07:05:37.932Z"
+      },
+      "rights": "user-confirmed-authorized",
+      "images": [
+        {
+          "width": 480,
+          "height": 640,
+          "path": "assets/collectibles/postcards/postcard-2025-06-0009-480.webp",
+          "byteLength": 28930,
+          "mime": "image/webp",
+          "sha256": "5ebd5152bef4626d232e7d93b56a740d2aadb1f00f984a72730afbb6c9723728"
+        },
+        {
+          "width": 960,
+          "height": 1280,
+          "path": "assets/collectibles/postcards/postcard-2025-06-0009-960.webp",
+          "byteLength": 86038,
+          "mime": "image/webp",
+          "sha256": "6c4134e739289fc7b923909bf510421e23283a316b119a3becc524b83493a9c5"
+        }
+      ],
+      "tags": ["明信片", "倒影", "苏新皓"],
+      "metadata": {
+        "sourceId": "2025-06-0009",
+        "sourceName": "250608 (这个教室我们来这里拍了好几次了都).JPG",
+        "sourceKind": "published",
+        "monthKey": "2025-06",
+        "original": {
+          "url": "https://su-xinhao-media.oss-cn-hangzhou.aliyuncs.com/su-xinhao/2025/06/images/009-2025-06-08-250608.webp",
+          "width": 1650,
+          "height": 2200,
+          "format": "webp",
+          "byteLength": 185106,
+          "sha256": "c26536506f8bb3fa2087eee711c7518e151e3eeae365f10852200f1d800d82fb"
+        }
+      }
+    },
+    {
+      "id": "postcard-2025-08-0018",
+      "category": "postcard",
+      "title": "彩色看台",
+      "alt": "苏新皓明信片《彩色看台》",
+      "caption": "来到场馆的第一天! 感觉真的好大好大, 而且今天巨巨巨热, 谁能想到未来几天一直下雨呢",
+      "date": "2025-08-27",
+      "source": {
+        "platform": "bilibilitoy",
+        "url": "https://su-xinhao-media.oss-cn-hangzhou.aliyuncs.com/su-xinhao/2025/08/images/018-2025-08-27-250827.webp",
+        "pageUrl": "https://www.bilibili.com/toy/preview/preview_5SdX8Yet/index.htm",
+        "accessedAt": "2026-08-08T07:05:37.932Z"
+      },
+      "rights": "user-confirmed-authorized",
+      "images": [
+        {
+          "width": 480,
+          "height": 360,
+          "path": "assets/collectibles/postcards/postcard-2025-08-0018-480.webp",
+          "byteLength": 18126,
+          "mime": "image/webp",
+          "sha256": "b5290c1045681664ba579bff7941ca8b6a6b7ab35471abdfc8aebb1dbac0d6ef"
+        },
+        {
+          "width": 960,
+          "height": 720,
+          "path": "assets/collectibles/postcards/postcard-2025-08-0018-960.webp",
+          "byteLength": 68806,
+          "mime": "image/webp",
+          "sha256": "c3bad6b996f03f617fb2f5be2bf1053a66a30ec1fd4111c77e04d67d5654ce21"
+        }
+      ],
+      "tags": ["明信片", "体育场", "城市"],
+      "metadata": {
+        "sourceId": "2025-08-0018",
+        "sourceName": "250827 (来到场馆的第一天! 感觉真的好大好大, 而且今天巨巨巨热, 谁能想到未来几天一直下雨呢).jpg",
+        "sourceKind": "published",
+        "monthKey": "2025-08",
+        "original": {
+          "url": "https://su-xinhao-media.oss-cn-hangzhou.aliyuncs.com/su-xinhao/2025/08/images/018-2025-08-27-250827.webp",
+          "width": 2200,
+          "height": 1650,
+          "format": "webp",
+          "byteLength": 291632,
+          "sha256": "582cfd4b62ef50c2fdfbf8b1bbb2b6049031edbf871d2cb4c843b6314d1efb2b"
+        }
+      }
+    },
+    {
+      "id": "postcard-2025-06-0012",
+      "category": "postcard",
+      "title": "雨幕城市",
+      "alt": "苏新皓明信片《雨幕城市》",
+      "caption": "今天在飞机上听到一个歌突然有灵感, 我就打了一个草稿准备回去就拍",
+      "date": "2025-06-19",
+      "source": {
+        "platform": "bilibilitoy",
+        "url": "https://su-xinhao-media.oss-cn-hangzhou.aliyuncs.com/su-xinhao/2025/06/images/012-2025-06-19-250619.webp",
+        "pageUrl": "https://www.bilibili.com/toy/preview/preview_5SdX8Yet/index.htm",
+        "accessedAt": "2026-08-08T07:05:37.932Z"
+      },
+      "rights": "user-confirmed-authorized",
+      "images": [
+        {
+          "width": 480,
+          "height": 640,
+          "path": "assets/collectibles/postcards/postcard-2025-06-0012-480.webp",
+          "byteLength": 34590,
+          "mime": "image/webp",
+          "sha256": "5f55833cde54a1a401e9ed080b7cb3a5c78f6c8377e0ce59739ee948160b3571"
+        },
+        {
+          "width": 960,
+          "height": 1280,
+          "path": "assets/collectibles/postcards/postcard-2025-06-0012-960.webp",
+          "byteLength": 112744,
+          "mime": "image/webp",
+          "sha256": "e1030306adb9f84101960ef70a75731e7ea166cf065f9047eb3719ae2bff0b6c"
+        }
+      ],
+      "tags": ["明信片", "雨天", "城市"],
+      "metadata": {
+        "sourceId": "2025-06-0012",
+        "sourceName": "250619 (今天在飞机上听到一个歌突然有灵感, 我就打了一个草稿准备回去就拍).JPG",
+        "sourceKind": "published",
+        "monthKey": "2025-06",
+        "original": {
+          "url": "https://su-xinhao-media.oss-cn-hangzhou.aliyuncs.com/su-xinhao/2025/06/images/012-2025-06-19-250619.webp",
+          "width": 1650,
+          "height": 2200,
+          "format": "webp",
+          "byteLength": 238460,
+          "sha256": "1bcee3f176a5f15a27a51f9622e9f7089710b435862c7f66b7f414be73911d37"
+        }
+      }
+    },
+    {
+      "id": "postcard-2025-06-0020",
+      "category": "postcard",
+      "title": "老城漫步",
+      "alt": "苏新皓明信片《老城漫步》",
+      "caption": "这边感觉还挺出片",
+      "date": "2025-06-21",
+      "source": {
+        "platform": "bilibilitoy",
+        "url": "https://su-xinhao-media.oss-cn-hangzhou.aliyuncs.com/su-xinhao/2025/06/images/020-2025-06-21-250621.webp",
+        "pageUrl": "https://www.bilibili.com/toy/preview/preview_5SdX8Yet/index.htm",
+        "accessedAt": "2026-08-08T07:05:37.932Z"
+      },
+      "rights": "user-confirmed-authorized",
+      "images": [
+        {
+          "width": 480,
+          "height": 360,
+          "path": "assets/collectibles/postcards/postcard-2025-06-0020-480.webp",
+          "byteLength": 23738,
+          "mime": "image/webp",
+          "sha256": "031e7b0508ecdfa6ce3c3942f1a9521ad9e2e7d0ae42b059b80ef2a7ae86025c"
+        },
+        {
+          "width": 960,
+          "height": 720,
+          "path": "assets/collectibles/postcards/postcard-2025-06-0020-960.webp",
+          "byteLength": 70632,
+          "mime": "image/webp",
+          "sha256": "0605e0726e6c94295d245cd0c20e93deb52db89fbb897603490bd8a3c38b77c3"
+        }
+      ],
+      "tags": ["明信片", "老城", "旅行"],
+      "metadata": {
+        "sourceId": "2025-06-0020",
+        "sourceName": "250621 (这边感觉还挺出片).jpg",
+        "sourceKind": "published",
+        "monthKey": "2025-06",
+        "original": {
+          "url": "https://su-xinhao-media.oss-cn-hangzhou.aliyuncs.com/su-xinhao/2025/06/images/020-2025-06-21-250621.webp",
+          "width": 2200,
+          "height": 1650,
+          "format": "webp",
+          "byteLength": 213306,
+          "sha256": "b0ab5419184b97381b14139fc0e00ce65fb75c54a4e7f8cd3fdcd3057005850b"
+        }
+      }
+    },
+    {
+      "id": "postcard-2025-08-0005",
+      "category": "postcard",
+      "title": "逆光拍摄现场",
+      "alt": "苏新皓明信片《逆光拍摄现场》",
+      "caption": "你们看! 是不是猛的一看还有点吓人! 这是我们上场前戴麦的地方",
+      "date": "2025-08-11",
+      "source": {
+        "platform": "bilibilitoy",
+        "url": "https://su-xinhao-media.oss-cn-hangzhou.aliyuncs.com/su-xinhao/2025/08/images/005-2025-08-11-250811.webp",
+        "pageUrl": "https://www.bilibili.com/toy/preview/preview_5SdX8Yet/index.htm",
+        "accessedAt": "2026-08-08T07:05:37.932Z"
+      },
+      "rights": "user-confirmed-authorized",
+      "images": [
+        {
+          "width": 480,
+          "height": 360,
+          "path": "assets/collectibles/postcards/postcard-2025-08-0005-480.webp",
+          "byteLength": 10024,
+          "mime": "image/webp",
+          "sha256": "f888ce51f092643a57d9175108806615af1d4b70af200a94fb9c73f974067835"
+        },
+        {
+          "width": 960,
+          "height": 720,
+          "path": "assets/collectibles/postcards/postcard-2025-08-0005-960.webp",
+          "byteLength": 34234,
+          "mime": "image/webp",
+          "sha256": "fad4b8bba89de9c3b1251d8c2aa5dcc77aed20743016576037ab362e0cb40f29"
+        }
+      ],
+      "tags": ["明信片", "片场", "光影"],
+      "metadata": {
+        "sourceId": "2025-08-0005",
+        "sourceName": "250811 (你们看! 是不是猛的一看还有点吓人! 这是我们上场前戴麦的地方).jpg",
+        "sourceKind": "published",
+        "monthKey": "2025-08",
+        "original": {
+          "url": "https://su-xinhao-media.oss-cn-hangzhou.aliyuncs.com/su-xinhao/2025/08/images/005-2025-08-11-250811.webp",
+          "width": 2200,
+          "height": 1650,
+          "format": "webp",
+          "byteLength": 124898,
+          "sha256": "c77c82ec5a71268d62a3e60ed1e2d7a1ac75b11d3c42dbcd4e1243fb234482d5"
+        }
+      }
+    },
+    {
+      "id": "postcard-2025-06-0027",
+      "category": "postcard",
+      "title": "咖啡馆橱窗",
+      "alt": "苏新皓明信片《咖啡馆橱窗》",
+      "caption": "今天去探店了, 我们先去这个餐厅吃了个早餐,但说实话我有点吃不下了哈哈哈, 这边的甜品实在是太甜了,腻腻的",
+      "date": "2025-06-23",
+      "source": {
+        "platform": "bilibilitoy",
+        "url": "https://su-xinhao-media.oss-cn-hangzhou.aliyuncs.com/su-xinhao/2025/06/images/027-2025-06-23-250623.webp",
+        "pageUrl": "https://www.bilibili.com/toy/preview/preview_5SdX8Yet/index.htm",
+        "accessedAt": "2026-08-08T07:05:37.932Z"
+      },
+      "rights": "user-confirmed-authorized",
+      "images": [
+        {
+          "width": 480,
+          "height": 640,
+          "path": "assets/collectibles/postcards/postcard-2025-06-0027-480.webp",
+          "byteLength": 36664,
+          "mime": "image/webp",
+          "sha256": "ca810e42ac0c50f38a9d5d53b32e858928e13b104f53e9df350ad1531f26871e"
+        },
+        {
+          "width": 960,
+          "height": 1280,
+          "path": "assets/collectibles/postcards/postcard-2025-06-0027-960.webp",
+          "byteLength": 104826,
+          "mime": "image/webp",
+          "sha256": "9f8c3c144b6c82ff27869d46b2b35cbcf78e9a28896755cae5616ac4f2aa696f"
+        }
+      ],
+      "tags": ["明信片", "咖啡馆", "旅行"],
+      "metadata": {
+        "sourceId": "2025-06-0027",
+        "sourceName": "250623 (今天去探店了, 我们先去这个餐厅吃了个早餐,但说实话我有点吃不下了哈哈哈, 这边的甜品实在是太甜了,腻腻的).HEIC",
+        "sourceKind": "published",
+        "monthKey": "2025-06",
+        "original": {
+          "url": "https://su-xinhao-media.oss-cn-hangzhou.aliyuncs.com/su-xinhao/2025/06/images/027-2025-06-23-250623.webp",
+          "width": 1650,
+          "height": 2200,
+          "format": "webp",
+          "byteLength": 219174,
+          "sha256": "51f06a221eb7093499ca06d051e8de90547a1c118e4c71062c365c218f26eff0"
+        }
+      }
+    },
+    {
+      "id": "postcard-2025-09-0035",
+      "category": "postcard",
+      "title": "粉橙晚霞",
+      "alt": "苏新皓明信片《粉橙晚霞》",
+      "caption": "你们看这个云的配色 我一下子就想起了辣味蛋饺的歌曲封面",
+      "date": "2025-09-16",
+      "source": {
+        "platform": "bilibilitoy",
+        "url": "https://su-xinhao-media.oss-cn-hangzhou.aliyuncs.com/su-xinhao/2025/09/images/035-2025-09-16-250916.webp",
+        "pageUrl": "https://www.bilibili.com/toy/preview/preview_5SdX8Yet/index.htm",
+        "accessedAt": "2026-08-08T07:05:37.932Z"
+      },
+      "rights": "user-confirmed-authorized",
+      "images": [
+        {
+          "width": 480,
+          "height": 360,
+          "path": "assets/collectibles/postcards/postcard-2025-09-0035-480.webp",
+          "byteLength": 19456,
+          "mime": "image/webp",
+          "sha256": "bc7ce2a3fee631b1c0e03d395742a4d4abfca1c9de4dd29ceef36e69bb1f3145"
+        },
+        {
+          "width": 960,
+          "height": 720,
+          "path": "assets/collectibles/postcards/postcard-2025-09-0035-960.webp",
+          "byteLength": 75956,
+          "mime": "image/webp",
+          "sha256": "500a71c6d9fb1aaaa4074ac0785faf510ae785454f11388d799df7eabb888573"
+        }
+      ],
+      "tags": ["明信片", "晚霞", "风景"],
+      "metadata": {
+        "sourceId": "2025-09-0035",
+        "sourceName": "250916 (你们看这个云的配色 我一下子就想起了辣味蛋饺的歌曲封面).jpg",
+        "sourceKind": "published",
+        "monthKey": "2025-09",
+        "original": {
+          "url": "https://su-xinhao-media.oss-cn-hangzhou.aliyuncs.com/su-xinhao/2025/09/images/035-2025-09-16-250916.webp",
+          "width": 2200,
+          "height": 1650,
+          "format": "webp",
+          "byteLength": 313850,
+          "sha256": "44567eedafbb9cb2adc834f005e2f573806e24609b03316bed29f12308ade6f7"
+        }
+      }
+    },
+    {
+      "id": "postcard-2025-09-0036",
+      "category": "postcard",
+      "title": "岩石上的小客人",
+      "alt": "苏新皓明信片《岩石上的小客人》",
+      "caption": "你好小朋友",
+      "date": "2025-09-16",
+      "source": {
+        "platform": "bilibilitoy",
+        "url": "https://su-xinhao-media.oss-cn-hangzhou.aliyuncs.com/su-xinhao/2025/09/images/036-2025-09-16-250916.webp",
+        "pageUrl": "https://www.bilibili.com/toy/preview/preview_5SdX8Yet/index.htm",
+        "accessedAt": "2026-08-08T07:05:37.932Z"
+      },
+      "rights": "user-confirmed-authorized",
+      "images": [
+        {
+          "width": 480,
+          "height": 360,
+          "path": "assets/collectibles/postcards/postcard-2025-09-0036-480.webp",
+          "byteLength": 26106,
+          "mime": "image/webp",
+          "sha256": "880c77b49c248243fd9de257c7de2173f92dfe2502a473caee68e7bca61fc9bb"
+        },
+        {
+          "width": 960,
+          "height": 720,
+          "path": "assets/collectibles/postcards/postcard-2025-09-0036-960.webp",
+          "byteLength": 81174,
+          "mime": "image/webp",
+          "sha256": "8268077a06daa7332321c2511a51f5b4292fef0e47d5195e54cebe19492a0133"
+        }
+      ],
+      "tags": ["明信片", "昆虫", "自然"],
+      "metadata": {
+        "sourceId": "2025-09-0036",
+        "sourceName": "250916 (你好小朋友).jpg",
+        "sourceKind": "published",
+        "monthKey": "2025-09",
+        "original": {
+          "url": "https://su-xinhao-media.oss-cn-hangzhou.aliyuncs.com/su-xinhao/2025/09/images/036-2025-09-16-250916.webp",
+          "width": 2200,
+          "height": 1650,
+          "format": "webp",
+          "byteLength": 246022,
+          "sha256": "040fe5059e06cd3411ee622c71080d92b19e9287eeafbf98e9f0eab50f8b9b81"
+        }
+      }
+    },
+    {
+      "id": "postcard-2025-09-0026",
+      "category": "postcard",
+      "title": "藻井与宫灯",
+      "alt": "苏新皓明信片《藻井与宫灯》",
+      "caption": "金钱的气息哈哈哈哈哈 开玩笑 哦哦 好像没有开玩笑 的确是",
+      "date": "2025-09-12",
+      "source": {
+        "platform": "bilibilitoy",
+        "url": "https://su-xinhao-media.oss-cn-hangzhou.aliyuncs.com/su-xinhao/2025/09/images/026-2025-09-12-250912.webp",
+        "pageUrl": "https://www.bilibili.com/toy/preview/preview_5SdX8Yet/index.htm",
+        "accessedAt": "2026-08-08T07:05:37.932Z"
+      },
+      "rights": "user-confirmed-authorized",
+      "images": [
+        {
+          "width": 480,
+          "height": 640,
+          "path": "assets/collectibles/postcards/postcard-2025-09-0026-480.webp",
+          "byteLength": 48010,
+          "mime": "image/webp",
+          "sha256": "2e7ad000aad8cd3803fc736c28170fe3544accb3461052652094f0b04de72400"
+        },
+        {
+          "width": 960,
+          "height": 1280,
+          "path": "assets/collectibles/postcards/postcard-2025-09-0026-960.webp",
+          "byteLength": 186886,
+          "mime": "image/webp",
+          "sha256": "5407c3fa3e6b671b651c302ec389f3c7362333fe963de5ff468456badbab461e"
+        }
+      ],
+      "tags": ["明信片", "古建", "宫灯"],
+      "metadata": {
+        "sourceId": "2025-09-0026",
+        "sourceName": "250912 (金钱的气息哈哈哈哈哈 开玩笑 哦哦 好像没有开玩笑 的确是).jpg",
+        "sourceKind": "published",
+        "monthKey": "2025-09",
+        "original": {
+          "url": "https://su-xinhao-media.oss-cn-hangzhou.aliyuncs.com/su-xinhao/2025/09/images/026-2025-09-12-250912.webp",
+          "width": 1650,
+          "height": 2200,
+          "format": "webp",
+          "byteLength": 510328,
+          "sha256": "aa1b231234fe2d6559c9b3f086bedb27828088ad60e57b85a7912d54b1d93c82"
+        }
+      }
+    },
+    {
+      "id": "postcard-2025-09-0024",
+      "category": "postcard",
+      "title": "夜幕牌楼",
+      "alt": "苏新皓明信片《夜幕牌楼》",
+      "caption": "这个灯海巨巨巨长 感觉有200米",
+      "date": "2025-09-12",
+      "source": {
+        "platform": "bilibilitoy",
+        "url": "https://su-xinhao-media.oss-cn-hangzhou.aliyuncs.com/su-xinhao/2025/09/images/024-2025-09-12-250912-200.webp",
+        "pageUrl": "https://www.bilibili.com/toy/preview/preview_5SdX8Yet/index.htm",
+        "accessedAt": "2026-08-08T07:05:37.932Z"
+      },
+      "rights": "user-confirmed-authorized",
+      "images": [
+        {
+          "width": 480,
+          "height": 640,
+          "path": "assets/collectibles/postcards/postcard-2025-09-0024-480.webp",
+          "byteLength": 35880,
+          "mime": "image/webp",
+          "sha256": "d7f22c4c34cc7529199c29b8e9a1209e384225fe8d59f956f55f55bb5b86378d"
+        },
+        {
+          "width": 960,
+          "height": 1280,
+          "path": "assets/collectibles/postcards/postcard-2025-09-0024-960.webp",
+          "byteLength": 121676,
+          "mime": "image/webp",
+          "sha256": "45135a89aa0e002c55d52806da750e2d8bd4f06f9d883e5efff2bd645033a538"
+        }
+      ],
+      "tags": ["明信片", "古建", "夜景"],
+      "metadata": {
+        "sourceId": "2025-09-0024",
+        "sourceName": "250912 (这个灯海巨巨巨长 感觉有200米).jpg",
+        "sourceKind": "published",
+        "monthKey": "2025-09",
+        "original": {
+          "url": "https://su-xinhao-media.oss-cn-hangzhou.aliyuncs.com/su-xinhao/2025/09/images/024-2025-09-12-250912-200.webp",
+          "width": 1650,
+          "height": 2200,
+          "format": "webp",
+          "byteLength": 316906,
+          "sha256": "b0361449a83d5eafc9ce927f353acd41807e098829afeb7807dcdea5bf1e5135"
+        }
+      }
+    },
+    {
+      "id": "postcard-2025-08-0027",
+      "category": "postcard",
+      "title": "胡同晚云",
+      "alt": "苏新皓明信片《胡同晚云》",
+      "caption": "出门备采发现外面的天空好漂亮! 我又再次翻看我的相册的时候, 我还是得感叹一句全是天空! 晚霞!哈哈哈 真的注定要追晚霞!",
+      "date": "2025-09-04",
+      "source": {
+        "platform": "bilibilitoy",
+        "url": "https://su-xinhao-media.oss-cn-hangzhou.aliyuncs.com/su-xinhao/2025/08/images/027-2025-09-04-250904.webp",
+        "pageUrl": "https://www.bilibili.com/toy/preview/preview_5SdX8Yet/index.htm",
+        "accessedAt": "2026-08-08T07:05:37.932Z"
+      },
+      "rights": "user-confirmed-authorized",
+      "images": [
+        {
+          "width": 480,
+          "height": 640,
+          "path": "assets/collectibles/postcards/postcard-2025-08-0027-480.webp",
+          "byteLength": 16572,
+          "mime": "image/webp",
+          "sha256": "1ef0f07274b5cbf4d6ad9b59bff664dcb9444292cea1db16ab856d974511f6a0"
+        },
+        {
+          "width": 960,
+          "height": 1280,
+          "path": "assets/collectibles/postcards/postcard-2025-08-0027-960.webp",
+          "byteLength": 56404,
+          "mime": "image/webp",
+          "sha256": "02bba9119bf108229f2aa6a36a6357769a0fa6b142d6437a0e54795213b7d8f0"
+        }
+      ],
+      "tags": ["明信片", "胡同", "晚霞"],
+      "metadata": {
+        "sourceId": "2025-08-0027",
+        "sourceName": "250904 (出门备采发现外面的天空好漂亮! 我又再次翻看我的相册的时候, 我还是得感叹一句全是天空! 晚霞!哈哈哈 真的注定要追晚霞!).jpg",
+        "sourceKind": "published",
+        "monthKey": "2025-09",
+        "original": {
+          "url": "https://su-xinhao-media.oss-cn-hangzhou.aliyuncs.com/su-xinhao/2025/08/images/027-2025-09-04-250904.webp",
+          "width": 1650,
+          "height": 2200,
+          "format": "webp",
+          "byteLength": 136386,
+          "sha256": "6e1e2b2c216ee16b7849f5c9828c423c27a657ab4ed3368698cae637bd9de2d0"
+        }
+      }
+    },
+    {
+      "id": "postcard-2025-09-0023",
+      "category": "postcard",
+      "title": "绿叶后的古建",
+      "alt": "苏新皓明信片《绿叶后的古建》",
+      "caption": "没事 我就只是单纯想看一下这个两亿像素是个什么东东 嘻嘻",
+      "date": "2025-09-12",
+      "source": {
+        "platform": "bilibilitoy",
+        "url": "https://su-xinhao-media.oss-cn-hangzhou.aliyuncs.com/su-xinhao/2025/09/images/023-2025-09-12-250912.webp",
+        "pageUrl": "https://www.bilibili.com/toy/preview/preview_5SdX8Yet/index.htm",
+        "accessedAt": "2026-08-08T07:05:37.932Z"
+      },
+      "rights": "user-confirmed-authorized",
+      "images": [
+        {
+          "width": 480,
+          "height": 640,
+          "path": "assets/collectibles/postcards/postcard-2025-09-0023-480.webp",
+          "byteLength": 28328,
+          "mime": "image/webp",
+          "sha256": "3aab45ae021140789380c6007b68b8093be12c8a00015a3bf761797b8ec798ec"
+        },
+        {
+          "width": 960,
+          "height": 1280,
+          "path": "assets/collectibles/postcards/postcard-2025-09-0023-960.webp",
+          "byteLength": 79002,
+          "mime": "image/webp",
+          "sha256": "693e56bb8c517647ef663d6baaf823dcb304ac60e0933eac97ce3392926cac67"
+        }
+      ],
+      "tags": ["明信片", "古建", "绿叶"],
+      "metadata": {
+        "sourceId": "2025-09-0023",
+        "sourceName": "250912 (没事 我就只是单纯想看一下这个两亿像素是个什么东东 嘻嘻).jpg",
+        "sourceKind": "published",
+        "monthKey": "2025-09",
+        "original": {
+          "url": "https://su-xinhao-media.oss-cn-hangzhou.aliyuncs.com/su-xinhao/2025/09/images/023-2025-09-12-250912.webp",
+          "width": 1650,
+          "height": 2200,
+          "format": "webp",
+          "byteLength": 187438,
+          "sha256": "acce27190141b70aa8bc747d334121951cede76eed30a40a3ef63b2ad9ec202d"
+        }
+      }
+    },
+    {
+      "id": "postcard-2025-09-0020",
+      "category": "postcard",
+      "title": "胡同街角",
+      "alt": "苏新皓明信片《胡同街角》",
+      "caption": "我们去什刹海的路上这是 我就发现这个红色的路障在这里很好看",
+      "date": "2025-09-12",
+      "source": {
+        "platform": "bilibilitoy",
+        "url": "https://su-xinhao-media.oss-cn-hangzhou.aliyuncs.com/su-xinhao/2025/09/images/020-2025-09-12-250912.webp",
+        "pageUrl": "https://www.bilibili.com/toy/preview/preview_5SdX8Yet/index.htm",
+        "accessedAt": "2026-08-08T07:05:37.932Z"
+      },
+      "rights": "user-confirmed-authorized",
+      "images": [
+        {
+          "width": 480,
+          "height": 640,
+          "path": "assets/collectibles/postcards/postcard-2025-09-0020-480.webp",
+          "byteLength": 65536,
+          "mime": "image/webp",
+          "sha256": "a009e799f86a4be361fd9c828f9c8b854b1078ec3cf27bc116b78615981fc2dc"
+        },
+        {
+          "width": 960,
+          "height": 1281,
+          "path": "assets/collectibles/postcards/postcard-2025-09-0020-960.webp",
+          "byteLength": 213788,
+          "mime": "image/webp",
+          "sha256": "77a9c9e29c04373e1cda9c288b4d485d97b1f8889b09520edca71f762682dcd3"
+        }
+      ],
+      "tags": ["明信片", "胡同", "街景"],
+      "metadata": {
+        "sourceId": "2025-09-0020",
+        "sourceName": "250912 (我们去什刹海的路上这是 我就发现这个红色的路障在这里很好看).jpg",
+        "sourceKind": "published",
+        "monthKey": "2025-09",
+        "original": {
+          "url": "https://su-xinhao-media.oss-cn-hangzhou.aliyuncs.com/su-xinhao/2025/09/images/020-2025-09-12-250912.webp",
+          "width": 1649,
+          "height": 2200,
+          "format": "webp",
+          "byteLength": 491302,
+          "sha256": "679510a595b00639eaaeae0ca9b61e5a0627d6461c96914a095fa054ff6070d7"
+        }
+      }
+    },
+    {
+      "id": "postcard-2025-09-0012",
+      "category": "postcard",
+      "title": "夕阳里的影子",
+      "alt": "苏新皓明信片《夕阳里的影子》",
+      "caption": "Me&MAMA",
+      "date": "2025-09-12",
+      "source": {
+        "platform": "bilibilitoy",
+        "url": "https://su-xinhao-media.oss-cn-hangzhou.aliyuncs.com/su-xinhao/2025/09/images/012-2025-09-12-250912-Me-MAMA.webp",
+        "pageUrl": "https://www.bilibili.com/toy/preview/preview_5SdX8Yet/index.htm",
+        "accessedAt": "2026-08-08T07:05:37.932Z"
+      },
+      "rights": "user-confirmed-authorized",
+      "images": [
+        {
+          "width": 480,
+          "height": 640,
+          "path": "assets/collectibles/postcards/postcard-2025-09-0012-480.webp",
+          "byteLength": 66098,
+          "mime": "image/webp",
+          "sha256": "0b8a841db5c70c48f46a1b84d788018bbeac418d7e0a115110364d9d2fbabf5d"
+        },
+        {
+          "width": 960,
+          "height": 1280,
+          "path": "assets/collectibles/postcards/postcard-2025-09-0012-960.webp",
+          "byteLength": 251422,
+          "mime": "image/webp",
+          "sha256": "36957b5a9a9f3db57eecf0ffcaf614dca3d12285745c43205e2ef2f9e043cf06"
+        }
+      ],
+      "tags": ["明信片", "夕阳", "同行"],
+      "metadata": {
+        "sourceId": "2025-09-0012",
+        "sourceName": "250912 (Me&MAMA).jpg",
+        "sourceKind": "published",
+        "monthKey": "2025-09",
+        "original": {
+          "url": "https://su-xinhao-media.oss-cn-hangzhou.aliyuncs.com/su-xinhao/2025/09/images/012-2025-09-12-250912-Me-MAMA.webp",
+          "width": 1650,
+          "height": 2200,
+          "format": "webp",
+          "byteLength": 577780,
+          "sha256": "8ceef79e65e569430f49c299f011ff7684f37e8d71a0fc28707168beb5c927c8"
+        }
+      }
+    },
+    {
+      "id": "postcard-2025-10-0029",
+      "category": "postcard",
+      "title": "暴风海岸",
+      "alt": "苏新皓明信片《暴风海岸》",
+      "caption": "我站在这里感觉要被这个风给刮跑了",
+      "date": "2025-10-21",
+      "source": {
+        "platform": "bilibilitoy",
+        "url": "https://su-xinhao-media.oss-cn-hangzhou.aliyuncs.com/su-xinhao/2025/10/images/029-2025-10-21-251021.webp",
+        "pageUrl": "https://www.bilibili.com/toy/preview/preview_5SdX8Yet/index.htm",
+        "accessedAt": "2026-08-08T07:05:37.932Z"
+      },
+      "rights": "user-confirmed-authorized",
+      "images": [
+        {
+          "width": 480,
+          "height": 360,
+          "path": "assets/collectibles/postcards/postcard-2025-10-0029-480.webp",
+          "byteLength": 13060,
+          "mime": "image/webp",
+          "sha256": "a2f60a1e88fd127c811f0175042cd5dcdba299c93ad08c53018205b41a711a5b"
+        },
+        {
+          "width": 960,
+          "height": 720,
+          "path": "assets/collectibles/postcards/postcard-2025-10-0029-960.webp",
+          "byteLength": 43136,
+          "mime": "image/webp",
+          "sha256": "64127e7deb711e4f5fd1c3744f67db3a549b2410c732e78f8c4c3d3c85e83e4b"
+        }
+      ],
+      "tags": ["明信片", "海岸", "夜景"],
+      "metadata": {
+        "sourceId": "2025-10-0029",
+        "sourceName": "251021 (我站在这里感觉要被这个风给刮跑了).heic",
+        "sourceKind": "published",
+        "monthKey": "2025-10",
+        "original": {
+          "url": "https://su-xinhao-media.oss-cn-hangzhou.aliyuncs.com/su-xinhao/2025/10/images/029-2025-10-21-251021.webp",
+          "width": 2200,
+          "height": 1650,
+          "format": "webp",
+          "byteLength": 147298,
+          "sha256": "9d50801e9d8a3018a6e60146dd545fe807a6ce468a1fb9b42be71528b3643807"
+        }
+      }
+    },
+    {
+      "id": "postcard-2025-10-0004",
+      "category": "postcard",
+      "title": "飞越星空",
+      "alt": "苏新皓明信片《飞越星空》",
+      "caption": "来数星星吧 和我一起 我数了 一共有 .....你们猜47个!",
+      "date": "2025-10-14",
+      "source": {
+        "platform": "bilibilitoy",
+        "url": "https://su-xinhao-media.oss-cn-hangzhou.aliyuncs.com/su-xinhao/2025/10/images/004-2025-10-14-251014-47.webp",
+        "pageUrl": "https://www.bilibili.com/toy/preview/preview_5SdX8Yet/index.htm",
+        "accessedAt": "2026-08-08T07:05:37.932Z"
+      },
+      "rights": "user-confirmed-authorized",
+      "images": [
+        {
+          "width": 480,
+          "height": 360,
+          "path": "assets/collectibles/postcards/postcard-2025-10-0004-480.webp",
+          "byteLength": 4658,
+          "mime": "image/webp",
+          "sha256": "b2b4fbcc03318e320dc3a260122edea73df19a1c04c98e58a302ac942da654fd"
+        },
+        {
+          "width": 960,
+          "height": 720,
+          "path": "assets/collectibles/postcards/postcard-2025-10-0004-960.webp",
+          "byteLength": 14800,
+          "mime": "image/webp",
+          "sha256": "b80fd4c458a7ef9f2d3cf28432dc257c955c87fd6978a00b3efee4c8af3864ab"
+        }
+      ],
+      "tags": ["明信片", "星空", "旅行"],
+      "metadata": {
+        "sourceId": "2025-10-0004",
+        "sourceName": "251014 (来数星星吧 和我一起 我数了 一共有 .....你们猜47个!)).jpg",
+        "sourceKind": "published",
+        "monthKey": "2025-10",
+        "original": {
+          "url": "https://su-xinhao-media.oss-cn-hangzhou.aliyuncs.com/su-xinhao/2025/10/images/004-2025-10-14-251014-47.webp",
+          "width": 2200,
+          "height": 1650,
+          "format": "webp",
+          "byteLength": 55508,
+          "sha256": "56cc4db8a91095c0f190ce36f6edfda70350baed3ebaf3979d3bdcf3929407ad"
+        }
+      }
+    },
+    {
+      "id": "postcard-2025-10-0017",
+      "category": "postcard",
+      "title": "深蓝海浪",
+      "alt": "苏新皓明信片《深蓝海浪》",
+      "caption": "好梦核啊",
+      "date": "2025-10-27",
+      "source": {
+        "platform": "bilibilitoy",
+        "url": "https://su-xinhao-media.oss-cn-hangzhou.aliyuncs.com/su-xinhao/2025/10/images/017-2025-10-27-251027.webp",
+        "pageUrl": "https://www.bilibili.com/toy/preview/preview_5SdX8Yet/index.htm",
+        "accessedAt": "2026-08-08T07:05:37.932Z"
+      },
+      "rights": "user-confirmed-authorized",
+      "images": [
+        {
+          "width": 480,
+          "height": 640,
+          "path": "assets/collectibles/postcards/postcard-2025-10-0017-480.webp",
+          "byteLength": 15176,
+          "mime": "image/webp",
+          "sha256": "f6575d8eae20bb553e0566273ce9222b109e62be201e7ed75f8684944e49b9fa"
+        },
+        {
+          "width": 960,
+          "height": 1280,
+          "path": "assets/collectibles/postcards/postcard-2025-10-0017-960.webp",
+          "byteLength": 57890,
+          "mime": "image/webp",
+          "sha256": "809190e3703cca84da5c46c893149600d1882d0aad25715006794b943b4b7170"
+        }
+      ],
+      "tags": ["明信片", "海浪", "夜色"],
+      "metadata": {
+        "sourceId": "2025-10-0017",
+        "sourceName": "251027 (好梦核啊).jpg",
+        "sourceKind": "published",
+        "monthKey": "2025-10",
+        "original": {
+          "url": "https://su-xinhao-media.oss-cn-hangzhou.aliyuncs.com/su-xinhao/2025/10/images/017-2025-10-27-251027.webp",
+          "width": 1650,
+          "height": 2200,
+          "format": "webp",
+          "byteLength": 146846,
+          "sha256": "c14f0fdac1eda02ca5868552bba35c40e1f54f4d8fe2c2a8ce0a0aa57f994156"
+        }
+      }
+    },
+    {
+      "id": "postcard-2025-10-0031",
+      "category": "postcard",
+      "title": "椰林小楼",
+      "alt": "苏新皓明信片《椰林小楼》",
+      "caption": "中途停车靠边休息",
+      "date": "2025-10-23",
+      "source": {
+        "platform": "bilibilitoy",
+        "url": "https://su-xinhao-media.oss-cn-hangzhou.aliyuncs.com/su-xinhao/2025/10/images/031-2025-10-23-251023.webp",
+        "pageUrl": "https://www.bilibili.com/toy/preview/preview_5SdX8Yet/index.htm",
+        "accessedAt": "2026-08-08T07:05:37.932Z"
+      },
+      "rights": "user-confirmed-authorized",
+      "images": [
+        {
+          "width": 480,
+          "height": 360,
+          "path": "assets/collectibles/postcards/postcard-2025-10-0031-480.webp",
+          "byteLength": 14764,
+          "mime": "image/webp",
+          "sha256": "dd5beb4b3e99bea6fab56a882dcea7e6ed607fea92ddb04297127ca75ad8c6d2"
+        },
+        {
+          "width": 960,
+          "height": 720,
+          "path": "assets/collectibles/postcards/postcard-2025-10-0031-960.webp",
+          "byteLength": 56778,
+          "mime": "image/webp",
+          "sha256": "a96912bcfbfe076e07c0ab5a27bf0fb284a9972715e2e15101e004f8b1370558"
+        }
+      ],
+      "tags": ["明信片", "椰林", "旅行"],
+      "metadata": {
+        "sourceId": "2025-10-0031",
+        "sourceName": "251023 (中途停车靠边休息).heic",
+        "sourceKind": "published",
+        "monthKey": "2025-10",
+        "original": {
+          "url": "https://su-xinhao-media.oss-cn-hangzhou.aliyuncs.com/su-xinhao/2025/10/images/031-2025-10-23-251023.webp",
+          "width": 2200,
+          "height": 1650,
+          "format": "webp",
+          "byteLength": 191116,
+          "sha256": "e8fe0b9eaa3a08423123e9b2c234df586345b75982bc6b485efa3e43fc37a8f7"
+        }
+      }
+    },
+    {
+      "id": "postcard-2025-09-0045",
+      "category": "postcard",
+      "title": "夏日一口甜",
+      "alt": "苏新皓明信片《夏日一口甜》",
+      "caption": "雪糕很好吃 我给我妈妈吃了她说太甜啦! !我说可是真的很好吃捏",
+      "date": "2025-09-30",
+      "source": {
+        "platform": "bilibilitoy",
+        "url": "https://su-xinhao-media.oss-cn-hangzhou.aliyuncs.com/su-xinhao/2025/09/images/045-2025-09-30-250930.webp",
+        "pageUrl": "https://www.bilibili.com/toy/preview/preview_5SdX8Yet/index.htm",
+        "accessedAt": "2026-08-08T07:05:37.932Z"
+      },
+      "rights": "user-confirmed-authorized",
+      "images": [
+        {
+          "width": 480,
+          "height": 637,
+          "path": "assets/collectibles/postcards/postcard-2025-09-0045-480.webp",
+          "byteLength": 52460,
+          "mime": "image/webp",
+          "sha256": "59477d0a97032f9ce7b1243c439fd56a27f9ff6cee79031abde7f6c38c9aef84"
+        },
+        {
+          "width": 960,
+          "height": 1273,
+          "path": "assets/collectibles/postcards/postcard-2025-09-0045-960.webp",
+          "byteLength": 190306,
+          "mime": "image/webp",
+          "sha256": "0bbe052b2d71a0951fb279a540562116c063ad60457ef36ac696ddffdb6b6977"
+        }
+      ],
+      "tags": ["明信片", "夏日", "苏新皓"],
+      "metadata": {
+        "sourceId": "2025-09-0045",
+        "sourceName": "250930 (雪糕很好吃 我给我妈妈吃了她说太甜啦! !我说可是真的很好吃捏).jpg",
+        "sourceKind": "published",
+        "monthKey": "2025-09",
+        "original": {
+          "url": "https://su-xinhao-media.oss-cn-hangzhou.aliyuncs.com/su-xinhao/2025/09/images/045-2025-09-30-250930.webp",
+          "width": 1290,
+          "height": 1711,
+          "format": "webp",
+          "byteLength": 386104,
+          "sha256": "c03c02eb5ce14a810de799ec6bf885a9ccaf6426c672f18d364c55f5f25ace1d"
+        }
+      }
+    },
+    {
+      "id": "postcard-2025-10-0026",
+      "category": "postcard",
+      "title": "音乐桌角",
+      "alt": "苏新皓明信片《音乐桌角》",
+      "caption": "你在这里待着确实是有点危险",
+      "date": "2025-10-13",
+      "source": {
+        "platform": "bilibilitoy",
+        "url": "https://su-xinhao-media.oss-cn-hangzhou.aliyuncs.com/su-xinhao/2025/10/images/026-2025-10-13-251013.webp",
+        "pageUrl": "https://www.bilibili.com/toy/preview/preview_5SdX8Yet/index.htm",
+        "accessedAt": "2026-08-08T07:05:37.932Z"
+      },
+      "rights": "user-confirmed-authorized",
+      "images": [
+        {
+          "width": 480,
+          "height": 640,
+          "path": "assets/collectibles/postcards/postcard-2025-10-0026-480.webp",
+          "byteLength": 36724,
+          "mime": "image/webp",
+          "sha256": "d5c5399be6d8de8a697f0450283e8caaab19f013d08e37d2156d25c782fa1cf2"
+        },
+        {
+          "width": 960,
+          "height": 1280,
+          "path": "assets/collectibles/postcards/postcard-2025-10-0026-960.webp",
+          "byteLength": 110252,
+          "mime": "image/webp",
+          "sha256": "fc35844fcf731ffdf818d9bfa5558f21f36ba564837599776a27bf14bb881721"
+        }
+      ],
+      "tags": ["明信片", "音乐", "静物"],
+      "metadata": {
+        "sourceId": "2025-10-0026",
+        "sourceName": "251013 (你在这里待着确实是有点危险).heic",
+        "sourceKind": "published",
+        "monthKey": "2025-10",
+        "original": {
+          "url": "https://su-xinhao-media.oss-cn-hangzhou.aliyuncs.com/su-xinhao/2025/10/images/026-2025-10-13-251013.webp",
+          "width": 1650,
+          "height": 2200,
+          "format": "webp",
+          "byteLength": 248108,
+          "sha256": "f3e5c8883a219dbb128ce1bda85b5bed6546e7e494fc586cc3808041caa98c67"
+        }
+      }
+    },
+    {
+      "id": "postcard-2025-11-0008",
+      "category": "postcard",
+      "title": "舞台背影",
+      "alt": "苏新皓明信片《舞台背影》",
+      "caption": "hiahia我把这个接收器包改装了一下,这样就不会被压在腰封底下啦",
+      "date": "2025-11-09",
+      "source": {
+        "platform": "bilibilitoy",
+        "url": "https://su-xinhao-media.oss-cn-hangzhou.aliyuncs.com/su-xinhao/2025/11/images/008-2025-11-09-251109-hiahia.webp",
+        "pageUrl": "https://www.bilibili.com/toy/preview/preview_5SdX8Yet/index.htm",
+        "accessedAt": "2026-08-08T07:05:37.932Z"
+      },
+      "rights": "user-confirmed-authorized",
+      "images": [
+        {
+          "width": 480,
+          "height": 640,
+          "path": "assets/collectibles/postcards/postcard-2025-11-0008-480.webp",
+          "byteLength": 21088,
+          "mime": "image/webp",
+          "sha256": "074c70c2b3bba6d8d9cb8cb9d46562bcf0ebb678cf4344e6d0b803e6f2557698"
+        },
+        {
+          "width": 960,
+          "height": 1280,
+          "path": "assets/collectibles/postcards/postcard-2025-11-0008-960.webp",
+          "byteLength": 62508,
+          "mime": "image/webp",
+          "sha256": "926abfb77d543fd4861cc99219d093397f12158fb375b8a1117228ba8f6d027e"
+        }
+      ],
+      "tags": ["明信片", "舞台", "苏新皓"],
+      "metadata": {
+        "sourceId": "2025-11-0008",
+        "sourceName": "251109 (hiahia我把这个接收器包改装了一下,这样就不会被压在腰封底下啦).jpg",
+        "sourceKind": "published",
+        "monthKey": "2025-11",
+        "original": {
+          "url": "https://su-xinhao-media.oss-cn-hangzhou.aliyuncs.com/su-xinhao/2025/11/images/008-2025-11-09-251109-hiahia.webp",
+          "width": 1650,
+          "height": 2200,
+          "format": "webp",
+          "byteLength": 147396,
+          "sha256": "e04e5e802b8d3f8a765195f9293b411a8a5b53d6e36c09be1e399fcfbd3f73ba"
+        }
+      }
+    },
+    {
+      "id": "postcard-2025-11-0003",
+      "category": "postcard",
+      "title": "民族画框",
+      "alt": "苏新皓明信片《民族画框》",
+      "caption": "hiahia妈妈",
+      "date": "2025-11-05",
+      "source": {
+        "platform": "bilibilitoy",
+        "url": "https://su-xinhao-media.oss-cn-hangzhou.aliyuncs.com/su-xinhao/2025/11/images/003-2025-11-05-251105-hiahia.webp",
+        "pageUrl": "https://www.bilibili.com/toy/preview/preview_5SdX8Yet/index.htm",
+        "accessedAt": "2026-08-08T07:05:37.932Z"
+      },
+      "rights": "user-confirmed-authorized",
+      "images": [
+        {
+          "width": 480,
+          "height": 640,
+          "path": "assets/collectibles/postcards/postcard-2025-11-0003-480.webp",
+          "byteLength": 21688,
+          "mime": "image/webp",
+          "sha256": "f60d9eefa62f07592e64d62517cf0f65c867f4a32168cca1618d3d6d0958e468"
+        },
+        {
+          "width": 960,
+          "height": 1280,
+          "path": "assets/collectibles/postcards/postcard-2025-11-0003-960.webp",
+          "byteLength": 66974,
+          "mime": "image/webp",
+          "sha256": "38e10b08ffd749fe740aae6eaeec43d895d93329469e36a2fa4b9abd176ede27"
+        }
+      ],
+      "tags": ["明信片", "画作", "旅行"],
+      "metadata": {
+        "sourceId": "2025-11-0003",
+        "sourceName": "251105 (hiahia妈妈）.jpg",
+        "sourceKind": "published",
+        "monthKey": "2025-11",
+        "original": {
+          "url": "https://su-xinhao-media.oss-cn-hangzhou.aliyuncs.com/su-xinhao/2025/11/images/003-2025-11-05-251105-hiahia.webp",
+          "width": 1440,
+          "height": 1920,
+          "format": "webp",
+          "byteLength": 120472,
+          "sha256": "45a7dc8b27d0e2faf6114b77f3e59121ddc30593d90d23f98544d64d6df85685"
+        }
+      }
+    },
+    {
+      "id": "postcard-2025-12-0009",
+      "category": "postcard",
+      "title": "暮色屋顶",
+      "alt": "苏新皓明信片《暮色屋顶》",
+      "caption": "我们发现了一个绝妙拍照的好地方",
+      "date": "2025-12-09",
+      "source": {
+        "platform": "bilibilitoy",
+        "url": "https://su-xinhao-media.oss-cn-hangzhou.aliyuncs.com/su-xinhao/2025/12/images/009-2025-12-09-251209.webp",
+        "pageUrl": "https://www.bilibili.com/toy/preview/preview_5SdX8Yet/index.htm",
+        "accessedAt": "2026-08-08T07:05:37.932Z"
+      },
+      "rights": "user-confirmed-authorized",
+      "images": [
+        {
+          "width": 480,
+          "height": 360,
+          "path": "assets/collectibles/postcards/postcard-2025-12-0009-480.webp",
+          "byteLength": 8994,
+          "mime": "image/webp",
+          "sha256": "aa55a6281d0bd9cd0269569dd95984c2236cdda270e496c76b885c90f5d331ba"
+        },
+        {
+          "width": 960,
+          "height": 720,
+          "path": "assets/collectibles/postcards/postcard-2025-12-0009-960.webp",
+          "byteLength": 36900,
+          "mime": "image/webp",
+          "sha256": "6dd5a54348fccc1dc4d8531859ef718867262b84efc7a4e3fa5ff3e9f254aa6e"
+        }
+      ],
+      "tags": ["明信片", "暮色", "胡同"],
+      "metadata": {
+        "sourceId": "2025-12-0009",
+        "sourceName": "251209 （我们发现了一个绝妙拍照的好地方）.jpg",
+        "sourceKind": "published",
+        "monthKey": "2025-12",
+        "original": {
+          "url": "https://su-xinhao-media.oss-cn-hangzhou.aliyuncs.com/su-xinhao/2025/12/images/009-2025-12-09-251209.webp",
+          "width": 2200,
+          "height": 1650,
+          "format": "webp",
+          "byteLength": 172050,
+          "sha256": "0d9115be9e6735cf930dbf66d1b24214252122f481a95223c82cf205f82cee07"
+        }
+      }
+    },
+    {
+      "id": "postcard-2025-12-0010",
+      "category": "postcard",
+      "title": "蒸汽街巷",
+      "alt": "苏新皓明信片《蒸汽街巷》",
+      "caption": "抽时间出来拍的这个 vlog 嘿嘿 你们看这是我最喜欢的一张",
+      "date": "2025-12-09",
+      "source": {
+        "platform": "bilibilitoy",
+        "url": "https://su-xinhao-media.oss-cn-hangzhou.aliyuncs.com/su-xinhao/2025/12/images/010-2025-12-09-251209-vlog.webp",
+        "pageUrl": "https://www.bilibili.com/toy/preview/preview_5SdX8Yet/index.htm",
+        "accessedAt": "2026-08-08T07:05:37.932Z"
+      },
+      "rights": "user-confirmed-authorized",
+      "images": [
+        {
+          "width": 480,
+          "height": 360,
+          "path": "assets/collectibles/postcards/postcard-2025-12-0010-480.webp",
+          "byteLength": 20918,
+          "mime": "image/webp",
+          "sha256": "a18c3548efbe6399e003e4eca98a24a549dc6377a18e584a169e9f1cf6d64547"
+        },
+        {
+          "width": 960,
+          "height": 720,
+          "path": "assets/collectibles/postcards/postcard-2025-12-0010-960.webp",
+          "byteLength": 65944,
+          "mime": "image/webp",
+          "sha256": "e23e799fcbc09427eaab6bf928bd9da931dc34a4764195abd8ab450b9896de25"
+        }
+      ],
+      "tags": ["明信片", "街巷", "光影"],
+      "metadata": {
+        "sourceId": "2025-12-0010",
+        "sourceName": "251209 （抽时间出来拍的这个 vlog 嘿嘿 你们看这是我最喜欢的一张）.jpg",
+        "sourceKind": "published",
+        "monthKey": "2025-12",
+        "original": {
+          "url": "https://su-xinhao-media.oss-cn-hangzhou.aliyuncs.com/su-xinhao/2025/12/images/010-2025-12-09-251209-vlog.webp",
+          "width": 2200,
+          "height": 1650,
+          "format": "webp",
+          "byteLength": 252710,
+          "sha256": "6474bba644d2cc8503eaa1140646cb61c3eb51dbedf25e115f3ca11e0fff0fb6"
+        }
+      }
+    },
+    {
+      "id": "postcard-2025-11-0026",
+      "category": "postcard",
+      "title": "金色归途",
+      "alt": "苏新皓明信片《金色归途》",
+      "caption": "我们回去啦 妈妈在我们准备去好好逛一下",
+      "date": "2025-11-15",
+      "source": {
+        "platform": "bilibilitoy",
+        "url": "https://su-xinhao-media.oss-cn-hangzhou.aliyuncs.com/su-xinhao/2025/11/images/026-2025-11-15-251115.webp",
+        "pageUrl": "https://www.bilibili.com/toy/preview/preview_5SdX8Yet/index.htm",
+        "accessedAt": "2026-08-08T07:05:37.932Z"
+      },
+      "rights": "user-confirmed-authorized",
+      "images": [
+        {
+          "width": 480,
+          "height": 691,
+          "path": "assets/collectibles/postcards/postcard-2025-11-0026-480.webp",
+          "byteLength": 14706,
+          "mime": "image/webp",
+          "sha256": "58ce4929acf9bf287077ea6e762ea9eff9a966ac3d3893829efb20550e092c18"
+        },
+        {
+          "width": 960,
+          "height": 1383,
+          "path": "assets/collectibles/postcards/postcard-2025-11-0026-960.webp",
+          "byteLength": 47300,
+          "mime": "image/webp",
+          "sha256": "5869449b461c157a43d74e26fa9af6065f4e8b9e417a1d73f06bcd78729c30ed"
+        }
+      ],
+      "tags": ["明信片", "车窗", "黄昏"],
+      "metadata": {
+        "sourceId": "2025-11-0026",
+        "sourceName": "251115 (我们回去啦 妈妈在我们准备去好好逛一下).jpg",
+        "sourceKind": "published",
+        "monthKey": "2025-11",
+        "original": {
+          "url": "https://su-xinhao-media.oss-cn-hangzhou.aliyuncs.com/su-xinhao/2025/11/images/026-2025-11-15-251115.webp",
+          "width": 1179,
+          "height": 1698,
+          "format": "webp",
+          "byteLength": 88410,
+          "sha256": "e8714cf32a8aa84a590d2d8c72a1b96e9e4fedef93ed82d6419af35313f2d76d"
+        }
+      }
+    },
+    {
+      "id": "postcard-2025-11-0024",
+      "category": "postcard",
+      "title": "窗框晚霞",
+      "alt": "苏新皓明信片《窗框晚霞》",
+      "caption": "每次都会经过这里, 我发现这里挺神奇的这里的玻璃像是有一层滤镜,有的时候是像复古的美式蓝调,有的时候便是这种温暖的胶卷感, 也有可能这跟玻璃没有任何关系,就是世界在臭美吧",
+      "date": "2025-11-14",
+      "source": {
+        "platform": "bilibilitoy",
+        "url": "https://su-xinhao-media.oss-cn-hangzhou.aliyuncs.com/su-xinhao/2025/11/images/024-2025-11-14-251114.webp",
+        "pageUrl": "https://www.bilibili.com/toy/preview/preview_5SdX8Yet/index.htm",
+        "accessedAt": "2026-08-08T07:05:37.932Z"
+      },
+      "rights": "user-confirmed-authorized",
+      "images": [
+        {
+          "width": 480,
+          "height": 640,
+          "path": "assets/collectibles/postcards/postcard-2025-11-0024-480.webp",
+          "byteLength": 9992,
+          "mime": "image/webp",
+          "sha256": "9be0ec45f3918649d7b8c275f7679ef3703dc2dcf930af6e84f1fad4d102738c"
+        },
+        {
+          "width": 960,
+          "height": 1280,
+          "path": "assets/collectibles/postcards/postcard-2025-11-0024-960.webp",
+          "byteLength": 28892,
+          "mime": "image/webp",
+          "sha256": "25f132c30aa29b05a554a1fb015f8c6bb443957d036792d2407b0d84342ef6d7"
+        }
+      ],
+      "tags": ["明信片", "晚霞", "窗景"],
+      "metadata": {
+        "sourceId": "2025-11-0024",
+        "sourceName": "251114 (每次都会经过这里, 我发现这里挺神奇的这里的玻璃像是有一层滤镜,有的时候是像复古的美式蓝调,有的时候便是这种温暖的胶卷感, 也有可能这跟玻璃没有任何关系,就是世界在臭美吧）.jpg",
+        "sourceKind": "published",
+        "monthKey": "2025-11",
+        "original": {
+          "url": "https://su-xinhao-media.oss-cn-hangzhou.aliyuncs.com/su-xinhao/2025/11/images/024-2025-11-14-251114.webp",
+          "width": 1650,
+          "height": 2200,
+          "format": "webp",
+          "byteLength": 65974,
+          "sha256": "f7c9cd89d3697388d95c40146d69fe0f27140869b62ac8f509a1ddca4199edf2"
+        }
+      }
+    },
+    {
+      "id": "postcard-2025-11-0038",
+      "category": "postcard",
+      "title": "冬日红砖楼",
+      "alt": "苏新皓明信片《冬日红砖楼》",
+      "caption": "我试了一下这个2亿像素, 确实还不错",
+      "date": "2025-11-23",
+      "source": {
+        "platform": "bilibilitoy",
+        "url": "https://su-xinhao-media.oss-cn-hangzhou.aliyuncs.com/su-xinhao/2025/11/images/038-2025-11-23-251123-2.webp",
+        "pageUrl": "https://www.bilibili.com/toy/preview/preview_5SdX8Yet/index.htm",
+        "accessedAt": "2026-08-08T07:05:37.932Z"
+      },
+      "rights": "user-confirmed-authorized",
+      "images": [
+        {
+          "width": 480,
+          "height": 640,
+          "path": "assets/collectibles/postcards/postcard-2025-11-0038-480.webp",
+          "byteLength": 100404,
+          "mime": "image/webp",
+          "sha256": "58475f35635c11c10e3bf85b0ad9e38a98b956dda2feb1a14588eb041cc7ad38"
+        },
+        {
+          "width": 960,
+          "height": 1280,
+          "path": "assets/collectibles/postcards/postcard-2025-11-0038-960.webp",
+          "byteLength": 402820,
+          "mime": "image/webp",
+          "sha256": "60d48175a0125ea36cd8157ca26e17d42aa0227c13edc456db229008f0de9592"
+        }
+      ],
+      "tags": ["明信片", "冬日", "城市"],
+      "metadata": {
+        "sourceId": "2025-11-0038",
+        "sourceName": "251123 (我试了一下这个2亿像素, 确实还不错).jpg",
+        "sourceKind": "published",
+        "monthKey": "2025-11",
+        "original": {
+          "url": "https://su-xinhao-media.oss-cn-hangzhou.aliyuncs.com/su-xinhao/2025/11/images/038-2025-11-23-251123-2.webp",
+          "width": 1650,
+          "height": 2200,
+          "format": "webp",
+          "byteLength": 1127278,
+          "sha256": "dc0e5f0d0729297eee4b812ac472f3116ba67935deca918679c5fe7f044e37da"
+        }
+      }
+    },
+    {
+      "id": "postcard-2025-11-0028",
+      "category": "postcard",
+      "title": "滴漏咖啡",
+      "alt": "苏新皓明信片《滴漏咖啡》",
+      "caption": "这个叫越南咖啡! 觉得好好喝呀 我也要买一个这个小装置! 我进行了一个搜索,还挺便宜的, 拿下!",
+      "date": "2025-11-15",
+      "source": {
+        "platform": "bilibilitoy",
+        "url": "https://su-xinhao-media.oss-cn-hangzhou.aliyuncs.com/su-xinhao/2025/11/images/028-2025-11-15-251115.webp",
+        "pageUrl": "https://www.bilibili.com/toy/preview/preview_5SdX8Yet/index.htm",
+        "accessedAt": "2026-08-08T07:05:37.932Z"
+      },
+      "rights": "user-confirmed-authorized",
+      "images": [
+        {
+          "width": 480,
+          "height": 640,
+          "path": "assets/collectibles/postcards/postcard-2025-11-0028-480.webp",
+          "byteLength": 30712,
+          "mime": "image/webp",
+          "sha256": "a78ffa4eb1969c55d4d8643dc2d7eba38660603fff0473068f68292a6d88a48e"
+        },
+        {
+          "width": 960,
+          "height": 1280,
+          "path": "assets/collectibles/postcards/postcard-2025-11-0028-960.webp",
+          "byteLength": 110508,
+          "mime": "image/webp",
+          "sha256": "8ae5c868cd9be40caa45ae3e562203bdd6f087b713c49de696c7d12e97d1e059"
+        }
+      ],
+      "tags": ["明信片", "咖啡", "静物"],
+      "metadata": {
+        "sourceId": "2025-11-0028",
+        "sourceName": "251115 (这个叫越南咖啡! 觉得好好喝呀 我也要买一个这个小装置! 我进行了一个搜索,还挺便宜的, 拿下!).jpg",
+        "sourceKind": "published",
+        "monthKey": "2025-11",
+        "original": {
+          "url": "https://su-xinhao-media.oss-cn-hangzhou.aliyuncs.com/su-xinhao/2025/11/images/028-2025-11-15-251115.webp",
+          "width": 1650,
+          "height": 2200,
+          "format": "webp",
+          "byteLength": 256416,
+          "sha256": "797a93fa65d4893f9533c8111738e834096edece891527a10ccd7461d4eca8e4"
+        }
+      }
+    },
+    {
+      "id": "postcard-2025-11-0025",
+      "category": "postcard",
+      "title": "怀里的小白狗",
+      "alt": "苏新皓明信片《怀里的小白狗》",
+      "caption": "妈妈抱着的这个小家伙好可爱哦",
+      "date": "2025-11-15",
+      "source": {
+        "platform": "bilibilitoy",
+        "url": "https://su-xinhao-media.oss-cn-hangzhou.aliyuncs.com/su-xinhao/2025/11/images/025-2025-11-15-251115.webp",
+        "pageUrl": "https://www.bilibili.com/toy/preview/preview_5SdX8Yet/index.htm",
+        "accessedAt": "2026-08-08T07:05:37.932Z"
+      },
+      "rights": "user-confirmed-authorized",
+      "images": [
+        {
+          "width": 480,
+          "height": 618,
+          "path": "assets/collectibles/postcards/postcard-2025-11-0025-480.webp",
+          "byteLength": 22438,
+          "mime": "image/webp",
+          "sha256": "2f77e05283d965659fbacb09380ada63dff093ea39c94d6b8f5826d4babadc5d"
+        },
+        {
+          "width": 960,
+          "height": 1235,
+          "path": "assets/collectibles/postcards/postcard-2025-11-0025-960.webp",
+          "byteLength": 62916,
+          "mime": "image/webp",
+          "sha256": "1c653d770154390a992063c00d28ab8bb81a1cc0b66ce9315e9fa70253839d1a"
+        }
+      ],
+      "tags": ["明信片", "小狗", "陪伴"],
+      "metadata": {
+        "sourceId": "2025-11-0025",
+        "sourceName": "251115 (妈妈抱着的这个小家伙好可爱哦).jpg",
+        "sourceKind": "published",
+        "monthKey": "2025-11",
+        "original": {
+          "url": "https://su-xinhao-media.oss-cn-hangzhou.aliyuncs.com/su-xinhao/2025/11/images/025-2025-11-15-251115.webp",
+          "width": 1179,
+          "height": 1517,
+          "format": "webp",
+          "byteLength": 94686,
+          "sha256": "32d4f734f9e8a5b14afb7b17d7654f850ddfe7d956aa76c3b342321b63961d24"
+        }
+      }
+    },
+    {
+      "id": "postcard-2025-11-0029",
+      "category": "postcard",
+      "title": "秋日同行",
+      "alt": "苏新皓明信片《秋日同行》",
+      "caption": "我和妈妈走在落叶上",
+      "date": "2025-11-15",
+      "source": {
+        "platform": "bilibilitoy",
+        "url": "https://su-xinhao-media.oss-cn-hangzhou.aliyuncs.com/su-xinhao/2025/11/images/029-2025-11-15-251115.webp",
+        "pageUrl": "https://www.bilibili.com/toy/preview/preview_5SdX8Yet/index.htm",
+        "accessedAt": "2026-08-08T07:05:37.932Z"
+      },
+      "rights": "user-confirmed-authorized",
+      "images": [
+        {
+          "width": 480,
+          "height": 358,
+          "path": "assets/collectibles/postcards/postcard-2025-11-0029-480.webp",
+          "byteLength": 27044,
+          "mime": "image/webp",
+          "sha256": "df2297adf55dd2de8f2d42418c1f6643564c50d7a3650653ade1aa63d3b2ba2a"
+        },
+        {
+          "width": 960,
+          "height": 717,
+          "path": "assets/collectibles/postcards/postcard-2025-11-0029-960.webp",
+          "byteLength": 82182,
+          "mime": "image/webp",
+          "sha256": "c1a26f02e4c5a89d90159a1b7f267097e84d0fc0aba737059689b4e6d2d09c4c"
+        }
+      ],
+      "tags": ["明信片", "秋日", "同行"],
+      "metadata": {
+        "sourceId": "2025-11-0029",
+        "sourceName": "251115（我和妈妈走在落叶上）.jpg",
+        "sourceKind": "published",
+        "monthKey": "2025-11",
+        "original": {
+          "url": "https://su-xinhao-media.oss-cn-hangzhou.aliyuncs.com/su-xinhao/2025/11/images/029-2025-11-15-251115.webp",
+          "width": 1445,
+          "height": 1079,
+          "format": "webp",
+          "byteLength": 150354,
+          "sha256": "69968896788c37eec89779c5aad7114b470f43478f82add9a4570390cd10db3b"
+        }
+      }
+    },
+    {
+      "id": "postcard-2025-12-0020",
+      "category": "postcard",
+      "title": "雪地独椅",
+      "alt": "苏新皓明信片《雪地独椅》",
+      "caption": "感觉这个构图好看我就凑近拍了一张 用的那个 dazz",
+      "date": "2025-12-12",
+      "source": {
+        "platform": "bilibilitoy",
+        "url": "https://su-xinhao-media.oss-cn-hangzhou.aliyuncs.com/su-xinhao/2025/12/images/020-2025-12-12-251212-dazz.webp",
+        "pageUrl": "https://www.bilibili.com/toy/preview/preview_5SdX8Yet/index.htm",
+        "accessedAt": "2026-08-08T07:05:37.932Z"
+      },
+      "rights": "user-confirmed-authorized",
+      "images": [
+        {
+          "width": 480,
+          "height": 640,
+          "path": "assets/collectibles/postcards/postcard-2025-12-0020-480.webp",
+          "byteLength": 26496,
+          "mime": "image/webp",
+          "sha256": "f5c44dfeed83d3bcd5b9c82cced7e76a135010230057e8f83030664274634b48"
+        },
+        {
+          "width": 960,
+          "height": 1280,
+          "path": "assets/collectibles/postcards/postcard-2025-12-0020-960.webp",
+          "byteLength": 89250,
+          "mime": "image/webp",
+          "sha256": "74cb2b94df8fe0f460457fcbb15ee010a2db8fa2e09fa208d0b598b2625b5a30"
+        }
+      ],
+      "tags": ["明信片", "雪景", "冬日"],
+      "metadata": {
+        "sourceId": "2025-12-0020",
+        "sourceName": "251212 （感觉这个构图好看我就凑近拍了一张 用的那个 dazz）.jpg",
+        "sourceKind": "published",
+        "monthKey": "2025-12",
+        "original": {
+          "url": "https://su-xinhao-media.oss-cn-hangzhou.aliyuncs.com/su-xinhao/2025/12/images/020-2025-12-12-251212-dazz.webp",
+          "width": 1650,
+          "height": 2200,
+          "format": "webp",
+          "byteLength": 226516,
+          "sha256": "5ed8c42800087acc19d81d14d44f167f186a92d7fed3c42d8c418dba263f2b01"
+        }
+      }
+    },
+    {
+      "id": "postcard-2025-12-0023",
+      "category": "postcard",
+      "title": "蓝调胡同",
+      "alt": "苏新皓明信片《蓝调胡同》",
+      "caption": "老师说现在是北京的蓝调时间，叔叔在这里躺着歇歇脚",
+      "date": "2025-12-12",
+      "source": {
+        "platform": "bilibilitoy",
+        "url": "https://su-xinhao-media.oss-cn-hangzhou.aliyuncs.com/su-xinhao/2025/12/images/023-2025-12-12-251212.webp",
+        "pageUrl": "https://www.bilibili.com/toy/preview/preview_5SdX8Yet/index.htm",
+        "accessedAt": "2026-08-08T07:05:37.932Z"
+      },
+      "rights": "user-confirmed-authorized",
+      "images": [
+        {
+          "width": 480,
+          "height": 718,
+          "path": "assets/collectibles/postcards/postcard-2025-12-0023-480.webp",
+          "byteLength": 42814,
+          "mime": "image/webp",
+          "sha256": "b08d082b3ac0b5e97af198a07a1d7249ef69b415944b317eae6cf974f9678ed1"
+        },
+        {
+          "width": 960,
+          "height": 1436,
+          "path": "assets/collectibles/postcards/postcard-2025-12-0023-960.webp",
+          "byteLength": 135618,
+          "mime": "image/webp",
+          "sha256": "80ae6518b35864d8d8367e27efe50eed80485d974d67affeba6d6d7e2c286713"
+        }
+      ],
+      "tags": ["明信片", "胡同", "夜景"],
+      "metadata": {
+        "sourceId": "2025-12-0023",
+        "sourceName": "251212 （老师说现在是北京的蓝调时间，叔叔在这里躺着歇歇脚）.jpg",
+        "sourceKind": "published",
+        "monthKey": "2025-12",
+        "original": {
+          "url": "https://su-xinhao-media.oss-cn-hangzhou.aliyuncs.com/su-xinhao/2025/12/images/023-2025-12-12-251212.webp",
+          "width": 1080,
+          "height": 1616,
+          "format": "webp",
+          "byteLength": 189266,
+          "sha256": "1bec4b461c5b5590af2cbe340f93cbb07fbbb54af6d805305eeba845f1049ba8"
+        }
+      }
+    },
+    {
+      "id": "postcard-2025-12-0011",
+      "category": "postcard",
+      "title": "涂鸦旧门",
+      "alt": "苏新皓明信片《涂鸦旧门》",
+      "caption": "故地重游了一次 哎我好感动哦 就好像看到你们了一样",
+      "date": "2025-12-09",
+      "source": {
+        "platform": "bilibilitoy",
+        "url": "https://su-xinhao-media.oss-cn-hangzhou.aliyuncs.com/su-xinhao/2025/12/images/011-2025-12-09-251209.webp",
+        "pageUrl": "https://www.bilibili.com/toy/preview/preview_5SdX8Yet/index.htm",
+        "accessedAt": "2026-08-08T07:05:37.932Z"
+      },
+      "rights": "user-confirmed-authorized",
+      "images": [
+        {
+          "width": 480,
+          "height": 640,
+          "path": "assets/collectibles/postcards/postcard-2025-12-0011-480.webp",
+          "byteLength": 46530,
+          "mime": "image/webp",
+          "sha256": "c54ef83e5eb151e4221970ce2305991d46da6c9bc013da350ab001d7b4c25b9f"
+        },
+        {
+          "width": 960,
+          "height": 1280,
+          "path": "assets/collectibles/postcards/postcard-2025-12-0011-960.webp",
+          "byteLength": 168998,
+          "mime": "image/webp",
+          "sha256": "cf79f7e9283be811ef9693a2495ad155502538e53abb982dd3d6aeaefd0edffc"
+        }
+      ],
+      "tags": ["明信片", "涂鸦", "街景"],
+      "metadata": {
+        "sourceId": "2025-12-0011",
+        "sourceName": "251209 （故地重游了一次 哎我好感动哦 就好像看到你们了一样）.jpg",
+        "sourceKind": "published",
+        "monthKey": "2025-12",
+        "original": {
+          "url": "https://su-xinhao-media.oss-cn-hangzhou.aliyuncs.com/su-xinhao/2025/12/images/011-2025-12-09-251209.webp",
+          "width": 1650,
+          "height": 2200,
+          "format": "webp",
+          "byteLength": 443264,
+          "sha256": "674eb1dd4792df19cb0576fbfa1a49d0138e9826049832e97e92ef9ed36d5efa"
+        }
+      }
+    },
+    {
+      "id": "postcard-2025-12-0017",
+      "category": "postcard",
+      "title": "雪夜长街",
+      "alt": "苏新皓明信片《雪夜长街》",
+      "caption": "下雪的时候天是亮着的",
+      "date": "2025-12-12",
+      "source": {
+        "platform": "bilibilitoy",
+        "url": "https://su-xinhao-media.oss-cn-hangzhou.aliyuncs.com/su-xinhao/2025/12/images/017-2025-12-12-251212.webp",
+        "pageUrl": "https://www.bilibili.com/toy/preview/preview_5SdX8Yet/index.htm",
+        "accessedAt": "2026-08-08T07:05:37.932Z"
+      },
+      "rights": "user-confirmed-authorized",
+      "images": [
+        {
+          "width": 480,
+          "height": 640,
+          "path": "assets/collectibles/postcards/postcard-2025-12-0017-480.webp",
+          "byteLength": 41572,
+          "mime": "image/webp",
+          "sha256": "e50b43b8bbf0478de4a6994e1b17f64a18f6f0672ddb8d4f828556e3ff84cacc"
+        },
+        {
+          "width": 960,
+          "height": 1280,
+          "path": "assets/collectibles/postcards/postcard-2025-12-0017-960.webp",
+          "byteLength": 153918,
+          "mime": "image/webp",
+          "sha256": "763c8307b6f8926e93c9282bf300f615d0258b6bc784246c89dca96c461b6477"
+        }
+      ],
+      "tags": ["明信片", "雪夜", "街景"],
+      "metadata": {
+        "sourceId": "2025-12-0017",
+        "sourceName": "251212 （下雪的时候天是亮着的）.jpg",
+        "sourceKind": "published",
+        "monthKey": "2025-12",
+        "original": {
+          "url": "https://su-xinhao-media.oss-cn-hangzhou.aliyuncs.com/su-xinhao/2025/12/images/017-2025-12-12-251212.webp",
+          "width": 1650,
+          "height": 2200,
+          "format": "webp",
+          "byteLength": 387310,
+          "sha256": "1b33c748c9c10070b8e0ff55137a55f16f3aaa696789ad0155caa1fa4d6cfe87"
+        }
+      }
+    },
+    {
+      "id": "postcard-2025-12-0036",
+      "category": "postcard",
+      "title": "舞台升降台",
+      "alt": "苏新皓明信片《舞台升降台》",
+      "caption": "升降台准备",
+      "date": "2025-12-23",
+      "source": {
+        "platform": "bilibilitoy",
+        "url": "https://su-xinhao-media.oss-cn-hangzhou.aliyuncs.com/su-xinhao/2025/12/images/036-2025-12-23-251223.webp",
+        "pageUrl": "https://www.bilibili.com/toy/preview/preview_5SdX8Yet/index.htm",
+        "accessedAt": "2026-08-08T07:05:37.932Z"
+      },
+      "rights": "user-confirmed-authorized",
+      "images": [
+        {
+          "width": 480,
+          "height": 360,
+          "path": "assets/collectibles/postcards/postcard-2025-12-0036-480.webp",
+          "byteLength": 22598,
+          "mime": "image/webp",
+          "sha256": "9cbf083b43a2d4e192ba28e2f8118be340e736ca074d0f6b0549ab208d6cd157"
+        },
+        {
+          "width": 960,
+          "height": 720,
+          "path": "assets/collectibles/postcards/postcard-2025-12-0036-960.webp",
+          "byteLength": 62814,
+          "mime": "image/webp",
+          "sha256": "d390515bc7006f5433027584e53c1c006361b0986815a12baea6812afd896da6"
+        }
+      ],
+      "tags": ["明信片", "舞台", "幕后"],
+      "metadata": {
+        "sourceId": "2025-12-0036",
+        "sourceName": "251223 （升降台准备）.jpg",
+        "sourceKind": "published",
+        "monthKey": "2025-12",
+        "original": {
+          "url": "https://su-xinhao-media.oss-cn-hangzhou.aliyuncs.com/su-xinhao/2025/12/images/036-2025-12-23-251223.webp",
+          "width": 2200,
+          "height": 1650,
+          "format": "webp",
+          "byteLength": 200884,
+          "sha256": "4e3d7cd002d71173cfa2ab57422b25ab029eac0b6e481324b84b0b18e317edd6"
+        }
+      }
+    },
+    {
+      "id": "postcard-2025-12-0056",
+      "category": "postcard",
+      "title": "生日影像",
+      "alt": "苏新皓明信片《生日影像》",
+      "caption": "今天在宿舍拍生日的纪录片",
+      "date": "2025-12-26",
+      "source": {
+        "platform": "bilibilitoy",
+        "url": "https://su-xinhao-media.oss-cn-hangzhou.aliyuncs.com/su-xinhao/2025/12/images/056-2025-12-26-251226.webp",
+        "pageUrl": "https://www.bilibili.com/toy/preview/preview_5SdX8Yet/index.htm",
+        "accessedAt": "2026-08-08T07:05:37.932Z"
+      },
+      "rights": "user-confirmed-authorized",
+      "images": [
+        {
+          "width": 480,
+          "height": 640,
+          "path": "assets/collectibles/postcards/postcard-2025-12-0056-480.webp",
+          "byteLength": 44580,
+          "mime": "image/webp",
+          "sha256": "24374ebdd20c18d72955a35634ebd247dd9fe0e0fadee2a5a0432e10078afd14"
+        },
+        {
+          "width": 960,
+          "height": 1280,
+          "path": "assets/collectibles/postcards/postcard-2025-12-0056-960.webp",
+          "byteLength": 149116,
+          "mime": "image/webp",
+          "sha256": "b65ecc44d9a0c43f81753bf7ff9764ac5bcbd150f5192b148c6bc3d3a2643fd7"
+        }
+      ],
+      "tags": ["明信片", "生日", "回忆"],
+      "metadata": {
+        "sourceId": "2025-12-0056",
+        "sourceName": "251226 （今天在宿舍拍生日的纪录片）.jpg",
+        "sourceKind": "published",
+        "monthKey": "2025-12",
+        "original": {
+          "url": "https://su-xinhao-media.oss-cn-hangzhou.aliyuncs.com/su-xinhao/2025/12/images/056-2025-12-26-251226.webp",
+          "width": 1650,
+          "height": 2200,
+          "format": "webp",
+          "byteLength": 382574,
+          "sha256": "d0ff2930ce255f22cfa0ca117476d62e665c440c5cf87f079668912b2a4b393b"
+        }
+      }
+    },
+    {
+      "id": "postcard-2025-12-0051",
+      "category": "postcard",
+      "title": "青发彩排",
+      "alt": "苏新皓明信片《青发彩排》",
+      "caption": "这是我全要素彩排时候的发型 你们看！后面老师给我做了一些调整",
+      "date": "2025-12-25",
+      "source": {
+        "platform": "bilibilitoy",
+        "url": "https://su-xinhao-media.oss-cn-hangzhou.aliyuncs.com/su-xinhao/2025/12/images/051-2025-12-25-251225.webp",
+        "pageUrl": "https://www.bilibili.com/toy/preview/preview_5SdX8Yet/index.htm",
+        "accessedAt": "2026-08-08T07:05:37.932Z"
+      },
+      "rights": "user-confirmed-authorized",
+      "images": [
+        {
+          "width": 480,
+          "height": 720,
+          "path": "assets/collectibles/postcards/postcard-2025-12-0051-480.webp",
+          "byteLength": 28512,
+          "mime": "image/webp",
+          "sha256": "4529b67364338fc26f008105887c8359ab50d6bda4ce1061395f3de5c811eaba"
+        },
+        {
+          "width": 960,
+          "height": 1440,
+          "path": "assets/collectibles/postcards/postcard-2025-12-0051-960.webp",
+          "byteLength": 109904,
+          "mime": "image/webp",
+          "sha256": "c33d4e93609d82281358425d071cfd918e9ce7cbb9135a8e03dd05761e4ebe79"
+        }
+      ],
+      "tags": ["明信片", "彩排", "苏新皓"],
+      "metadata": {
+        "sourceId": "2025-12-0051",
+        "sourceName": "251225 (这是我全要素彩排时候的发型 你们看！后面老师给我做了一些调整）.jpg",
+        "sourceKind": "published",
+        "monthKey": "2025-12",
+        "original": {
+          "url": "https://su-xinhao-media.oss-cn-hangzhou.aliyuncs.com/su-xinhao/2025/12/images/051-2025-12-25-251225.webp",
+          "width": 1467,
+          "height": 2200,
+          "format": "webp",
+          "byteLength": 250152,
+          "sha256": "01a6783a775615ad9a2cb94ea88ef1224e5ac1fb46756b4587fc8eff7cc9cb2a"
+        }
+      }
+    },
+    {
+      "id": "postcard-2025-12-0047",
+      "category": "postcard",
+      "title": "红色砂漏",
+      "alt": "苏新皓明信片《红色砂漏》",
+      "caption": "已经过了凌晨",
+      "date": "2025-12-24",
+      "source": {
+        "platform": "bilibilitoy",
+        "url": "https://su-xinhao-media.oss-cn-hangzhou.aliyuncs.com/su-xinhao/2025/12/images/047-2025-12-24-251224.webp",
+        "pageUrl": "https://www.bilibili.com/toy/preview/preview_5SdX8Yet/index.htm",
+        "accessedAt": "2026-08-08T07:05:37.932Z"
+      },
+      "rights": "user-confirmed-authorized",
+      "images": [
+        {
+          "width": 480,
+          "height": 360,
+          "path": "assets/collectibles/postcards/postcard-2025-12-0047-480.webp",
+          "byteLength": 17064,
+          "mime": "image/webp",
+          "sha256": "9e3a143ffd76175a886230360e5c387d195d0620dc2e73bc2534c722a71d50b3"
+        },
+        {
+          "width": 960,
+          "height": 720,
+          "path": "assets/collectibles/postcards/postcard-2025-12-0047-960.webp",
+          "byteLength": 93250,
+          "mime": "image/webp",
+          "sha256": "a77aba32db5032363e3dcfe4df880fb0228389e8a2303ae3bba023d591f753b8"
+        }
+      ],
+      "tags": ["明信片", "静物", "光影"],
+      "metadata": {
+        "sourceId": "2025-12-0047",
+        "sourceName": "251224 （已经过了凌晨）.jpg",
+        "sourceKind": "published",
+        "monthKey": "2025-12",
+        "original": {
+          "url": "https://su-xinhao-media.oss-cn-hangzhou.aliyuncs.com/su-xinhao/2025/12/images/047-2025-12-24-251224.webp",
+          "width": 2200,
+          "height": 1650,
+          "format": "webp",
+          "byteLength": 467618,
+          "sha256": "7d921cf52e4ec3e06294e77e299fd3381d0d086ec4d5aed27cec8002d2b2225e"
+        }
+      }
+    },
+    {
+      "id": "postcard-2026-01-0021",
+      "category": "postcard",
+      "title": "雪夜老宅",
+      "alt": "苏新皓明信片《雪夜老宅》",
+      "caption": "我只是一味地展示 8",
+      "date": "2026-01-18",
+      "source": {
+        "platform": "bilibilitoy",
+        "url": "https://su-xinhao-media.oss-cn-hangzhou.aliyuncs.com/su-xinhao/2026/01/images/021-2026-01-18-260118-8.webp",
+        "pageUrl": "https://www.bilibili.com/toy/preview/preview_5SdX8Yet/index.htm",
+        "accessedAt": "2026-08-08T07:05:37.932Z"
+      },
+      "rights": "user-confirmed-authorized",
+      "images": [
+        {
+          "width": 480,
+          "height": 320,
+          "path": "assets/collectibles/postcards/postcard-2026-01-0021-480.webp",
+          "byteLength": 11070,
+          "mime": "image/webp",
+          "sha256": "a686303fb81d2bfcb7fbbe680a983a02c5d77efac635f4831c2245fc7bf5fdb9"
+        },
+        {
+          "width": 960,
+          "height": 640,
+          "path": "assets/collectibles/postcards/postcard-2026-01-0021-960.webp",
+          "byteLength": 40264,
+          "mime": "image/webp",
+          "sha256": "81daf099153c9dcc7763f67312a5cb35a97d60f62dcf6c7c33969c9e83c3078d"
+        }
+      ],
+      "tags": ["明信片", "雪夜", "老宅"],
+      "metadata": {
+        "sourceId": "2026-01-0021",
+        "sourceName": "260118 （我只是一味地展示 8）.jpg",
+        "sourceKind": "published",
+        "monthKey": "2026-01",
+        "original": {
+          "url": "https://su-xinhao-media.oss-cn-hangzhou.aliyuncs.com/su-xinhao/2026/01/images/021-2026-01-18-260118-8.webp",
+          "width": 1600,
+          "height": 1066,
+          "format": "webp",
+          "byteLength": 94694,
+          "sha256": "063ad3451fbd56c9c6f06607da953824ff3aa237726887230125a4d4fb18af42"
+        }
+      }
+    },
+    {
+      "id": "postcard-2026-01-0024",
+      "category": "postcard",
+      "title": "桌上拍立得",
+      "alt": "苏新皓明信片《桌上拍立得》",
+      "caption": "我用拍立得打印出来啦 拍立得居然能打印！是什么原理哦",
+      "date": "2026-01-18",
+      "source": {
+        "platform": "bilibilitoy",
+        "url": "https://su-xinhao-media.oss-cn-hangzhou.aliyuncs.com/su-xinhao/2026/01/images/024-2026-01-18-260118.webp",
+        "pageUrl": "https://www.bilibili.com/toy/preview/preview_5SdX8Yet/index.htm",
+        "accessedAt": "2026-08-08T07:05:37.932Z"
+      },
+      "rights": "user-confirmed-authorized",
+      "images": [
+        {
+          "width": 480,
+          "height": 333,
+          "path": "assets/collectibles/postcards/postcard-2026-01-0024-480.webp",
+          "byteLength": 14796,
+          "mime": "image/webp",
+          "sha256": "839c815143dab026387162699812808f24bccb2f6169048327b5346913b9784f"
+        },
+        {
+          "width": 960,
+          "height": 666,
+          "path": "assets/collectibles/postcards/postcard-2026-01-0024-960.webp",
+          "byteLength": 59682,
+          "mime": "image/webp",
+          "sha256": "5ba6859ba7e5b7f943053e2f63c192d8c2dd6fc586d5d9ea4d24f4a7b3d4e707"
+        }
+      ],
+      "tags": ["明信片", "拍立得", "回忆"],
+      "metadata": {
+        "sourceId": "2026-01-0024",
+        "sourceName": "260118 （我用拍立得打印出来啦 拍立得居然能打印！是什么原理哦）.jpg",
+        "sourceKind": "published",
+        "monthKey": "2026-01",
+        "original": {
+          "url": "https://su-xinhao-media.oss-cn-hangzhou.aliyuncs.com/su-xinhao/2026/01/images/024-2026-01-18-260118.webp",
+          "width": 2200,
+          "height": 1526,
+          "format": "webp",
+          "byteLength": 280200,
+          "sha256": "ccabeb944d11a2c146ae886882754a0891537f55b88ce606f1efa4b1fa0662f3"
+        }
+      }
+    },
+    {
+      "id": "postcard-2026-01-0023",
+      "category": "postcard",
+      "title": "砖墙与单车",
+      "alt": "苏新皓明信片《砖墙与单车》",
+      "caption": "我只是一味地展示",
+      "date": "2026-01-18",
+      "source": {
+        "platform": "bilibilitoy",
+        "url": "https://su-xinhao-media.oss-cn-hangzhou.aliyuncs.com/su-xinhao/2026/01/images/023-2026-01-18-260118.webp",
+        "pageUrl": "https://www.bilibili.com/toy/preview/preview_5SdX8Yet/index.htm",
+        "accessedAt": "2026-08-08T07:05:37.932Z"
+      },
+      "rights": "user-confirmed-authorized",
+      "images": [
+        {
+          "width": 480,
+          "height": 320,
+          "path": "assets/collectibles/postcards/postcard-2026-01-0023-480.webp",
+          "byteLength": 10564,
+          "mime": "image/webp",
+          "sha256": "276f06782b092f03851de2c1377046f346f4b7d4a6755a222d14385980a58410"
+        },
+        {
+          "width": 960,
+          "height": 640,
+          "path": "assets/collectibles/postcards/postcard-2026-01-0023-960.webp",
+          "byteLength": 32592,
+          "mime": "image/webp",
+          "sha256": "6017e1197527f4b10eb94909805f33f3293e0635b35d8eacea9f4f64fc2d761b"
+        }
+      ],
+      "tags": ["明信片", "单车", "街巷"],
+      "metadata": {
+        "sourceId": "2026-01-0023",
+        "sourceName": "260118 （我只是一味地展示）.jpg",
+        "sourceKind": "published",
+        "monthKey": "2026-01",
+        "original": {
+          "url": "https://su-xinhao-media.oss-cn-hangzhou.aliyuncs.com/su-xinhao/2026/01/images/023-2026-01-18-260118.webp",
+          "width": 2200,
+          "height": 1467,
+          "format": "webp",
+          "byteLength": 102540,
+          "sha256": "34c36219b18af36523a8fbf96e666a65babfc9ccb27a86f38b20bcd5584cb86d"
+        }
+      }
+    },
+    {
+      "id": "postcard-2026-02-0002",
+      "category": "postcard",
+      "title": "车窗里的涂鸦街",
+      "alt": "苏新皓明信片《车窗里的涂鸦街》",
+      "caption": "我记得出道之前有一次拍摄就是在这个地方拍的",
+      "date": "2026-02-05",
+      "source": {
+        "platform": "bilibilitoy",
+        "url": "https://su-xinhao-media.oss-cn-hangzhou.aliyuncs.com/su-xinhao/2026/02/images/002-2026-02-05-260205.webp",
+        "pageUrl": "https://www.bilibili.com/toy/preview/preview_5SdX8Yet/index.htm",
+        "accessedAt": "2026-08-08T07:05:37.932Z"
+      },
+      "rights": "user-confirmed-authorized",
+      "images": [
+        {
+          "width": 480,
+          "height": 640,
+          "path": "assets/collectibles/postcards/postcard-2026-02-0002-480.webp",
+          "byteLength": 17636,
+          "mime": "image/webp",
+          "sha256": "76a046ed127c1d4b14cd93f99dbeb8d387a2db6cd0d022c99e7792125f569e44"
+        },
+        {
+          "width": 960,
+          "height": 1280,
+          "path": "assets/collectibles/postcards/postcard-2026-02-0002-960.webp",
+          "byteLength": 57702,
+          "mime": "image/webp",
+          "sha256": "60339925d7ea7ebb6891bbc0f1ffba4cf126163ea86a92ba19f13166bea34be3"
+        }
+      ],
+      "tags": ["明信片", "涂鸦", "旅行"],
+      "metadata": {
+        "sourceId": "2026-02-0002",
+        "sourceName": "260205 (我记得出道之前有一次拍摄就是在这个地方拍的).jpg",
+        "sourceKind": "published",
+        "monthKey": "2026-02",
+        "original": {
+          "url": "https://su-xinhao-media.oss-cn-hangzhou.aliyuncs.com/su-xinhao/2026/02/images/002-2026-02-05-260205.webp",
+          "width": 1650,
+          "height": 2200,
+          "format": "webp",
+          "byteLength": 170880,
+          "sha256": "d635f0427b51832fe9f7ab23abc5ee4e423cf5d5f258e59cbafd9335775ee477"
+        }
+      }
+    },
+    {
+      "id": "postcard-2026-01-0014",
+      "category": "postcard",
+      "title": "暮色归途",
+      "alt": "苏新皓明信片《暮色归途》",
+      "caption": "我只是一味地展示 1",
+      "date": "2026-01-18",
+      "source": {
+        "platform": "bilibilitoy",
+        "url": "https://su-xinhao-media.oss-cn-hangzhou.aliyuncs.com/su-xinhao/2026/01/images/014-2026-01-18-260118-1.webp",
+        "pageUrl": "https://www.bilibili.com/toy/preview/preview_5SdX8Yet/index.htm",
+        "accessedAt": "2026-08-08T07:05:37.932Z"
+      },
+      "rights": "user-confirmed-authorized",
+      "images": [
+        {
+          "width": 480,
+          "height": 320,
+          "path": "assets/collectibles/postcards/postcard-2026-01-0014-480.webp",
+          "byteLength": 5786,
+          "mime": "image/webp",
+          "sha256": "53334f467e7319966a164edf81f99caa749dde755af71be5f5111dcf021b06a2"
+        },
+        {
+          "width": 960,
+          "height": 640,
+          "path": "assets/collectibles/postcards/postcard-2026-01-0014-960.webp",
+          "byteLength": 22132,
+          "mime": "image/webp",
+          "sha256": "533dcc59b15444d70a3f53b9c603a80d56b4c6733b87db180a41a6923e6d529b"
+        }
+      ],
+      "tags": ["明信片", "暮色", "街景"],
+      "metadata": {
+        "sourceId": "2026-01-0014",
+        "sourceName": "260118 （我只是一味地展示 1）.jpg",
+        "sourceKind": "published",
+        "monthKey": "2026-01",
+        "original": {
+          "url": "https://su-xinhao-media.oss-cn-hangzhou.aliyuncs.com/su-xinhao/2026/01/images/014-2026-01-18-260118-1.webp",
+          "width": 2200,
+          "height": 1467,
+          "format": "webp",
+          "byteLength": 98582,
+          "sha256": "a88541f3550afff0cbda4c35ded5df7b694b4a5e3cb578341b437b85b73b973e"
+        }
+      }
+    },
+    {
+      "id": "postcard-2026-01-0002",
+      "category": "postcard",
+      "title": "巨型大黄蜂",
+      "alt": "苏新皓明信片《巨型大黄蜂》",
+      "caption": "（我小时候是变形金刚忠实粉丝电影动画片玩具啥的只要跟变形金刚有关系的我都知道，玩具我也买过 hiahia 据我观察这个大黄蜂的外形也是相当的“正宗”了哈哈哈哈 好吧可能你们觉",
+      "date": "2026-01-04",
+      "source": {
+        "platform": "bilibilitoy",
+        "url": "https://su-xinhao-media.oss-cn-hangzhou.aliyuncs.com/su-xinhao/2026/01/images/002-2026-01-04-260104-hiahia.webp",
+        "pageUrl": "https://www.bilibili.com/toy/preview/preview_5SdX8Yet/index.htm",
+        "accessedAt": "2026-08-08T07:05:37.932Z"
+      },
+      "rights": "user-confirmed-authorized",
+      "images": [
+        {
+          "width": 480,
+          "height": 360,
+          "path": "assets/collectibles/postcards/postcard-2026-01-0002-480.webp",
+          "byteLength": 26624,
+          "mime": "image/webp",
+          "sha256": "de54294b401c1b85be603e9041d5c768344fbe23379897acec238e8c49c17008"
+        },
+        {
+          "width": 960,
+          "height": 720,
+          "path": "assets/collectibles/postcards/postcard-2026-01-0002-960.webp",
+          "byteLength": 86350,
+          "mime": "image/webp",
+          "sha256": "afc59567accae44d0f336b4fc8f8e31c6c8a7d192b5c6db872d8b4b5899308b1"
+        }
+      ],
+      "tags": ["明信片", "装置", "城市"],
+      "metadata": {
+        "sourceId": "2026-01-0002",
+        "sourceName": "260104 （我小时候是变形金刚忠实粉丝电影动画片玩具啥的只要跟变形金刚有关系的我都知道，玩具我也买过 hiahia 据我观察这个大黄蜂的外形也是相当的“正宗”了哈哈哈哈 好吧可能你们觉.jpg",
+        "sourceKind": "published",
+        "monthKey": "2026-01",
+        "original": {
+          "url": "https://su-xinhao-media.oss-cn-hangzhou.aliyuncs.com/su-xinhao/2026/01/images/002-2026-01-04-260104-hiahia.webp",
+          "width": 2200,
+          "height": 1650,
+          "format": "webp",
+          "byteLength": 285246,
+          "sha256": "cb96f30a3b9e8f1c3da56a4b251cf4f0941666d8723ebe4ecd47fd644abc3a0a"
+        }
+      }
+    },
+    {
+      "id": "postcard-2026-01-0035",
+      "category": "postcard",
+      "title": "青发笑脸",
+      "alt": "苏新皓明信片《青发笑脸》",
+      "caption": "这个头发我要收藏着，不知道以后有没有可能返场",
+      "date": "2026-01-10",
+      "source": {
+        "platform": "bilibilitoy",
+        "url": "https://su-xinhao-media.oss-cn-hangzhou.aliyuncs.com/su-xinhao/2026/01/images/035-2026-01-10-260110.webp",
+        "pageUrl": "https://www.bilibili.com/toy/preview/preview_5SdX8Yet/index.htm",
+        "accessedAt": "2026-08-08T07:05:37.932Z"
+      },
+      "rights": "user-confirmed-authorized",
+      "images": [
+        {
+          "width": 480,
+          "height": 640,
+          "path": "assets/collectibles/postcards/postcard-2026-01-0035-480.webp",
+          "byteLength": 18222,
+          "mime": "image/webp",
+          "sha256": "b0f65947189e534e67d5cab767017f40971307a61d885e7168836629530d7f13"
+        },
+        {
+          "width": 960,
+          "height": 1280,
+          "path": "assets/collectibles/postcards/postcard-2026-01-0035-960.webp",
+          "byteLength": 51906,
+          "mime": "image/webp",
+          "sha256": "6103727e5732467f66415a3913a7fef2b09ea1a635d15058de52c67785a3d60b"
+        }
+      ],
+      "tags": ["明信片", "造型", "苏新皓"],
+      "metadata": {
+        "sourceId": "2026-01-0035",
+        "sourceName": "260110 （这个头发我要收藏着，不知道以后有没有可能返场）.heic",
+        "sourceKind": "published",
+        "monthKey": "2026-01",
+        "original": {
+          "url": "https://su-xinhao-media.oss-cn-hangzhou.aliyuncs.com/su-xinhao/2026/01/images/035-2026-01-10-260110.webp",
+          "width": 1650,
+          "height": 2200,
+          "format": "webp",
+          "byteLength": 130742,
+          "sha256": "09db57d9a038bc7726e4fadbca063b7d3dba222f2e225b89f28f85208099697f"
+        }
+      }
+    },
+    {
+      "id": "postcard-2026-01-0012",
+      "category": "postcard",
+      "title": "麦克风旁的妆容",
+      "alt": "苏新皓明信片《麦克风旁的妆容》",
+      "caption": "你们好呀，可以收留我一下吗",
+      "date": "2026-01-18",
+      "source": {
+        "platform": "bilibilitoy",
+        "url": "https://su-xinhao-media.oss-cn-hangzhou.aliyuncs.com/su-xinhao/2026/01/images/012-2026-01-18-260118.webp",
+        "pageUrl": "https://www.bilibili.com/toy/preview/preview_5SdX8Yet/index.htm",
+        "accessedAt": "2026-08-08T07:05:37.932Z"
+      },
+      "rights": "user-confirmed-authorized",
+      "images": [
+        {
+          "width": 480,
+          "height": 642,
+          "path": "assets/collectibles/postcards/postcard-2026-01-0012-480.webp",
+          "byteLength": 55454,
+          "mime": "image/webp",
+          "sha256": "f106f8a57eeaeee349796a0de064a755cd4566b4325dce2c536f02c69dd34a34"
+        },
+        {
+          "width": 960,
+          "height": 1285,
+          "path": "assets/collectibles/postcards/postcard-2026-01-0012-960.webp",
+          "byteLength": 210252,
+          "mime": "image/webp",
+          "sha256": "bd1b006ddfa0c1233817ef4a05e6c8fa6c2892e5c6a8c0ee34355a9ab317560d"
+        }
+      ],
+      "tags": ["明信片", "舞台", "苏新皓"],
+      "metadata": {
+        "sourceId": "2026-01-0012",
+        "sourceName": "260118 （你们好呀，可以收留我一下吗）.jpg",
+        "sourceKind": "published",
+        "monthKey": "2026-01",
+        "original": {
+          "url": "https://su-xinhao-media.oss-cn-hangzhou.aliyuncs.com/su-xinhao/2026/01/images/012-2026-01-18-260118.webp",
+          "width": 1644,
+          "height": 2200,
+          "format": "webp",
+          "byteLength": 515914,
+          "sha256": "7b81ca74490f8206019a0d8ef46189d32c6cadc30a5a6c0a9e1b5e960df7511e"
+        }
+      }
+    },
+    {
+      "id": "postcard-2026-01-0004",
+      "category": "postcard",
+      "title": "黄昏球场",
+      "alt": "苏新皓明信片《黄昏球场》",
+      "caption": "cover 拍摄勘景 感谢大冷天帮我出去勘景的工作人员老师",
+      "date": "2026-01-09",
+      "source": {
+        "platform": "bilibilitoy",
+        "url": "https://su-xinhao-media.oss-cn-hangzhou.aliyuncs.com/su-xinhao/2026/01/images/004-2026-01-09-260109-cover.webp",
+        "pageUrl": "https://www.bilibili.com/toy/preview/preview_5SdX8Yet/index.htm",
+        "accessedAt": "2026-08-08T07:05:37.932Z"
+      },
+      "rights": "user-confirmed-authorized",
+      "images": [
+        {
+          "width": 480,
+          "height": 833,
+          "path": "assets/collectibles/postcards/postcard-2026-01-0004-480.webp",
+          "byteLength": 15948,
+          "mime": "image/webp",
+          "sha256": "078395a0298ad65e4aac40ec1e25d6508db2a0be53cbc103f76b382fac825d4b"
+        },
+        {
+          "width": 960,
+          "height": 1667,
+          "path": "assets/collectibles/postcards/postcard-2026-01-0004-960.webp",
+          "byteLength": 49010,
+          "mime": "image/webp",
+          "sha256": "0514291538510072e52424450bdbc65278423d2114e1a8490648c91749014b93"
+        }
+      ],
+      "tags": ["明信片", "球场", "黄昏"],
+      "metadata": {
+        "sourceId": "2026-01-0004",
+        "sourceName": "260109 （cover 拍摄勘景 感谢大冷天帮我出去勘景的工作人员老师）.png",
+        "sourceKind": "published",
+        "monthKey": "2026-01",
+        "original": {
+          "url": "https://su-xinhao-media.oss-cn-hangzhou.aliyuncs.com/su-xinhao/2026/01/images/004-2026-01-09-260109-cover.webp",
+          "width": 1216,
+          "height": 2111,
+          "format": "webp",
+          "byteLength": 79174,
+          "sha256": "7726617f746efc39ae64982cd10abcbdfb86d9587ccce2978f518825dd983885"
+        }
+      }
+    },
+    {
+      "id": "postcard-2026-02-0040",
+      "category": "postcard",
+      "title": "金色航程",
+      "alt": "苏新皓明信片《金色航程》",
+      "caption": "我肉眼看的时候天际线那里是彩虹! 你们看! 照片里有点没有那么明显",
+      "date": "2026-02-22",
+      "source": {
+        "platform": "bilibilitoy",
+        "url": "https://su-xinhao-media.oss-cn-hangzhou.aliyuncs.com/su-xinhao/2026/02/images/040-2026-02-22-260222.webp",
+        "pageUrl": "https://www.bilibili.com/toy/preview/preview_5SdX8Yet/index.htm",
+        "accessedAt": "2026-08-08T07:05:37.932Z"
+      },
+      "rights": "user-confirmed-authorized",
+      "images": [
+        {
+          "width": 480,
+          "height": 640,
+          "path": "assets/collectibles/postcards/postcard-2026-02-0040-480.webp",
+          "byteLength": 9126,
+          "mime": "image/webp",
+          "sha256": "acaded6e3ec43ff55b1eed4bfe54558acf8b5b64b87f73470c861f82f5dab57c"
+        },
+        {
+          "width": 960,
+          "height": 1280,
+          "path": "assets/collectibles/postcards/postcard-2026-02-0040-960.webp",
+          "byteLength": 29226,
+          "mime": "image/webp",
+          "sha256": "0afa9f6749b22eb147fc8918ae591f1303467b1fbe5f9a24435051e66b6e5d36"
+        }
+      ],
+      "tags": ["明信片", "航程", "旅行"],
+      "metadata": {
+        "sourceId": "2026-02-0040",
+        "sourceName": "260222 (我肉眼看的时候天际线那里是彩虹! 你们看! 照片里有点没有那么明显).heic",
+        "sourceKind": "published",
+        "monthKey": "2026-02",
+        "original": {
+          "url": "https://su-xinhao-media.oss-cn-hangzhou.aliyuncs.com/su-xinhao/2026/02/images/040-2026-02-22-260222.webp",
+          "width": 1650,
+          "height": 2200,
+          "format": "webp",
+          "byteLength": 67628,
+          "sha256": "b562454180c83c5f0d1d9ac000b541b382f0aec8ae6cb84987c15b1d54ae2dc9"
+        }
+      }
+    },
+    {
+      "id": "postcard-2026-02-0027",
+      "category": "postcard",
+      "title": "佛罗伦萨河岸",
+      "alt": "苏新皓明信片《佛罗伦萨河岸》",
+      "caption": "好漂亮哦 我好想一直住这里",
+      "date": "2026-02-28",
+      "source": {
+        "platform": "bilibilitoy",
+        "url": "https://su-xinhao-media.oss-cn-hangzhou.aliyuncs.com/su-xinhao/2026/02/images/027-2026-02-28-260228.webp",
+        "pageUrl": "https://www.bilibili.com/toy/preview/preview_5SdX8Yet/index.htm",
+        "accessedAt": "2026-08-08T07:05:37.932Z"
+      },
+      "rights": "user-confirmed-authorized",
+      "images": [
+        {
+          "width": 480,
+          "height": 320,
+          "path": "assets/collectibles/postcards/postcard-2026-02-0027-480.webp",
+          "byteLength": 14226,
+          "mime": "image/webp",
+          "sha256": "a11e77ac2ac50b65d749c8d8b9f53880d8bf38f0b969d25ea51e8406f7809333"
+        },
+        {
+          "width": 960,
+          "height": 640,
+          "path": "assets/collectibles/postcards/postcard-2026-02-0027-960.webp",
+          "byteLength": 56716,
+          "mime": "image/webp",
+          "sha256": "0658f6998208a8f6bfb2cd3ebad4f76bc891802ef1660672291e41afdb6cab17"
+        }
+      ],
+      "tags": ["明信片", "河岸", "旅行"],
+      "metadata": {
+        "sourceId": "2026-02-0027",
+        "sourceName": "260228 (好漂亮哦 我好想一直住这里).jpg",
+        "sourceKind": "published",
+        "monthKey": "2026-02",
+        "original": {
+          "url": "https://su-xinhao-media.oss-cn-hangzhou.aliyuncs.com/su-xinhao/2026/02/images/027-2026-02-28-260228.webp",
+          "width": 2200,
+          "height": 1467,
+          "format": "webp",
+          "byteLength": 269304,
+          "sha256": "4c33be98069653a4a0646d4eb00f5ccfeda99f0b7f122d853341c7588d67a248"
+        }
+      }
+    },
+    {
+      "id": "postcard-2026-02-0007",
+      "category": "postcard",
+      "title": "片场白马",
+      "alt": "苏新皓明信片《片场白马》",
+      "caption": "小马小马你飞起来了",
+      "date": "2026-02-08",
+      "source": {
+        "platform": "bilibilitoy",
+        "url": "https://su-xinhao-media.oss-cn-hangzhou.aliyuncs.com/su-xinhao/2026/02/images/007-2026-02-08-260208.webp",
+        "pageUrl": "https://www.bilibili.com/toy/preview/preview_5SdX8Yet/index.htm",
+        "accessedAt": "2026-08-08T07:05:37.932Z"
+      },
+      "rights": "user-confirmed-authorized",
+      "images": [
+        {
+          "width": 480,
+          "height": 640,
+          "path": "assets/collectibles/postcards/postcard-2026-02-0007-480.webp",
+          "byteLength": 47658,
+          "mime": "image/webp",
+          "sha256": "d29e0729199de616c091fd93bdc1f255990b7a0bf8eb25676f8bbb0985a585db"
+        },
+        {
+          "width": 960,
+          "height": 1280,
+          "path": "assets/collectibles/postcards/postcard-2026-02-0007-960.webp",
+          "byteLength": 220386,
+          "mime": "image/webp",
+          "sha256": "b666c2ea8e3d8c9eb0ee843b4c2f496c986da94596cf8c7c28aefbbbc0e81165"
+        }
+      ],
+      "tags": ["明信片", "片场", "白马"],
+      "metadata": {
+        "sourceId": "2026-02-0007",
+        "sourceName": "260208 (小马小马你飞起来了).jpg",
+        "sourceKind": "published",
+        "monthKey": "2026-02",
+        "original": {
+          "url": "https://su-xinhao-media.oss-cn-hangzhou.aliyuncs.com/su-xinhao/2026/02/images/007-2026-02-08-260208.webp",
+          "width": 1650,
+          "height": 2200,
+          "format": "webp",
+          "byteLength": 753380,
+          "sha256": "1c20920dd02cf45b283788d60a5d6908536b128638c264caf5eae8e1836b1d87"
+        }
+      }
+    },
+    {
+      "id": "postcard-2026-02-0024",
+      "category": "postcard",
+      "title": "米兰街灯",
+      "alt": "苏新皓明信片《米兰街灯》",
+      "caption": "我白天看这个硬是不知道是个什么东西,结果我晚上去录框框跳的时候才发现这竟然是一个路灯",
+      "date": "2026-02-25",
+      "source": {
+        "platform": "bilibilitoy",
+        "url": "https://su-xinhao-media.oss-cn-hangzhou.aliyuncs.com/su-xinhao/2026/02/images/024-2026-02-25-260225.webp",
+        "pageUrl": "https://www.bilibili.com/toy/preview/preview_5SdX8Yet/index.htm",
+        "accessedAt": "2026-08-08T07:05:37.932Z"
+      },
+      "rights": "user-confirmed-authorized",
+      "images": [
+        {
+          "width": 480,
+          "height": 640,
+          "path": "assets/collectibles/postcards/postcard-2026-02-0024-480.webp",
+          "byteLength": 20954,
+          "mime": "image/webp",
+          "sha256": "24fbd892d63b5b8e1175c7d5caec9b13c31f444d13bd9d3e9074af99e36d67f8"
+        },
+        {
+          "width": 960,
+          "height": 1279,
+          "path": "assets/collectibles/postcards/postcard-2026-02-0024-960.webp",
+          "byteLength": 59588,
+          "mime": "image/webp",
+          "sha256": "e1805f89e893a447ee9ffda030d6f9baae663c3355e8e0d69634e91fa9e55a04"
+        }
+      ],
+      "tags": ["明信片", "街灯", "旅行"],
+      "metadata": {
+        "sourceId": "2026-02-0024",
+        "sourceName": "260225 (我白天看这个硬是不知道是个什么东西,结果我晚上去录框框跳的时候才发现这竟然是一个路灯).jpg",
+        "sourceKind": "published",
+        "monthKey": "2026-02",
+        "original": {
+          "url": "https://su-xinhao-media.oss-cn-hangzhou.aliyuncs.com/su-xinhao/2026/02/images/024-2026-02-25-260225.webp",
+          "width": 1651,
+          "height": 2200,
+          "format": "webp",
+          "byteLength": 129974,
+          "sha256": "87d2e8118e1e8ba510dd668c710e9048a8a0b2cedaa9a0ecd0c5fa0ee0fe2d21"
+        }
+      }
+    },
+    {
+      "id": "postcard-2026-02-0025",
+      "category": "postcard",
+      "title": "冬日老宅",
+      "alt": "苏新皓明信片《冬日老宅》",
+      "caption": "要是在这里有一个带院子的房子的话,那好舒服哦",
+      "date": "2026-02-25",
+      "source": {
+        "platform": "bilibilitoy",
+        "url": "https://su-xinhao-media.oss-cn-hangzhou.aliyuncs.com/su-xinhao/2026/02/images/025-2026-02-25-260225.webp",
+        "pageUrl": "https://www.bilibili.com/toy/preview/preview_5SdX8Yet/index.htm",
+        "accessedAt": "2026-08-08T07:05:37.932Z"
+      },
+      "rights": "user-confirmed-authorized",
+      "images": [
+        {
+          "width": 480,
+          "height": 640,
+          "path": "assets/collectibles/postcards/postcard-2026-02-0025-480.webp",
+          "byteLength": 86030,
+          "mime": "image/webp",
+          "sha256": "3291f4a0547a5e40f03295b993a98cb44a908495f75fa2b3a050fee7d9c37e59"
+        },
+        {
+          "width": 960,
+          "height": 1280,
+          "path": "assets/collectibles/postcards/postcard-2026-02-0025-960.webp",
+          "byteLength": 350974,
+          "mime": "image/webp",
+          "sha256": "6df4541ed2162ad85c8a3328e65c3031b6578ff97422ca86f41a15989390049e"
+        }
+      ],
+      "tags": ["明信片", "冬日", "旅行"],
+      "metadata": {
+        "sourceId": "2026-02-0025",
+        "sourceName": "260225 (要是在这里有一个带院子的房子的话,那好舒服哦).jpg",
+        "sourceKind": "published",
+        "monthKey": "2026-02",
+        "original": {
+          "url": "https://su-xinhao-media.oss-cn-hangzhou.aliyuncs.com/su-xinhao/2026/02/images/025-2026-02-25-260225.webp",
+          "width": 1650,
+          "height": 2200,
+          "format": "webp",
+          "byteLength": 1005600,
+          "sha256": "7b743c14a9f65e9d41a204a6bce616e15c5d8c5a583243fe729570ae4cad7a58"
+        }
+      }
+    },
+    {
+      "id": "postcard-2026-02-0041",
+      "category": "postcard",
+      "title": "金黑马赛克",
+      "alt": "苏新皓明信片《金黑马赛克》",
+      "caption": "在晚宴开始前的一些胡乱拍拍",
+      "date": "2026-02-26",
+      "source": {
+        "platform": "bilibilitoy",
+        "url": "https://su-xinhao-media.oss-cn-hangzhou.aliyuncs.com/su-xinhao/2026/02/images/041-2026-02-26-260226.webp",
+        "pageUrl": "https://www.bilibili.com/toy/preview/preview_5SdX8Yet/index.htm",
+        "accessedAt": "2026-08-08T07:05:37.932Z"
+      },
+      "rights": "user-confirmed-authorized",
+      "images": [
+        {
+          "width": 480,
+          "height": 640,
+          "path": "assets/collectibles/postcards/postcard-2026-02-0041-480.webp",
+          "byteLength": 40092,
+          "mime": "image/webp",
+          "sha256": "74f1ecfa5c35c42a0e6cd096a86d3f3ed459a198ad8a5bc98a749168b9c91c8a"
+        },
+        {
+          "width": 960,
+          "height": 1280,
+          "path": "assets/collectibles/postcards/postcard-2026-02-0041-960.webp",
+          "byteLength": 145764,
+          "mime": "image/webp",
+          "sha256": "0d3d5dc1202d48e85a419ab661a54bb63add6a4b0fd888464ef40eddf4cd793f"
+        }
+      ],
+      "tags": ["明信片", "雕塑", "旅行"],
+      "metadata": {
+        "sourceId": "2026-02-0041",
+        "sourceName": "260226 (在晚宴开始前的一些胡乱拍拍).heic",
+        "sourceKind": "published",
+        "monthKey": "2026-02",
+        "original": {
+          "url": "https://su-xinhao-media.oss-cn-hangzhou.aliyuncs.com/su-xinhao/2026/02/images/041-2026-02-26-260226.webp",
+          "width": 1650,
+          "height": 2200,
+          "format": "webp",
+          "byteLength": 372812,
+          "sha256": "cade26cac4b7c2dc1ca90b3b92b1a7dbb7319d906ec3774124b419903a216fea"
+        }
+      }
+    },
+    {
+      "id": "postcard-2026-02-0023",
+      "category": "postcard",
+      "title": "晨光房间",
+      "alt": "苏新皓明信片《晨光房间》",
+      "caption": "米兰第一个酒店",
+      "date": "2026-02-24",
+      "source": {
+        "platform": "bilibilitoy",
+        "url": "https://su-xinhao-media.oss-cn-hangzhou.aliyuncs.com/su-xinhao/2026/02/images/023-2026-02-24-260224.webp",
+        "pageUrl": "https://www.bilibili.com/toy/preview/preview_5SdX8Yet/index.htm",
+        "accessedAt": "2026-08-08T07:05:37.932Z"
+      },
+      "rights": "user-confirmed-authorized",
+      "images": [
+        {
+          "width": 480,
+          "height": 360,
+          "path": "assets/collectibles/postcards/postcard-2026-02-0023-480.webp",
+          "byteLength": 14126,
+          "mime": "image/webp",
+          "sha256": "55f14befe28e14fb7632c41b001540161f06df136dacd0306ce3ed4e50972c56"
+        },
+        {
+          "width": 960,
+          "height": 720,
+          "path": "assets/collectibles/postcards/postcard-2026-02-0023-960.webp",
+          "byteLength": 45690,
+          "mime": "image/webp",
+          "sha256": "4adc3ae0c51716b90dd3d3048f9c660a7b1c4e81f4471a38cf3665a806b7b221"
+        }
+      ],
+      "tags": ["明信片", "晨光", "旅行"],
+      "metadata": {
+        "sourceId": "2026-02-0023",
+        "sourceName": "260224 (米兰第一个酒店).jpg",
+        "sourceKind": "published",
+        "monthKey": "2026-02",
+        "original": {
+          "url": "https://su-xinhao-media.oss-cn-hangzhou.aliyuncs.com/su-xinhao/2026/02/images/023-2026-02-24-260224.webp",
+          "width": 2200,
+          "height": 1650,
+          "format": "webp",
+          "byteLength": 177432,
+          "sha256": "db142391f413d21b0ad43d0100b55483898a88b908d6227ea2ad4995021c8a16"
+        }
+      }
+    },
+    {
+      "id": "postcard-2026-03-0009",
+      "category": "postcard",
+      "title": "拱窗暖光",
+      "alt": "苏新皓明信片《拱窗暖光》",
+      "caption": "拍摄我自己那part的VCR啦, 老师们很用心的准备了",
+      "date": "2026-03-24",
+      "source": {
+        "platform": "bilibilitoy",
+        "url": "https://su-xinhao-media.oss-cn-hangzhou.aliyuncs.com/su-xinhao/2026/03/images/009-2026-03-24-260324-part-VCR.webp",
+        "pageUrl": "https://www.bilibili.com/toy/preview/preview_5SdX8Yet/index.htm",
+        "accessedAt": "2026-08-08T07:05:37.932Z"
+      },
+      "rights": "user-confirmed-authorized",
+      "images": [
+        {
+          "width": 480,
+          "height": 640,
+          "path": "assets/collectibles/postcards/postcard-2026-03-0009-480.webp",
+          "byteLength": 20244,
+          "mime": "image/webp",
+          "sha256": "95231d7624b18b4e4617b93dc456f78cca90f018b298f48184a288e02054021c"
+        },
+        {
+          "width": 960,
+          "height": 1280,
+          "path": "assets/collectibles/postcards/postcard-2026-03-0009-960.webp",
+          "byteLength": 190622,
+          "mime": "image/webp",
+          "sha256": "c2fa3f380ceb6e191c95ec4f7da0946399d5df1e3c4531f0f36e25c7be536ccc"
+        }
+      ],
+      "tags": ["明信片", "拱窗", "光影"],
+      "metadata": {
+        "sourceId": "2026-03-0009",
+        "sourceName": "260324 (拍摄我自己那part的VCR啦, 老师们很用心的准备了).jpg",
+        "sourceKind": "published",
+        "monthKey": "2026-03",
+        "original": {
+          "url": "https://su-xinhao-media.oss-cn-hangzhou.aliyuncs.com/su-xinhao/2026/03/images/009-2026-03-24-260324-part-VCR.webp",
+          "width": 1650,
+          "height": 2200,
+          "format": "webp",
+          "byteLength": 919274,
+          "sha256": "ed58b7d6f330a2955ee2eaef3b3bfe5e878c0f6a6ba1890929ca1a51b3fa9930"
+        }
+      }
+    },
+    {
+      "id": "postcard-2026-03-0021",
+      "category": "postcard",
+      "title": "暮空灯阵",
+      "alt": "苏新皓明信片《暮空灯阵》",
+      "caption": "我们在一个楼顶拍摄",
+      "date": "2026-03-25",
+      "source": {
+        "platform": "bilibilitoy",
+        "url": "https://su-xinhao-media.oss-cn-hangzhou.aliyuncs.com/su-xinhao/2026/03/images/021-2026-03-25-260325.webp",
+        "pageUrl": "https://www.bilibili.com/toy/preview/preview_5SdX8Yet/index.htm",
+        "accessedAt": "2026-08-08T07:05:37.932Z"
+      },
+      "rights": "user-confirmed-authorized",
+      "images": [
+        {
+          "width": 480,
+          "height": 640,
+          "path": "assets/collectibles/postcards/postcard-2026-03-0021-480.webp",
+          "byteLength": 8688,
+          "mime": "image/webp",
+          "sha256": "7f1e5afdcc416b5dad5f08c2e390099a7d5c0fa08df5787973d275b6af91d6b3"
+        },
+        {
+          "width": 960,
+          "height": 1280,
+          "path": "assets/collectibles/postcards/postcard-2026-03-0021-960.webp",
+          "byteLength": 24608,
+          "mime": "image/webp",
+          "sha256": "5ecada85729f7c34da1859e28c9bde7668e01cf0550f5ea7ca36cd7d733403a4"
+        }
+      ],
+      "tags": ["明信片", "片场", "暮色"],
+      "metadata": {
+        "sourceId": "2026-03-0021",
+        "sourceName": "260325 (我们在一个楼顶拍摄).heic",
+        "sourceKind": "published",
+        "monthKey": "2026-03",
+        "original": {
+          "url": "https://su-xinhao-media.oss-cn-hangzhou.aliyuncs.com/su-xinhao/2026/03/images/021-2026-03-25-260325.webp",
+          "width": 1650,
+          "height": 2200,
+          "format": "webp",
+          "byteLength": 53354,
+          "sha256": "802dc2e3a57df095c382aa095bbc78f9a5f5d070b3d5c8520beea425506d2649"
+        }
+      }
+    },
+    {
+      "id": "postcard-2026-03-0019",
+      "category": "postcard",
+      "title": "镜墙练功房",
+      "alt": "苏新皓明信片《镜墙练功房》",
+      "caption": "回到酒店休息了一会我们就下来练习啦,待会儿我会复习Echo, Whisper,完美情人",
+      "date": "2026-04-08",
+      "source": {
+        "platform": "bilibilitoy",
+        "url": "https://su-xinhao-media.oss-cn-hangzhou.aliyuncs.com/su-xinhao/2026/03/images/019-2026-04-08-260408-Echo-Whisper.webp",
+        "pageUrl": "https://www.bilibili.com/toy/preview/preview_5SdX8Yet/index.htm",
+        "accessedAt": "2026-08-08T07:05:37.932Z"
+      },
+      "rights": "user-confirmed-authorized",
+      "images": [
+        {
+          "width": 480,
+          "height": 640,
+          "path": "assets/collectibles/postcards/postcard-2026-03-0019-480.webp",
+          "byteLength": 39014,
+          "mime": "image/webp",
+          "sha256": "816be9649789c36beaee9a4504d7a2684e49ef0bc7f1e23550867a66fb7ce15e"
+        },
+        {
+          "width": 960,
+          "height": 1279,
+          "path": "assets/collectibles/postcards/postcard-2026-03-0019-960.webp",
+          "byteLength": 141996,
+          "mime": "image/webp",
+          "sha256": "e3d6590578729ad3c0bd13909d46863fd43b685bf4886982e61aa94dc9bbc736"
+        }
+      ],
+      "tags": ["明信片", "舞蹈", "空间"],
+      "metadata": {
+        "sourceId": "2026-03-0019",
+        "sourceName": "260408 (回到酒店休息了一会我们就下来练习啦,待会儿我会复习Echo, Whisper,完美情人).jpg",
+        "sourceKind": "published",
+        "monthKey": "2026-04",
+        "original": {
+          "url": "https://su-xinhao-media.oss-cn-hangzhou.aliyuncs.com/su-xinhao/2026/03/images/019-2026-04-08-260408-Echo-Whisper.webp",
+          "width": 1651,
+          "height": 2200,
+          "format": "webp",
+          "byteLength": 320978,
+          "sha256": "c04ad735db4735f31fd9a83a6f7eb89cd72a704e71fd7cc27027ac4f9e371b5b"
+        }
+      }
+    },
+    {
+      "id": "postcard-2026-03-0026",
+      "category": "postcard",
+      "title": "蓝天下的红房子",
+      "alt": "苏新皓明信片《蓝天下的红房子》",
+      "caption": "嘿嘿,又拍了一张",
+      "date": "2026-04-05",
+      "source": {
+        "platform": "bilibilitoy",
+        "url": "https://su-xinhao-media.oss-cn-hangzhou.aliyuncs.com/su-xinhao/2026/03/images/026-2026-04-05-260405.webp",
+        "pageUrl": "https://www.bilibili.com/toy/preview/preview_5SdX8Yet/index.htm",
+        "accessedAt": "2026-08-08T07:05:37.932Z"
+      },
+      "rights": "user-confirmed-authorized",
+      "images": [
+        {
+          "width": 480,
+          "height": 640,
+          "path": "assets/collectibles/postcards/postcard-2026-03-0026-480.webp",
+          "byteLength": 44376,
+          "mime": "image/webp",
+          "sha256": "77fbdb1a1ea54e5412e34a46e62e0747de8b7063016efb9e3525b9674555645c"
+        },
+        {
+          "width": 960,
+          "height": 1280,
+          "path": "assets/collectibles/postcards/postcard-2026-03-0026-960.webp",
+          "byteLength": 160472,
+          "mime": "image/webp",
+          "sha256": "950872f9a80bf8c1821e7628b040d0093f368722cb563ff46e0c34af68ab0d38"
+        }
+      ],
+      "tags": ["明信片", "蓝天", "城市"],
+      "metadata": {
+        "sourceId": "2026-03-0026",
+        "sourceName": "260405 (嘿嘿,又拍了一张).heic",
+        "sourceKind": "published",
+        "monthKey": "2026-04",
+        "original": {
+          "url": "https://su-xinhao-media.oss-cn-hangzhou.aliyuncs.com/su-xinhao/2026/03/images/026-2026-04-05-260405.webp",
+          "width": 1650,
+          "height": 2200,
+          "format": "webp",
+          "byteLength": 423620,
+          "sha256": "58eed3b997a09aaef0b1fd1999761776587818c85e7f74091e4b35287db77cae"
+        }
+      }
+    },
+    {
+      "id": "postcard-2026-03-0006",
+      "category": "postcard",
+      "title": "紫光灯影",
+      "alt": "苏新皓明信片《紫光灯影》",
+      "caption": "在我滴厕所布置了一个光嘿嘿",
+      "date": "2026-03-08",
+      "source": {
+        "platform": "bilibilitoy",
+        "url": "https://su-xinhao-media.oss-cn-hangzhou.aliyuncs.com/su-xinhao/2026/03/images/006-2026-03-08-260308.webp",
+        "pageUrl": "https://www.bilibili.com/toy/preview/preview_5SdX8Yet/index.htm",
+        "accessedAt": "2026-08-08T07:05:37.932Z"
+      },
+      "rights": "user-confirmed-authorized",
+      "images": [
+        {
+          "width": 480,
+          "height": 853,
+          "path": "assets/collectibles/postcards/postcard-2026-03-0006-480.webp",
+          "byteLength": 16812,
+          "mime": "image/webp",
+          "sha256": "1d9e3c7f57a54169e340c29c01dc909873e6bc2ab4cda067fd6ea91a30a4900e"
+        },
+        {
+          "width": 960,
+          "height": 1706,
+          "path": "assets/collectibles/postcards/postcard-2026-03-0006-960.webp",
+          "byteLength": 44618,
+          "mime": "image/webp",
+          "sha256": "c78a79b255d34875271b4b3c864b98c472aff4c5d5b787452dfc0366274c7093"
+        }
+      ],
+      "tags": ["明信片", "霓虹", "片场"],
+      "metadata": {
+        "sourceId": "2026-03-0006",
+        "sourceName": "260308 (在我滴厕所布置了一个光嘿嘿).jpg",
+        "sourceKind": "published",
+        "monthKey": "2026-03",
+        "original": {
+          "url": "https://su-xinhao-media.oss-cn-hangzhou.aliyuncs.com/su-xinhao/2026/03/images/006-2026-03-08-260308.webp",
+          "width": 1238,
+          "height": 2200,
+          "format": "webp",
+          "byteLength": 71196,
+          "sha256": "2720166f2f207c52986b697cf3306573dcfcad3bd360f56f0f0759aeea53c748"
+        }
+      }
+    },
+    {
+      "id": "postcard-2026-03-0038",
+      "category": "postcard",
+      "title": "粉发眼镜",
+      "alt": "苏新皓明信片《粉发眼镜》",
+      "caption": "马上到我上台了",
+      "date": "2026-04-10",
+      "source": {
+        "platform": "bilibilitoy",
+        "url": "https://su-xinhao-media.oss-cn-hangzhou.aliyuncs.com/su-xinhao/2026/03/images/038-2026-04-10-260410.webp",
+        "pageUrl": "https://www.bilibili.com/toy/preview/preview_5SdX8Yet/index.htm",
+        "accessedAt": "2026-08-08T07:05:37.932Z"
+      },
+      "rights": "user-confirmed-authorized",
+      "images": [
+        {
+          "width": 480,
+          "height": 640,
+          "path": "assets/collectibles/postcards/postcard-2026-03-0038-480.webp",
+          "byteLength": 20138,
+          "mime": "image/webp",
+          "sha256": "bc3b8e662cdd6cc48cc34ce01ae5c8857dc9e2514c6207f8cb514298c0859e2f"
+        },
+        {
+          "width": 960,
+          "height": 1280,
+          "path": "assets/collectibles/postcards/postcard-2026-03-0038-960.webp",
+          "byteLength": 56998,
+          "mime": "image/webp",
+          "sha256": "658ac75673858412c49f04a09193c08e7d9aac3aabe085220dfd812d9e357c8e"
+        }
+      ],
+      "tags": ["明信片", "造型", "苏新皓"],
+      "metadata": {
+        "sourceId": "2026-03-0038",
+        "sourceName": "260410 (马上到我上台了).heic",
+        "sourceKind": "published",
+        "monthKey": "2026-04",
+        "original": {
+          "url": "https://su-xinhao-media.oss-cn-hangzhou.aliyuncs.com/su-xinhao/2026/03/images/038-2026-04-10-260410.webp",
+          "width": 1650,
+          "height": 2200,
+          "format": "webp",
+          "byteLength": 133248,
+          "sha256": "6ad46324853874c4cdd519db79402b851f54d5034ad690c90dd28bf746de2c2c"
+        }
+      }
+    },
+    {
+      "id": "postcard-2026-03-0040",
+      "category": "postcard",
+      "title": "舞台一束光",
+      "alt": "苏新皓明信片《舞台一束光》",
+      "caption": "正在彩排邀请",
+      "date": "2026-04-11",
+      "source": {
+        "platform": "bilibilitoy",
+        "url": "https://su-xinhao-media.oss-cn-hangzhou.aliyuncs.com/su-xinhao/2026/03/images/040-2026-04-11-260411.webp",
+        "pageUrl": "https://www.bilibili.com/toy/preview/preview_5SdX8Yet/index.htm",
+        "accessedAt": "2026-08-08T07:05:37.932Z"
+      },
+      "rights": "user-confirmed-authorized",
+      "images": [
+        {
+          "width": 480,
+          "height": 640,
+          "path": "assets/collectibles/postcards/postcard-2026-03-0040-480.webp",
+          "byteLength": 12858,
+          "mime": "image/webp",
+          "sha256": "a15cdc18376451dd22bb3e70d006d6a8738b8fc651910344c706246e63b57e9f"
+        },
+        {
+          "width": 960,
+          "height": 1280,
+          "path": "assets/collectibles/postcards/postcard-2026-03-0040-960.webp",
+          "byteLength": 51610,
+          "mime": "image/webp",
+          "sha256": "7dbdcd9cbbf81d2ff2464c5ad78f7a5c4024c5f341d81926fe7091f85de42927"
+        }
+      ],
+      "tags": ["明信片", "舞台", "光影"],
+      "metadata": {
+        "sourceId": "2026-03-0040",
+        "sourceName": "260411 (正在彩排邀请).heic",
+        "sourceKind": "published",
+        "monthKey": "2026-04",
+        "original": {
+          "url": "https://su-xinhao-media.oss-cn-hangzhou.aliyuncs.com/su-xinhao/2026/03/images/040-2026-04-11-260411.webp",
+          "width": 1650,
+          "height": 2200,
+          "format": "webp",
+          "byteLength": 157882,
+          "sha256": "f3f613724006c64cca5df8dc1118342befb4b64f46c6b80fd1bcc1d9834325c1"
+        }
+      }
+    },
+    {
+      "id": "postcard-2026-03-0030",
+      "category": "postcard",
+      "title": "车窗耳机侧影",
+      "alt": "苏新皓明信片《车窗耳机侧影》",
+      "caption": "去机场咯!! 澳门见",
+      "date": "2026-04-08",
+      "source": {
+        "platform": "bilibilitoy",
+        "url": "https://su-xinhao-media.oss-cn-hangzhou.aliyuncs.com/su-xinhao/2026/03/images/030-2026-04-08-260408.webp",
+        "pageUrl": "https://www.bilibili.com/toy/preview/preview_5SdX8Yet/index.htm",
+        "accessedAt": "2026-08-08T07:05:37.932Z"
+      },
+      "rights": "user-confirmed-authorized",
+      "images": [
+        {
+          "width": 480,
+          "height": 640,
+          "path": "assets/collectibles/postcards/postcard-2026-03-0030-480.webp",
+          "byteLength": 21252,
+          "mime": "image/webp",
+          "sha256": "0334c2fe8a1bd5ec65c4b53b27f08a6b7623ca96fc611e941ca91ba55853fbaa"
+        },
+        {
+          "width": 960,
+          "height": 1280,
+          "path": "assets/collectibles/postcards/postcard-2026-03-0030-960.webp",
+          "byteLength": 65174,
+          "mime": "image/webp",
+          "sha256": "4f5025f3aa218dbc5d9f5d866f53d6d94d0672a1179c915fa9c6c3ca3a2cc450"
+        }
+      ],
+      "tags": ["明信片", "车窗", "苏新皓"],
+      "metadata": {
+        "sourceId": "2026-03-0030",
+        "sourceName": "260408 (去机场咯!! 澳门见).heic",
+        "sourceKind": "published",
+        "monthKey": "2026-04",
+        "original": {
+          "url": "https://su-xinhao-media.oss-cn-hangzhou.aliyuncs.com/su-xinhao/2026/03/images/030-2026-04-08-260408.webp",
+          "width": 1650,
+          "height": 2200,
+          "format": "webp",
+          "byteLength": 148718,
+          "sha256": "9a8b8bd5899f377bc964e56d23430ed358bd9e0fd7e38186e576a2386804224c"
+        }
+      }
+    },
+    {
+      "id": "postcard-2026-04-0009",
+      "category": "postcard",
+      "title": "林间晨光",
+      "alt": "苏新皓明信片《林间晨光》",
+      "caption": "要是右上角的树也是和左边一样茂密这张图就完美了",
+      "date": "2026-04-20",
+      "source": {
+        "platform": "bilibilitoy",
+        "url": "https://su-xinhao-media.oss-cn-hangzhou.aliyuncs.com/su-xinhao/2026/04/images/009-2026-04-20-260420.webp",
+        "pageUrl": "https://www.bilibili.com/toy/preview/preview_5SdX8Yet/index.htm",
+        "accessedAt": "2026-08-08T07:05:37.932Z"
+      },
+      "rights": "user-confirmed-authorized",
+      "images": [
+        {
+          "width": 480,
+          "height": 688,
+          "path": "assets/collectibles/postcards/postcard-2026-04-0009-480.webp",
+          "byteLength": 71166,
+          "mime": "image/webp",
+          "sha256": "e468dcd80bfc455c5c694a58ebc6b1a569b2443c6aa65be45ad494ebc661cf7f"
+        },
+        {
+          "width": 960,
+          "height": 1376,
+          "path": "assets/collectibles/postcards/postcard-2026-04-0009-960.webp",
+          "byteLength": 268976,
+          "mime": "image/webp",
+          "sha256": "9793f0e2b41e8c4cdc00a501c1fc206656d28d644510b4b7f2ee1b5a01796fdd"
+        }
+      ],
+      "tags": ["明信片", "树林", "光影"],
+      "metadata": {
+        "sourceId": "2026-04-0009",
+        "sourceName": "260420 (要是右上角的树也是和左边一样茂密这张图就完美了).jpg",
+        "sourceKind": "published",
+        "monthKey": "2026-04",
+        "original": {
+          "url": "https://su-xinhao-media.oss-cn-hangzhou.aliyuncs.com/su-xinhao/2026/04/images/009-2026-04-20-260420.webp",
+          "width": 1535,
+          "height": 2200,
+          "format": "webp",
+          "byteLength": 610766,
+          "sha256": "1c3f844251c3509683f46765f72139ac5a5b3790c9db2b07ffaa16c5457fb2f7"
+        }
+      }
+    },
+    {
+      "id": "postcard-2026-04-0016",
+      "category": "postcard",
+      "title": "灯串小院",
+      "alt": "苏新皓明信片《灯串小院》",
+      "caption": "我选了一个人少的地方吃饭, 这里还挺有氛围的, 比较适合那个苏新皓",
+      "date": "2026-04-22",
+      "source": {
+        "platform": "bilibilitoy",
+        "url": "https://su-xinhao-media.oss-cn-hangzhou.aliyuncs.com/su-xinhao/2026/04/images/016-2026-04-22-260422.webp",
+        "pageUrl": "https://www.bilibili.com/toy/preview/preview_5SdX8Yet/index.htm",
+        "accessedAt": "2026-08-08T07:05:37.932Z"
+      },
+      "rights": "user-confirmed-authorized",
+      "images": [
+        {
+          "width": 480,
+          "height": 658,
+          "path": "assets/collectibles/postcards/postcard-2026-04-0016-480.webp",
+          "byteLength": 35944,
+          "mime": "image/webp",
+          "sha256": "bc9f5092609c13a2e6037062189b818e6167a91bb0cbd658d97e4d571480d68f"
+        },
+        {
+          "width": 960,
+          "height": 1317,
+          "path": "assets/collectibles/postcards/postcard-2026-04-0016-960.webp",
+          "byteLength": 123198,
+          "mime": "image/webp",
+          "sha256": "01b39f4e02b0d8ec1cdcaa9268e1dc2b9f16cd99b184c985eb6af9b1e7deff4c"
+        }
+      ],
+      "tags": ["明信片", "小院", "灯串"],
+      "metadata": {
+        "sourceId": "2026-04-0016",
+        "sourceName": "260422 (我选了一个人少的地方吃饭, 这里还挺有氛围的, 比较适合那个苏新皓).jpg",
+        "sourceKind": "published",
+        "monthKey": "2026-04",
+        "original": {
+          "url": "https://su-xinhao-media.oss-cn-hangzhou.aliyuncs.com/su-xinhao/2026/04/images/016-2026-04-22-260422.webp",
+          "width": 1604,
+          "height": 2200,
+          "format": "webp",
+          "byteLength": 350500,
+          "sha256": "972e783ed6531d9245ba66c7f8479a13ebf849a1d02817c97a2b31ac9f882f5d"
+        }
+      }
+    },
+    {
+      "id": "postcard-2026-04-0020",
+      "category": "postcard",
+      "title": "微笑小门",
+      "alt": "苏新皓明信片《微笑小门》",
+      "caption": "这个看着好呆啊",
+      "date": "2026-04-22",
+      "source": {
+        "platform": "bilibilitoy",
+        "url": "https://su-xinhao-media.oss-cn-hangzhou.aliyuncs.com/su-xinhao/2026/04/images/020-2026-04-22-260422.webp",
+        "pageUrl": "https://www.bilibili.com/toy/preview/preview_5SdX8Yet/index.htm",
+        "accessedAt": "2026-08-08T07:05:37.932Z"
+      },
+      "rights": "user-confirmed-authorized",
+      "images": [
+        {
+          "width": 480,
+          "height": 720,
+          "path": "assets/collectibles/postcards/postcard-2026-04-0020-480.webp",
+          "byteLength": 29114,
+          "mime": "image/webp",
+          "sha256": "8872e0fba71d989a75e728bab679dba453ef66084a4370345531f2746c86e8e7"
+        },
+        {
+          "width": 960,
+          "height": 1440,
+          "path": "assets/collectibles/postcards/postcard-2026-04-0020-960.webp",
+          "byteLength": 118600,
+          "mime": "image/webp",
+          "sha256": "88c69a82dc3bd6af28d480913da6a75f6d12f689907ed0e23bf8eccec41ae43d"
+        }
+      ],
+      "tags": ["明信片", "街角", "可爱"],
+      "metadata": {
+        "sourceId": "2026-04-0020",
+        "sourceName": "260422 (这个看着好呆啊).jpg",
+        "sourceKind": "published",
+        "monthKey": "2026-04",
+        "original": {
+          "url": "https://su-xinhao-media.oss-cn-hangzhou.aliyuncs.com/su-xinhao/2026/04/images/020-2026-04-22-260422.webp",
+          "width": 1467,
+          "height": 2200,
+          "format": "webp",
+          "byteLength": 281542,
+          "sha256": "a1eb0b1f5ff4645b8187135de6b97fb178decb1c8a792a00af37491efa9b9c66"
+        }
+      }
+    },
+    {
+      "id": "postcard-2026-04-0019",
+      "category": "postcard",
+      "title": "窗边绿意",
+      "alt": "苏新皓明信片《窗边绿意》",
+      "caption": "这个是拿相机拍的",
+      "date": "2026-04-22",
+      "source": {
+        "platform": "bilibilitoy",
+        "url": "https://su-xinhao-media.oss-cn-hangzhou.aliyuncs.com/su-xinhao/2026/04/images/019-2026-04-22-260422.webp",
+        "pageUrl": "https://www.bilibili.com/toy/preview/preview_5SdX8Yet/index.htm",
+        "accessedAt": "2026-08-08T07:05:37.932Z"
+      },
+      "rights": "user-confirmed-authorized",
+      "images": [
+        {
+          "width": 480,
+          "height": 360,
+          "path": "assets/collectibles/postcards/postcard-2026-04-0019-480.webp",
+          "byteLength": 9926,
+          "mime": "image/webp",
+          "sha256": "6ee335331b1a007fc5968df1a41ec988f08edb62fff95f91e0b9cd2f0de76ebf"
+        },
+        {
+          "width": 960,
+          "height": 720,
+          "path": "assets/collectibles/postcards/postcard-2026-04-0019-960.webp",
+          "byteLength": 26584,
+          "mime": "image/webp",
+          "sha256": "23b1233465cd2f26f184ccb409034223699be78458e3681677cd1327c8da4b9a"
+        }
+      ],
+      "tags": ["明信片", "绿植", "光影"],
+      "metadata": {
+        "sourceId": "2026-04-0019",
+        "sourceName": "260422 (这个是拿相机拍的).JPG",
+        "sourceKind": "published",
+        "monthKey": "2026-04",
+        "original": {
+          "url": "https://su-xinhao-media.oss-cn-hangzhou.aliyuncs.com/su-xinhao/2026/04/images/019-2026-04-22-260422.webp",
+          "width": 2200,
+          "height": 1650,
+          "format": "webp",
+          "byteLength": 76248,
+          "sha256": "e3e5daa4dcc06a60cc17bae0e65f6f194a7f13e88b1c85c0331d51706e9c77ca"
+        }
+      }
+    },
+    {
+      "id": "postcard-2026-04-0023",
+      "category": "postcard",
+      "title": "红发排练",
+      "alt": "苏新皓明信片《红发排练》",
+      "caption": "今日拍摄kkt",
+      "date": "2026-04-25",
+      "source": {
+        "platform": "bilibilitoy",
+        "url": "https://su-xinhao-media.oss-cn-hangzhou.aliyuncs.com/su-xinhao/2026/04/images/023-2026-04-25-260425-kkt.webp",
+        "pageUrl": "https://www.bilibili.com/toy/preview/preview_5SdX8Yet/index.htm",
+        "accessedAt": "2026-08-08T07:05:37.932Z"
+      },
+      "rights": "user-confirmed-authorized",
+      "images": [
+        {
+          "width": 480,
+          "height": 722,
+          "path": "assets/collectibles/postcards/postcard-2026-04-0023-480.webp",
+          "byteLength": 12810,
+          "mime": "image/webp",
+          "sha256": "597498cf9e00409b9fc9a351e45545f33808beca69819843184783c2d10c4df0"
+        },
+        {
+          "width": 960,
+          "height": 1445,
+          "path": "assets/collectibles/postcards/postcard-2026-04-0023-960.webp",
+          "byteLength": 61822,
+          "mime": "image/webp",
+          "sha256": "31f696f384f57da746cbe237711538bf1484e00e7fe707fd6fd5a6b9bc8f993e"
+        }
+      ],
+      "tags": ["明信片", "排练", "苏新皓"],
+      "metadata": {
+        "sourceId": "2026-04-0023",
+        "sourceName": "260425 (今日拍摄kkt).JPG",
+        "sourceKind": "published",
+        "monthKey": "2026-04",
+        "original": {
+          "url": "https://su-xinhao-media.oss-cn-hangzhou.aliyuncs.com/su-xinhao/2026/04/images/023-2026-04-25-260425-kkt.webp",
+          "width": 1462,
+          "height": 2200,
+          "format": "webp",
+          "byteLength": 173044,
+          "sha256": "8ad5debc6e07e27a18c4d6eb43756fb4b503c17d6d06eeea1b9a6cd797771ff9"
+        }
+      }
+    },
+    {
+      "id": "postcard-2026-04-0013",
+      "category": "postcard",
+      "title": "聚光灯下的柯基",
+      "alt": "苏新皓明信片《聚光灯下的柯基》",
+      "caption": "啵啵和我们一起上舞蹈课哈哈哈哈",
+      "date": "2026-04-22",
+      "source": {
+        "platform": "bilibilitoy",
+        "url": "https://su-xinhao-media.oss-cn-hangzhou.aliyuncs.com/su-xinhao/2026/04/images/013-2026-04-22-260422.webp",
+        "pageUrl": "https://www.bilibili.com/toy/preview/preview_5SdX8Yet/index.htm",
+        "accessedAt": "2026-08-08T07:05:37.932Z"
+      },
+      "rights": "user-confirmed-authorized",
+      "images": [
+        {
+          "width": 480,
+          "height": 622,
+          "path": "assets/collectibles/postcards/postcard-2026-04-0013-480.webp",
+          "byteLength": 6008,
+          "mime": "image/webp",
+          "sha256": "d9c9c09e1b9614d490135d972dd8c6285de97da8a351ad7a4e435ac89b2bde56"
+        },
+        {
+          "width": 960,
+          "height": 1243,
+          "path": "assets/collectibles/postcards/postcard-2026-04-0013-960.webp",
+          "byteLength": 20054,
+          "mime": "image/webp",
+          "sha256": "7d05d6c63f5e282b47d54bede8b0e8b5f5335a296a5bc2bb9ad1c8475ead5dc9"
+        }
+      ],
+      "tags": ["明信片", "柯基", "可爱"],
+      "metadata": {
+        "sourceId": "2026-04-0013",
+        "sourceName": "260422 (啵啵和我们一起上舞蹈课哈哈哈哈).jpg",
+        "sourceKind": "published",
+        "monthKey": "2026-04",
+        "original": {
+          "url": "https://su-xinhao-media.oss-cn-hangzhou.aliyuncs.com/su-xinhao/2026/04/images/013-2026-04-22-260422.webp",
+          "width": 1699,
+          "height": 2200,
+          "format": "webp",
+          "byteLength": 65468,
+          "sha256": "37b2e7d998ec652aa920244ee5532b6f36dd72cfcbd769c61f27bf3124d9b64d"
+        }
+      }
+    },
+    {
+      "id": "postcard-2026-04-0027",
+      "category": "postcard",
+      "title": "鹿角木屋",
+      "alt": "苏新皓明信片《鹿角木屋》",
+      "caption": "有点西部的感觉",
+      "date": "2026-04-26",
+      "source": {
+        "platform": "bilibilitoy",
+        "url": "https://su-xinhao-media.oss-cn-hangzhou.aliyuncs.com/su-xinhao/2026/04/images/027-2026-04-26-260426.webp",
+        "pageUrl": "https://www.bilibili.com/toy/preview/preview_5SdX8Yet/index.htm",
+        "accessedAt": "2026-08-08T07:05:37.932Z"
+      },
+      "rights": "user-confirmed-authorized",
+      "images": [
+        {
+          "width": 480,
+          "height": 720,
+          "path": "assets/collectibles/postcards/postcard-2026-04-0027-480.webp",
+          "byteLength": 36426,
+          "mime": "image/webp",
+          "sha256": "d5f89529f7a387dccad36d219c29f0c75fbcade1b021a923caee330e2deea7f6"
+        },
+        {
+          "width": 960,
+          "height": 1440,
+          "path": "assets/collectibles/postcards/postcard-2026-04-0027-960.webp",
+          "byteLength": 146266,
+          "mime": "image/webp",
+          "sha256": "10cdaa77a73a625d7b675df83e4edf09979d32a282ce6b1469dd8a1b4721cdaa"
+        }
+      ],
+      "tags": ["明信片", "木屋", "旅行"],
+      "metadata": {
+        "sourceId": "2026-04-0027",
+        "sourceName": "260426 (有点西部的感觉).jpg",
+        "sourceKind": "published",
+        "monthKey": "2026-04",
+        "original": {
+          "url": "https://su-xinhao-media.oss-cn-hangzhou.aliyuncs.com/su-xinhao/2026/04/images/027-2026-04-26-260426.webp",
+          "width": 1467,
+          "height": 2200,
+          "format": "webp",
+          "byteLength": 317100,
+          "sha256": "34e082136330d72dc1f6596ce6452a8cc9710415be70efa1bfb3d0e003e3ac7e"
+        }
+      }
+    },
+    {
+      "id": "postcard-2026-04-0026",
+      "category": "postcard",
+      "title": "图案音箱",
+      "alt": "苏新皓明信片《图案音箱》",
+      "caption": "你们看这就是那个穿袜子的音响! 你一个音响凭什么穿这么可爱的袜子",
+      "date": "2026-04-26",
+      "source": {
+        "platform": "bilibilitoy",
+        "url": "https://su-xinhao-media.oss-cn-hangzhou.aliyuncs.com/su-xinhao/2026/04/images/026-2026-04-26-260426.webp",
+        "pageUrl": "https://www.bilibili.com/toy/preview/preview_5SdX8Yet/index.htm",
+        "accessedAt": "2026-08-08T07:05:37.932Z"
+      },
+      "rights": "user-confirmed-authorized",
+      "images": [
+        {
+          "width": 480,
+          "height": 720,
+          "path": "assets/collectibles/postcards/postcard-2026-04-0026-480.webp",
+          "byteLength": 41292,
+          "mime": "image/webp",
+          "sha256": "5ded398dd7ab8f68b265f40b29713b592affb9671bd8568a5a06fa699a6a1992"
+        },
+        {
+          "width": 960,
+          "height": 1440,
+          "path": "assets/collectibles/postcards/postcard-2026-04-0026-960.webp",
+          "byteLength": 146240,
+          "mime": "image/webp",
+          "sha256": "6f9fc0e9fd8ade4c23adafd1d1673210415c7a5d0bbc0e4acfe1dc740650717e"
+        }
+      ],
+      "tags": ["明信片", "音箱", "静物"],
+      "metadata": {
+        "sourceId": "2026-04-0026",
+        "sourceName": "260426 (你们看这就是那个穿袜子的音响! 你一个音响凭什么穿这么可爱的袜子).jpg",
+        "sourceKind": "published",
+        "monthKey": "2026-04",
+        "original": {
+          "url": "https://su-xinhao-media.oss-cn-hangzhou.aliyuncs.com/su-xinhao/2026/04/images/026-2026-04-26-260426.webp",
+          "width": 1467,
+          "height": 2200,
+          "format": "webp",
+          "byteLength": 311622,
+          "sha256": "3d0dc10cf71bf2e160c2d4c583cdb4292caee7f2a4347aba54e5f5a4ac78e2e7"
+        }
+      }
+    },
+    {
+      "id": "postcard-2026-05-0020",
+      "category": "postcard",
+      "title": "湖上天鹅",
+      "alt": "苏新皓明信片《湖上天鹅》",
+      "caption": "嘎~",
+      "date": "2026-05-25",
+      "source": {
+        "platform": "bilibilitoy",
+        "url": "https://su-xinhao-media.oss-cn-hangzhou.aliyuncs.com/su-xinhao/2026/05/images/020-2026-05-25-260525.webp",
+        "pageUrl": "https://www.bilibili.com/toy/preview/preview_5SdX8Yet/index.htm",
+        "accessedAt": "2026-08-08T07:05:37.932Z"
+      },
+      "rights": "user-confirmed-authorized",
+      "images": [
+        {
+          "width": 480,
+          "height": 640,
+          "path": "assets/collectibles/postcards/postcard-2026-05-0020-480.webp",
+          "byteLength": 19094,
+          "mime": "image/webp",
+          "sha256": "ac7205080060ddce0f6a5e3be0b8bb8cf08ee2aa4874bdcbaca660b530e56d67"
+        },
+        {
+          "width": 960,
+          "height": 1281,
+          "path": "assets/collectibles/postcards/postcard-2026-05-0020-960.webp",
+          "byteLength": 68084,
+          "mime": "image/webp",
+          "sha256": "c268732e9014a7a2c4e64e7e336e39995fd60cdea248b6e66084e33b489aa1ec"
+        }
+      ],
+      "tags": ["明信片", "天鹅", "湖面"],
+      "metadata": {
+        "sourceId": "2026-05-0020",
+        "sourceName": "260525 (嘎~).jpg",
+        "sourceKind": "published",
+        "monthKey": "2026-05",
+        "original": {
+          "url": "https://su-xinhao-media.oss-cn-hangzhou.aliyuncs.com/su-xinhao/2026/05/images/020-2026-05-25-260525.webp",
+          "width": 1649,
+          "height": 2200,
+          "format": "webp",
+          "byteLength": 162886,
+          "sha256": "405b07a57768ec0e4e1332e6e40f2f684011f9e98c7dbaaf865821318f15d582"
+        }
+      }
+    },
+    {
+      "id": "postcard-2026-05-0025",
+      "category": "postcard",
+      "title": "窗外树影",
+      "alt": "苏新皓明信片《窗外树影》",
+      "caption": "从这一天开始, 我们就得一直忙到9月份",
+      "date": "2026-05-28",
+      "source": {
+        "platform": "bilibilitoy",
+        "url": "https://su-xinhao-media.oss-cn-hangzhou.aliyuncs.com/su-xinhao/2026/05/images/025-2026-05-28-260528-9.webp",
+        "pageUrl": "https://www.bilibili.com/toy/preview/preview_5SdX8Yet/index.htm",
+        "accessedAt": "2026-08-08T07:05:37.932Z"
+      },
+      "rights": "user-confirmed-authorized",
+      "images": [
+        {
+          "width": 480,
+          "height": 640,
+          "path": "assets/collectibles/postcards/postcard-2026-05-0025-480.webp",
+          "byteLength": 29654,
+          "mime": "image/webp",
+          "sha256": "f9f5854ee3cd18a3bf24b67e538bbfc9dbd207a3bd79a745c1bfe12c28e6650c"
+        },
+        {
+          "width": 960,
+          "height": 1280,
+          "path": "assets/collectibles/postcards/postcard-2026-05-0025-960.webp",
+          "byteLength": 112310,
+          "mime": "image/webp",
+          "sha256": "3bd48441af47f46207bbcd79227d154b14b1bc7677b72bfa6a373e352aa7c8f7"
+        }
+      ],
+      "tags": ["明信片", "窗景", "绿树"],
+      "metadata": {
+        "sourceId": "2026-05-0025",
+        "sourceName": "260528 (从这一天开始, 我们就得一直忙到9月份).jpg",
+        "sourceKind": "published",
+        "monthKey": "2026-05",
+        "original": {
+          "url": "https://su-xinhao-media.oss-cn-hangzhou.aliyuncs.com/su-xinhao/2026/05/images/025-2026-05-28-260528-9.webp",
+          "width": 1650,
+          "height": 2200,
+          "format": "webp",
+          "byteLength": 284374,
+          "sha256": "e4c22ace63ffb0324fb22ef2ae9d2e60cfa8b1524446ad4684b323e0aca2061d"
+        }
+      }
+    },
+    {
+      "id": "postcard-2026-05-0027",
+      "category": "postcard",
+      "title": "云海一角",
+      "alt": "苏新皓明信片《云海一角》",
+      "caption": "感觉身心舒畅的感觉",
+      "date": "2026-05-28",
+      "source": {
+        "platform": "bilibilitoy",
+        "url": "https://su-xinhao-media.oss-cn-hangzhou.aliyuncs.com/su-xinhao/2026/05/images/027-2026-05-28-260528.webp",
+        "pageUrl": "https://www.bilibili.com/toy/preview/preview_5SdX8Yet/index.htm",
+        "accessedAt": "2026-08-08T07:05:37.932Z"
+      },
+      "rights": "user-confirmed-authorized",
+      "images": [
+        {
+          "width": 480,
+          "height": 640,
+          "path": "assets/collectibles/postcards/postcard-2026-05-0027-480.webp",
+          "byteLength": 13312,
+          "mime": "image/webp",
+          "sha256": "995e44663d5032e044d18d5c9d1efa080360387bfcf2735aa2990bf85e558395"
+        },
+        {
+          "width": 960,
+          "height": 1280,
+          "path": "assets/collectibles/postcards/postcard-2026-05-0027-960.webp",
+          "byteLength": 40876,
+          "mime": "image/webp",
+          "sha256": "48fddeb34691c6f26d79e0b99e997b55d08e44366304949fd4dae5155e57f066"
+        }
+      ],
+      "tags": ["明信片", "云朵", "风景"],
+      "metadata": {
+        "sourceId": "2026-05-0027",
+        "sourceName": "260528 (感觉身心舒畅的感觉).jpg",
+        "sourceKind": "published",
+        "monthKey": "2026-05",
+        "original": {
+          "url": "https://su-xinhao-media.oss-cn-hangzhou.aliyuncs.com/su-xinhao/2026/05/images/027-2026-05-28-260528.webp",
+          "width": 1650,
+          "height": 2200,
+          "format": "webp",
+          "byteLength": 86708,
+          "sha256": "299c6fbca206759cb93e098519b2217cf8e79f4c18c5801121f7a77fde7fc016"
+        }
+      }
+    },
+    {
+      "id": "postcard-2026-06-0009",
+      "category": "postcard",
+      "title": "晴日海岸",
+      "alt": "苏新皓明信片《晴日海岸》",
+      "caption": "你们看!!彩虹! 是不是看到彩虹要许愿",
+      "date": "2026-06-05",
+      "source": {
+        "platform": "bilibilitoy",
+        "url": "https://su-xinhao-media.oss-cn-hangzhou.aliyuncs.com/su-xinhao/2026/06/images/009-2026-06-05-260605.webp",
+        "pageUrl": "https://www.bilibili.com/toy/preview/preview_5SdX8Yet/index.htm",
+        "accessedAt": "2026-08-08T07:05:37.932Z"
+      },
+      "rights": "user-confirmed-authorized",
+      "images": [
+        {
+          "width": 480,
+          "height": 640,
+          "path": "assets/collectibles/postcards/postcard-2026-06-0009-480.webp",
+          "byteLength": 13880,
+          "mime": "image/webp",
+          "sha256": "cafc6a94625c6f2f0349726b637576df10b15e094f3b457a8683b43330b300ac"
+        },
+        {
+          "width": 960,
+          "height": 1280,
+          "path": "assets/collectibles/postcards/postcard-2026-06-0009-960.webp",
+          "byteLength": 45552,
+          "mime": "image/webp",
+          "sha256": "c916cac34941d5cd0acab8be808ff5e125c69fd3ad2b95e19948ba2982f3cc6c"
+        }
+      ],
+      "tags": ["明信片", "海岸", "蓝天"],
+      "metadata": {
+        "sourceId": "2026-06-0009",
+        "sourceName": "260605 (你们看!!彩虹! 是不是看到彩虹要许愿).jpg",
+        "sourceKind": "published",
+        "monthKey": "2026-06",
+        "original": {
+          "url": "https://su-xinhao-media.oss-cn-hangzhou.aliyuncs.com/su-xinhao/2026/06/images/009-2026-06-05-260605.webp",
+          "width": 1650,
+          "height": 2200,
+          "format": "webp",
+          "byteLength": 123870,
+          "sha256": "e5b9620afa568c52781f52dfe8fb1e1035dbec565f36fbe02d74e1ca346b888d"
+        }
+      }
+    },
+    {
+      "id": "postcard-2026-06-0014",
+      "category": "postcard",
+      "title": "牦牛过路",
+      "alt": "苏新皓明信片《牦牛过路》",
+      "caption": "我本来已经在车上睡着了, 结果突然停车, 原来是你们在路上! 你们看着很悠闲哦",
+      "date": "2026-06-08",
+      "source": {
+        "platform": "bilibilitoy",
+        "url": "https://su-xinhao-media.oss-cn-hangzhou.aliyuncs.com/su-xinhao/2026/06/images/014-2026-06-08-260608.webp",
+        "pageUrl": "https://www.bilibili.com/toy/preview/preview_5SdX8Yet/index.htm",
+        "accessedAt": "2026-08-08T07:05:37.932Z"
+      },
+      "rights": "user-confirmed-authorized",
+      "images": [
+        {
+          "width": 480,
+          "height": 640,
+          "path": "assets/collectibles/postcards/postcard-2026-06-0014-480.webp",
+          "byteLength": 36902,
+          "mime": "image/webp",
+          "sha256": "ff22e14d7917058681bc61d263991f0691b86d89ea9e9196ffe84594bb59fa00"
+        },
+        {
+          "width": 960,
+          "height": 1280,
+          "path": "assets/collectibles/postcards/postcard-2026-06-0014-960.webp",
+          "byteLength": 185534,
+          "mime": "image/webp",
+          "sha256": "c16701f0829801dc259721849e866b1f7cbd769ad04d016d1989e472e156826a"
+        }
+      ],
+      "tags": ["明信片", "动物", "旅行"],
+      "metadata": {
+        "sourceId": "2026-06-0014",
+        "sourceName": "260608 (我本来已经在车上睡着了, 结果突然停车, 原来是你们在路上! 你们看着很悠闲哦).jpg",
+        "sourceKind": "published",
+        "monthKey": "2026-06",
+        "original": {
+          "url": "https://su-xinhao-media.oss-cn-hangzhou.aliyuncs.com/su-xinhao/2026/06/images/014-2026-06-08-260608.webp",
+          "width": 1650,
+          "height": 2200,
+          "format": "webp",
+          "byteLength": 576166,
+          "sha256": "ad12ea1d77a12bf831e42385d4d66054ff9e3a3d96980a8dda02a6076a43b432"
+        }
+      }
+    },
+    {
+      "id": "postcard-2026-06-0021",
+      "category": "postcard",
+      "title": "夜航灯火",
+      "alt": "苏新皓明信片《夜航灯火》",
+      "caption": "(今天回北京, 我终于可以回我的小屋子里了",
+      "date": "2026-06-12",
+      "source": {
+        "platform": "bilibilitoy",
+        "url": "https://su-xinhao-media.oss-cn-hangzhou.aliyuncs.com/su-xinhao/2026/06/images/021-2026-06-12-260612.webp",
+        "pageUrl": "https://www.bilibili.com/toy/preview/preview_5SdX8Yet/index.htm",
+        "accessedAt": "2026-08-08T07:05:37.932Z"
+      },
+      "rights": "user-confirmed-authorized",
+      "images": [
+        {
+          "width": 480,
+          "height": 640,
+          "path": "assets/collectibles/postcards/postcard-2026-06-0021-480.webp",
+          "byteLength": 28852,
+          "mime": "image/webp",
+          "sha256": "a316d609cea2d30a6734606f317cdfefc32ded3180f0ee9063d46ec9ec5062ea"
+        },
+        {
+          "width": 960,
+          "height": 1280,
+          "path": "assets/collectibles/postcards/postcard-2026-06-0021-960.webp",
+          "byteLength": 205924,
+          "mime": "image/webp",
+          "sha256": "b191a556cd86811b9795875c297709c31d31fb35176fb6b59341adc2fe5afd81"
+        }
+      ],
+      "tags": ["明信片", "夜航", "城市"],
+      "metadata": {
+        "sourceId": "2026-06-0021",
+        "sourceName": "260612 (今天回北京, 我终于可以回我的小屋子里了.jpg",
+        "sourceKind": "published",
+        "monthKey": "2026-06",
+        "original": {
+          "url": "https://su-xinhao-media.oss-cn-hangzhou.aliyuncs.com/su-xinhao/2026/06/images/021-2026-06-12-260612.webp",
+          "width": 1650,
+          "height": 2200,
+          "format": "webp",
+          "byteLength": 647654,
+          "sha256": "2ce9dda69703fa9c89475283720f9886c618a82c5e8b366b2a622405fab358f3"
+        }
+      }
+    },
+    {
+      "id": "postcard-2026-06-0024",
+      "category": "postcard",
+      "title": "山城旧屋",
+      "alt": "苏新皓明信片《山城旧屋》",
+      "caption": "今天回到家, 就要开始上那个游戏的线上课了, 哦对你们应该知道了吧, 我那说的4个新的东西的其中一个",
+      "date": "2026-06-17",
+      "source": {
+        "platform": "bilibilitoy",
+        "url": "https://su-xinhao-media.oss-cn-hangzhou.aliyuncs.com/su-xinhao/2026/06/images/024-2026-06-17-260617-4.webp",
+        "pageUrl": "https://www.bilibili.com/toy/preview/preview_5SdX8Yet/index.htm",
+        "accessedAt": "2026-08-08T07:05:37.932Z"
+      },
+      "rights": "user-confirmed-authorized",
+      "images": [
+        {
+          "width": 480,
+          "height": 640,
+          "path": "assets/collectibles/postcards/postcard-2026-06-0024-480.webp",
+          "byteLength": 45196,
+          "mime": "image/webp",
+          "sha256": "46a40aa373d8f2871df516c3b33d784a0e86463aee8f19eac0fb4a4375493cd6"
+        },
+        {
+          "width": 960,
+          "height": 1280,
+          "path": "assets/collectibles/postcards/postcard-2026-06-0024-960.webp",
+          "byteLength": 167040,
+          "mime": "image/webp",
+          "sha256": "17596914d644c1bb36eff42919fef8c8f1e60c7bd2edb7331bbaf4fbe334c9aa"
+        }
+      ],
+      "tags": ["明信片", "建筑", "旅行"],
+      "metadata": {
+        "sourceId": "2026-06-0024",
+        "sourceName": "260617 (今天回到家, 就要开始上那个游戏的线上课了, 哦对你们应该知道了吧, 我那说的4个新的东西的其中一个).jpg",
+        "sourceKind": "published",
+        "monthKey": "2026-06",
+        "original": {
+          "url": "https://su-xinhao-media.oss-cn-hangzhou.aliyuncs.com/su-xinhao/2026/06/images/024-2026-06-17-260617-4.webp",
+          "width": 1650,
+          "height": 2200,
+          "format": "webp",
+          "byteLength": 419546,
+          "sha256": "4549e25b9aa755ac2e0cf62dfda9e288382d9570bac55e7d4f18b80ca4dfe3ef"
+        }
+      }
+    },
+    {
+      "id": "postcard-2026-06-0012",
+      "category": "postcard",
+      "title": "雨后山谷",
+      "alt": "苏新皓明信片《雨后山谷》",
+      "caption": "今天下大暴雨, 没有拍成, 我们都坐在车里躲雨，还在收拾设备的工作人员老师们辛苦了",
+      "date": "2026-06-08",
+      "source": {
+        "platform": "bilibilitoy",
+        "url": "https://su-xinhao-media.oss-cn-hangzhou.aliyuncs.com/su-xinhao/2026/06/images/012-2026-06-08-260608.webp",
+        "pageUrl": "https://www.bilibili.com/toy/preview/preview_5SdX8Yet/index.htm",
+        "accessedAt": "2026-08-08T07:05:37.932Z"
+      },
+      "rights": "user-confirmed-authorized",
+      "images": [
+        {
+          "width": 480,
+          "height": 360,
+          "path": "assets/collectibles/postcards/postcard-2026-06-0012-480.webp",
+          "byteLength": 9116,
+          "mime": "image/webp",
+          "sha256": "062f2f7615c33d93032622d345f776e901c8ce0e0270efc78efc2b0f320e660a"
+        },
+        {
+          "width": 960,
+          "height": 720,
+          "path": "assets/collectibles/postcards/postcard-2026-06-0012-960.webp",
+          "byteLength": 41324,
+          "mime": "image/webp",
+          "sha256": "0695edf513083195381d62f9fb4d9c5f5b6347e8e64c49b29b84bd10f00e8bc4"
+        }
+      ],
+      "tags": ["明信片", "山谷", "雨后"],
+      "metadata": {
+        "sourceId": "2026-06-0012",
+        "sourceName": "260608 (今天下大暴雨, 没有拍成, 我们都坐在车里躲雨，还在收拾设备的工作人员老师们辛苦了).jpg",
+        "sourceKind": "published",
+        "monthKey": "2026-06",
+        "original": {
+          "url": "https://su-xinhao-media.oss-cn-hangzhou.aliyuncs.com/su-xinhao/2026/06/images/012-2026-06-08-260608.webp",
+          "width": 2200,
+          "height": 1650,
+          "format": "webp",
+          "byteLength": 254514,
+          "sha256": "da7ae1374e7f3f8df518f959e2e03c123e1629b7f01e64a98f7db26348052443"
+        }
+      }
+    },
+    {
+      "id": "postcard-2026-06-0037",
+      "category": "postcard",
+      "title": "小苹果耳机",
+      "alt": "苏新皓明信片《小苹果耳机》",
+      "caption": "小苹果耳机!!!!",
+      "date": "2026-06-25",
+      "source": {
+        "platform": "bilibilitoy",
+        "url": "https://su-xinhao-media.oss-cn-hangzhou.aliyuncs.com/su-xinhao/2026/06/images/037-2026-06-25-260625.webp",
+        "pageUrl": "https://www.bilibili.com/toy/preview/preview_5SdX8Yet/index.htm",
+        "accessedAt": "2026-08-08T07:05:37.932Z"
+      },
+      "rights": "user-confirmed-authorized",
+      "images": [
+        {
+          "width": 480,
+          "height": 640,
+          "path": "assets/collectibles/postcards/postcard-2026-06-0037-480.webp",
+          "byteLength": 10580,
+          "mime": "image/webp",
+          "sha256": "b513e53dc80ff3c1709714443425b3c0fbd415313fc48d5584c36c635cb96447"
+        },
+        {
+          "width": 960,
+          "height": 1280,
+          "path": "assets/collectibles/postcards/postcard-2026-06-0037-960.webp",
+          "byteLength": 29792,
+          "mime": "image/webp",
+          "sha256": "7c374a138a06d99b4062c462f1547c3aacde5fcfe9f4e78b27977930f1a06bd2"
+        }
+      ],
+      "tags": ["明信片", "苹果", "静物"],
+      "metadata": {
+        "sourceId": "2026-06-0037",
+        "sourceName": "260625 (小苹果耳机!!!!).jpg",
+        "sourceKind": "published",
+        "monthKey": "2026-06",
+        "original": {
+          "url": "https://su-xinhao-media.oss-cn-hangzhou.aliyuncs.com/su-xinhao/2026/06/images/037-2026-06-25-260625.webp",
+          "width": 1650,
+          "height": 2200,
+          "format": "webp",
+          "byteLength": 67410,
+          "sha256": "a97c1ba425530bfd881b3abe68ce2c074e28d99d949bb23f279e76cdbc82c4aa"
         }
       }
     }

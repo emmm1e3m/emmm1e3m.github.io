@@ -1,6 +1,6 @@
 import { createHash } from 'node:crypto'
 import { mkdir, readFile, readdir, stat, unlink, writeFile } from 'node:fs/promises'
-import { basename, extname, resolve } from 'node:path'
+import { basename, dirname, extname, resolve } from 'node:path'
 
 import { format } from 'prettier'
 import sharp from 'sharp'
@@ -14,8 +14,12 @@ const duplicateCatalogPath = resolve(
   workspaceRoot,
   'research/travelling-bingo/data/postcards.duplicates.json',
 )
-const rawRoot = resolve(workspaceRoot, 'resources/raw/travelling-bingo/postcards-demo')
-const lockPath = resolve(rawRoot, 'postcards.lock.json')
+const selectionPath = resolve(
+  workspaceRoot,
+  'research/travelling-bingo/data/postcards.selection.json',
+)
+const rawRoot = resolve(workspaceRoot, 'resources/raw/travelling-bingo/postcards')
+const lockPath = resolve(workspaceRoot, 'research/travelling-bingo/data/postcards.lock.json')
 const publicAssetRoot = resolve(
   workspaceRoot,
   'AllForSUXINHAO/TravellingBingo/public/assets/collectibles/postcards',
@@ -27,13 +31,11 @@ const publicCatalogPath = resolve(
 
 const USER_ENTRY_URL = 'https://www.bilibili.com/toy/preview/preview_5SdX8Yet/index.htm'
 const EXPECTED_RIGHTS = 'user-confirmed-authorized'
-const GENERATED_FROM = 'bilibilitoy-suxinhao-postcards-curated-demo-12'
 const OUTPUT_WIDTHS = [480, 960]
 const refresh = process.argv.includes('--refresh')
 
-// 候选经过 5 列接触表人工审核，兼顾人物、城市、自然、舞台与旅行构图。
-// 固定 sourceId 可以让后续构建始终复现同一套真实明信片。
-const CURATED_POSTCARDS = [
+// 这些 ID 与标题已经进入旧存档，扩充目录时只能保留，不能改名或删除。
+const LEGACY_POSTCARDS = [
   { sourceId: '2025-01-0002', title: '蓝天下的涂鸦墙', tags: ['明信片', '城市', '涂鸦'] },
   { sourceId: '2025-05-0014', title: '水边小城', tags: ['明信片', '风景', '旅行'] },
   { sourceId: '2025-07-0005', title: '收藏一场落日', tags: ['明信片', '落日', '风景'] },
@@ -61,6 +63,26 @@ function normalizeCaption(value) {
     .replace(/\s+/g, ' ')
     .trim()
   return caption || '苏新皓网盘随拍'
+}
+
+function deriveTitle(selected, sourceItem) {
+  if (typeof selected.title === 'string' && selected.title.trim()) return selected.title.trim()
+
+  const caption = normalizeCaption(sourceItem.caption)
+    .replace(/[。！!？?~～]+$/u, '')
+    .replace(/^(?:哈哈|嘿嘿|嘻嘻)+/u, '')
+    .trim()
+  const characters = [...caption]
+  if (characters.length === 0) return '旅途回忆'
+  if (characters.length <= 14) return caption
+  return `${characters.slice(0, 13).join('')}…`
+}
+
+function deriveTags(selected) {
+  if (Array.isArray(selected.tags) && selected.tags.length > 0) {
+    return [...new Set(selected.tags.map((tag) => String(tag).trim()).filter(Boolean))]
+  }
+  return ['明信片', '旅途回忆']
 }
 
 async function writeJson(path, value) {
@@ -119,14 +141,58 @@ async function removeStaleGeneratedFiles(expectedFileNames) {
 
 const sourceCatalog = JSON.parse(await readFile(sourceCatalogPath, 'utf8'))
 const duplicateCatalog = JSON.parse(await readFile(duplicateCatalogPath, 'utf8'))
+const selectionCatalog = JSON.parse(await readFile(selectionPath, 'utf8'))
+let previousLockCatalog = null
+
+try {
+  previousLockCatalog = JSON.parse(await readFile(lockPath, 'utf8'))
+} catch (error) {
+  if (error.code !== 'ENOENT') throw error
+}
 
 assert(sourceCatalog.schemaVersion === 1, '不支持的明信片源目录版本')
 assert(sourceCatalog.rights === EXPECTED_RIGHTS, '源目录未标记用户已授权')
 assert(sourceCatalog.items.length === sourceCatalog.itemCount, '源目录 itemCount 不一致')
-assert(CURATED_POSTCARDS.length === 12, 'Demo 必须固定选择 12 张明信片')
+assert(selectionCatalog.schemaVersion === 1, '不支持的明信片选择目录版本')
+assert(
+  selectionCatalog.catalogId === 'bilibilitoy-suxinhao-postcards-curated-v1',
+  '明信片选择目录标识不正确',
+)
+assert(!/-\d+$/.test(selectionCatalog.catalogId), '明信片选择目录标识不能写死收藏数量')
+assert(
+  selectionCatalog.sourceCatalogId === sourceCatalog.catalogId,
+  '明信片选择目录与来源目录不一致',
+)
+assert(
+  selectionCatalog.itemCount === selectionCatalog.items.length,
+  '明信片选择目录 itemCount 不一致',
+)
+assert(selectionCatalog.items.length > 0, '明信片选择目录不能为空')
 
-const selectedIdSet = new Set(CURATED_POSTCARDS.map((item) => item.sourceId))
-assert(selectedIdSet.size === CURATED_POSTCARDS.length, '明信片选择列表存在重复 sourceId')
+const curatedPostcards = selectionCatalog.items
+const previousLockById = new Map()
+
+if (previousLockCatalog) {
+  assert(previousLockCatalog.schemaVersion === 1, '已有明信片锁定目录版本不受支持')
+  assert(
+    previousLockCatalog.catalogId === selectionCatalog.catalogId,
+    '已有明信片锁定目录与选择目录标识不一致',
+  )
+  assert(Array.isArray(previousLockCatalog.items), '已有明信片锁定目录缺少 items')
+  for (const item of previousLockCatalog.items) {
+    assert(!previousLockById.has(item.id), `已有明信片锁定目录存在重复 ID：${item.id}`)
+    previousLockById.set(item.id, item)
+  }
+}
+
+const selectedIdSet = new Set(curatedPostcards.map((item) => item.sourceId))
+assert(selectedIdSet.size === curatedPostcards.length, '明信片选择列表存在重复 sourceId')
+
+for (const legacy of LEGACY_POSTCARDS) {
+  const selected = curatedPostcards.find((item) => item.sourceId === legacy.sourceId)
+  assert(selected, `明信片选择目录删除了旧存档 ID：${legacy.sourceId}`)
+  assert(selected.title === legacy.title, `旧明信片标题发生变化：${legacy.sourceId}`)
+}
 
 for (const group of duplicateCatalog.groups ?? []) {
   const selectedDuplicates = group.ids.filter((id) => selectedIdSet.has(id))
@@ -137,15 +203,16 @@ for (const group of duplicateCatalog.groups ?? []) {
 }
 
 const sourceById = new Map(sourceCatalog.items.map((item) => [item.id, item]))
-for (const selected of CURATED_POSTCARDS) {
+for (const selected of curatedPostcards) {
   assert(sourceById.has(selected.sourceId), `源目录缺少 ${selected.sourceId}`)
 }
 
 await mkdir(rawRoot, { recursive: true })
 await mkdir(publicAssetRoot, { recursive: true })
+await mkdir(dirname(lockPath), { recursive: true })
 await mkdir(resolve(publicCatalogPath, '..'), { recursive: true })
 
-const expectedGeneratedNames = CURATED_POSTCARDS.flatMap(({ sourceId }) =>
+const expectedGeneratedNames = curatedPostcards.flatMap(({ sourceId }) =>
   OUTPUT_WIDTHS.map((width) => `postcard-${sourceId}-${width}.webp`),
 )
 await removeStaleGeneratedFiles(expectedGeneratedNames)
@@ -153,7 +220,7 @@ await removeStaleGeneratedFiles(expectedGeneratedNames)
 const publicItems = []
 const lockItems = []
 
-for (const selected of CURATED_POSTCARDS) {
+for (const selected of curatedPostcards) {
   const sourceItem = sourceById.get(selected.sourceId)
   const rawPath = resolve(rawRoot, `${selected.sourceId}.webp`)
   let originalBuffer
@@ -166,12 +233,38 @@ for (const selected of CURATED_POSTCARDS) {
     await writeFile(rawPath, originalBuffer)
   }
 
+  assert(
+    originalBuffer.byteLength === sourceItem.byteLength,
+    `${selected.sourceId} 原图字节数与来源目录不一致`,
+  )
+  const originalSha256 = sha256(originalBuffer)
+  const previousLockItem = previousLockById.get(`postcard-${selected.sourceId}`)
+  if (previousLockItem) {
+    assert(
+      previousLockItem.sourceId === sourceItem.id,
+      `${selected.sourceId} 已有锁定 sourceId 不一致`,
+    )
+    assert(
+      previousLockItem.sourceUrl === sourceItem.sourceUrl,
+      `${selected.sourceId} 已有锁定来源地址不一致`,
+    )
+    assert(
+      previousLockItem.byteLength === originalBuffer.byteLength,
+      `${selected.sourceId} 已有锁定原图字节数不一致`,
+    )
+    assert(
+      previousLockItem.sha256 === originalSha256,
+      `${selected.sourceId} 原图内容与已有 SHA-256 锁定记录不一致`,
+    )
+  }
+
   const originalMetadata = await sharp(originalBuffer, { failOn: 'warning' }).rotate().metadata()
   assert(originalMetadata.width && originalMetadata.height, `${selected.sourceId} 缺少尺寸信息`)
   assert(
-    originalMetadata.width >= 960 || originalMetadata.height >= 960,
-    `${selected.sourceId} 分辨率不足以制作明信片`,
+    originalMetadata.width >= 960 && originalMetadata.height >= 960,
+    `${selected.sourceId} 短边不足 960px，不能进入明信片目录`,
   )
+  assert(sourceItem.date !== '未识别', `${selected.sourceId} 缺少可识别日期`)
 
   const images = []
   for (const width of OUTPUT_WIDTHS) {
@@ -197,15 +290,16 @@ for (const selected of CURATED_POSTCARDS) {
 
   const rawFileStats = await stat(rawPath)
   const caption = normalizeCaption(sourceItem.caption)
-  const originalSha256 = sha256(originalBuffer)
+  const title = deriveTitle(selected, sourceItem)
+  const tags = deriveTags(selected)
   const originalFormat =
     originalMetadata.format ?? extname(sourceItem.sourceUrl).slice(1) ?? 'unknown'
 
   publicItems.push({
     id: `postcard-${selected.sourceId}`,
     category: 'postcard',
-    title: selected.title,
-    alt: `苏新皓明信片《${selected.title}》`,
+    title,
+    alt: `苏新皓明信片《${title}》`,
     caption,
     date: sourceItem.date,
     source: {
@@ -216,7 +310,7 @@ for (const selected of CURATED_POSTCARDS) {
     },
     rights: EXPECTED_RIGHTS,
     images,
-    tags: selected.tags,
+    tags,
     metadata: {
       sourceId: sourceItem.id,
       sourceName: sourceItem.name,
@@ -241,7 +335,7 @@ for (const selected of CURATED_POSTCARDS) {
     sourceCaption: caption,
     accessedAt: sourceCatalog.retrievedAt,
     rights: EXPECTED_RIGHTS,
-    originalPath: `resources/raw/travelling-bingo/postcards-demo/${basename(rawPath)}`,
+    originalPath: `resources/raw/travelling-bingo/postcards/${basename(rawPath)}`,
     width: originalMetadata.width,
     height: originalMetadata.height,
     format: originalFormat,
@@ -261,19 +355,19 @@ const sourceEnvelope = {
 
 await writeJson(publicCatalogPath, {
   schemaVersion: 1,
-  generatedFrom: GENERATED_FROM,
+  generatedFrom: selectionCatalog.catalogId,
   itemCount: publicItems.length,
   source: sourceEnvelope,
   selection: {
     method: 'hand-curated-contact-sheet',
-    selectedSourceIds: CURATED_POSTCARDS.map((item) => item.sourceId),
+    selectedSourceIds: curatedPostcards.map((item) => item.sourceId),
   },
   items: publicItems,
 })
 
 await writeJson(lockPath, {
   schemaVersion: 1,
-  catalogId: GENERATED_FROM,
+  catalogId: selectionCatalog.catalogId,
   source: sourceEnvelope,
   itemCount: lockItems.length,
   items: lockItems,

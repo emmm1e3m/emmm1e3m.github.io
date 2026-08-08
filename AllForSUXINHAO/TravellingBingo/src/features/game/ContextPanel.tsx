@@ -1,6 +1,8 @@
-import { useMemo, useState } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
 
-import { calculateCollectionProgress, type ContentCatalog } from '@/content'
+import { BilibiliPlayer } from '@/components/BilibiliPlayer'
+import { PianoKeyboard } from '@/components/PianoKeyboard'
+import { calculateCollectionProgress, type BilibiliVideo, type ContentCatalog } from '@/content'
 import {
   deriveActivityTiming,
   ITEM_PRICES,
@@ -9,6 +11,7 @@ import {
   type GameAction,
   type GameState,
   type ItemId,
+  type PetInterest,
   type TaskEvent,
 } from '@/domain'
 import { DebugPanel } from '@/features/debug/DebugPanel'
@@ -23,7 +26,8 @@ interface ContextPanelProps {
   game: GameState
   catalog: ContentCatalog
   now: number
-  onNavigate: (panel: PanelId) => void
+  onNavigate: (panel: PanelId | null) => void
+  onClose: () => void
   onAction: (action: GameAction) => void
   onBackup: () => void
   onTaskEvent: (event: TaskEvent) => void
@@ -42,25 +46,137 @@ function toDomainCatalog(catalog: ContentCatalog): CollectionCatalog {
   }
 }
 
+function PanelHeader({ tag, onClose }: { tag: string; onClose: () => void }) {
+  return (
+    <div className="context-panel__topline">
+      <span className="paper-tag">{tag}</span>
+      <button className="context-panel__close" type="button" onClick={onClose}>
+        收起信息栏
+      </button>
+    </div>
+  )
+}
+
+const INTEREST_COPY: Readonly<
+  Record<PetInterest, { label: string; willing: string; reluctant: string }>
+> = {
+  travel: { label: '出门', willing: '想出去走走', reluctant: '今天更想待在家' },
+  computer: { label: '电脑', willing: '愿意认真坐一会儿', reluctant: '今天不想坐在电脑前' },
+  music: { label: '音乐', willing: '想让房间有点旋律', reluctant: '今天想安静一点' },
+}
+
+function InterestSummary({ game }: { game: GameState }) {
+  return (
+    <section className="interest-summary" aria-labelledby="interest-title">
+      <h3 id="interest-title">饼狗今天的心情</h3>
+      <div className="interest-summary__grid">
+        {(Object.keys(INTEREST_COPY) as PetInterest[]).map((interest) => {
+          const willing = game.pet.preferences[interest] && !game.pet.tired
+          const copy = INTEREST_COPY[interest]
+          return (
+            <div key={interest} className={willing ? 'is-willing' : 'is-reluctant'}>
+              <strong>{copy.label}</strong>
+              <span>{willing ? copy.willing : copy.reluctant}</span>
+            </div>
+          )
+        })}
+      </div>
+    </section>
+  )
+}
+
+function RecordPlayerPanel({
+  videos,
+  onOpened,
+}: {
+  videos: readonly BilibiliVideo[]
+  onOpened: (bvid: string) => void
+}) {
+  const [selectedId, setSelectedId] = useState<string | null>(videos[0]?.bvid ?? null)
+  const selected = videos.find((video) => video.bvid === selectedId) ?? videos[0]
+
+  if (!selected) {
+    return (
+      <div className="record-player-empty" role="status">
+        <strong>唱片还在整理</strong>
+        <span>等曲目准备好，这里就会响起第一段旋律。</span>
+      </div>
+    )
+  }
+
+  return (
+    <div className="record-player-panel">
+      <ul
+        className="record-track-list"
+        aria-label="唱片列表"
+        style={{ margin: 0, padding: 0, listStyle: 'none' }}
+      >
+        {videos.map((video, index) => (
+          <li key={video.bvid} style={{ display: 'grid' }}>
+            <button
+              type="button"
+              className={video.bvid === selected.bvid ? 'is-selected' : ''}
+              aria-pressed={video.bvid === selected.bvid}
+              onClick={() => setSelectedId(video.bvid)}
+            >
+              <span className="numeric-copy">{String(index + 1).padStart(2, '0')}</span>
+              <strong>{video.title}</strong>
+            </button>
+          </li>
+        ))}
+      </ul>
+      <BilibiliPlayer key={selected.bvid} video={selected} onOpened={onOpened} />
+    </div>
+  )
+}
+
 export function ContextPanel({
   panel,
   game,
   catalog,
   now,
   onNavigate,
+  onClose,
   onAction,
   onBackup,
   onTaskEvent,
 }: ContextPanelProps) {
   const [popupBlocked, setPopupBlocked] = useState(false)
+  const [cancelRunId, setCancelRunId] = useState<string | null>(null)
+  const cancelTriggerRef = useRef<HTMLButtonElement>(null)
+  const continueActivityRef = useRef<HTMLButtonElement>(null)
+  const shouldRestoreCancelFocusRef = useRef(false)
   const timing = deriveActivityTiming(game.activeActivity, now)
   const activity = game.activeActivity
+  const activeRunId = activity?.runId ?? null
+  const confirmingCancel =
+    panel === 'activity' && activeRunId !== null && cancelRunId === activeRunId
   const domainCatalog = useMemo(() => toDomainCatalog(catalog), [catalog])
+
+  useEffect(() => {
+    if (confirmingCancel) {
+      shouldRestoreCancelFocusRef.current = true
+      continueActivityRef.current?.focus()
+      return
+    }
+
+    if (panel !== 'activity') return
+
+    if (activeRunId === null) {
+      shouldRestoreCancelFocusRef.current = false
+      return
+    }
+
+    if (shouldRestoreCancelFocusRef.current) {
+      shouldRestoreCancelFocusRef.current = false
+      cancelTriggerRef.current?.focus()
+    }
+  }, [activeRunId, confirmingCancel, panel])
 
   if (panel === 'fridge') {
     return (
       <div className="context-content fridge-panel">
-        <span className="paper-tag">家里的冰箱</span>
+        <PanelHeader tag="家里的冰箱" onClose={onClose} />
         <h2>向冰箱中补充道具</h2>
         <p className="panel-intro">把下次想用的补给准备好，饼狗会自己收进小背包。</p>
         <div className="shop-list">
@@ -73,7 +189,8 @@ export function ContextPanel({
                 <div>
                   <strong>{item.name}</strong>
                   <small>
-                    {item.note} · 现有 {game.inventory[itemId]} 份
+                    {item.note} · 现有{' '}
+                    <span className="numeric-copy">{game.inventory[itemId]}</span> 份
                   </small>
                 </div>
                 <button
@@ -81,9 +198,7 @@ export function ContextPanel({
                   disabled={!affordable}
                   onClick={() => onAction({ type: 'item/purchase', itemId })}
                 >
-                  {affordable
-                    ? `补充 · ${price} 个苹果`
-                    : `还差 ${price - game.economy.apples} 个苹果`}
+                  {affordable ? `${price}🍎` : `还差 ${price - game.economy.apples}🍎`}
                 </button>
               </article>
             )
@@ -97,9 +212,10 @@ export function ContextPanel({
     const kinds: ActivityKind[] = panel === 'travel' ? ['travel'] : ['stream', 'trend']
     return (
       <div className="context-content">
-        <span className="paper-tag">
-          {panel === 'travel' ? '门口的旅行计划' : '电脑前的认真时间'}
-        </span>
+        <PanelHeader
+          tag={panel === 'travel' ? '门口的旅行计划' : '电脑前的认真时间'}
+          onClose={onClose}
+        />
         <h2>{panel === 'travel' ? '准备好再出门' : '今天想做哪件事'}</h2>
         <div className="activity-list">
           {kinds.map((kind) => (
@@ -118,14 +234,46 @@ export function ContextPanel({
     )
   }
 
+  if (panel === 'piano') {
+    return (
+      <div className="context-content piano-panel">
+        <PanelHeader tag="电子琴前" onClose={onClose} />
+        <h2>让房间响起一段旋律</h2>
+        <PianoKeyboard onNote={(noteId) => onTaskEvent({ type: 'piano-note-played', noteId })} />
+        <ActivityLauncher
+          kind="music"
+          game={game}
+          catalog={domainCatalog}
+          onAction={onAction}
+          onNeedSupplies={() => onNavigate('fridge')}
+          onNeedRest={() => onNavigate('rest')}
+        />
+      </div>
+    )
+  }
+
+  if (panel === 'record-player') {
+    return (
+      <div className="context-content record-panel">
+        <PanelHeader tag="唱片机旁" onClose={onClose} />
+        <h2>挑一张今天想听的唱片</h2>
+        <p className="panel-intro">播放器打开后，再从画面里按下播放。</p>
+        <RecordPlayerPanel
+          videos={catalog.recordPlayerVideos}
+          onOpened={(bvid) => onTaskEvent({ type: 'record-player-opened', bvid })}
+        />
+      </div>
+    )
+  }
+
   if (panel === 'activity') {
     return (
       <div className="context-content active-panel">
-        <span className="paper-tag">这一次 Bingo</span>
+        <PanelHeader tag="这一次 Bingo" onClose={onClose} />
         <h2>{activity ? ACTIVITY_COPY[activity.kind].verb : '饼狗现在有空'}</h2>
         {activity ? (
           <div className="large-activity-status">
-            <span>
+            <span className="numeric-copy">
               {timing.phase === 'ready' ? '已经完成' : formatCountdown(timing.remainingSeconds)}
             </span>
             <div
@@ -135,6 +283,11 @@ export function ContextPanel({
               <i style={{ width: `${timing.progress * 100}%` }} />
             </div>
             <p>{ACTIVITY_COPY[activity.kind].note}</p>
+            {activity.kind === 'music' && (
+              <PianoKeyboard
+                onNote={(noteId) => onTaskEvent({ type: 'piano-note-played', noteId })}
+              />
+            )}
             {timing.phase === 'ready' ? (
               <button
                 className="paper-button paper-button--primary"
@@ -145,29 +298,57 @@ export function ContextPanel({
               >
                 看看这次的结果
               </button>
+            ) : null}
+
+            {confirmingCancel ? (
+              <div className="activity-cancel-confirm" role="group" aria-label="确认取消活动">
+                <strong>确定现在停下来吗？</strong>
+                <p>已经带出的补给不会回到冰箱，这次也不会算作相伴的一天。</p>
+                <div className="button-row">
+                  <button
+                    className="paper-button paper-button--danger"
+                    type="button"
+                    onClick={() =>
+                      onAction({ type: 'activity/cancel', runId: activity.runId, now: Date.now() })
+                    }
+                  >
+                    确定取消
+                  </button>
+                  <button
+                    ref={continueActivityRef}
+                    className="paper-button"
+                    type="button"
+                    onClick={() => setCancelRunId(null)}
+                  >
+                    继续活动
+                  </button>
+                </div>
+              </div>
             ) : (
-              <small>饼狗忙完会在这里等你。</small>
+              <button
+                ref={cancelTriggerRef}
+                className="text-action text-action--danger"
+                type="button"
+                onClick={() => setCancelRunId(activity.runId)}
+              >
+                取消这次活动
+              </button>
             )}
           </div>
         ) : (
-          <>
-            <p className="panel-intro">想做什么，就从房间里选一个地方吧。</p>
-            <div className="button-row">
-              <button className="paper-button" type="button" onClick={() => onNavigate('computer')}>
-                去电脑前
-              </button>
-              <button className="paper-button" type="button" onClick={() => onNavigate('travel')}>
-                去门口
-              </button>
-            </div>
-          </>
+          <p className="panel-intro">想做什么，就从房间里选一个地方吧。</p>
         )}
       </div>
     )
   }
 
   if (panel === 'debug') {
-    return <DebugPanel game={game} onAction={onAction} onBackup={onBackup} />
+    return (
+      <div className="context-content debug-panel-shell">
+        <PanelHeader tag="调试门牌" onClose={onClose} />
+        <DebugPanel game={game} onAction={onAction} onBackup={onBackup} />
+      </div>
+    )
   }
 
   if (panel === 'wardrobe') {
@@ -195,9 +376,9 @@ export function ContextPanel({
 
     return (
       <div className="context-content quiet-panel miracle-panel">
-        <span className="paper-tag">衣架旁的小卡片</span>
+        <PanelHeader tag="衣架旁的小卡片" onClose={onClose} />
         <h2>奇迹饼狗</h2>
-        <p>测试什么样的舞台适合你</p>
+        <p>什么样的搭配最合适呢？</p>
         <button
           className="paper-button paper-button--primary"
           type="button"
@@ -222,106 +403,52 @@ export function ContextPanel({
     )
   }
 
-  if (panel === 'music') {
-    return (
-      <div className="context-content quiet-panel music-panel">
-        <span className="paper-tag">房间里的旋律</span>
-        <h2>和饼狗听一会儿</h2>
-        <p>电子琴和唱片机都在等你，挑一种今天想听的声音。</p>
-        <div className="button-row">
-          <button
-            className="paper-button"
-            type="button"
-            onClick={() => onTaskEvent({ type: 'room-visited', area: 'piano' })}
-          >
-            弹一小段
-          </button>
-          <button
-            className="paper-button"
-            type="button"
-            onClick={() => onTaskEvent({ type: 'room-visited', area: 'record-player' })}
-          >
-            放一张唱片
-          </button>
-        </div>
-      </div>
-    )
-  }
-
   if (panel === 'rest') {
     return (
       <div className="context-content quiet-panel rest-panel">
-        <span className="paper-tag">软乎乎的床铺</span>
+        <PanelHeader tag="软乎乎的床铺" onClose={onClose} />
         <h2>睡一觉再出发</h2>
-        <p>窗外会从夜晚慢慢亮起来，醒来的饼狗也会重新想好今天愿意做什么。</p>
-        <button
-          className="paper-button paper-button--primary"
-          type="button"
-          disabled={Boolean(activity)}
-          onClick={() => onAction({ type: 'pet/rest', now: Date.now() })}
-        >
-          {activity ? '等这次活动结束' : '让饼狗睡一觉'}
-        </button>
+        <p>窗外会慢慢暗下来再重新亮起，醒来的饼狗也会想好今天愿意做什么。</p>
+        <ActivityLauncher
+          kind="rest"
+          game={game}
+          catalog={domainCatalog}
+          onAction={onAction}
+          onNeedSupplies={() => onNavigate('fridge')}
+          onNeedRest={() => undefined}
+        />
       </div>
     )
   }
 
   const progress = calculateCollectionProgress(catalog, Object.keys(game.collections))
   return (
-    <div className="context-content status-panel status-panel--v2">
-      <span className="paper-tag">今天的铲铲饼屋</span>
-      <h2>{activity ? ACTIVITY_COPY[activity.kind].verb : '饼狗在家'}</h2>
-      {activity ? (
-        <button
-          className="activity-status-card activity-status-card--button"
-          type="button"
-          onClick={() => onNavigate('activity')}
-        >
-          <span>
-            <strong>
-              {timing.phase === 'ready'
-                ? '可以看看结果啦'
-                : formatCountdown(timing.remainingSeconds)}
-            </strong>
-            <small>{ACTIVITY_COPY[activity.kind].name}</small>
-          </span>
-          <span>{timing.phase === 'ready' ? '领取结果' : '查看进度'}</span>
-        </button>
-      ) : (
-        <p className="panel-intro">
-          点房间里的文字标签，饼狗会自己走到那里。点饼狗还能和它商量今天做什么。
-        </p>
-      )}
+    <div className="context-content status-panel status-panel--v3">
+      <PanelHeader tag="今天的铲铲饼屋" onClose={onClose} />
+      <h2>{game.profile.displayName}，来看看饼狗吧</h2>
+      <p className="panel-intro">
+        {activity
+          ? `${ACTIVITY_COPY[activity.kind].verb}，点顶栏可以查看进度。`
+          : '点房间里的文字标签，饼狗会自己走到那里。'}
+      </p>
 
       <div className="status-metrics">
         <div>
-          <strong>{progress.collected}</strong>
+          <strong className="numeric-copy">{progress.collected}</strong>
           <span>珍藏回忆</span>
         </div>
         <div>
-          <strong>{game.tasks.completedCount}</strong>
-          <span>完成小事</span>
+          <strong className="numeric-copy">{Object.keys(game.friends).length}</strong>
+          <span>认识朋友</span>
         </div>
         <div>
-          <strong>{game.pet.restCount}</strong>
-          <span>睡过好觉</span>
+          <strong className="numeric-copy">{game.tasks.completedCount}</strong>
+          <span>完成小事</span>
         </div>
       </div>
 
+      <InterestSummary game={game} />
       <TaskBoard game={game} />
-
-      <div className="button-row status-actions">
-        <button
-          className="paper-button paper-button--primary"
-          type="button"
-          onClick={() => onNavigate('fridge')}
-        >
-          打开冰箱
-        </button>
-        <button className="paper-button" type="button" onClick={() => onNavigate('computer')}>
-          去电脑前
-        </button>
-      </div>
     </div>
   )
 }

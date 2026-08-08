@@ -2,11 +2,14 @@ import { generateActivityPreferences } from '../pet/preferences'
 import { generateTaskBoard } from '../tasks/taskBoard'
 import { INITIAL_APPLES, INITIAL_INVENTORY } from './constants'
 import { createDefaultGameBalance } from './gameBalance'
+import { normalizeDisplayName } from './profile'
 import type { GameState } from './types'
 
 export interface InitialGameOptions {
   now: number
   seed: string
+  /** UI 新建流程必须传入；领域保留“你”作为脚本与旧调用方的安全回退。 */
+  displayName?: string
   debug?: boolean
 }
 
@@ -26,14 +29,17 @@ export function createInitialGameState(options: InitialGameOptions): GameState {
   })
 
   return {
-    schemaVersion: 2,
+    schemaVersion: 3,
     profile: {
       createdAt: options.now,
       debug: options.debug ?? false,
+      displayName: normalizeDisplayName(options.displayName ?? '你'),
+      companionDays: 0,
     },
     economy: { apples: INITIAL_APPLES },
     inventory: { ...INITIAL_INVENTORY },
     collections: {},
+    friends: {},
     activeActivity: null,
     pet: {
       location: 'center',
@@ -44,8 +50,8 @@ export function createInitialGameState(options: InitialGameOptions): GameState {
     tasks: generatedTasks.board,
     gameBalance: createDefaultGameBalance(),
     statistics: {
-      started: { travel: 0, stream: 0, trend: 0 },
-      claimed: { travel: 0, stream: 0, trend: 0 },
+      started: { travel: 0, stream: 0, trend: 0, music: 0, rest: 0 },
+      claimed: { travel: 0, stream: 0, trend: 0, music: 0, rest: 0 },
       applesEarned: 0,
       duplicateRewards: 0,
     },

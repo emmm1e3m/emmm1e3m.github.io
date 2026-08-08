@@ -1,7 +1,7 @@
 {
   "schemaVersion": 1,
   "catalogId": "weibo-million-shot-posters-latest-30-strict",
-  "verifiedAt": "2026-08-08T07:01:01.843Z",
+  "verifiedAt": "2026-08-08T15:34:51.067Z",
   "itemCount": 30,
   "items": [
     {
@@ -443,16 +443,16 @@
       "id": "million-shot-108",
       "sequence": 108,
       "originalPath": "resources/raw/travelling-bingo/million-shots/million-108-Qbd9eE7nv.jpg",
-      "sourceImageUrl": "https://wx4.sinaimg.cn/large/008tdBMZly1i6s1sdkto1j30xw13m7by.jpg",
+      "sourceImageUrl": "https://wx4.sinaimg.cn/large/008tdBMZly1i6s1sdwf2ej30m80xcwnu.jpg",
       "contentType": "image/jpeg",
-      "reportedWidth": 1220,
-      "reportedHeight": 1426,
+      "reportedWidth": 800,
+      "reportedHeight": 1200,
       "reportedDimensionsMatch": true,
       "format": "jpeg",
-      "width": 1220,
-      "height": 1426,
-      "byteLength": 293100,
-      "sha256": "c56ec225dd1f4bbeafe1bd09621357129e072edb317fc9adb1493e67f73c9f58"
+      "width": 800,
+      "height": 1200,
+      "byteLength": 355303,
+      "sha256": "e12ed0ecf38919d7e7049752cd49b7c0b5488338acadb77b40aecc65a6d908f4"
     }
   ]
 }

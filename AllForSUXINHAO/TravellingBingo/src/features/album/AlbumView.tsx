@@ -1,5 +1,7 @@
 import { useMemo, useRef, useState, type KeyboardEvent } from 'react'
 
+import { publicAsset } from '@/app/assets'
+import { BilibiliPlayer } from '@/components/BilibiliPlayer'
 import { useModalFocus } from '@/components/useModalFocus'
 import type { CollectibleItem, ContentCatalog } from '@/content'
 import type { CollectibleCategory, GameState } from '@/domain'
@@ -8,15 +10,26 @@ import { categoryLabel } from './categoryLabel'
 import { CollectiblePicture } from './CollectiblePicture'
 
 const CATEGORY_ORDER: readonly CollectibleCategory[] = ['postcard', 'million-shot', 'site-first']
+type AlbumTab = CollectibleCategory | 'friends'
 
 interface AlbumViewProps {
   catalog: ContentCatalog
   game: GameState
   onClose: () => void
   onInspect?: (item: CollectibleItem) => void
+  onPlayerOpened?: (collectionId: string, bvid: string) => void
 }
 
-export function AlbumView({ catalog, game, onClose, onInspect }: AlbumViewProps) {
+function numericDate(timestamp: number) {
+  const date = new Date(timestamp)
+  return `${date.getMonth() + 1}月${date.getDate()}日`
+}
+
+function tabLabel(tab: AlbumTab) {
+  return tab === 'friends' ? '好朋友们' : categoryLabel(tab)
+}
+
+export function AlbumView({ catalog, game, onClose, onInspect, onPlayerOpened }: AlbumViewProps) {
   const ownedItems = useMemo(
     () =>
       catalog.items
@@ -28,14 +41,24 @@ export function AlbumView({ catalog, game, onClose, onInspect }: AlbumViewProps)
         }),
     [catalog.items, game.collections],
   )
-  const unlockedCategories = CATEGORY_ORDER.filter((category) =>
-    ownedItems.some((item) => item.category === category),
+  const knownFriends = useMemo(
+    () =>
+      Object.values(game.friends)
+        .filter((entry) => entry !== undefined)
+        .sort(
+          (left, right) =>
+            right.lastMetAt - left.lastMetAt ||
+            left.firstMetAt - right.firstMetAt ||
+            left.id.localeCompare(right.id),
+        ),
+    [game.friends],
   )
-  const [category, setCategory] = useState<CollectibleCategory | null>(
-    unlockedCategories[0] ?? null,
-  )
-  const activeCategory =
-    category && unlockedCategories.includes(category) ? category : (unlockedCategories[0] ?? null)
+  const unlockedTabs: AlbumTab[] = [
+    ...CATEGORY_ORDER.filter((category) => ownedItems.some((item) => item.category === category)),
+    ...(knownFriends.length > 0 ? (['friends'] as const) : []),
+  ]
+  const [tab, setTab] = useState<AlbumTab | null>(unlockedTabs[0] ?? null)
+  const activeTab = tab && unlockedTabs.includes(tab) ? tab : (unlockedTabs[0] ?? null)
   const [selected, setSelected] = useState<CollectibleItem | null>(null)
   const albumCloseRef = useRef<HTMLButtonElement>(null)
   const detailCloseRef = useRef<HTMLButtonElement>(null)
@@ -47,9 +70,10 @@ export function AlbumView({ catalog, game, onClose, onInspect }: AlbumViewProps)
   })
   const tabRefs = useRef<Array<HTMLButtonElement | null>>([])
   const allCollected = catalog.items.length > 0 && ownedItems.length === catalog.items.length
-  const visibleItems = activeCategory
-    ? ownedItems.filter((item) => item.category === activeCategory)
-    : []
+  const visibleItems =
+    activeTab && activeTab !== 'friends'
+      ? ownedItems.filter((item) => item.category === activeTab)
+      : []
 
   function handleTabKey(event: KeyboardEvent<HTMLButtonElement>, index: number) {
     const direction = event.key === 'ArrowRight' ? 1 : event.key === 'ArrowLeft' ? -1 : 0
@@ -59,9 +83,9 @@ export function AlbumView({ catalog, game, onClose, onInspect }: AlbumViewProps)
       event.key === 'Home'
         ? 0
         : event.key === 'End'
-          ? unlockedCategories.length - 1
-          : (index + direction + unlockedCategories.length) % unlockedCategories.length
-    setCategory(unlockedCategories[nextIndex])
+          ? unlockedTabs.length - 1
+          : (index + direction + unlockedTabs.length) % unlockedTabs.length
+    setTab(unlockedTabs[nextIndex])
     tabRefs.current[nextIndex]?.focus()
   }
 
@@ -70,10 +94,15 @@ export function AlbumView({ catalog, game, onClose, onInspect }: AlbumViewProps)
     setSelected(item)
   }
 
+  const selectedVideo =
+    selected && selected.category !== 'postcard'
+      ? catalog.videosByBvid[selected.metadata.video.bvid]
+      : undefined
+
   return (
     <section
       ref={albumDialogRef}
-      className="album-page album-page--v2"
+      className="album-page album-page--v2 album-page--v3"
       role="dialog"
       aria-modal="true"
       aria-labelledby="album-title"
@@ -81,88 +110,105 @@ export function AlbumView({ catalog, game, onClose, onInspect }: AlbumViewProps)
     >
       <header className="album-header">
         <div>
-          <span className="paper-tag">饼狗的收藏墙</span>
-          <h2 id="album-title">一路珍藏的风景</h2>
-          <p>
-            {allCollected
-              ? `全部集齐 · ${ownedItems.length} / ${catalog.items.length}`
-              : ownedItems.length > 0
-                ? '最近遇见的回忆排在最前面'
-                : '第一份惊喜还在路上'}
-          </p>
+          <span className="paper-tag">一路捡到的喜欢</span>
+          <h2 id="album-title">饼狗的收藏墙</h2>
+          {allCollected && <p>{`全部集齐 · ${ownedItems.length} / ${catalog.items.length}`}</p>}
         </div>
         <button ref={albumCloseRef} className="text-close-button" type="button" onClick={onClose}>
           关闭收藏墙
         </button>
       </header>
 
-      {unlockedCategories.length > 0 ? (
+      {unlockedTabs.length > 0 ? (
         <>
           <div className="album-tabs" role="tablist" aria-label="已解锁的收藏分类">
-            {unlockedCategories.map((value, index) => (
+            {unlockedTabs.map((value, index) => (
               <button
                 key={value}
-                className={activeCategory === value ? 'is-active' : ''}
+                className={activeTab === value ? 'is-active' : ''}
                 type="button"
                 role="tab"
                 id={`album-tab-${value}`}
                 aria-controls="album-panel"
-                aria-selected={activeCategory === value}
-                tabIndex={activeCategory === value ? 0 : -1}
+                aria-selected={activeTab === value}
+                tabIndex={activeTab === value ? 0 : -1}
                 ref={(element) => {
                   tabRefs.current[index] = element
                 }}
                 onKeyDown={(event) => handleTabKey(event, index)}
-                onClick={() => setCategory(value)}
+                onClick={() => setTab(value)}
               >
-                {categoryLabel(value)}
+                {tabLabel(value)}
               </button>
             ))}
           </div>
 
           <div
-            className="album-grid"
+            className={`album-grid ${activeTab === 'friends' ? 'album-grid--friends' : ''}`}
             id="album-panel"
             role="tabpanel"
-            aria-labelledby={`album-tab-${activeCategory}`}
+            aria-labelledby={`album-tab-${activeTab}`}
           >
-            {visibleItems.map((item) => {
-              const entry = game.collections[item.id]
-              return (
-                <button
-                  key={item.id}
-                  type="button"
-                  className={`collectible-card is-owned ${item.category === 'site-first' ? 'is-rare' : ''}`}
-                  onClick={() => openDetail(item)}
-                  aria-label={`${item.title}，${categoryLabel(item.category)}，打开详情`}
-                >
-                  <span className="collectible-card__visual">
-                    <CollectiblePicture item={item} />
-                    {item.category === 'site-first' && (
-                      <span className="rare-ribbon">全站第一</span>
-                    )}
-                  </span>
-                  <span className="collectible-card__copy">
-                    <strong>{item.title}</strong>
-                    <small>
-                      {entry.duplicateCount > 0
-                        ? `又遇见了 ${entry.duplicateCount} 次`
-                        : new Intl.DateTimeFormat('zh-CN', {
-                            month: 'short',
-                            day: 'numeric',
-                          }).format(entry.firstObtainedAt)}
-                    </small>
-                  </span>
-                </button>
-              )
-            })}
+            {activeTab === 'friends'
+              ? knownFriends.map((entry) => {
+                  const friend = catalog.friendById[entry.id]
+                  if (!friend) return null
+                  return (
+                    <article className="friend-card" key={entry.id}>
+                      <img
+                        src={publicAsset(friend.image.path)}
+                        alt={friend.alt}
+                        width={friend.image.width}
+                        height={friend.image.height}
+                        loading="lazy"
+                      />
+                      <div>
+                        <strong>{friend.name}</strong>
+                        <p>{friend.description}</p>
+                        <small className="numeric-copy">
+                          见过 {entry.encounterCount} 次 · 收到 {entry.totalGiftApples}🍎
+                        </small>
+                      </div>
+                    </article>
+                  )
+                })
+              : visibleItems.map((item) => {
+                  const entry = game.collections[item.id]
+                  return (
+                    <button
+                      key={item.id}
+                      type="button"
+                      className={`collectible-card is-owned ${item.category === 'site-first' ? 'is-rare' : ''}`}
+                      onClick={() => openDetail(item)}
+                      aria-label={`${item.title}，${categoryLabel(item.category)}，打开详情`}
+                    >
+                      <span className="collectible-card__visual">
+                        <CollectiblePicture item={item} />
+                        {item.category === 'site-first' && (
+                          <span className="rare-ribbon">全站第一</span>
+                        )}
+                      </span>
+                      <span className="collectible-card__copy">
+                        <strong>{item.title}</strong>
+                        <time
+                          className="collection-date"
+                          dateTime={new Date(entry.firstObtainedAt).toISOString()}
+                        >
+                          {entry.duplicateCount > 0
+                            ? `又遇见了 ${entry.duplicateCount} 次`
+                            : numericDate(entry.firstObtainedAt)}
+                        </time>
+                      </span>
+                    </button>
+                  )
+                })}
           </div>
         </>
       ) : (
         <div className="album-empty">
           <span aria-hidden="true">✦</span>
           <h3>收藏墙还空着</h3>
-          <p>陪饼狗旅行、刷播和冲热，新的分类会在第一次相遇时悄悄出现。</p>
+          <p>陪饼狗慢慢生活，新的分类和好朋友会在第一次相遇时悄悄出现。</p>
         </div>
       )}
 
@@ -170,7 +216,7 @@ export function AlbumView({ catalog, game, onClose, onInspect }: AlbumViewProps)
         <div className="modal-backdrop" role="presentation" onMouseDown={() => setSelected(null)}>
           <article
             ref={detailDialogRef}
-            className="collectible-detail"
+            className="collectible-detail collectible-detail--v3"
             role="dialog"
             aria-modal="true"
             aria-labelledby="collectible-title"
@@ -192,6 +238,13 @@ export function AlbumView({ catalog, game, onClose, onInspect }: AlbumViewProps)
               <span className="paper-tag">{categoryLabel(selected.category)}</span>
               <h3 id="collectible-title">{selected.title}</h3>
               <p>{selected.tags.join(' · ')}</p>
+              {selectedVideo && (
+                <BilibiliPlayer
+                  video={selectedVideo}
+                  compact
+                  onOpened={(bvid) => onPlayerOpened?.(selected.id, bvid)}
+                />
+              )}
               <a href={selected.source.url} target="_blank" rel="noopener noreferrer">
                 查看素材来源
               </a>

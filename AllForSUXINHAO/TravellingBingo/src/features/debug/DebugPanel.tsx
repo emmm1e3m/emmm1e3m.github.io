@@ -6,7 +6,8 @@ const PROBABILITY_COPY: Record<ProbabilityKey, string> = {
   postcard: '明信片',
   millionShot: '百万直拍',
   siteFirst: '全站第一',
-  friend: '遇见朋友',
+  travelFriend: '旅行遇见朋友',
+  musicFriend: '音乐遇见朋友',
 }
 
 const DURATION_CHOICES = [
@@ -97,7 +98,7 @@ export function DebugPanel({ game, onAction, onBackup }: DebugPanelProps) {
 
       <div className="debug-actions">
         <button type="button" onClick={() => onAction({ type: 'debug/apples-adjust', delta: 20 })}>
-          增加 20 个苹果
+          增加 20🍎
         </button>
         <button
           type="button"

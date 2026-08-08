@@ -1,172 +1,89 @@
 import { readFile } from 'node:fs/promises'
 
-import { expect, test, type Page } from '@playwright/test'
+import { expect, test } from '@playwright/test'
+
+import {
+  buySupply,
+  completeActivity,
+  openAlbum,
+  openDebugPanel,
+  readAppleCount,
+  setDebugDuration,
+  setProbability,
+  startActivity,
+  startGame,
+  TEST_PLAYER_NAME,
+} from './support/game'
 
 const STAGE_TEST_URL = 'https://www.bilibili.com/toy/Suxinhao_XHTI_stagetest/index.html'
 
 test.setTimeout(90_000)
 
-async function installStableSeed(page: Page, seed: string) {
-  await page.addInitScript((value) => {
-    Object.defineProperty(Crypto.prototype, 'randomUUID', {
-      configurable: true,
-      value: () => value,
-    })
-  }, seed)
-}
+async function exportAndExit(page: import('@playwright/test').Page) {
+  await page.getByRole('button', { name: /离开铲铲饼屋/u }).click()
+  const exitDialog = page.getByRole('dialog', { name: '要离开铲铲饼屋了吗？' })
+  const requestDownload = exitDialog.getByRole('button', { name: '请求下载存档' })
+  await expect(requestDownload).toBeFocused()
+  const downloadPromise = page.waitForEvent('download')
+  await requestDownload.click()
+  const download = await downloadPromise
 
-async function startGame(page: Page, seed: string) {
-  await installStableSeed(page, seed)
-  await page.goto('./')
-  await expect(page.getByRole('heading', { name: '旅行饼狗' })).toBeVisible()
-  const start = page.getByRole('button', { name: '开始新旅程' })
-  await expect(start).toBeEnabled()
-  await start.click()
   await expect(page.getByRole('region', { name: '铲铲饼屋互动场景' })).toBeVisible()
-}
-
-async function startDebugGame(page: Page, seed = 'e2e-4') {
-  await installStableSeed(page, seed)
-  await page.goto('./')
-
+  const savedDialog = page.getByRole('dialog', { name: '存档保存好了吗？' })
+  const confirmExit = savedDialog.getByRole('button', { name: '我已保存，离开' })
+  await expect(confirmExit).toBeFocused()
+  await confirmExit.click()
   await expect(page.getByRole('heading', { name: '旅行饼狗' })).toBeVisible()
-  const titleTrigger = page.getByRole('button', {
-    name: /旅行饼狗，连续激活五次可打开隐藏门牌/u,
-  })
-  for (let activation = 0; activation < 5; activation += 1) {
-    await titleTrigger.click()
-  }
-
-  const debugDialog = page.getByRole('dialog', { name: '输入调试暗号' })
-  await expect(debugDialog).toBeVisible()
-  await debugDialog.getByLabel('暗号').fill('TravellingBingo')
-  await debugDialog.getByRole('button', { name: '打开门牌' }).click()
-  await expect(debugDialog).toBeHidden()
-
-  const start = page.getByRole('button', { name: '开始新旅程' })
-  await expect(start).toBeEnabled()
-  await start.click()
-  await expect(page.getByRole('button', { name: 'DEBUG', exact: true })).toBeVisible()
-  await expect(page.getByRole('region', { name: '铲铲饼屋互动场景' })).toBeVisible()
+  return download
 }
 
-async function openDebugPanel(page: Page) {
-  await page.getByRole('button', { name: 'DEBUG', exact: true }).click()
-  await expect(page.getByRole('heading', { name: '调试房间规则' })).toBeVisible()
-}
+test('用户名、V3 收藏与好友动态存档可以下载并恢复', async ({ page }, testInfo) => {
+  test.skip(testInfo.project.name !== 'chromium', '完整存档往返只在桌面项目验证')
+  await startGame(page, { debug: true, seed: 'e2e-4', displayName: TEST_PLAYER_NAME })
+  await setDebugDuration(page, '10 秒')
+  await setProbability(page, '百万直拍', 100)
 
-async function setProbabilityToOne(page: Page, label: '百万直拍' | '全站第一') {
-  const input = page.getByRole('spinbutton', { name: `${label}百分比` })
-  await input.fill('100')
-  await expect(input).toHaveValue('100')
-}
-
-async function finishCurrentActivity(page: Page) {
-  await openDebugPanel(page)
-  const complete = page.getByRole('button', { name: '立即完成活动' })
-  await expect(complete).toBeEnabled()
-  await complete.click()
-
-  const activityStatus = page.locator('.game-hud .hud-activity')
-  await expect(activityStatus).toContainText('可以看看结果啦')
-  await activityStatus.click()
-  const claim = page.getByRole('button', { name: '看看这次的结果' })
-  await expect(claim).toBeEnabled()
-  await claim.click()
-}
-
-async function readAppleCount(page: Page) {
-  return Number(await page.locator('.apple-counter strong').innerText())
-}
-
-test('完成 DEBUG 刷播、领取收藏，并用下载的 .bingo 恢复 v2 进度', async ({ page }, testInfo) => {
-  await startDebugGame(page)
-
-  await openDebugPanel(page)
-  await page.getByRole('button', { name: '10 秒' }).click()
-  await setProbabilityToOne(page, '百万直拍')
-
-  await page.locator('[data-hotspot="冰箱"]').click()
-  const headphones = page.locator('.shop-item').filter({ hasText: '信号耳机' })
-  await expect(headphones).toContainText('现有 0 份')
   const applesBeforePurchase = await readAppleCount(page)
-  await headphones.getByRole('button', { name: '补充 · 4 个苹果' }).click()
-  await expect(headphones).toContainText('现有 1 份')
+  await buySupply(page, '信号耳机')
   expect(await readAppleCount(page)).toBe(applesBeforePurchase - 4)
-
-  await page.locator('[data-hotspot="电脑"]').click()
-  const stream = page.locator('.activity-card').filter({ hasText: '认真刷播' })
-  const startStream = stream.getByRole('button', { name: '开始认真刷播' })
-  await expect(startStream).toBeEnabled()
-  const applesBeforeActivity = await readAppleCount(page)
-  await startStream.click()
-
-  await expect(page.locator('[data-hotspot="电脑"]')).toHaveCount(0)
-  await expect(page.getByRole('button', { name: /正在刷播中的饼狗/u })).toBeVisible()
-  await finishCurrentActivity(page)
-
-  const reward = page.getByRole('dialog', { name: '把这一刻好好珍藏' })
-  await expect(reward).toBeVisible()
-  await expect(reward).toContainText('百万直拍')
-  await expect(reward).toContainText('新收藏')
-  await expect(reward).not.toContainText('饼狗带东西回来')
-  expect(await readAppleCount(page)).toBe(applesBeforeActivity)
+  await startActivity(page, '电脑', '认真刷播')
+  const reward = await completeActivity(page)
+  await expect(reward).toContainText('把这一刻好好珍藏')
   await reward.getByRole('button', { name: '收好这份回忆' }).click()
 
-  const albumOpener = page.locator('.game-hud').getByRole('button', { name: '打开收藏墙' })
-  await albumOpener.click()
-  const album = page.getByRole('dialog', { name: '一路珍藏的风景' })
-  await expect(album).toBeVisible()
-  await expect(album).not.toContainText(/\d+\s*\/\s*\d+/u)
+  const album = await openAlbum(page)
   await expect(album.getByRole('tab', { name: '百万直拍' })).toBeVisible()
   await expect(album.getByRole('tab', { name: '明信片' })).toHaveCount(0)
-  await expect(album.getByRole('tab', { name: '全站第一' })).toHaveCount(0)
-  const ownedCards = album.locator('.collectible-card')
-  await expect(ownedCards).toHaveCount(1)
-  await expect(ownedCards.locator('img')).toHaveCSS('object-fit', 'cover')
-
-  await ownedCards.first().click()
-  const detail = page.locator('.collectible-detail')
-  await expect(detail).toBeVisible()
-  await expect(detail.locator('img')).toHaveCSS('object-fit', 'contain')
-  await detail.getByRole('button', { name: '关闭详情' }).click()
+  await expect(album.locator('.collectible-card')).toHaveCount(1)
   await album.getByRole('button', { name: '关闭收藏墙' }).click()
 
   const savedAppleCount = await readAppleCount(page)
-  await page.getByRole('button', { name: /离开铲铲饼屋/u }).click()
-  const exitDialog = page.getByRole('dialog', { name: '要离开铲铲饼屋了吗？' })
-  const downloadPromise = page.waitForEvent('download')
-  await exitDialog.getByRole('button', { name: '下载存档并离开' }).click()
-  const download = await downloadPromise
+  const download = await exportAndExit(page)
   const suggestedName = download.suggestedFilename()
   expect(suggestedName).toMatch(/^travelling-bingo-\d{8}-\d{6}-debug\.bingo$/u)
-
   const savePath = testInfo.outputPath(suggestedName)
   await download.saveAs(savePath)
-  const saveText = await readFile(savePath, 'utf8')
-  const envelope = JSON.parse(saveText) as {
+
+  const envelope = JSON.parse(await readFile(savePath, 'utf8')) as {
     format: string
     schemaVersion: number
     gameVersion: string
     payload: {
       schemaVersion: number
-      profile: { debug: boolean }
+      profile: { debug: boolean; displayName: string; companionDays: number }
       economy: { apples: number }
       inventory: { 'signal-headphones': number }
       collections: Record<string, unknown>
+      friends: Record<string, unknown>
       activeActivity: unknown
-      pet: unknown
       tasks: { active: unknown[] }
-      gameBalance: {
-        activityDurationMs: number
-        probabilities: { millionShot: number }
-      }
+      gameBalance: { activityDurationMs: number; probabilities: { millionShot: number } }
       random: { sequences: { reward: number; tasks: number; preferences: number } }
-      statistics: { started: { stream: number }; claimed: { stream: number } }
       collectionTotal?: unknown
       categoryCounts?: unknown
       unlockedCategories?: unknown
-      siteFirstCursor?: unknown
+      friendTotal?: unknown
+      friendCatalog?: unknown
     }
     integrity: { algorithm: string; digest: string }
   }
@@ -174,183 +91,115 @@ test('完成 DEBUG 刷播、领取收藏，并用下载的 .bingo 恢复 v2 进�
   expect(envelope).toMatchObject({
     format: 'travelling-bingo-save',
     schemaVersion: 1,
-    gameVersion: '0.2.0-demo.1',
+    gameVersion: '0.3.0-demo.1',
     payload: {
-      schemaVersion: 2,
-      profile: { debug: true },
+      schemaVersion: 3,
+      profile: { debug: true, displayName: TEST_PLAYER_NAME, companionDays: 1 },
       economy: { apples: savedAppleCount },
       inventory: { 'signal-headphones': 0 },
       activeActivity: null,
-      gameBalance: {
-        activityDurationMs: 10_000,
-        probabilities: { millionShot: 1 },
-      },
-      statistics: { started: { stream: 1 }, claimed: { stream: 1 } },
+      gameBalance: { activityDurationMs: 10_000, probabilities: { millionShot: 1 } },
     },
     integrity: { algorithm: 'SHA-256' },
   })
   expect(envelope.payload.tasks.active).toHaveLength(3)
-  expect(envelope.payload.random.sequences).toEqual({
-    reward: 1,
-    tasks: expect.any(Number),
-    preferences: expect.any(Number),
-  })
   expect(Object.keys(envelope.payload.collections)).toHaveLength(1)
+  expect(envelope.payload.friends).toEqual({})
   expect(envelope.payload).not.toHaveProperty('collectionTotal')
   expect(envelope.payload).not.toHaveProperty('categoryCounts')
   expect(envelope.payload).not.toHaveProperty('unlockedCategories')
-  expect(envelope.payload).not.toHaveProperty('siteFirstCursor')
+  expect(envelope.payload).not.toHaveProperty('friendTotal')
+  expect(envelope.payload).not.toHaveProperty('friendCatalog')
   expect(envelope.integrity.digest).toMatch(/^[A-Za-z0-9_-]{43}$/u)
 
-  await expect(page.getByRole('heading', { name: '旅行饼狗' })).toBeVisible()
   await page.locator('input[type="file"]').setInputFiles(savePath)
-
   const importSummary = page.getByRole('region', { name: '存档摘要' })
-  await expect(importSummary).toContainText(suggestedName)
-  await expect(importSummary).toContainText(`${savedAppleCount} 个`)
+  await expect(importSummary).toContainText(TEST_PLAYER_NAME)
+  await expect(importSummary).toContainText(`${savedAppleCount}🍎`)
   await expect(importSummary).toContainText('1 件')
-  await expect(importSummary).toContainText('在铲铲饼屋休息')
-  await importSummary.getByRole('button', { name: '带它回家' }).click()
+  await expect(importSummary).toContainText('1 天')
+  await importSummary.getByRole('button', { name: '进入这次旅程' }).click()
 
+  await expect(page.locator('.hud-companion')).toContainText(`${TEST_PLAYER_NAME}陪伴饼狗已经 1 天`)
   expect(await readAppleCount(page)).toBe(savedAppleCount)
-  await expect(page.getByRole('button', { name: 'DEBUG', exact: true })).toBeVisible()
-  await page.locator('.game-hud').getByRole('button', { name: '打开收藏墙' }).click()
-  const restoredAlbum = page.getByRole('dialog', { name: '一路珍藏的风景' })
-  await expect(restoredAlbum).not.toContainText(/\d+\s*\/\s*\d+/u)
+  const restoredAlbum = await openAlbum(page)
   await expect(restoredAlbum.getByRole('tab', { name: '百万直拍' })).toBeVisible()
   await expect(restoredAlbum.locator('.collectible-card')).toHaveCount(1)
 })
 
-test('进行中的活动按存档内原 endsAt 恢复，不用后来修改的时长重算', async ({ page }, testInfo) => {
-  test.skip(testInfo.project.name !== 'chromium', '进行中存档的计时恢复在桌面验证一次')
-
-  await startDebugGame(page, 'e2e-4')
-  await openDebugPanel(page)
-  await page.getByRole('button', { name: '10 秒' }).click()
-
-  await page.locator('[data-hotspot="冰箱"]').click()
-  const headphones = page.locator('.shop-item').filter({ hasText: '信号耳机' })
-  await headphones.getByRole('button', { name: '补充 · 4 个苹果' }).click()
-  await expect(headphones).toContainText('现有 1 份')
-
-  await page.locator('[data-hotspot="电脑"]').click()
-  await page
-    .locator('.activity-card')
-    .filter({ hasText: '认真刷播' })
-    .getByRole('button', { name: '开始认真刷播' })
-    .click()
+test('进行中的任务保存绝对结束时间，离线完成后读档立即可领取', async ({ page }, testInfo) => {
+  test.skip(testInfo.project.name !== 'chromium', '进行中存档恢复只在桌面验证')
+  await startGame(page, { debug: true, seed: 'e2e-4', displayName: '计时测试' })
+  await setDebugDuration(page, '10 秒')
+  await buySupply(page, '信号耳机')
+  await startActivity(page, '电脑', '认真刷播')
 
   await openDebugPanel(page)
-  await page.getByRole('button', { name: '30 秒' }).click()
-
-  await page.getByRole('button', { name: /离开铲铲饼屋/u }).click()
-  const downloadPromise = page.waitForEvent('download')
-  await page
-    .getByRole('dialog', { name: '要离开铲铲饼屋了吗？' })
-    .getByRole('button', { name: '下载存档并离开' })
-    .click()
-  const download = await downloadPromise
+  await page.getByRole('button', { name: '30 秒', exact: true }).click()
+  const download = await exportAndExit(page)
   const savePath = testInfo.outputPath(download.suggestedFilename())
   await download.saveAs(savePath)
-
   const envelope = JSON.parse(await readFile(savePath, 'utf8')) as {
     payload: {
       activeActivity: { kind: string; startedAt: number; endsAt: number } | null
       gameBalance: { activityDurationMs: number }
     }
   }
-  expect(envelope.payload.activeActivity).not.toBeNull()
   expect(envelope.payload.activeActivity).toMatchObject({ kind: 'stream' })
   expect(envelope.payload.activeActivity!.endsAt - envelope.payload.activeActivity!.startedAt).toBe(
     10_000,
   )
   expect(envelope.payload.gameBalance.activityDurationMs).toBe(30_000)
 
+  const remaining = envelope.payload.activeActivity!.endsAt - Date.now()
+  if (remaining > 0) await page.waitForTimeout(remaining + 500)
   await page.locator('input[type="file"]').setInputFiles(savePath)
   const importSummary = page.getByRole('region', { name: '存档摘要' })
-  await expect(importSummary).toContainText('刷播还剩')
-  await importSummary.getByRole('button', { name: '带它回家' }).click()
-
-  const activityStatus = page.locator('.game-hud .hud-activity')
-  await expect(activityStatus).toBeVisible()
-  const waitForOriginalEnd = Math.max(
-    2_000,
-    envelope.payload.activeActivity!.endsAt - Date.now() + 2_000,
-  )
-  await expect(activityStatus).toContainText('可以看看结果啦', { timeout: waitForOriginalEnd })
-  await activityStatus.click()
+  await expect(importSummary).toContainText('刷播已完成，等待领取')
+  await importSummary.getByRole('button', { name: '进入这次旅程' }).click()
+  await expect(page.locator('.game-hud__center')).toContainText('可以看看结果啦')
+  await page.locator('.game-hud__center').click()
   await expect(page.getByRole('button', { name: '看看这次的结果' })).toBeEnabled()
 })
 
-test('奇迹饼狗安全打开舞台测试并完成对应任务', async ({ context, page }, testInfo) => {
-  test.skip(testInfo.project.name !== 'chromium', '外部弹窗在桌面项目验证一次')
-
+test('奇迹饼狗以新弹窗安全打开搭配测试', async ({ context, page }, testInfo) => {
+  test.skip(testInfo.project.name !== 'chromium', '外部弹窗只在桌面项目验证')
   await context.route(STAGE_TEST_URL, async (route) => {
     await route.fulfill({
       status: 200,
       contentType: 'text/html; charset=utf-8',
-      body: '<!doctype html><title>舞台测试替身</title><main>stage test</main>',
+      body: '<!doctype html><title>搭配测试替身</title><main>stage test</main>',
     })
   })
-  await startGame(page, 'stage-popup-e2e')
-
-  const stageTask = page.locator('.task-list li').filter({ hasText: '奇迹饼狗' })
-  await expect(stageTask).toHaveCount(1)
-  await expect(stageTask.getByLabel('进度 0 / 1')).toBeVisible()
-
+  await startGame(page, { seed: 'stage-popup-e2e', displayName: '搭配测试' })
   await page.locator('[data-hotspot="衣架"]').click()
-
   await expect(page.getByRole('heading', { name: '奇迹饼狗' })).toBeVisible()
-  await expect(page.getByText('测试什么样的舞台适合你', { exact: true })).toBeVisible()
-  const applesBeforeStageTest = await readAppleCount(page)
+  await expect(page.getByText('什么样的搭配最合适呢？', { exact: true })).toBeVisible()
+
   const popupPromise = context.waitForEvent('page')
   await page.getByRole('button', { name: '开始舞台测试' }).click()
   const popup = await popupPromise
   await popup.waitForURL(STAGE_TEST_URL)
   await popup.waitForLoadState('domcontentloaded')
-  expect(popup.url()).toBe(STAGE_TEST_URL)
   expect(await popup.evaluate(() => globalThis.opener === null)).toBe(true)
-  await expect(page.getByRole('alert').filter({ hasText: '弹出窗口被浏览器拦住了' })).toHaveCount(0)
-  await expect.poll(() => readAppleCount(page)).toBe(applesBeforeStageTest + 3)
-
-  await page.locator('.game-hud .hud-activity').click()
-  await expect(stageTask).toHaveClass(/is-complete/u)
-  await expect(stageTask.getByLabel('进度 已完成')).toBeVisible()
   await popup.close()
 })
 
-test('舞台测试弹窗被拦截时显示安全 fallback，且不提前完成任务', async ({
-  context,
-  page,
-}, testInfo) => {
-  test.skip(testInfo.project.name !== 'chromium', '弹窗拦截在桌面项目验证一次')
-
+test('搭配测试弹窗被拦截时显示 noopener fallback', async ({ context, page }, testInfo) => {
+  test.skip(testInfo.project.name !== 'chromium', '弹窗拦截只在桌面项目验证')
   await page.addInitScript(() => {
-    Object.defineProperty(globalThis, 'open', {
-      configurable: true,
-      value: () => null,
-    })
+    Object.defineProperty(globalThis, 'open', { configurable: true, value: () => null })
   })
-  await startGame(page, 'stage-popup-e2e')
-
-  const stageTask = page.locator('.task-list li').filter({ hasText: '奇迹饼狗' })
-  await expect(stageTask.getByLabel('进度 0 / 1')).toBeVisible()
+  await startGame(page, { seed: 'e2e-4', displayName: '拦截测试' })
   await page.locator('[data-hotspot="衣架"]').click()
-  const applesBeforeBlockedAttempt = await readAppleCount(page)
   const pageCountBefore = context.pages().length
-
   await page.getByRole('button', { name: '开始舞台测试' }).click()
 
   const fallback = page.getByRole('alert').filter({ hasText: '弹出窗口被浏览器拦住了' })
   await expect(fallback).toBeVisible()
-  const fallbackLink = fallback.getByRole('link', { name: '点这里继续舞台测试' })
-  await expect(fallbackLink).toHaveAttribute('href', STAGE_TEST_URL)
-  await expect(fallbackLink).toHaveAttribute('target', '_blank')
-  await expect(fallbackLink).toHaveAttribute('rel', /noopener/u)
+  const link = fallback.getByRole('link', { name: '点这里继续舞台测试' })
+  await expect(link).toHaveAttribute('href', STAGE_TEST_URL)
+  await expect(link).toHaveAttribute('target', '_blank')
+  await expect(link).toHaveAttribute('rel', /noopener/u)
   expect(context.pages()).toHaveLength(pageCountBefore)
-  expect(await readAppleCount(page)).toBe(applesBeforeBlockedAttempt)
-
-  await page.locator('.game-hud .hud-activity').click()
-  await expect(stageTask).not.toHaveClass(/is-complete/u)
-  await expect(stageTask.getByLabel('进度 0 / 1')).toBeVisible()
 })

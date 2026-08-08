@@ -29,6 +29,26 @@ describe('饼狗图集演员', () => {
     },
   )
 
+  it('仅奖励庆祝态内收图集边界，避免采样到相邻帧', () => {
+    const { rerender } = render(
+      <MascotSprite pose="celebrate" className="reward-mascot" label="奖励庆祝饼狗" />,
+    )
+
+    expect(screen.getByRole('img', { name: '奖励庆祝饼狗' })).toHaveStyle({
+      backgroundSize: '205% 205%',
+    })
+
+    rerender(<MascotSprite pose="idle" className="reward-mascot" label="奖励待机饼狗" />)
+    expect(screen.getByRole('img', { name: '奖励待机饼狗' })).toHaveStyle({
+      backgroundSize: '200% 200%',
+    })
+
+    rerender(<MascotSprite pose="celebrate" className="room-mascot" label="场景庆祝饼狗" />)
+    expect(screen.getByRole('img', { name: '场景庆祝饼狗' })).toHaveStyle({
+      backgroundSize: '200% 200%',
+    })
+  })
+
   it('无互动时暴露图片语义与自定义外层样式', () => {
     render(
       <MascotSprite

@@ -1,13 +1,21 @@
 import { describe, expect, it } from 'vitest'
 
+import { deriveActivityTiming } from '../activities/timing'
 import { createInitialGameState } from './createGameState'
 import type { GameBalance } from './gameBalance'
 import { normalizeImportedGameBalance } from './normalizeImportedGameBalance'
+import { reduceGame } from './reducer'
 import type { ActivityRun, GameState } from './types'
 
 const futureDefault: Readonly<GameBalance> = {
   activityDurationMs: 300_000,
-  probabilities: { postcard: 0.8, millionShot: 0.5, siteFirst: 0.15, friend: 0.25 },
+  probabilities: {
+    postcard: 0.8,
+    millionShot: 0.5,
+    siteFirst: 0.15,
+    travelFriend: 0.25,
+    musicFriend: 0.3,
+  },
 }
 
 function oldOrdinaryState(): GameState {
@@ -22,7 +30,8 @@ function oldOrdinaryState(): GameState {
       baseApples: 0,
       modifierApples: 0,
       collection: { id: 'postcard-old', category: 'postcard' },
-      friendEventId: 'signal-dog',
+      friendId: 'signal-dog',
+      giftItemId: null,
       guaranteedByPity: false,
       pityAfterClaim: null,
     },
@@ -34,7 +43,13 @@ function oldOrdinaryState(): GameState {
     ...state,
     gameBalance: {
       activityDurationMs: 5_000,
-      probabilities: { postcard: 1, millionShot: 0.3, siteFirst: 0.05, friend: 0.1 },
+      probabilities: {
+        postcard: 0.65,
+        millionShot: 0.3,
+        siteFirst: 0.05,
+        travelFriend: 0.1,
+        musicFriend: 0.2,
+      },
     },
     activeActivity,
   }
@@ -52,6 +67,35 @@ describe('普通档导入平衡规范化', () => {
     expect(normalized.gameBalance.probabilities).not.toBe(futureDefault.probabilities)
     expect(normalized.activeActivity).toBe(activeActivity)
     expect(normalized.activeActivity).toEqual(oldState.activeActivity)
+    expect(deriveActivityTiming(normalized.activeActivity!, 14_999).phase).toBe('running')
+    expect(deriveActivityTiming(normalized.activeActivity!, 15_000).phase).toBe('ready')
+
+    const catalog = {
+      postcard: ['postcard-old'],
+      'million-shot': ['million-shot-old'],
+      'site-first': ['site-first-old'],
+      siteFirstChronology: ['site-first-old'],
+    } as const
+    const claimed = reduceGame(
+      normalized,
+      { type: 'activity/claim', runId: normalized.activeActivity!.runId, now: 15_000 },
+      catalog,
+    )
+    if (!claimed.ok) throw new Error(claimed.error.message)
+    const prepared = {
+      ...claimed.state,
+      pet: {
+        ...claimed.state.pet,
+        preferences: { ...claimed.state.pet.preferences, music: true },
+      },
+    }
+    const next = reduceGame(
+      prepared,
+      { type: 'activity/start', kind: 'music', now: 20_000 },
+      catalog,
+    )
+    if (!next.ok) throw new Error(next.error.message)
+    expect(next.state.activeActivity?.endsAt).toBe(20_000 + futureDefault.activityDurationMs)
   })
 
   it('DEBUG 档保留存档中的自定义 balance', () => {

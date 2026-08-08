@@ -11,9 +11,11 @@ import { loadContentCatalog, type CollectibleItem, type ContentCatalog } from '@
 import {
   createInitialGameState,
   DEFAULT_GAME_BALANCE,
+  migrateGameStateV1,
   type GameAction,
   type GameState,
   type GameStateV1,
+  type GameStateV2,
 } from '@/domain'
 import {
   createBingoSave,
@@ -24,12 +26,24 @@ import {
 
 import { App } from './App'
 
+const appServiceWorker = vi.hoisted(() => ({
+  offlineReady: false,
+  needRefresh: false,
+  onNeedReload: undefined as (() => void) | undefined,
+  setOfflineReady: vi.fn(),
+  setNeedRefresh: vi.fn(),
+  updateServiceWorker: vi.fn(),
+}))
+
 vi.mock('virtual:pwa-register/react', () => ({
-  useRegisterSW: () => ({
-    offlineReady: [false, vi.fn()],
-    needRefresh: [false, vi.fn()],
-    updateServiceWorker: vi.fn(),
-  }),
+  useRegisterSW: (options?: { onNeedReload?: () => void }) => {
+    appServiceWorker.onNeedReload ??= options?.onNeedReload
+    return {
+      offlineReady: [appServiceWorker.offlineReady, appServiceWorker.setOfflineReady],
+      needRefresh: [appServiceWorker.needRefresh, appServiceWorker.setNeedRefresh],
+      updateServiceWorker: appServiceWorker.updateServiceWorker,
+    }
+  },
 }))
 
 /** App 测试只覆盖控制器契约，避免与标题页的视觉文案重复绑定。 */
@@ -40,13 +54,15 @@ vi.mock('@/features/title/TitleScreen', () => {
     apples: number
     collectionCount: number
     activityLabel: string
+    displayName: string
+    companionDays: number
   }
 
   interface Props {
     available: boolean
     error: string | null
     importPreview: Preview | null
-    onStart: () => void
+    onStart: (displayName: string) => void
     onFile: (file: File) => void
     onConfirmImport: () => void
     onCancelImport: () => void
@@ -66,7 +82,7 @@ vi.mock('@/features/title/TitleScreen', () => {
     }: Props) => (
       <main>
         <h1>旅行饼狗</h1>
-        <button type="button" disabled={!available} onClick={onStart}>
+        <button type="button" disabled={!available} onClick={() => onStart('小饼干')}>
           开始新旅程
         </button>
         <button type="button" aria-label="连续激活五次可打开隐藏门牌" onClick={onTitleActivate}>
@@ -91,8 +107,10 @@ vi.mock('@/features/title/TitleScreen', () => {
             <span>{importPreview.apples} 个</span>
             <span>{importPreview.collectionCount} 件</span>
             <span>{importPreview.activityLabel}</span>
+            <span>{importPreview.displayName}</span>
+            <span>{importPreview.companionDays} 天</span>
             <button type="button" onClick={onConfirmImport}>
-              带它回家
+              进入这次旅程
             </button>
             <button type="button" onClick={onCancelImport}>
               取消
@@ -119,8 +137,11 @@ vi.mock('@/features/game/GameHome', () => {
     GameHome: ({ game, dirty, restTransitionKey, onAction, onExit, onBackup }: Props) => (
       <main>
         <output data-testid="schema-version">{game.schemaVersion}</output>
+        <output data-testid="display-name">{game.profile.displayName}</output>
+        <output data-testid="companion-days">{game.profile.companionDays}</output>
         <output data-testid="apple-count">{game.economy.apples}</output>
         <output data-testid="collection-count">{Object.keys(game.collections).length}</output>
+        <output data-testid="friend-count">{Object.keys(game.friends).length}</output>
         <output data-testid="rest-transition-key">{restTransitionKey}</output>
         <output data-testid="travel-basic-count">{game.inventory['travel-basic']}</output>
         <output data-testid="activity-duration">{game.gameBalance.activityDurationMs}</output>
@@ -137,9 +158,34 @@ vi.mock('@/features/game/GameHome', () => {
         >
           同帧连发两条命令
         </button>
-        <button type="button" onClick={() => onAction({ type: 'pet/rest', now: Date.now() })}>
-          让饼狗休息
-        </button>
+        {game.activeActivity && (
+          <>
+            <button
+              type="button"
+              onClick={() =>
+                onAction({
+                  type: 'activity/claim',
+                  runId: game.activeActivity!.runId,
+                  now: Math.max(Date.now(), game.activeActivity!.endsAt),
+                })
+              }
+            >
+              领取当前活动
+            </button>
+            <button
+              type="button"
+              onClick={() =>
+                onAction({
+                  type: 'activity/cancel',
+                  runId: game.activeActivity!.runId,
+                  now: Date.now(),
+                })
+              }
+            >
+              取消当前活动
+            </button>
+          </>
+        )}
         <button
           type="button"
           onClick={() => onAction({ type: 'debug/duration-set', durationMs: 10_000 })}
@@ -244,7 +290,18 @@ const catalog: ContentCatalog = {
   byId: Object.fromEntries(catalogItems.map((item) => [item.id, item])),
   categoryCounts: { postcard: 1, 'million-shot': 1, 'site-first': 1 },
   siteFirstChronology: ['site-first-test'],
+  friends: [],
+  friendById: {},
+  videosByBvid: {},
+  recordPlayerVideos: [],
 }
+
+const domainCatalog = {
+  postcard: ['postcard-2025-01-0001'],
+  'million-shot': ['million-shot-test'],
+  'site-first': ['site-first-test'],
+  siteFirstChronology: ['site-first-test'],
+} as const
 
 const catalogAddedLaterItem = {
   ...catalogItems[0],
@@ -258,6 +315,10 @@ const expandedCatalog: ContentCatalog = {
   byId: { ...catalog.byId, [catalogAddedLaterItem.id]: catalogAddedLaterItem },
   categoryCounts: { ...catalog.categoryCounts, postcard: 2 },
   siteFirstChronology: catalog.siteFirstChronology,
+  friends: catalog.friends,
+  friendById: catalog.friendById,
+  videosByBvid: catalog.videosByBvid,
+  recordPlayerVideos: catalog.recordPlayerVideos,
 }
 
 function recursivelyCollectedKeys(value: unknown, result = new Set<string>()): Set<string> {
@@ -275,7 +336,12 @@ function recursivelyCollectedKeys(value: unknown, result = new Set<string>()): S
 }
 
 function importedGame(): GameState {
-  const initial = createInitialGameState({ now: 1_000, seed: 'imported-test', debug: true })
+  const initial = createInitialGameState({
+    now: 1_000,
+    seed: 'imported-test',
+    displayName: '导入玩家',
+    debug: true,
+  })
   return {
     ...initial,
     economy: { apples: 7 },
@@ -290,6 +356,66 @@ function importedGame(): GameState {
       ...initial.statistics,
       started: { ...initial.statistics.started, stream: 1 },
       claimed: { ...initial.statistics.claimed, stream: 1 },
+    },
+  }
+}
+
+function importedV2Game(): GameStateV2 {
+  const initial = migrateGameStateV1(legacyGame(), { now: 1_000, catalog: domainCatalog })
+  return {
+    ...initial,
+    economy: { apples: 7 },
+    collections: {
+      'million-shot-test': {
+        id: 'million-shot-test',
+        firstObtainedAt: 2_000,
+        duplicateCount: 0,
+      },
+    },
+    statistics: {
+      ...initial.statistics,
+      started: { ...initial.statistics.started, stream: 1 },
+      claimed: { ...initial.statistics.claimed, stream: 1 },
+    },
+  }
+}
+
+function readyActivityGame(kind: 'travel' | 'rest', companionDays = 4): GameState {
+  const initial = createInitialGameState({
+    now: 1_000,
+    seed: `ready-${kind}`,
+    displayName: '等候领取',
+  })
+  return {
+    ...initial,
+    profile: { ...initial.profile, companionDays },
+    activeActivity: {
+      runId: `ready-${kind}-run`,
+      kind,
+      startedAt: 1_000,
+      endsAt: 2_000,
+      rewardSeed: `ready-${kind}-reward`,
+      rewardPlan: {
+        baseApples: kind === 'rest' ? 1 : 0,
+        modifierApples: 0,
+        collection: null,
+        friendId: null,
+        giftItemId: null,
+        guaranteedByPity: false,
+        pityAfterClaim: null,
+      },
+      supplyId: kind === 'travel' ? 'travel-basic' : null,
+      usedLuckyApple: false,
+    },
+    pet: {
+      ...initial.pet,
+      location: kind === 'travel' ? 'outside' : 'bed',
+      preferences: { travel: false, computer: false, music: false },
+      tired: true,
+    },
+    statistics: {
+      ...initial.statistics,
+      started: { ...initial.statistics.started, [kind]: 1 },
     },
   }
 }
@@ -333,7 +459,12 @@ function importResult<TPayload extends ImportableGameState>(
     summary: {
       format: 'travelling-bingo-save',
       schemaVersion: 1,
-      gameVersion: payload.schemaVersion === 1 ? '0.1.0-demo.1' : '0.2.0-demo.1',
+      gameVersion:
+        payload.schemaVersion === 1
+          ? '0.1.0-demo.1'
+          : payload.schemaVersion === 2
+            ? '0.2.0-demo.1'
+            : '0.3.0-demo.1',
       exportedAt: 3_000,
       exportedAtIso: new Date(3_000).toISOString(),
       byteLength: 800,
@@ -369,6 +500,13 @@ async function unlockDebugAndStart() {
 
 describe('旅行饼狗应用控制器', () => {
   beforeEach(() => {
+    appServiceWorker.offlineReady = false
+    appServiceWorker.needRefresh = false
+    appServiceWorker.onNeedReload = undefined
+    appServiceWorker.setOfflineReady.mockReset()
+    appServiceWorker.setNeedRefresh.mockReset()
+    appServiceWorker.updateServiceWorker.mockReset()
+    appServiceWorker.updateServiceWorker.mockResolvedValue(undefined)
     vi.mocked(loadContentCatalog).mockReset()
     vi.mocked(createBingoSave).mockReset()
     vi.mocked(downloadBingoSave).mockReset()
@@ -380,23 +518,35 @@ describe('旅行饼狗应用控制器', () => {
     vi.unstubAllGlobals()
   })
 
-  it('加载目录后可以通过隐藏门牌创建 DEBUG v2 新游戏', async () => {
+  it('加载目录后用玩家称呼创建 DEBUG V3 新游戏', async () => {
     render(<App />)
 
     expect(screen.getByRole('heading', { name: '旅行饼狗' })).toBeInTheDocument()
     await screen.findByRole('button', { name: '开始新旅程' })
     await unlockDebugAndStart()
 
-    expect(screen.getByTestId('schema-version')).toHaveTextContent('2')
+    expect(screen.getByTestId('schema-version')).toHaveTextContent('3')
+    expect(screen.getByTestId('display-name')).toHaveTextContent('小饼干')
+    expect(screen.getByTestId('companion-days')).toHaveTextContent('0')
     expect(screen.getByTestId('apple-count')).toHaveTextContent('18')
     expect(screen.getByRole('button', { name: 'DEBUG' })).toBeVisible()
   })
 
-  it('v1 与 v2 载荷都会严格拒绝未知字段', () => {
+  it('v1、v2 与 v3 载荷都会严格拒绝未知字段', () => {
     expect(
       importableGameStateSchema.safeParse({ ...legacyGame(), strayUiState: true }).success,
     ).toBe(false)
+    expect(
+      importableGameStateSchema.safeParse({ ...importedV2Game(), strayUiState: true }).success,
+    ).toBe(false)
     expect(gameStateSchema.safeParse({ ...importedGame(), strayUiState: true }).success).toBe(false)
+  })
+
+  it('V3 严格拒绝结束时间早于开始时间的活动快照', () => {
+    const payload = readyActivityGame('travel')
+    payload.activeActivity = { ...payload.activeActivity!, endsAt: 999 }
+
+    expect(importableGameStateSchema.safeParse(payload).success).toBe(false)
   })
 
   it('同一帧连续动作会严格基于刚更新的状态依次归约', async () => {
@@ -431,12 +581,20 @@ describe('旅行饼狗应用控制器', () => {
   })
 
   it('休息 effect 会把新的日夜过场 key 传给房间 UI', async () => {
-    render(<App />)
-    await startNewJourney()
+    vi.mocked(importBingoSave).mockResolvedValue(importResult(readyActivityGame('rest')))
 
-    fireEvent.click(screen.getByRole('button', { name: '让饼狗休息' }))
+    render(<App />)
+    await screen.findByRole('button', { name: '开始新旅程' })
+    fireEvent.change(screen.getByLabelText('读取 .bingo 存档'), {
+      target: { files: [new File(['ready-rest'], 'ready-rest.bingo')] },
+    })
+    fireEvent.click(await screen.findByRole('button', { name: '进入这次旅程' }))
+
+    fireEvent.click(screen.getByRole('button', { name: '领取当前活动' }))
 
     expect(screen.getByTestId('rest-transition-key')).toHaveTextContent('1')
+    expect(screen.getByTestId('companion-days')).toHaveTextContent('5')
+    expect(screen.getByTestId('apple-count')).toHaveTextContent('19')
     expect(screen.getByText('天亮啦，饼狗又有精神了。')).toBeVisible()
   })
 
@@ -448,10 +606,10 @@ describe('旅行饼狗应用控制器', () => {
 
     expect(screen.getByTestId('apple-count')).toHaveTextContent('15')
     expect(screen.getByTestId('travel-basic-count')).toHaveTextContent('2')
-    expect(screen.getByText(/冰箱里补充了 1 份补给/)).toBeVisible()
+    expect(screen.getByText('冰箱里补充了 1 份补给，花掉 3🍎。')).toBeVisible()
   })
 
-  it('先预览迁移后的 v2 摘要，再采用导入进度', async () => {
+  it('先预览迁移后的 V3 称呼与陪伴天数，再采用导入进度', async () => {
     vi.mocked(importBingoSave).mockResolvedValue(importResult(legacyGame()))
 
     render(<App />)
@@ -465,16 +623,20 @@ describe('旅行饼狗应用控制器', () => {
     expect(summary).toHaveTextContent('legacy-trip.bingo')
     expect(summary).toHaveTextContent('9 个')
     expect(summary).toHaveTextContent('1 件')
+    expect(summary).toHaveTextContent('你')
+    expect(summary).toHaveTextContent('1 天')
     expect(importBingoSave).toHaveBeenCalledWith(file, expect.anything())
 
-    fireEvent.click(screen.getByRole('button', { name: '带它回家' }))
+    fireEvent.click(screen.getByRole('button', { name: '进入这次旅程' }))
 
-    expect(screen.getByTestId('schema-version')).toHaveTextContent('2')
+    expect(screen.getByTestId('schema-version')).toHaveTextContent('3')
+    expect(screen.getByTestId('display-name')).toHaveTextContent('你')
+    expect(screen.getByTestId('companion-days')).toHaveTextContent('1')
     expect(screen.getByTestId('apple-count')).toHaveTextContent('9')
     expect(screen.getByTestId('collection-count')).toHaveTextContent('1')
   })
 
-  it('v1 导入后再次导出时只写 v2 载荷与新版游戏版本', async () => {
+  it('v1 导入后再次导出时只写 V3 载荷与新版游戏版本', async () => {
     vi.mocked(importBingoSave).mockResolvedValue(importResult(legacyGame()))
     vi.mocked(createBingoSave).mockResolvedValue({
       fileName: 'migrated.bingo',
@@ -486,14 +648,18 @@ describe('旅行饼狗应用控制器', () => {
     fireEvent.change(screen.getByLabelText('读取 .bingo 存档'), {
       target: { files: [new File(['legacy'], 'legacy.bingo')] },
     })
-    fireEvent.click(await screen.findByRole('button', { name: '带它回家' }))
+    fireEvent.click(await screen.findByRole('button', { name: '进入这次旅程' }))
     fireEvent.click(screen.getByRole('button', { name: '备份' }))
 
     await waitFor(() => expect(createBingoSave).toHaveBeenCalledOnce())
     expect(createBingoSave).toHaveBeenCalledWith(
       {
-        gameVersion: '0.2.0-demo.1',
-        payload: expect.objectContaining({ schemaVersion: 2 }),
+        gameVersion: '0.3.0-demo.1',
+        payload: expect.objectContaining({
+          schemaVersion: 3,
+          profile: expect.objectContaining({ displayName: '你', companionDays: 1 }),
+          friends: {},
+        }),
       },
       gameStateSchema,
     )
@@ -523,6 +689,22 @@ describe('旅行饼狗应用控制器', () => {
     expect(screen.getByText('刚刚又记下了新进度，这次没有下载，请再保存一次。')).toBeVisible()
   })
 
+  it('普通备份只请求浏览器下载，不把唯一内存进度标记为已保存', async () => {
+    vi.mocked(createBingoSave).mockResolvedValue({
+      fileName: 'requested-backup.bingo',
+      text: '{}',
+    } as Awaited<ReturnType<typeof createBingoSave>>)
+
+    render(<App />)
+    await startNewJourney()
+    fireEvent.click(screen.getByRole('button', { name: '备份' }))
+
+    await waitFor(() => expect(downloadBingoSave).toHaveBeenCalledOnce())
+    expect(screen.getByTestId('dirty-state')).toHaveTextContent('true')
+    expect(screen.getByTestId('display-name')).toHaveTextContent('小饼干')
+    expect(screen.getByText('已请求浏览器下载存档，当前进度仍留在房间里。')).toBeVisible()
+  })
+
   it('下载并离开期间出现新动作时保留最新进度且停留在房间', async () => {
     const pendingExport = deferred<Awaited<ReturnType<typeof createBingoSave>>>()
     vi.mocked(createBingoSave).mockReturnValueOnce(pendingExport.promise)
@@ -530,7 +712,7 @@ describe('旅行饼狗应用控制器', () => {
     render(<App />)
     await startNewJourney()
     fireEvent.click(screen.getByRole('button', { name: '离开' }))
-    fireEvent.click(screen.getByRole('button', { name: '下载存档并离开' }))
+    fireEvent.click(screen.getByRole('button', { name: '请求下载存档' }))
     await waitFor(() => expect(createBingoSave).toHaveBeenCalledOnce())
 
     fireEvent.click(screen.getByRole('button', { name: '补充普通便当' }))
@@ -549,8 +731,219 @@ describe('旅行饼狗应用控制器', () => {
     expect(screen.getByText('刚刚又记下了新进度，请重新保存后再离开。')).toBeVisible()
   })
 
+  it('取消旧的离开意图后，旧导出完成不会关闭后来重新打开的确认框', async () => {
+    const pendingExport = deferred<Awaited<ReturnType<typeof createBingoSave>>>()
+    vi.mocked(createBingoSave).mockReturnValueOnce(pendingExport.promise)
+
+    render(<App />)
+    await startNewJourney()
+    fireEvent.click(screen.getByRole('button', { name: '离开' }))
+    fireEvent.click(screen.getByRole('button', { name: '请求下载存档' }))
+    await waitFor(() => expect(createBingoSave).toHaveBeenCalledOnce())
+
+    fireEvent.click(screen.getByRole('button', { name: '继续陪饼狗' }))
+    expect(screen.queryByRole('dialog', { name: '要离开铲铲饼屋了吗？' })).not.toBeInTheDocument()
+    fireEvent.click(screen.getByRole('button', { name: '离开' }))
+    expect(screen.getByRole('dialog', { name: '要离开铲铲饼屋了吗？' })).toBeVisible()
+
+    await act(async () => {
+      pendingExport.resolve({
+        fileName: 'cancelled-exit.bingo',
+        text: '{}',
+      } as Awaited<ReturnType<typeof createBingoSave>>)
+      await pendingExport.promise
+    })
+
+    expect(downloadBingoSave).not.toHaveBeenCalled()
+    expect(screen.getByRole('dialog', { name: '要离开铲铲饼屋了吗？' })).toBeVisible()
+    expect(screen.getByTestId('dirty-state')).toHaveTextContent('true')
+  })
+
+  it('请求离开下载后仍保留进度，只有明确确认文件已保存才回到标题页', async () => {
+    vi.mocked(createBingoSave).mockResolvedValue({
+      fileName: 'confirmed-exit.bingo',
+      text: '{}',
+    } as Awaited<ReturnType<typeof createBingoSave>>)
+
+    render(<App />)
+    await startNewJourney()
+    fireEvent.click(screen.getByRole('button', { name: '离开' }))
+    fireEvent.click(screen.getByRole('button', { name: '请求下载存档' }))
+
+    await waitFor(() => expect(downloadBingoSave).toHaveBeenCalledOnce())
+    expect(screen.getByTestId('dirty-state')).toHaveTextContent('true')
+    expect(screen.getByTestId('display-name')).toHaveTextContent('小饼干')
+    expect(screen.getByRole('dialog', { name: '存档保存好了吗？' })).toBeVisible()
+
+    const confirmSaved = screen.getByRole('button', { name: '我已保存，离开' })
+    expect(confirmSaved).toHaveFocus()
+    fireEvent.click(confirmSaved)
+
+    expect(screen.getByRole('heading', { name: '旅行饼狗' })).toBeVisible()
+    expect(screen.queryByTestId('dirty-state')).not.toBeInTheDocument()
+    expect(screen.queryByRole('dialog', { name: '存档保存好了吗？' })).not.toBeInTheDocument()
+  })
+
+  it('离开下载后确认前出现新进度时拒绝离开并要求重新保存', async () => {
+    vi.mocked(createBingoSave).mockResolvedValue({
+      fileName: 'stale-confirmation.bingo',
+      text: '{}',
+    } as Awaited<ReturnType<typeof createBingoSave>>)
+
+    render(<App />)
+    await startNewJourney()
+    fireEvent.click(screen.getByRole('button', { name: '离开' }))
+    fireEvent.click(screen.getByRole('button', { name: '请求下载存档' }))
+    await waitFor(() => expect(downloadBingoSave).toHaveBeenCalledOnce())
+
+    fireEvent.click(screen.getByRole('button', { name: '补充普通便当' }))
+    fireEvent.click(screen.getByRole('button', { name: '我已保存，离开' }))
+
+    expect(screen.getByTestId('apple-count')).toHaveTextContent('15')
+    expect(screen.getByTestId('dirty-state')).toHaveTextContent('true')
+    expect(screen.getByRole('dialog', { name: '要离开铲铲饼屋了吗？' })).toBeVisible()
+    expect(screen.getByRole('button', { name: '请求下载存档' })).toHaveFocus()
+    expect(screen.getByText('刚刚又记下了新进度，请重新保存后再离开。')).toBeVisible()
+  })
+
+  it('没有未保存进度时可直接安装 PWA 更新', async () => {
+    appServiceWorker.needRefresh = true
+
+    render(<App />)
+    fireEvent.click(await screen.findByRole('button', { name: '看看新布置' }))
+
+    await waitFor(() => expect(appServiceWorker.updateServiceWorker).toHaveBeenCalledWith(true))
+    expect(screen.queryByRole('dialog')).not.toBeInTheDocument()
+  })
+
+  it('跨标签 controlling 回调在当前进度干净时才显式刷新页面', async () => {
+    const reloadPage = vi.fn().mockResolvedValue(undefined)
+    render(<App reloadPage={reloadPage} />)
+
+    act(() => appServiceWorker.onNeedReload?.())
+
+    await waitFor(() => expect(reloadPage).toHaveBeenCalledOnce())
+    expect(screen.queryByRole('dialog')).not.toBeInTheDocument()
+  })
+
+  it('跨标签 controlling 回调遇到未保存进度时走同一保存确认闸门', async () => {
+    const reloadPage = vi.fn().mockResolvedValue(undefined)
+    vi.mocked(createBingoSave).mockResolvedValue({
+      fileName: 'before-reload.bingo',
+      text: '{}',
+    } as Awaited<ReturnType<typeof createBingoSave>>)
+    render(<App reloadPage={reloadPage} />)
+    await startNewJourney()
+
+    act(() => appServiceWorker.onNeedReload?.())
+
+    expect(reloadPage).not.toHaveBeenCalled()
+    expect(screen.getByRole('dialog', { name: '更新前先保存这次旅程' })).toBeVisible()
+    fireEvent.click(screen.getByRole('button', { name: '请求下载存档' }))
+    await waitFor(() => expect(downloadBingoSave).toHaveBeenCalledOnce())
+    expect(reloadPage).not.toHaveBeenCalled()
+
+    fireEvent.click(screen.getByRole('button', { name: '我已保存，安装更新' }))
+
+    await waitFor(() => expect(reloadPage).toHaveBeenCalledOnce())
+    expect(screen.getByTestId('dirty-state')).toHaveTextContent('false')
+  })
+
+  it('controlling 后取消保护再重试时直接重走受保护刷新，不调用 waiting 更新', async () => {
+    appServiceWorker.needRefresh = true
+    const reloadPage = vi.fn().mockResolvedValue(undefined)
+    vi.mocked(createBingoSave).mockResolvedValue({
+      fileName: 'retry-reload.bingo',
+      text: '{}',
+    } as Awaited<ReturnType<typeof createBingoSave>>)
+    render(<App reloadPage={reloadPage} />)
+    await startNewJourney()
+
+    act(() => appServiceWorker.onNeedReload?.())
+    fireEvent.click(screen.getByRole('button', { name: '晚点更新' }))
+    expect(screen.queryByRole('dialog')).not.toBeInTheDocument()
+
+    fireEvent.click(screen.getByRole('button', { name: '保存后更新' }))
+
+    expect(reloadPage).not.toHaveBeenCalled()
+    expect(appServiceWorker.updateServiceWorker).not.toHaveBeenCalled()
+    expect(screen.getByRole('dialog', { name: '更新前先保存这次旅程' })).toBeVisible()
+    fireEvent.click(screen.getByRole('button', { name: '请求下载存档' }))
+    await waitFor(() => expect(downloadBingoSave).toHaveBeenCalledOnce())
+    fireEvent.click(screen.getByRole('button', { name: '我已保存，安装更新' }))
+
+    await waitFor(() => expect(reloadPage).toHaveBeenCalledOnce())
+    expect(appServiceWorker.updateServiceWorker).not.toHaveBeenCalled()
+  })
+
+  it('有未保存进度时，PWA 更新会先下载并等待玩家明确确认', async () => {
+    appServiceWorker.needRefresh = true
+    vi.mocked(createBingoSave).mockResolvedValue({
+      fileName: 'before-update.bingo',
+      text: '{}',
+    } as Awaited<ReturnType<typeof createBingoSave>>)
+
+    render(<App />)
+    await startNewJourney()
+    fireEvent.click(screen.getByRole('button', { name: '保存后更新' }))
+
+    expect(appServiceWorker.updateServiceWorker).not.toHaveBeenCalled()
+    expect(screen.getByRole('dialog', { name: '更新前先保存这次旅程' })).toBeVisible()
+    fireEvent.click(screen.getByRole('button', { name: '请求下载存档' }))
+    await waitFor(() => expect(downloadBingoSave).toHaveBeenCalledOnce())
+
+    expect(appServiceWorker.updateServiceWorker).not.toHaveBeenCalled()
+    expect(screen.getByTestId('dirty-state')).toHaveTextContent('true')
+    fireEvent.click(screen.getByRole('button', { name: '我已保存，安装更新' }))
+
+    await waitFor(() => expect(appServiceWorker.updateServiceWorker).toHaveBeenCalledWith(true))
+    expect(screen.getByTestId('dirty-state')).toHaveTextContent('false')
+  })
+
+  it('PWA 下载后确认前出现新进度时拒绝更新并保留最新内存状态', async () => {
+    appServiceWorker.needRefresh = true
+    vi.mocked(createBingoSave).mockResolvedValue({
+      fileName: 'stale-update.bingo',
+      text: '{}',
+    } as Awaited<ReturnType<typeof createBingoSave>>)
+
+    render(<App />)
+    await startNewJourney()
+    fireEvent.click(screen.getByRole('button', { name: '保存后更新' }))
+    fireEvent.click(screen.getByRole('button', { name: '请求下载存档' }))
+    await waitFor(() => expect(downloadBingoSave).toHaveBeenCalledOnce())
+
+    fireEvent.click(screen.getByRole('button', { name: '补充普通便当' }))
+    fireEvent.click(screen.getByRole('button', { name: '我已保存，安装更新' }))
+
+    expect(appServiceWorker.updateServiceWorker).not.toHaveBeenCalled()
+    expect(screen.getByTestId('apple-count')).toHaveTextContent('15')
+    expect(screen.getByTestId('dirty-state')).toHaveTextContent('true')
+    expect(screen.getByRole('dialog', { name: '更新前先保存这次旅程' })).toBeVisible()
+    expect(screen.getByText('刚刚又记下了新进度，请重新保存后再更新。')).toBeVisible()
+  })
+
+  it('取消活动不会增加陪伴天数', async () => {
+    vi.mocked(importBingoSave).mockResolvedValue(importResult(readyActivityGame('travel')))
+
+    render(<App />)
+    const startButton = await screen.findByRole('button', { name: '开始新旅程' })
+    await waitFor(() => expect(startButton).toBeEnabled())
+    fireEvent.change(screen.getByLabelText('读取 .bingo 存档'), {
+      target: { files: [new File(['ready-travel'], 'ready-travel.bingo')] },
+    })
+    fireEvent.click(await screen.findByRole('button', { name: '进入这次旅程' }))
+
+    expect(screen.getByTestId('companion-days')).toHaveTextContent('4')
+    fireEvent.click(screen.getByRole('button', { name: '取消当前活动' }))
+
+    expect(screen.getByTestId('companion-days')).toHaveTextContent('4')
+    expect(screen.getByTestId('active-ends-at')).toHaveTextContent('none')
+    expect(screen.getByText('饼狗提前回家啦。')).toBeVisible()
+  })
+
   it('普通旧 v2 采用当前默认规则，但原样保留进行中活动的时间窗', async () => {
-    const payload = importedGame()
+    const payload = importedV2Game()
     payload.profile = { ...payload.profile, debug: false }
     payload.gameBalance = {
       activityDurationMs: 72 * 60_000,
@@ -579,7 +972,24 @@ describe('旅行饼狗应用控制器', () => {
       supplyId: 'travel-basic',
       usedLuckyApple: false,
     }
-    const expectedActivity = structuredClone(payload.activeActivity)
+    const expectedActivity = {
+      runId: 'persisted-active-run',
+      kind: 'travel',
+      startedAt: 50_000,
+      endsAt: 4_370_000,
+      rewardSeed: 'persisted-active-reward',
+      rewardPlan: {
+        baseApples: 0,
+        modifierApples: 0,
+        collection: { id: 'postcard-2025-01-0001', category: 'postcard' },
+        friendId: 'signal-dog',
+        giftItemId: null,
+        guaranteedByPity: false,
+        pityAfterClaim: null,
+      },
+      supplyId: 'travel-basic',
+      usedLuckyApple: false,
+    }
     expect(importableGameStateSchema.safeParse(payload).success).toBe(true)
     expect(gameStateSchema.safeParse(payload).success).toBe(false)
     const actualPersistence = await vi.importActual<typeof import('@/infrastructure/persistence')>(
@@ -601,7 +1011,7 @@ describe('旅行饼狗应用控制器', () => {
     fireEvent.change(screen.getByLabelText('读取 .bingo 存档'), {
       target: { files: [new File([oldSave.text], 'old-default-active.bingo')] },
     })
-    fireEvent.click(await screen.findByRole('button', { name: '带它回家' }))
+    fireEvent.click(await screen.findByRole('button', { name: '进入这次旅程' }))
 
     expect(screen.getByTestId('activity-duration')).toHaveTextContent(
       DEFAULT_GAME_BALANCE.activityDurationMs.toString(),
@@ -614,6 +1024,11 @@ describe('旅行饼狗应用控制器', () => {
     const exportedInput = vi.mocked(createBingoSave).mock.calls[0][0] as { payload: GameState }
     expect(exportedInput.payload.gameBalance).toEqual(DEFAULT_GAME_BALANCE)
     expect(exportedInput.payload.activeActivity).toEqual(expectedActivity)
+
+    fireEvent.click(screen.getByRole('button', { name: '领取当前活动' }))
+    expect(screen.getByTestId('collection-count')).toHaveTextContent('2')
+    expect(screen.getByTestId('friend-count')).toHaveTextContent('1')
+    expect(screen.getByTestId('companion-days')).toHaveTextContent('3')
   })
 
   it('导出载荷不快照目录总数、分类解锁状态或全站第一游标', async () => {
@@ -634,12 +1049,48 @@ describe('旅行饼狗应用控制器', () => {
     expect(persistedKeys).not.toContain('categoryCounts')
     expect(persistedKeys).not.toContain('unlockedCategories')
     expect(persistedKeys).not.toContain('siteFirstCursor')
-    expect(payload).toMatchObject({ schemaVersion: 2, collections: {} })
+    expect(persistedKeys).not.toContain('videosByBvid')
+    expect(persistedKeys).not.toContain('recordPlayerVideos')
+    expect(payload).toMatchObject({ schemaVersion: 3, collections: {}, friends: {} })
+  })
+
+  it('V3 好友图鉴按稳定 ID 往返，不写入好友目录总数或展示元数据', async () => {
+    const payload = importedGame()
+    payload.friends['signal-dog'] = {
+      id: 'signal-dog',
+      firstMetAt: 2_000,
+      lastMetAt: 5_000,
+      encounterCount: 3,
+      totalGiftApples: 6,
+    }
+    vi.mocked(importBingoSave).mockResolvedValue(importResult(payload))
+    vi.mocked(createBingoSave).mockResolvedValue({
+      fileName: 'friends-round-trip.bingo',
+      text: '{}',
+    } as Awaited<ReturnType<typeof createBingoSave>>)
+
+    render(<App />)
+    await screen.findByRole('button', { name: '开始新旅程' })
+    fireEvent.change(screen.getByLabelText('读取 .bingo 存档'), {
+      target: { files: [new File(['friends'], 'friends.bingo')] },
+    })
+    fireEvent.click(await screen.findByRole('button', { name: '进入这次旅程' }))
+    expect(screen.getByTestId('friend-count')).toHaveTextContent('1')
+
+    fireEvent.click(screen.getByRole('button', { name: '备份' }))
+    await waitFor(() => expect(createBingoSave).toHaveBeenCalledOnce())
+    const exportedInput = vi.mocked(createBingoSave).mock.calls[0][0] as { payload: GameState }
+    const exportedPayload = exportedInput.payload
+    expect(exportedPayload.friends).toEqual(payload.friends)
+    const keys = recursivelyCollectedKeys(exportedPayload)
+    expect(keys).not.toContain('friendTotal')
+    expect(keys).not.toContain('friendCatalog')
+    expect(keys).not.toContain('giftCatalog')
   })
 
   it('收藏目录扩容后仍可导入旧 v2 存档并继续导出原有进度', async () => {
     vi.mocked(loadContentCatalog).mockResolvedValue(expandedCatalog)
-    vi.mocked(importBingoSave).mockResolvedValue(importResult(importedGame()))
+    vi.mocked(importBingoSave).mockResolvedValue(importResult(importedV2Game()))
     vi.mocked(createBingoSave).mockResolvedValue({
       fileName: 'expanded-catalog.bingo',
       text: '{}',
@@ -653,17 +1104,17 @@ describe('旅行饼狗应用控制器', () => {
 
     expect(await screen.findByRole('region', { name: '存档摘要' })).toHaveTextContent('1 件')
     expect(screen.queryByRole('alert')).not.toBeInTheDocument()
-    fireEvent.click(screen.getByRole('button', { name: '带它回家' }))
+    fireEvent.click(screen.getByRole('button', { name: '进入这次旅程' }))
     expect(screen.getByTestId('collection-count')).toHaveTextContent('1')
 
     fireEvent.click(screen.getByRole('button', { name: '备份' }))
     await waitFor(() => expect(createBingoSave).toHaveBeenCalledOnce())
     const exportedInput = vi.mocked(createBingoSave).mock.calls[0][0] as { payload: GameState }
-    expect(exportedInput.payload.collections).toEqual(importedGame().collections)
+    expect(exportedInput.payload.collections).toEqual(importedV2Game().collections)
   })
 
   it('导入早期 v2 时清除尚未领取的重复收藏计划', async () => {
-    const payload = importedGame()
+    const payload = importedV2Game()
     payload.activeActivity = {
       runId: 'legacy-v2-duplicate',
       kind: 'stream',
@@ -692,13 +1143,13 @@ describe('旅行饼狗应用控制器', () => {
     fireEvent.change(screen.getByLabelText('读取 .bingo 存档'), {
       target: { files: [new File(['legacy-v2'], 'legacy-v2.bingo')] },
     })
-    fireEvent.click(await screen.findByRole('button', { name: '带它回家' }))
+    fireEvent.click(await screen.findByRole('button', { name: '进入这次旅程' }))
     fireEvent.click(screen.getByRole('button', { name: '备份' }))
 
     await waitFor(() => expect(createBingoSave).toHaveBeenCalledOnce())
     expect(createBingoSave).toHaveBeenCalledWith(
       {
-        gameVersion: '0.2.0-demo.1',
+        gameVersion: '0.3.0-demo.1',
         payload: expect.objectContaining({
           activeActivity: expect.objectContaining({
             rewardPlan: expect.objectContaining({ collection: null }),
@@ -707,6 +1158,46 @@ describe('旅行饼狗应用控制器', () => {
       },
       gameStateSchema,
     )
+  })
+
+  it('在清除已拥有奖励前拒绝活动种类与奖励类别不匹配的存档', async () => {
+    const payload = importedGame()
+    payload.collections['postcard-2025-01-0001'] = {
+      id: 'postcard-2025-01-0001',
+      firstObtainedAt: 2_500,
+      duplicateCount: 0,
+    }
+    payload.activeActivity = {
+      runId: 'invalid-owned-postcard',
+      kind: 'stream',
+      startedAt: 2_000,
+      endsAt: 114_000,
+      rewardSeed: 'invalid-owned-postcard-reward',
+      rewardPlan: {
+        baseApples: 0,
+        modifierApples: 0,
+        collection: { id: 'postcard-2025-01-0001', category: 'postcard' },
+        friendId: null,
+        giftItemId: null,
+        guaranteedByPity: false,
+        pityAfterClaim: null,
+      },
+      supplyId: 'signal-headphones',
+      usedLuckyApple: false,
+    }
+    vi.mocked(importBingoSave).mockResolvedValue(importResult(payload))
+
+    render(<App />)
+    const startButton = await screen.findByRole('button', { name: '开始新旅程' })
+    await waitFor(() => expect(startButton).toBeEnabled())
+    fireEvent.change(screen.getByLabelText('读取 .bingo 存档'), {
+      target: { files: [new File(['invalid-owned-reward'], 'invalid-owned-reward.bingo')] },
+    })
+
+    expect(await screen.findByRole('alert')).toHaveTextContent(
+      'stream 活动只能产生 million-shot 收藏',
+    )
+    expect(screen.queryByRole('button', { name: '进入这次旅程' })).not.toBeInTheDocument()
   })
 
   it('拒绝收藏 ID 不属于当前目录的存档，不展示可确认预览', async () => {
@@ -793,7 +1284,7 @@ describe('旅行饼狗应用控制器', () => {
 
     const exported = await actualPersistence.createBingoSave(
       {
-        gameVersion: '0.2.0-demo.1',
+        gameVersion: '0.3.0-demo.1',
         payload: importedGame(),
         exportedAt: 4_000,
       },

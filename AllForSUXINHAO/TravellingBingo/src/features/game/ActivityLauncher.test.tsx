@@ -39,6 +39,10 @@ const contentCatalog: ContentCatalog = {
   },
   categoryCounts: { postcard: 0, 'million-shot': 1, 'site-first': 1 },
   siteFirstChronology: [siteFirst.id],
+  friends: [],
+  friendById: {},
+  videosByBvid: {},
+  recordPlayerVideos: [],
 }
 
 function playableGame(): GameState {
@@ -54,8 +58,12 @@ function playableGame(): GameState {
     },
     pet: {
       ...game.pet,
-      preferences: { travel: true, stream: true, trend: true },
+      preferences: { travel: true, computer: true, music: true },
       tired: false,
+    },
+    gameBalance: {
+      ...game.gameBalance,
+      probabilities: { ...game.gameBalance.probabilities, postcard: 1 },
     },
   }
 }
@@ -74,6 +82,18 @@ function renderLauncher(kind: ActivityKind, game: GameState, onAction = vi.fn())
   return { ...view, onAction }
 }
 
+describe('活动场景标签', () => {
+  it.each([
+    ['music', '音乐计划'],
+    ['rest', '休息计划'],
+  ] as const)('%s 使用对应的场景标签', (kind, label) => {
+    renderLauncher(kind, playableGame())
+
+    expect(screen.getByText(label)).toBeInTheDocument()
+    expect(screen.queryByText('电脑计划')).not.toBeInTheDocument()
+  })
+})
+
 describe('幸运苹果活动边界', () => {
   it('旅行本来就会带回回忆时禁用幸运苹果，并以普通方式开始', () => {
     const { onAction } = renderLauncher('travel', playableGame())
@@ -84,7 +104,8 @@ describe('幸运苹果活动边界', () => {
     expect(screen.getByRole('note')).toHaveTextContent('这次的回忆已经稳稳在路上了')
     expect(screen.queryByText(/100%/u)).not.toBeInTheDocument()
 
-    fireEvent.click(screen.getByRole('button', { name: '开始出去旅行' }))
+    fireEvent.click(screen.getByRole('button', { name: '准备出去旅行' }))
+    fireEvent.click(screen.getByRole('button', { name: '确认开始' }))
     expect(onAction).toHaveBeenCalledWith(
       expect.objectContaining({
         type: 'activity/start',
@@ -121,7 +142,8 @@ describe('幸运苹果活动边界', () => {
     fireEvent.click(luckyButton)
     expect(luckyButton).toHaveAttribute('aria-pressed', 'true')
 
-    fireEvent.click(screen.getByRole('button', { name: '开始认真刷播' }))
+    fireEvent.click(screen.getByRole('button', { name: '准备认真刷播' }))
+    fireEvent.click(screen.getByRole('button', { name: '确认开始' }))
     expect(onAction).toHaveBeenCalledWith(
       expect.objectContaining({
         type: 'activity/start',
@@ -163,10 +185,29 @@ describe('幸运苹果活动边界', () => {
         'false',
       ),
     )
-    fireEvent.click(screen.getByRole('button', { name: '开始认真刷播' }))
+    fireEvent.click(screen.getByRole('button', { name: '准备认真刷播' }))
+    fireEvent.click(screen.getByRole('button', { name: '确认开始' }))
     expect(onAction).toHaveBeenLastCalledWith(
       expect.objectContaining({ type: 'activity/start', useLuckyApple: false }),
     )
+  })
+})
+
+describe('开始确认焦点', () => {
+  it('打开时聚焦安全按钮，取消后把焦点还给启动按钮', async () => {
+    renderLauncher('stream', playableGame())
+
+    fireEvent.click(screen.getByRole('button', { name: '准备认真刷播' }))
+
+    const cancelButton = screen.getByRole('button', { name: '再想想' })
+    await waitFor(() => expect(cancelButton).toHaveFocus())
+    expect(document.body).not.toHaveFocus()
+
+    fireEvent.click(cancelButton)
+
+    const launchButton = screen.getByRole('button', { name: '准备认真刷播' })
+    await waitFor(() => expect(launchButton).toHaveFocus())
+    expect(document.body).not.toHaveFocus()
   })
 })
 
@@ -185,6 +226,7 @@ describe('活动面板目录复用', () => {
       onAction: vi.fn(),
       onBackup: vi.fn(),
       onTaskEvent: vi.fn(),
+      onClose: vi.fn(),
     }
     const { rerender } = render(<ContextPanel {...commonProps} now={Date.now()} />)
     const luckyButton = screen.getAllByRole('button', { name: /带上幸运苹果/u })[0]

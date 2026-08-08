@@ -1,9 +1,17 @@
 import { mergeContentCatalogs, type ContentCatalog } from './catalog'
-import { millionShotCatalogSchema, postcardCatalogSchema, siteFirstCatalogSchema } from './schema'
+import {
+  friendCatalogSchema,
+  bilibiliVideoCatalogSchema,
+  millionShotCatalogSchema,
+  postcardCatalogSchema,
+  siteFirstCatalogSchema,
+} from './schema'
 
 const MILLION_SHOT_CATALOG_PATH = 'data/million-shot-posters.json'
 const SITE_FIRST_CATALOG_PATH = 'data/site-firsts.json'
 const POSTCARD_CATALOG_PATH = 'data/postcards.json'
+const FRIEND_CATALOG_PATH = 'data/friends.json'
+const VIDEO_CATALOG_PATH = 'data/video-catalog.json'
 
 export type CatalogFetch = (input: RequestInfo | URL, init?: RequestInit) => Promise<Response>
 
@@ -101,11 +109,16 @@ export async function loadContentCatalog(
   const millionShotUrl = resolvePublicUrl(MILLION_SHOT_CATALOG_PATH, baseUrl)
   const siteFirstUrl = resolvePublicUrl(SITE_FIRST_CATALOG_PATH, baseUrl)
   const postcardUrl = resolvePublicUrl(POSTCARD_CATALOG_PATH, baseUrl)
-  const [millionShotInput, siteFirstInput, postcardInput] = await Promise.all([
-    loadJson(millionShotUrl, fetcher),
-    loadJson(siteFirstUrl, fetcher),
-    loadJson(postcardUrl, fetcher),
-  ])
+  const friendUrl = resolvePublicUrl(FRIEND_CATALOG_PATH, baseUrl)
+  const videoUrl = resolvePublicUrl(VIDEO_CATALOG_PATH, baseUrl)
+  const [millionShotInput, siteFirstInput, postcardInput, friendInput, videoInput] =
+    await Promise.all([
+      loadJson(millionShotUrl, fetcher),
+      loadJson(siteFirstUrl, fetcher),
+      loadJson(postcardUrl, fetcher),
+      loadJson(friendUrl, fetcher),
+      loadJson(videoUrl, fetcher),
+    ])
 
   const millionShotResult = millionShotCatalogSchema.safeParse(millionShotInput)
   if (!millionShotResult.success) {
@@ -128,5 +141,24 @@ export async function loadContentCatalog(
     })
   }
 
-  return mergeContentCatalogs(millionShotResult.data, siteFirstResult.data, postcardResult.data)
+  const friendResult = friendCatalogSchema.safeParse(friendInput)
+  if (!friendResult.success) {
+    throw new ContentCatalogLoadError('好友目录未通过契约校验', friendUrl, {
+      cause: friendResult.error,
+    })
+  }
+  const videoResult = bilibiliVideoCatalogSchema.safeParse(videoInput)
+  if (!videoResult.success) {
+    throw new ContentCatalogLoadError('视频目录未通过契约校验', videoUrl, {
+      cause: videoResult.error,
+    })
+  }
+
+  return mergeContentCatalogs(
+    millionShotResult.data,
+    siteFirstResult.data,
+    postcardResult.data,
+    friendResult.data,
+    videoResult.data,
+  )
 }

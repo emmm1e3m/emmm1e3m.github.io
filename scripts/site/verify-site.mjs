@@ -88,6 +88,9 @@ const fixedAssetEntries = precacheEntries.filter(
   (entry) =>
     entry.url.startsWith('assets/game/') ||
     entry.url.startsWith('assets/fonts/') ||
+    entry.url.startsWith('assets/friends/') ||
+    entry.url === 'data/friends.json' ||
+    entry.url === 'data/video-catalog.json' ||
     (entry.url.startsWith('assets/collectibles/') && entry.url.endsWith('-480.webp')),
 )
 if (fixedAssetEntries.length === 0) throw new Error('Service Worker 缺少固定名资源预缓存项')
@@ -143,6 +146,7 @@ function isAllowedGameFile(relativePath) {
     /^assets\/[A-Za-z0-9_.-]+-[A-Za-z0-9_-]{8,}\.(?:js|css)$/u.test(relativePath) ||
     /^assets\/game\/[a-z0-9][a-z0-9-]*\.webp$/u.test(relativePath) ||
     /^assets\/fonts\/[A-Za-z0-9][A-Za-z0-9._-]*\.woff2$/u.test(relativePath) ||
+    /^assets\/friends\/[a-z0-9][a-z0-9-]*\.webp$/u.test(relativePath) ||
     /^assets\/collectibles\/(?:million-shots|postcards|site-firsts)\/[a-z0-9][a-z0-9-]*\.webp$/u.test(
       relativePath,
     ) ||
@@ -158,6 +162,7 @@ const allowedGameDirectories = new Set([
   'assets/collectibles/postcards',
   'assets/collectibles/site-firsts',
   'assets/fonts',
+  'assets/friends',
   'assets/game',
   'data',
   'icons',
@@ -187,11 +192,36 @@ async function verifyTree(directory) {
 await verifyTree(gameRoot)
 
 for (const relativePath of publishedGameFiles.filter(
-  (entry) => entry.startsWith('assets/game/') || entry.startsWith('assets/fonts/'),
+  (entry) =>
+    entry.startsWith('assets/game/') ||
+    entry.startsWith('assets/fonts/') ||
+    entry.startsWith('assets/friends/') ||
+    entry === 'data/friends.json' ||
+    entry === 'data/video-catalog.json' ||
+    (entry.startsWith('assets/collectibles/') && entry.endsWith('-480.webp')),
 )) {
   const precacheEntry = precacheByUrl.get(relativePath)
   if (!precacheEntry || typeof precacheEntry.revision !== 'string' || !precacheEntry.revision) {
-    throw new Error(`游戏图片与字体必须带内容 revision 预缓存：${relativePath}`)
+    throw new Error(`固定名资源必须带内容 revision 预缓存：${relativePath}`)
+  }
+}
+
+const expectedFriendFiles = [
+  'assets/friends/bili-bing.webp',
+  'assets/friends/class-representative-bing.webp',
+  'assets/friends/san-hao-rabbit.webp',
+  'assets/friends/signal-dog.webp',
+  'assets/friends/xin-hao-rabbit.webp',
+]
+const publishedFriendFiles = publishedGameFiles
+  .filter((entry) => entry.startsWith('assets/friends/'))
+  .sort()
+if (JSON.stringify(publishedFriendFiles) !== JSON.stringify(expectedFriendFiles)) {
+  throw new Error(`发布包好友图鉴目录不精确：实际 ${publishedFriendFiles.join(', ') || '为空'}`)
+}
+for (const dataFile of ['data/friends.json', 'data/video-catalog.json']) {
+  if (!publishedGameFiles.includes(dataFile)) {
+    throw new Error(`发布包缺少运行时数据：${dataFile}`)
   }
 }
 

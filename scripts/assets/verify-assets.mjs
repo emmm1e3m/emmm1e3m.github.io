@@ -1,10 +1,14 @@
 import { createHash } from 'node:crypto'
-import { access, readFile, readdir } from 'node:fs/promises'
+import { readFile, readdir } from 'node:fs/promises'
 import { isAbsolute, relative, resolve } from 'node:path'
 import { fileURLToPath } from 'node:url'
 
 import sharp from 'sharp'
 
+import {
+  assertVideoCatalog,
+  buildPublicVideoCatalog,
+} from '../research/bilibili-video-catalog-core.mjs'
 import { collectInterfaceGlyphs } from './build-fonts.mjs'
 
 const workspaceRoot = resolve(fileURLToPath(new URL('../..', import.meta.url)))
@@ -21,6 +25,7 @@ const publicDataPath = resolve(
   workspaceRoot,
   'AllForSUXINHAO/TravellingBingo/public/data/million-shot-posters.json',
 )
+const publicMillionAssetRoot = resolve(publicRoot, 'assets/collectibles/million-shots')
 const siteFirstSourcePath = resolve(
   workspaceRoot,
   'research/travelling-bingo/data/site-firsts.source.json',
@@ -33,6 +38,12 @@ const siteFirstPublicDataPath = resolve(
   workspaceRoot,
   'AllForSUXINHAO/TravellingBingo/public/data/site-firsts.json',
 )
+const publicSiteFirstAssetRoot = resolve(publicRoot, 'assets/collectibles/site-firsts')
+const videoCatalogSourcePath = resolve(
+  workspaceRoot,
+  'research/travelling-bingo/data/bilibili-video-catalog.source.json',
+)
+const videoCatalogPublicPath = resolve(publicRoot, 'data/video-catalog.json')
 const postcardSourcePath = resolve(
   workspaceRoot,
   'research/travelling-bingo/data/postcards.source.json',
@@ -41,10 +52,18 @@ const postcardDuplicatesPath = resolve(
   workspaceRoot,
   'research/travelling-bingo/data/postcards.duplicates.json',
 )
+const postcardSelectionPath = resolve(
+  workspaceRoot,
+  'research/travelling-bingo/data/postcards.selection.json',
+)
 const postcardPublicDataPath = resolve(publicRoot, 'data/postcards.json')
-const postcardRawRoot = resolve(workspaceRoot, 'resources/raw/travelling-bingo/postcards-demo')
-const postcardLockPath = resolve(postcardRawRoot, 'postcards.lock.json')
+const postcardLockPath = resolve(
+  workspaceRoot,
+  'research/travelling-bingo/data/postcards.lock.json',
+)
 const postcardPublicAssetRoot = resolve(publicRoot, 'assets/collectibles/postcards')
+const friendCatalogPath = resolve(publicRoot, 'data/friends.json')
+const friendPublicAssetRoot = resolve(publicRoot, 'assets/friends')
 const demoVisualsPath = resolve(publicRoot, 'data/demo-visuals.json')
 const demoGameAssetRoot = resolve(publicRoot, 'assets/game')
 const fontManifestPath = resolve(publicRoot, 'data/font-manifest.json')
@@ -55,9 +74,41 @@ const postcardImagePathPattern =
   /^assets\/collectibles\/postcards\/postcard-(\d{4}-\d{2}-\d{4})-(480|960)\.webp$/
 const forbiddenPostcardReferencePattern =
   /(?:^data:|\.css(?:$|[?#])|(?:^|[/._-])(?:demo|generated|placeholder)(?=$|[/._-]))/i
+const legacyPostcardTitles = new Map([
+  ['2025-01-0002', '蓝天下的涂鸦墙'],
+  ['2025-05-0014', '水边小城'],
+  ['2025-07-0005', '收藏一场落日'],
+  ['2025-09-0019', '锦鲤池'],
+  ['2025-10-0032', '自由的风'],
+  ['2025-12-0005', '苹果小画'],
+  ['2025-12-0021', '雪林小径'],
+  ['2026-02-0020', '蓝天下的街角'],
+  ['2026-03-0010', '梦里片场'],
+  ['2026-03-0020', '旅途小憩'],
+  ['2026-04-0015', '阳光下的小狗'],
+  ['2026-06-0023', '山间缆车'],
+])
+const expectedFriendSourceSha256 =
+  '03e90140fdc01a9002f247730e39210063b9a0509900ddc151a27279bf0dd96c'
+const expectedFriends = [
+  {
+    id: 'class-representative-bing',
+    name: '课代饼',
+    kind: 'human-like',
+    sourceCell: 1,
+  },
+  { id: 'san-hao-rabbit', name: '三好兔', kind: 'rabbit', sourceCell: 2 },
+  { id: 'xin-hao-rabbit', name: '心好兔', kind: 'rabbit', sourceCell: 3 },
+  { id: 'signal-dog', name: '信号狗', kind: 'dog', sourceCell: 4 },
+  { id: 'bili-bing', name: '饼哩饼哩', kind: 'human-like', sourceCell: 5 },
+]
 
 function ensure(condition, message) {
   if (!condition) throw new Error(message)
+}
+
+function ensureJsonEqual(actual, expected, message) {
+  ensure(JSON.stringify(actual) === JSON.stringify(expected), message)
 }
 
 // 目录字段必须使用仓库内的 POSIX 相对路径，不能借助盘符、反斜杠或 .. 逃逸。
@@ -250,6 +301,31 @@ function ensureRealPostcardReference(value, label) {
   ensure(!forbiddenPostcardReferencePattern.test(value), `${label} 引用了 CSS、demo 或生成占位素材`)
 }
 
+async function calculateDhash(target) {
+  const { data, info } = await sharp(target, { failOn: 'warning' })
+    .resize(9, 8, { fit: 'fill' })
+    .grayscale()
+    .raw()
+    .toBuffer({ resolveWithObject: true })
+  let hash = 0n
+  for (let y = 0; y < 8; y += 1) {
+    for (let x = 0; x < 8; x += 1) {
+      hash = (hash << 1n) | BigInt(data[y * info.width + x] > data[y * info.width + x + 1] ? 1 : 0)
+    }
+  }
+  return hash
+}
+
+function hammingDistance(left, right) {
+  let difference = left ^ right
+  let distance = 0
+  while (difference !== 0n) {
+    distance += Number(difference & 1n)
+    difference >>= 1n
+  }
+  return distance
+}
+
 const source = JSON.parse(await readFile(sourcePath, 'utf8'))
 if (!Array.isArray(source.items) || source.items.length < 1) {
   throw new Error('百万直拍来源清单至少需要 1 项')
@@ -308,6 +384,7 @@ if (
 ) {
   throw new Error('网页百万直拍目录与来源数量不一致')
 }
+const expectedMillionFileNames = new Set()
 for (const item of publicCatalog.items) {
   if (!Array.isArray(item.images) || item.images.length < 1) {
     throw new Error(`${item.id} 没有网页衍生图`)
@@ -315,17 +392,49 @@ for (const item of publicCatalog.items) {
   if (item.category !== 'million-shot' || item.source?.platform !== 'weibo') {
     throw new Error(`${item.id} 的百万直拍收藏契约不合法`)
   }
-  for (const sourceItem of item.images) {
-    await access(
-      resolveSafeRelative(
-        publicRoot,
-        sourceItem.path,
-        `${item.id} 网页衍生图路径`,
-        'assets/collectibles/million-shots/',
-      ),
-    )
+  for (const image of item.images) {
+    await verifyWebpEntry(image, {
+      label: `${item.id} 网页衍生图`,
+      expectedPrefix: 'assets/collectibles/million-shots/',
+    })
+    expectedMillionFileNames.add(image.path.split('/').at(-1))
   }
 }
+await verifyExactDirectory(publicMillionAssetRoot, expectedMillionFileNames, '公开百万直拍素材目录')
+
+const survivorsSource = source.items.find((item) => item.id === 'million-shot-108')
+const survivorsLock = lock.items.find((item) => item.id === 'million-shot-108')
+const survivorsPublic = publicCatalog.items.find((item) => item.id === 'million-shot-108')
+ensure(
+  survivorsSource?.title === 'Survivors' &&
+    survivorsSource.sourceImageUrl ===
+      'https://wx4.sinaimg.cn/large/008tdBMZly1i6s1sdwf2ej30m80xcwnu.jpg' &&
+    survivorsSource.reportedWidth === 800 &&
+    survivorsSource.reportedHeight === 1200,
+  'Survivors 必须使用用户替换后的 800×1200 正式海报来源',
+)
+ensure(
+  survivorsLock?.width === 800 &&
+    survivorsLock.height === 1200 &&
+    survivorsLock.sha256 === 'e12ed0ecf38919d7e7049752cd49b7c0b5488338acadb77b40aecc65a6d908f4',
+  'Survivors 原图锁定信息不是已验收的 800×1200 版本',
+)
+ensureJsonEqual(
+  survivorsPublic?.images.map(({ width, height, path }) => ({ width, height, path })),
+  [
+    {
+      width: 480,
+      height: 720,
+      path: 'assets/collectibles/million-shots/million-shot-108-480.webp',
+    },
+    {
+      width: 800,
+      height: 1200,
+      path: 'assets/collectibles/million-shots/million-shot-108-800.webp',
+    },
+  ],
+  'Survivors 网页衍生链不是 480/800 两档新海报',
+)
 
 const siteFirstSource = JSON.parse(await readFile(siteFirstSourcePath, 'utf8'))
 const siteFirstLock = JSON.parse(await readFile(siteFirstLockPath, 'utf8'))
@@ -390,6 +499,7 @@ for (const item of siteFirstLock.items) {
   if (digest !== item.sha256) throw new Error(`${item.id} 的原件 SHA-256 不符`)
 }
 
+const expectedSiteFirstFileNames = new Set()
 for (const item of siteFirstPublicCatalog.items) {
   if (!Array.isArray(item.images) || item.images.length < 1) {
     throw new Error(`${item.id} 没有全站第一网页衍生图`)
@@ -397,20 +507,109 @@ for (const item of siteFirstPublicCatalog.items) {
   if (item.category !== 'site-first' || item.source?.platform !== 'bilibili') {
     throw new Error(`${item.id} 的全站第一收藏契约不合法`)
   }
-  for (const sourceItem of item.images) {
-    await access(
-      resolveSafeRelative(
-        publicRoot,
-        sourceItem.path,
-        `${item.id} 网页衍生图路径`,
-        'assets/collectibles/site-firsts/',
-      ),
-    )
+  for (const image of item.images) {
+    await verifyWebpEntry(image, {
+      label: `${item.id} 全站第一网页衍生图`,
+      expectedPrefix: 'assets/collectibles/site-firsts/',
+    })
+    expectedSiteFirstFileNames.add(image.path.split('/').at(-1))
   }
 }
+await verifyExactDirectory(
+  publicSiteFirstAssetRoot,
+  expectedSiteFirstFileNames,
+  '公开全站第一素材目录',
+)
+
+const videoCatalogSource = JSON.parse(await readFile(videoCatalogSourcePath, 'utf8'))
+assertVideoCatalog(videoCatalogSource)
+const videoCatalog = JSON.parse(await readFile(videoCatalogPublicPath, 'utf8'))
+ensureJsonEqual(
+  videoCatalog,
+  buildPublicVideoCatalog(videoCatalogSource),
+  '公开视频目录与冻结的 Bilibili 来源快照不一致',
+)
+ensure(
+  Object.entries(videoCatalog.videos).every(([bvid, video]) => video.bvid === bvid),
+  '公开视频目录的 BVID 键和值不一致',
+)
+ensure(!JSON.stringify(videoCatalog).includes('"embedUrl"'), '公开视频目录不应持久化播放器地址')
+
+const millionMappings = videoCatalog.posterMappings?.millionShots
+ensure(
+  Array.isArray(millionMappings) && millionMappings.length === publicCatalog.itemCount,
+  '百万直拍视频映射数量与海报目录不一致',
+)
+for (const mapping of millionMappings) {
+  const sourceItem = source.items.find((item) => item.id === mapping.posterId)
+  const publicItem = publicCatalog.items.find((item) => item.id === mapping.posterId)
+  const catalogVideo = videoCatalog.videos[mapping.bvid]
+  ensure(sourceItem && publicItem && catalogVideo, `${mapping.posterId} 的视频映射缺少对应条目`)
+  ensure(
+    mapping.sequence === sourceItem.sequence && mapping.sequence === publicItem.metadata?.sequence,
+    `${mapping.posterId} 的百万直拍编号与视频映射不一致`,
+  )
+  const expectedVideo = {
+    ...catalogVideo,
+    favoriteId: mapping.favoriteId,
+    favoriteOrder: mapping.favoriteOrder,
+  }
+  ensureJsonEqual(sourceItem.video, expectedVideo, `${mapping.posterId} 的来源视频元数据不一致`)
+  ensureJsonEqual(
+    publicItem.metadata?.video,
+    expectedVideo,
+    `${mapping.posterId} 的公开视频元数据不一致`,
+  )
+}
+
+const siteFirstMappings = videoCatalog.posterMappings?.siteFirsts
+ensure(
+  Array.isArray(siteFirstMappings) && siteFirstMappings.length === siteFirstPublicCatalog.itemCount,
+  '全站第一视频映射数量与海报目录不一致',
+)
+for (const mapping of siteFirstMappings) {
+  const sourceItem = siteFirstSource.items.find((item) => item.id === mapping.posterId)
+  const publicItem = siteFirstPublicCatalog.items.find((item) => item.id === mapping.posterId)
+  const catalogVideo = videoCatalog.videos[mapping.bvid]
+  ensure(sourceItem && publicItem && catalogVideo, `${mapping.posterId} 的视频映射缺少对应条目`)
+  ensure(
+    mapping.chronology === sourceItem.chronology &&
+      mapping.chronology === publicItem.metadata?.chronology &&
+      mapping.bvid === sourceItem.bvid &&
+      mapping.bvid === publicItem.metadata?.bvid,
+    `${mapping.posterId} 的全站第一顺序或 BV 号与视频映射不一致`,
+  )
+  const expectedVideo = {
+    ...catalogVideo,
+    favoriteId: mapping.favoriteId,
+    favoriteOrder: mapping.favoriteOrder,
+  }
+  ensureJsonEqual(sourceItem.video, expectedVideo, `${mapping.posterId} 的来源视频元数据不一致`)
+  ensureJsonEqual(
+    publicItem.metadata?.video,
+    expectedVideo,
+    `${mapping.posterId} 的公开视频元数据不一致`,
+  )
+}
+
+const millionLatestPage = videoCatalog.folders?.millionShots?.latestPage
+ensure(
+  millionLatestPage?.pageNumber === 1 && millionLatestPage.items.length >= 7,
+  '百万直拍收藏夹快照缺少最新页前 7 项',
+)
+ensure(
+  videoCatalog.recordPlayer?.sourceFavoriteId === videoCatalog.folders.millionShots.favoriteId,
+  '唱片机收藏夹来源不是百万直拍收藏夹',
+)
+ensureJsonEqual(
+  videoCatalog.recordPlayer?.items,
+  millionLatestPage.items.slice(0, 7),
+  '唱片机必须精确使用百万直拍收藏夹最新页第 1–7 项',
+)
 
 const postcardSource = JSON.parse(await readFile(postcardSourcePath, 'utf8'))
 const postcardDuplicates = JSON.parse(await readFile(postcardDuplicatesPath, 'utf8'))
+const postcardSelection = JSON.parse(await readFile(postcardSelectionPath, 'utf8'))
 if (postcardSource.itemCount !== 473 || postcardSource.items.length !== 473) {
   throw new Error('明信片候选来源清单不是 473 项')
 }
@@ -434,8 +633,22 @@ for (const group of postcardDuplicates.groups) {
 
 const postcardPublicCatalog = JSON.parse(await readFile(postcardPublicDataPath, 'utf8'))
 const postcardLock = JSON.parse(await readFile(postcardLockPath, 'utf8'))
+ensure(postcardSelection.schemaVersion === 1, '明信片选择目录版本不受支持')
 ensure(postcardPublicCatalog.schemaVersion === 1, '网页明信片目录版本不受支持')
 ensure(postcardLock.schemaVersion === 1, '明信片锁定目录版本不受支持')
+ensure(
+  postcardSelection.catalogId === 'bilibilitoy-suxinhao-postcards-curated-v1' &&
+    !/-\d+$/.test(postcardSelection.catalogId),
+  '明信片选择目录标识不合法或写死了数量',
+)
+ensure(
+  postcardSelection.sourceCatalogId === postcardSource.catalogId,
+  '明信片选择目录与来源目录不一致',
+)
+ensure(
+  postcardSelection.itemCount > 0 && postcardSelection.items.length === postcardSelection.itemCount,
+  '明信片选择目录数量声明不一致',
+)
 ensure(
   postcardPublicCatalog.itemCount > 0 &&
     postcardPublicCatalog.items.length === postcardPublicCatalog.itemCount,
@@ -460,13 +673,15 @@ ensure(
   '网页明信片目录的有效归档地址与 473 项来源目录不一致',
 )
 ensure(
-  postcardLock.catalogId === postcardPublicCatalog.generatedFrom,
+  postcardLock.catalogId === postcardPublicCatalog.generatedFrom &&
+    postcardPublicCatalog.generatedFrom === postcardSelection.catalogId,
   '明信片锁定目录与网页目录的构建标识不一致',
 )
 
 const postcardSourceById = new Map(postcardSource.items.map((item) => [item.id, item]))
 const postcardLockById = new Map(postcardLock.items.map((item) => [item.id, item]))
 const selectedPostcardSourceIds = postcardPublicCatalog.selection?.selectedSourceIds
+const manifestPostcardSourceIds = postcardSelection.items.map((item) => item.sourceId)
 ensure(
   Array.isArray(selectedPostcardSourceIds) &&
     selectedPostcardSourceIds.length === postcardPublicCatalog.itemCount,
@@ -476,7 +691,20 @@ ensure(
   new Set(selectedPostcardSourceIds).size === postcardPublicCatalog.itemCount,
   '网页明信片选择清单存在重复 sourceId',
 )
+ensure(
+  JSON.stringify(selectedPostcardSourceIds) === JSON.stringify(manifestPostcardSourceIds),
+  '网页明信片选择清单与人工策展目录的顺序或内容不一致',
+)
+ensure(
+  postcardSelection.itemCount === postcardPublicCatalog.itemCount,
+  '人工策展目录与网页明信片数量不一致',
+)
 ensure(postcardLockById.size === postcardPublicCatalog.itemCount, '明信片锁定目录存在重复 ID')
+
+for (const [sourceId, title] of legacyPostcardTitles) {
+  const selected = postcardSelection.items.find((item) => item.sourceId === sourceId)
+  ensure(selected?.title === title, `人工策展目录删除或改名了旧明信片：${sourceId}`)
+}
 
 // 已知字节重复组中最多只能选择一张，避免把同一张真实照片包装成两件收藏品。
 for (const group of postcardDuplicates.groups) {
@@ -487,8 +715,10 @@ for (const group of postcardDuplicates.groups) {
 const postcardPublicIds = new Set()
 const postcardDerivativePaths = new Set()
 const postcardDerivativeHashes = new Set()
+const postcardOriginalHashes = new Set()
 const expectedPostcardFileNames = new Set()
-const expectedRawPostcardFileNames = new Set(['postcards.lock.json'])
+const postcardDhashes = []
+let verifiedPostcardOriginals = 0
 
 for (const item of postcardPublicCatalog.items) {
   ensure(!postcardPublicIds.has(item.id), `网页明信片目录存在重复 ID：${item.id}`)
@@ -500,6 +730,17 @@ for (const item of postcardPublicCatalog.items) {
 
   const sourceId = item.metadata?.sourceId
   ensure(selectedPostcardSourceIds.includes(sourceId), `${item.id} 不在网页明信片选择清单中`)
+  const selectedManifestItem = postcardSelection.items.find((entry) => entry.sourceId === sourceId)
+  ensure(selectedManifestItem, `${item.id} 不在人工策展目录中`)
+  if (selectedManifestItem.title !== undefined) {
+    ensure(item.title === selectedManifestItem.title, `${item.id} 的标题与人工策展目录不一致`)
+  }
+  if (selectedManifestItem.tags !== undefined) {
+    ensure(
+      JSON.stringify(item.tags) === JSON.stringify(selectedManifestItem.tags),
+      `${item.id} 的标签与人工策展目录不一致`,
+    )
+  }
   ensure(item.id === `postcard-${sourceId}`, `${item.id} 与 sourceId 不一致`)
   const sourceItem = postcardSourceById.get(sourceId)
   ensure(sourceItem, `${item.id} 无法回溯到 473 项来源目录`)
@@ -508,6 +749,7 @@ for (const item of postcardPublicCatalog.items) {
     item.metadata.original?.url === sourceItem.sourceUrl,
     `${item.id} 的原图地址与候选目录不一致`,
   )
+  ensure(sourceItem.date !== '未识别', `${item.id} 的来源日期无法识别`)
   ensure(item.date === sourceItem.date, `${item.id} 的日期与候选目录不一致`)
   ensureRealPostcardReference(item.source.url, `${item.id} 来源图片地址`)
   ensureRealPostcardReference(item.metadata.original.url, `${item.id} 原图地址`)
@@ -522,32 +764,42 @@ for (const item of postcardPublicCatalog.items) {
   ensure(lockItem.sourceUrl === sourceItem.sourceUrl, `${item.id} 的锁定来源地址不一致`)
   ensure(lockItem.rights === 'user-confirmed-authorized', `${item.id} 的锁定记录缺少授权口径`)
   ensure(lockItem.byteLength === sourceItem.byteLength, `${item.id} 的原图字节数与候选目录不一致`)
-  ensure(lockItem.originalPath.endsWith(`/${sourceId}.webp`), `${item.id} 的锁定原图文件名不一致`)
+  ensure(
+    lockItem.originalPath === `resources/raw/travelling-bingo/postcards/${sourceId}.webp`,
+    `${item.id} 的锁定原图路径不一致`,
+  )
   ensureRealPostcardReference(lockItem.sourceUrl, `${item.id} 锁定来源地址`)
 
   const original = item.metadata.original
   ensure(original.format === 'webp' && lockItem.format === 'webp', `${item.id} 的原图格式不是 WebP`)
   ensure(original.width === lockItem.width, `${item.id} 的原图宽度与锁定目录不一致`)
   ensure(original.height === lockItem.height, `${item.id} 的原图高度与锁定目录不一致`)
+  ensure(original.width >= 960 && original.height >= 960, `${item.id} 的原图短边不足 960px`)
   ensure(original.byteLength === lockItem.byteLength, `${item.id} 的原图字节数与锁定目录不一致`)
   ensure(original.sha256 === lockItem.sha256, `${item.id} 的原图 SHA-256 与锁定目录不一致`)
-  await verifyWebpEntry(
-    {
-      width: lockItem.width,
-      height: lockItem.height,
-      path: lockItem.originalPath,
-      byteLength: lockItem.byteLength,
-      mime: 'image/webp',
-      sha256: lockItem.sha256,
-    },
-    {
-      root: workspaceRoot,
-      label: `${item.id} 锁定原图`,
-      expectedPrefix: 'resources/raw/travelling-bingo/postcards-demo/',
-      requireSha256: true,
-    },
-  )
-  expectedRawPostcardFileNames.add(`${sourceId}.webp`)
+  ensure(!postcardOriginalHashes.has(original.sha256), `${item.id} 与另一张明信片原图完全重复`)
+  postcardOriginalHashes.add(original.sha256)
+  try {
+    await verifyWebpEntry(
+      {
+        width: lockItem.width,
+        height: lockItem.height,
+        path: lockItem.originalPath,
+        byteLength: lockItem.byteLength,
+        mime: 'image/webp',
+        sha256: lockItem.sha256,
+      },
+      {
+        root: workspaceRoot,
+        label: `${item.id} 本地缓存原图`,
+        expectedPrefix: 'resources/raw/travelling-bingo/postcards/',
+        requireSha256: true,
+      },
+    )
+    verifiedPostcardOriginals += 1
+  } catch (error) {
+    if (error.code !== 'ENOENT') throw error
+  }
 
   ensure(
     Array.isArray(item.images) && item.images.length === 2,
@@ -598,6 +850,9 @@ for (const item of postcardPublicCatalog.items) {
     )
     postcardDerivativeHashes.add(verified.digest)
     expectedPostcardFileNames.add(image.path.split('/').at(-1))
+    if (image.width === 480) {
+      postcardDhashes.push({ id: item.id, hash: await calculateDhash(verified.target) })
+    }
   }
 }
 
@@ -611,15 +866,106 @@ ensure(
   '网页明信片衍生图数量或路径唯一性不符',
 )
 ensure(
-  expectedRawPostcardFileNames.size === postcardPublicCatalog.itemCount + 1,
-  '明信片原图目录数量与网页目录不一致',
+  verifiedPostcardOriginals === 0 || verifiedPostcardOriginals === postcardPublicCatalog.itemCount,
+  `本地明信片原图缓存不完整：仅找到 ${verifiedPostcardOriginals}/${postcardPublicCatalog.itemCount}`,
 )
+for (let leftIndex = 0; leftIndex < postcardDhashes.length; leftIndex += 1) {
+  for (let rightIndex = leftIndex + 1; rightIndex < postcardDhashes.length; rightIndex += 1) {
+    const left = postcardDhashes[leftIndex]
+    const right = postcardDhashes[rightIndex]
+    ensure(
+      hammingDistance(left.hash, right.hash) > 3,
+      `网页明信片视觉近重复：${left.id} 与 ${right.id}`,
+    )
+  }
+}
 ensure(
   selectedPostcardSourceIds.every((sourceId) => postcardPublicIds.has(`postcard-${sourceId}`)),
   '网页明信片选择清单与实际收藏品不一致',
 )
 await verifyExactDirectory(postcardPublicAssetRoot, expectedPostcardFileNames, '公开明信片素材目录')
-await verifyExactDirectory(postcardRawRoot, expectedRawPostcardFileNames, '明信片原图锁定目录')
+
+const friendCatalog = JSON.parse(await readFile(friendCatalogPath, 'utf8'))
+ensure(friendCatalog.schemaVersion === 1, '好友图鉴目录版本不受支持')
+ensure(
+  friendCatalog.generatedFrom === 'imagegen-friend-atlas-v3' &&
+    friendCatalog.generatedAt === '2026-08-08' &&
+    friendCatalog.rights === 'user-confirmed-authorized',
+  '好友图鉴目录缺少已验收的生成来源或授权口径',
+)
+ensure(
+  friendCatalog.itemCount === expectedFriends.length &&
+    friendCatalog.items?.length === expectedFriends.length,
+  '好友图鉴必须精确包含 5 位已设定好友',
+)
+
+const friendSource = friendCatalog.source
+ensure(
+  friendSource?.path === 'resources/raw/travelling-bingo/generated/friend-atlas-v3.png' &&
+    friendSource.mime === 'image/png' &&
+    friendSource.width === 1881 &&
+    friendSource.height === 836 &&
+    friendSource.sha256 === expectedFriendSourceSha256,
+  '好友 ImageGen 母版路径、尺寸或锁定摘要不一致',
+)
+verifyGenerationSummary(
+  friendSource.generation,
+  '好友 ImageGen 母版',
+  'multi-reference identity-preserve',
+)
+const friendSourceTarget = resolveSafeRelative(
+  workspaceRoot,
+  friendSource.path,
+  '好友 ImageGen 母版路径',
+  'resources/raw/travelling-bingo/generated/',
+)
+const friendSourceBytes = await readFile(friendSourceTarget)
+const friendSourceMetadata = await sharp(friendSourceBytes, { failOn: 'warning' }).metadata()
+ensure(
+  friendSourceMetadata.format === 'png' &&
+    friendSourceMetadata.width === 1881 &&
+    friendSourceMetadata.height === 836,
+  '好友 ImageGen 母版实际格式或尺寸不一致',
+)
+ensure(friendSourceBytes.byteLength === friendSource.byteLength, '好友 ImageGen 母版字节数不一致')
+ensure(
+  createHash('sha256').update(friendSourceBytes).digest('hex') === expectedFriendSourceSha256,
+  '好友 ImageGen 母版实际 SHA-256 与已验收摘要不一致',
+)
+
+const expectedFriendFileNames = new Set()
+const friendImageHashes = new Set()
+for (const [index, expected] of expectedFriends.entries()) {
+  const item = friendCatalog.items[index]
+  ensure(
+    item?.id === expected.id &&
+      item.name === expected.name &&
+      item.kind === expected.kind &&
+      item.sourceCell === expected.sourceCell,
+    `好友图鉴第 ${index + 1} 格的角色身份或 sourceCell 不一致`,
+  )
+  ensure(
+    typeof item.description === 'string' && item.description.length >= 10,
+    `${expected.name} 缺少角色说明`,
+  )
+  ensure(item.alt === `${expected.name}的暖色手绘朋友卡`, `${expected.name} 的替代文本不一致`)
+  ensure(
+    item.image?.path === `assets/friends/${expected.id}.webp` &&
+      item.image.width === 360 &&
+      item.image.height === 560,
+    `${expected.name} 的公开朋友卡路径或尺寸不一致`,
+  )
+  const verified = await verifyWebpEntry(item.image, {
+    label: `${expected.name}朋友卡`,
+    expectedPrefix: 'assets/friends/',
+    requireSha256: true,
+  })
+  ensure(!friendImageHashes.has(verified.digest), `${expected.name} 与另一张朋友卡完全重复`)
+  friendImageHashes.add(verified.digest)
+  expectedFriendFileNames.add(item.image.path.split('/').at(-1))
+}
+ensure(friendImageHashes.size === expectedFriends.length, '好友图鉴派生图数量或摘要不唯一')
+await verifyExactDirectory(friendPublicAssetRoot, expectedFriendFileNames, '公开好友图鉴素材目录')
 
 const demoVisuals = JSON.parse(await readFile(demoVisualsPath, 'utf8'))
 ensure(demoVisuals.schemaVersion === 1, 'Demo 视觉目录版本不受支持')
@@ -869,5 +1215,5 @@ ensure(
 await verifyExactDirectory(publicFontAssetRoot, expectedFontFileNames, '公开字体素材目录')
 
 console.log(
-  `素材校验通过：${publicCatalog.itemCount} 张百万直拍、${siteFirstPublicCatalog.itemCount} 项全站第一、${postcardSource.itemCount} 条明信片候选、${postcardPublicCatalog.itemCount} 张真实明信片（${expectedPostcardDerivativeCount} 个 WebP）、${expectedGameFileNames.size} 个 Demo 视觉文件及 ${fontManifest.fonts.length} 个 WOFF2 字体子集一致；本地核验百万直拍原图 ${verifiedMillionOriginals}/${source.items.length}、字体母版 ${verifiedFontSources}/${expectedFonts.size}`,
+  `素材校验通过：${publicCatalog.itemCount} 张百万直拍、${siteFirstPublicCatalog.itemCount} 项全站第一、${postcardSource.itemCount} 条明信片候选、${postcardPublicCatalog.itemCount} 张真实明信片（${expectedPostcardDerivativeCount} 个 WebP）、${friendCatalog.itemCount} 位好友、${Object.keys(videoCatalog.videos).length} 条视频、${expectedGameFileNames.size} 个 Demo 视觉文件及 ${fontManifest.fonts.length} 个 WOFF2 字体子集一致；本地核验百万直拍原图 ${verifiedMillionOriginals}/${source.items.length}、明信片原图 ${verifiedPostcardOriginals}/${postcardPublicCatalog.itemCount}、字体母版 ${verifiedFontSources}/${expectedFonts.size}`,
 )
