@@ -2,8 +2,8 @@
 
 ## 已确认
 
-- 游戏最终路径固定为 `/AllForSUXINHAO/TravellingBingo/`；仓库根首页只增加跳转入口，既有页面继续由站点组装脚本保留。
-- 本地仓库已关联 `origin`，工作分支为 `feature/travelling-bingo`，基线为 `origin/main`；GitHub 推送、Pages 设置和线上验证仍未完成。
+- 游戏最终路径固定为 `/AllForSUXINHAO/TravellingBingo/`；仓库根首页只增加跳转入口，`AllForSUXINHAO/` 下只保留这个游戏，原 `SUperView/` 与 `SUperDanmaku/` 已删除。
+- 本地仓库已关联 `origin`，工作分支 `feature/travelling-bingo` 已推送并创建 PR #1；GitHub Pages Source 已切换为 GitHub Actions，合并、部署和线上验证仍未完成。
 - 首版收藏目录为 **12 + 30 + 8**：12 张真实 Bilibili Toy 明信片、30 张百万直拍海报、8 项全站第一素材，共 50 项。
 - 12 张明信片从用户指定的 Bilibili Toy 活动来源链中筛选，源数据来自已持久化的 473 条归档元数据；网页发布 480 / 960 两档同源 WebP。明信片没有使用 ImageGen，也没有用 CSS 或占位图伪造。
 - 30 张百万直拍按“正文明确包含直拍及第 N 支百万单人视频”的严格规则选取，原图与 SHA-256 已锁定；网页发布 87 个多尺寸 WebP。
@@ -31,11 +31,11 @@
 ## 当前验证结论
 
 - `format / lint / typecheck / unit / assets` 全部通过；Vitest 为 7 个文件、42 项测试。
-- 生产构建、站点组装和站点边界校验通过；发布包只包含根入口、旧工具和新游戏。
+- 生产构建、站点组装和站点边界校验通过；发布包只包含根入口和新游戏，且 `AllForSUXINHAO/` 不允许出现其它目录。
 - Playwright 桌面与 Pixel 7 主旅程通过，覆盖 DEBUG、领取真实海报、收藏墙、真实 `.bingo` 下载和重新上传；离线桌面测试通过，手机离线重复项按配置跳过。总计 7 项通过、1 项按设计跳过。
-- 尚未完成的验证只剩 GitHub Actions 远端运行、Pages 部署和线上新旧路径回归。
+- 尚未完成的验证只剩 GitHub Actions 远端运行、合并、Pages 部署，以及新路径可用与旧路径消失的线上回归。
 
 ## 下一步
 
-1. 使用 GitHub 登录态推送分支，审核并合并到 `main`。
-2. 在 GitHub Settings → Pages 将 Source 统一为 GitHub Actions，等待部署后验证最终 URL、根入口与既有站点路径。
+1. 将“仅保留 TravellingBingo”的修订推送到 PR #1，等待远端检查后合并到 `main`。
+2. 等待 GitHub Actions 部署后验证最终 URL、根入口和旧路径已移除。

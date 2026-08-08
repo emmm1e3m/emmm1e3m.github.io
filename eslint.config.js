@@ -11,8 +11,6 @@ export default tseslint.config(
       'coverage/**',
       'dist/**',
       'node_modules/**',
-      'AllForSUXINHAO/SUperDanmaku/**',
-      'AllForSUXINHAO/SUperView/**',
     ],
   },
   js.configs.recommended,

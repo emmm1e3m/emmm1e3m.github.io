@@ -15,20 +15,10 @@ await mkdir(resolve(outputRoot, 'AllForSUXINHAO'), { recursive: true })
 
 await cp(resolve(workspaceRoot, 'index.html'), resolve(outputRoot, 'index.html'))
 await cp(
-  resolve(workspaceRoot, 'AllForSUXINHAO/SUperDanmaku'),
-  resolve(outputRoot, 'AllForSUXINHAO/SUperDanmaku'),
-  { recursive: true },
-)
-await cp(
-  resolve(workspaceRoot, 'AllForSUXINHAO/SUperView'),
-  resolve(outputRoot, 'AllForSUXINHAO/SUperView'),
-  { recursive: true },
-)
-await cp(
   resolve(workspaceRoot, 'dist/travelling-bingo'),
   resolve(outputRoot, 'AllForSUXINHAO/TravellingBingo'),
   { recursive: true },
 )
 await writeFile(resolve(outputRoot, '.nojekyll'), '', 'utf8')
 
-console.log('站点组装完成：根首页、旧工具与 AllForSUXINHAO/TravellingBingo 已隔离发布')
+console.log('站点组装完成：根首页与 AllForSUXINHAO/TravellingBingo 已隔离发布')

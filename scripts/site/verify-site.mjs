@@ -9,15 +9,7 @@ if (!siteRoot.startsWith(`${workspaceRoot}${sep}`)) {
   throw new Error('发布目录越界')
 }
 
-const requiredFiles = [
-  'index.html',
-  '.nojekyll',
-  'AllForSUXINHAO/TravellingBingo/index.html',
-  'AllForSUXINHAO/SUperView/SUperView_mini_v1.html',
-  'AllForSUXINHAO/SUperView/SUperView_mini_v2.html',
-  'AllForSUXINHAO/SUperDanmaku/test',
-  'AllForSUXINHAO/SUperDanmaku/tasks/test',
-]
+const requiredFiles = ['index.html', '.nojekyll', 'AllForSUXINHAO/TravellingBingo/index.html']
 for (const relativePath of requiredFiles) {
   await access(resolve(siteRoot, relativePath))
 }
@@ -28,6 +20,18 @@ if (!rootHtml.includes('href="/AllForSUXINHAO/TravellingBingo/"')) {
 }
 
 const gameRoot = resolve(siteRoot, 'AllForSUXINHAO/TravellingBingo')
+const allForSuxinhaoEntries = await readdir(resolve(siteRoot, 'AllForSUXINHAO'), {
+  withFileTypes: true,
+})
+const unexpectedEntries = allForSuxinhaoEntries.filter(
+  (entry) => entry.name !== 'TravellingBingo' || !entry.isDirectory(),
+)
+if (unexpectedEntries.length > 0) {
+  throw new Error(
+    `AllForSUXINHAO 只能发布 TravellingBingo：${unexpectedEntries.map((entry) => entry.name).join(', ')}`,
+  )
+}
+
 const serviceWorker = await readFile(resolve(gameRoot, 'sw.js'), 'utf8')
 const precacheMatch = serviceWorker.match(/precacheAndRoute\((\[[\s\S]*?\])(?:,|\))/u)
 if (!precacheMatch) throw new Error('无法读取 Service Worker 预缓存清单')
@@ -87,4 +91,4 @@ async function verifyTree(directory) {
 }
 
 await verifyTree(siteRoot)
-console.log('发布包校验通过：最终子路径、旧文件与公开边界均正确')
+console.log('发布包校验通过：最终子路径、单一游戏目录与公开边界均正确')

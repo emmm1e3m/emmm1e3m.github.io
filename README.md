@@ -1,6 +1,6 @@
 # emmm1e3m.github.io
 
-本仓库托管 `emmm1e3m.github.io` 根首页、既有工具，以及粉丝向单机网页游戏“旅行饼狗”。
+本仓库托管 `emmm1e3m.github.io` 根首页，以及粉丝向单机网页游戏“旅行饼狗”。
 
 ## 旅行饼狗
 
@@ -32,7 +32,7 @@ npm run site:verify
 npm run test:e2e
 ```
 
-`npm run site:assemble` 会把根首页、既有 `SUperView` / `SUperDanmaku` 与游戏构建产物组合到 `_site/`。
+`npm run site:assemble` 会把根首页与游戏构建产物组合到 `_site/`；`_site/AllForSUXINHAO/` 中只发布 `TravellingBingo/`。
 
 ## 素材流水线
 

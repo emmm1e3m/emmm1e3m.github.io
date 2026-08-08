@@ -33,7 +33,7 @@ jobs:
       - name: Build TravellingBingo
         run: npm run build
 
-      # 只组装允许公开的根首页、旧工具和游戏产物，研究资料与原图不会进入 Pages。
+      # 只组装允许公开的根首页和游戏产物，研究资料与原图不会进入 Pages。
       - name: Assemble public site
         run: npm run site:assemble
 
