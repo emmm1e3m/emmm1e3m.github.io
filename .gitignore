@@ -1,0 +1,14 @@
+node_modules/
+.venv/
+dist/
+_site/
+coverage/
+playwright-report/
+test-results/
+.playwright-cli/
+*.log
+
+# 微博授权原图保留在本机；仓库与 Pages 只使用可复现的 Web 衍生图。
+resources/raw/travelling-bingo/million-shots/*.jpg
+research/travelling-bingo/data/*.tmp.json
+resources/raw/travelling-bingo/generated/*-chroma-*.png

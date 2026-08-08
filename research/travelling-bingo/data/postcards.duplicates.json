@@ -1,0 +1,26 @@
+{
+  "schemaVersion": 1,
+  "catalogId": "bilibilitoy-suxinhao-postcard-exact-duplicates",
+  "sourceCatalog": "postcards.source.json",
+  "verifiedAt": "2026-08-08",
+  "comparison": "完整下载候选文件后按 SHA-256 比较；同组文件字节完全相同。",
+  "groupCount": 4,
+  "groups": [
+    {
+      "sha256": "cb96f30a3b9e8f1c3da56a4b251cf4f0941666d8723ebe4ecd47fd644abc3a0a",
+      "ids": ["2026-01-0039", "2026-01-0002"]
+    },
+    {
+      "sha256": "119be396292b007a82f1a7ace8e5da6990a0e2d4a0e69689b3cde63807096976",
+      "ids": ["2026-01-0041", "2026-01-0030"]
+    },
+    {
+      "sha256": "a1eb0b1f5ff4645b8187135de6b97fb178decb1c8a792a00af37491efa9b9c66",
+      "ids": ["2026-04-0020", "2026-05-0008"]
+    },
+    {
+      "sha256": "8d18e81cf45240bccb6c7562a00fa0293eb8d953ee126a0897052aecd203c600",
+      "ids": ["2026-01-0040", "2026-01-0027"]
+    }
+  ]
+}

@@ -1,0 +1,63 @@
+{
+  "name": "emmm1e3m-github-pages",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "engines": {
+    "node": ">=24.0.0 <25",
+    "npm": ">=11.0.0"
+  },
+  "scripts": {
+    "dev": "vite --config AllForSUXINHAO/TravellingBingo/vite.config.ts",
+    "build": "vite build --config AllForSUXINHAO/TravellingBingo/vite.config.ts",
+    "preview": "vite preview --config AllForSUXINHAO/TravellingBingo/vite.config.ts",
+    "typecheck": "tsc --project AllForSUXINHAO/TravellingBingo/tsconfig.json --noEmit",
+    "lint": "eslint AllForSUXINHAO/TravellingBingo/src scripts",
+    "test": "vitest run --config AllForSUXINHAO/TravellingBingo/vite.config.ts",
+    "test:watch": "vitest --config AllForSUXINHAO/TravellingBingo/vite.config.ts",
+    "test:e2e": "playwright test --config AllForSUXINHAO/TravellingBingo/playwright.config.ts",
+    "format": "prettier --write \"AllForSUXINHAO/TravellingBingo/**/*.{ts,tsx,css,html,json}\" \"scripts/**/*.mjs\" package.json",
+    "format:check": "prettier --check \"AllForSUXINHAO/TravellingBingo/**/*.{ts,tsx,css,html,json}\" \"scripts/**/*.mjs\" package.json",
+    "assets:download": "node scripts/assets/download-million-posters.mjs",
+    "assets:download:site-firsts": "node scripts/assets/download-site-first-covers.mjs",
+    "assets:build": "node scripts/assets/build-web-assets.mjs",
+    "assets:build:site-firsts": "node scripts/assets/build-site-first-assets.mjs",
+    "assets:build:demo": "node scripts/assets/build-demo-visuals.mjs",
+    "assets:build:postcards": "node scripts/assets/build-demo-postcards.mjs",
+    "assets:verify": "node scripts/assets/verify-assets.mjs",
+    "site:assemble": "node scripts/site/assemble-site.mjs",
+    "site:verify": "node scripts/site/verify-site.mjs",
+    "research:sync:postcards": "node scripts/research/sync-postcard-catalog.mjs",
+    "verify": "npm run format:check && npm run lint && npm run typecheck && npm run test && npm run assets:verify"
+  },
+  "dependencies": {
+    "motion": "^13.0.0",
+    "react": "^19.2.8",
+    "react-dom": "^19.2.8",
+    "zod": "^4.4.3",
+    "zustand": "^5.0.14"
+  },
+  "devDependencies": {
+    "@eslint/js": "^10.0.1",
+    "@playwright/test": "^1.62.1",
+    "@testing-library/jest-dom": "^7.0.0",
+    "@testing-library/react": "^16.3.2",
+    "@types/node": "^24.13.3",
+    "@types/react": "^19.2.18",
+    "@types/react-dom": "^19.2.4",
+    "@vitejs/plugin-react": "^6.0.5",
+    "@vitest/coverage-v8": "^4.1.10",
+    "eslint": "^10.8.1",
+    "eslint-plugin-react-hooks": "^7.1.1",
+    "eslint-plugin-react-refresh": "^0.5.3",
+    "globals": "^17.9.0",
+    "jsdom": "^29.1.1",
+    "prettier": "^3.9.6",
+    "sharp": "^0.35.3",
+    "typescript": "5.9.3",
+    "typescript-eslint": "^8.66.0",
+    "vite": "^8.2.1",
+    "vite-plugin-pwa": "^1.3.0",
+    "vitest": "^4.1.10"
+  }
+}
