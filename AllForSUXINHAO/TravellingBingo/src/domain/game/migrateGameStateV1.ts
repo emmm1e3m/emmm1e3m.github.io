@@ -1,0 +1,173 @@
+import { z } from 'zod'
+
+import { generateActivityPreferences } from '../pet/preferences'
+import { generateTaskBoard } from '../tasks/taskBoard'
+import { FRIEND_EVENT_IDS, ITEM_IDS, MAX_ITEM_STACK } from './constants'
+import { createDefaultGameBalance } from './gameBalance'
+import type { ActivityRun, CollectionCatalog, GameState, GameStateV1, Inventory } from './types'
+
+const timestamp = z.number().int().nonnegative().safe()
+const itemId = z.enum(ITEM_IDS)
+const activityKind = z.enum(['travel', 'stream', 'trend'])
+const collectibleCategory = z.enum(['postcard', 'million-shot', 'site-first'])
+const friendEventId = z.enum(FRIEND_EVENT_IDS)
+
+const rewardPlanV1Schema = z.strictObject({
+  baseApples: z.number().int().nonnegative().safe(),
+  modifierApples: z.number().int().nonnegative().safe(),
+  collection: z.strictObject({ id: z.string().min(1), category: collectibleCategory }).nullable(),
+  friendEventId: friendEventId.nullable(),
+  guaranteedByPity: z.boolean(),
+  pityAfterClaim: z.number().int().nonnegative().safe().nullable(),
+})
+
+const counterV1Schema = z.strictObject({
+  travel: z.number().int().nonnegative().safe(),
+  stream: z.number().int().nonnegative().safe(),
+  trend: z.number().int().nonnegative().safe(),
+})
+
+/**
+ * Demo 0.1 的严格业务载荷 schema。未知字段会被拒绝；不要把它放宽成 passthrough，
+ * 否则迁移时无法判断旧 UI 临时状态是否被误写进存档。
+ */
+export const gameStateV1Schema: z.ZodType<GameStateV1> = z.strictObject({
+  schemaVersion: z.literal(1),
+  profile: z.strictObject({ createdAt: timestamp, debug: z.boolean() }),
+  economy: z.strictObject({ apples: z.number().int().nonnegative().max(9_999_999) }),
+  inventory: z.strictObject({
+    'travel-basic': z.number().int().nonnegative().max(MAX_ITEM_STACK),
+    'travel-apple': z.number().int().nonnegative().max(MAX_ITEM_STACK),
+    'signal-headphones': z.number().int().nonnegative().max(MAX_ITEM_STACK),
+    'trend-toolbox': z.number().int().nonnegative().max(MAX_ITEM_STACK),
+    'lucky-apple': z.number().int().nonnegative().max(MAX_ITEM_STACK),
+  }),
+  collections: z.record(
+    z.string().min(1),
+    z.strictObject({
+      id: z.string().min(1),
+      firstObtainedAt: timestamp,
+      duplicateCount: z.number().int().nonnegative().safe(),
+    }),
+  ),
+  activeActivity: z
+    .strictObject({
+      runId: z.string().min(1),
+      kind: activityKind,
+      startedAt: timestamp,
+      endsAt: timestamp,
+      rewardSeed: z.string().min(1),
+      rewardPlan: rewardPlanV1Schema,
+      supplyId: itemId,
+      usedLuckyApple: z.boolean(),
+    })
+    .nullable(),
+  pity: z.strictObject({
+    stream: z.number().int().nonnegative().safe(),
+    trend: z.number().int().nonnegative().safe(),
+  }),
+  statistics: z.strictObject({
+    started: counterV1Schema,
+    claimed: counterV1Schema,
+    applesEarned: z.number().int().nonnegative().safe(),
+    duplicateRewards: z.number().int().nonnegative().safe(),
+  }),
+  random: z.strictObject({
+    seed: z.string().min(1),
+    sequence: z.number().int().nonnegative().safe(),
+  }),
+})
+
+export function isStrictGameStateV1(value: unknown): value is GameStateV1 {
+  return gameStateV1Schema.safeParse(value).success
+}
+
+export interface MigrateGameStateV1Options {
+  now: number
+  catalog: CollectionCatalog
+}
+
+function refundActiveSupplies(state: GameStateV1): Inventory {
+  const inventory = { ...state.inventory }
+  const activity = state.activeActivity
+  if (activity === null) return inventory
+
+  inventory[activity.supplyId] = Math.min(MAX_ITEM_STACK, inventory[activity.supplyId] + 1)
+  if (activity.usedLuckyApple) {
+    inventory['lucky-apple'] = Math.min(MAX_ITEM_STACK, inventory['lucky-apple'] + 1)
+  }
+  return inventory
+}
+
+/**
+ * v1 活动开始时已经扣过补给且计划了苹果收入。迁移会一次性返还补给，并把尚未领取的
+ * 旧活动苹果清零；收藏与朋友结果保持不变。v2 状态不会再次进入本函数，避免重复返还。
+ */
+export function migrateGameStateV1(
+  state: GameStateV1,
+  options: MigrateGameStateV1Options,
+): GameState {
+  if (!Number.isSafeInteger(options.now) || options.now < 0) {
+    throw new RangeError('迁移时间必须是非负安全整数毫秒时间戳')
+  }
+
+  const preferences = generateActivityPreferences(state.random.seed, 0)
+  const tasks = generateTaskBoard({
+    seed: state.random.seed,
+    sequence: 0,
+    now: options.now,
+    catalog: options.catalog,
+    collections: state.collections,
+  })
+  const activeActivity: ActivityRun | null =
+    state.activeActivity === null
+      ? null
+      : {
+          ...structuredClone(state.activeActivity),
+          rewardPlan: {
+            ...structuredClone(state.activeActivity.rewardPlan),
+            baseApples: 0 as const,
+            modifierApples: 0 as const,
+            collection:
+              state.activeActivity.rewardPlan.collection !== null &&
+              state.collections[state.activeActivity.rewardPlan.collection.id] !== undefined
+                ? null
+                : structuredClone(state.activeActivity.rewardPlan.collection),
+            guaranteedByPity: false as const,
+            pityAfterClaim: null,
+          },
+        }
+
+  return {
+    schemaVersion: 2,
+    profile: structuredClone(state.profile),
+    economy: structuredClone(state.economy),
+    inventory: refundActiveSupplies(state),
+    collections: structuredClone(state.collections),
+    activeActivity,
+    pet: {
+      location:
+        activeActivity?.kind === 'travel'
+          ? 'outside'
+          : activeActivity === null
+            ? 'center'
+            : 'computer',
+      preferences: preferences.preferences,
+      tired: false,
+      restCount: 0,
+    },
+    tasks: tasks.board,
+    gameBalance: createDefaultGameBalance(),
+    statistics: structuredClone(state.statistics),
+    random: {
+      seed: state.random.seed,
+      sequences: {
+        reward: state.random.sequence,
+        tasks: tasks.nextSequence,
+        preferences: preferences.nextSequence,
+      },
+    },
+  }
+}
+
+export const migrateGameStateV1ToV2 = migrateGameStateV1

@@ -1,0 +1,118 @@
+.pwa-prompt.pwa-update-prompt {
+  position: fixed;
+  z-index: 70;
+  right: max(18px, env(safe-area-inset-right));
+  bottom: max(18px, env(safe-area-inset-bottom));
+  width: min(380px, calc(100% - 28px));
+  display: grid;
+  gap: 0.65rem;
+  padding: 0.78rem 0.88rem;
+  border: 1.5px solid color-mix(in srgb, var(--outline) 74%, transparent);
+  border-radius: 18px;
+  background: color-mix(in srgb, var(--paper) 94%, transparent);
+  box-shadow: 0 12px 30px rgb(78 45 37 / 16%);
+  backdrop-filter: blur(12px);
+  pointer-events: none;
+}
+
+body:has([aria-modal='true']) .pwa-prompt.pwa-update-prompt {
+  visibility: hidden;
+  opacity: 0;
+}
+
+.pwa-update-prompt__copy {
+  display: grid;
+  min-width: 0;
+  gap: 0.14rem;
+  margin: 0;
+}
+
+.pwa-prompt.pwa-update-prompt .pwa-update-prompt__copy strong {
+  color: var(--ink);
+  font-size: 0.92rem;
+  line-height: 1.25;
+}
+
+.pwa-prompt.pwa-update-prompt .pwa-update-prompt__copy span {
+  color: var(--muted);
+  font-size: 0.75rem;
+  line-height: 1.4;
+}
+
+.pwa-prompt.pwa-update-prompt .pwa-update-prompt__actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.45rem;
+  margin: 0;
+}
+
+.pwa-prompt.pwa-update-prompt .pwa-update-prompt__actions button {
+  min-height: 40px;
+  padding: 0.48rem 0.8rem;
+  border: 1.5px solid color-mix(in srgb, var(--outline) 78%, transparent);
+  border-radius: 999px;
+  color: var(--ink);
+  background: color-mix(in srgb, var(--paper) 86%, white);
+  box-shadow: 0 3px 0 rgb(78 45 37 / 12%);
+  font: inherit;
+  font-size: 0.76rem;
+  font-weight: 800;
+  line-height: 1;
+  pointer-events: auto;
+  cursor: pointer;
+}
+
+.pwa-prompt.pwa-update-prompt .pwa-update-prompt__actions button:hover {
+  transform: translateY(-1px);
+}
+
+.pwa-prompt.pwa-update-prompt .pwa-update-prompt__actions button:active {
+  transform: translateY(1px);
+  box-shadow: none;
+}
+
+.pwa-prompt.pwa-update-prompt .pwa-update-prompt__actions button:focus-visible {
+  outline: 3px solid color-mix(in srgb, var(--apple) 38%, transparent);
+  outline-offset: 3px;
+}
+
+.pwa-prompt.pwa-update-prompt .pwa-update-prompt__actions .pwa-update-prompt__primary {
+  border-color: var(--apple-dark);
+  color: white;
+  background: var(--apple);
+}
+
+@media (max-width: 960px) {
+  .pwa-prompt.pwa-update-prompt,
+  body:has(.title-page) .pwa-prompt.pwa-update-prompt {
+    top: auto;
+    right: max(10px, env(safe-area-inset-right));
+    bottom: max(10px, env(safe-area-inset-bottom));
+    left: auto;
+    width: min(350px, calc(100% - 20px));
+    grid-template-columns: minmax(0, 1fr) auto;
+    align-items: center;
+    padding: 0.55rem 0.62rem;
+    border-radius: 16px;
+  }
+
+  .pwa-prompt.pwa-update-prompt .pwa-update-prompt__copy span {
+    display: none;
+  }
+
+  .pwa-prompt.pwa-update-prompt .pwa-update-prompt__actions {
+    flex-wrap: nowrap;
+  }
+
+  .pwa-prompt.pwa-update-prompt .pwa-update-prompt__actions button {
+    min-height: 44px;
+    padding-inline: 0.68rem;
+    white-space: nowrap;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .pwa-prompt.pwa-update-prompt .pwa-update-prompt__actions button {
+    transition: none;
+  }
+}

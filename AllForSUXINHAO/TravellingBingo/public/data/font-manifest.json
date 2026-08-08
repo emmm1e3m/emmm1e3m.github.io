@@ -1,0 +1,107 @@
+{
+  "schemaVersion": 1,
+  "rights": "user-confirmed-authorized",
+  "generatedAt": "2026-08-08",
+  "glyphSet": {
+    "strategy": "all Unicode code points used by runtime game source and collectible catalogs, plus printable ASCII and Chinese punctuation",
+    "codePointCount": 868,
+    "sha256": "045f13c3a58eb84bb9336cef85ff7203a6d0fd02fc43c768dde12e5055103c69",
+    "sourceFiles": [
+      "AllForSUXINHAO/TravellingBingo/index.html",
+      "AllForSUXINHAO/TravellingBingo/public/data/million-shot-posters.json",
+      "AllForSUXINHAO/TravellingBingo/public/data/postcards.json",
+      "AllForSUXINHAO/TravellingBingo/public/data/site-firsts.json",
+      "AllForSUXINHAO/TravellingBingo/src/app/App.tsx",
+      "AllForSUXINHAO/TravellingBingo/src/app/assets.ts",
+      "AllForSUXINHAO/TravellingBingo/src/app/gameStateSchema.ts",
+      "AllForSUXINHAO/TravellingBingo/src/app/useGameController.ts",
+      "AllForSUXINHAO/TravellingBingo/src/components/AppleIcon.tsx",
+      "AllForSUXINHAO/TravellingBingo/src/components/MascotSprite.css",
+      "AllForSUXINHAO/TravellingBingo/src/components/MascotSprite.tsx",
+      "AllForSUXINHAO/TravellingBingo/src/components/PwaUpdatePrompt.css",
+      "AllForSUXINHAO/TravellingBingo/src/components/PwaUpdatePrompt.tsx",
+      "AllForSUXINHAO/TravellingBingo/src/components/useModalFocus.ts",
+      "AllForSUXINHAO/TravellingBingo/src/content/catalog.ts",
+      "AllForSUXINHAO/TravellingBingo/src/content/index.ts",
+      "AllForSUXINHAO/TravellingBingo/src/content/loader.ts",
+      "AllForSUXINHAO/TravellingBingo/src/content/schema.ts",
+      "AllForSUXINHAO/TravellingBingo/src/domain/activities/timing.ts",
+      "AllForSUXINHAO/TravellingBingo/src/domain/game/constants.ts",
+      "AllForSUXINHAO/TravellingBingo/src/domain/game/createGameState.ts",
+      "AllForSUXINHAO/TravellingBingo/src/domain/game/gameBalance.ts",
+      "AllForSUXINHAO/TravellingBingo/src/domain/game/migrateGameStateV1.ts",
+      "AllForSUXINHAO/TravellingBingo/src/domain/game/normalizeImportedGameBalance.ts",
+      "AllForSUXINHAO/TravellingBingo/src/domain/game/reconcileGameStateWithCatalog.ts",
+      "AllForSUXINHAO/TravellingBingo/src/domain/game/reducer.ts",
+      "AllForSUXINHAO/TravellingBingo/src/domain/game/types.ts",
+      "AllForSUXINHAO/TravellingBingo/src/domain/game/validateCollectionCatalog.ts",
+      "AllForSUXINHAO/TravellingBingo/src/domain/game/validateImportedGameState.ts",
+      "AllForSUXINHAO/TravellingBingo/src/domain/index.ts",
+      "AllForSUXINHAO/TravellingBingo/src/domain/pet/preferences.ts",
+      "AllForSUXINHAO/TravellingBingo/src/domain/rewards/luckyApple.ts",
+      "AllForSUXINHAO/TravellingBingo/src/domain/rewards/planReward.ts",
+      "AllForSUXINHAO/TravellingBingo/src/domain/rewards/prng.ts",
+      "AllForSUXINHAO/TravellingBingo/src/domain/tasks/taskBoard.ts",
+      "AllForSUXINHAO/TravellingBingo/src/features/album/AlbumView.tsx",
+      "AllForSUXINHAO/TravellingBingo/src/features/album/categoryLabel.ts",
+      "AllForSUXINHAO/TravellingBingo/src/features/album/CollectiblePicture.tsx",
+      "AllForSUXINHAO/TravellingBingo/src/features/debug/DebugPanel.tsx",
+      "AllForSUXINHAO/TravellingBingo/src/features/game/ActivityLauncher.tsx",
+      "AllForSUXINHAO/TravellingBingo/src/features/game/ContextPanel.tsx",
+      "AllForSUXINHAO/TravellingBingo/src/features/game/game-v2.css",
+      "AllForSUXINHAO/TravellingBingo/src/features/game/gameCopy.ts",
+      "AllForSUXINHAO/TravellingBingo/src/features/game/GameHome.tsx",
+      "AllForSUXINHAO/TravellingBingo/src/features/game/roomConfig.ts",
+      "AllForSUXINHAO/TravellingBingo/src/features/game/RoomScene.tsx",
+      "AllForSUXINHAO/TravellingBingo/src/features/rewards/RewardDialog.tsx",
+      "AllForSUXINHAO/TravellingBingo/src/features/tasks/TaskBoard.tsx",
+      "AllForSUXINHAO/TravellingBingo/src/features/title/title.css",
+      "AllForSUXINHAO/TravellingBingo/src/features/title/TitleScreen.tsx",
+      "AllForSUXINHAO/TravellingBingo/src/infrastructure/persistence/bingoSave.ts",
+      "AllForSUXINHAO/TravellingBingo/src/infrastructure/persistence/index.ts",
+      "AllForSUXINHAO/TravellingBingo/src/main.tsx",
+      "AllForSUXINHAO/TravellingBingo/src/styles/fonts.css",
+      "AllForSUXINHAO/TravellingBingo/src/styles/global.css"
+    ]
+  },
+  "fonts": [
+    {
+      "id": "display",
+      "family": "TravellingBingo Display",
+      "role": "标题与强调文字",
+      "style": "normal",
+      "cssWeight": 400,
+      "fontDisplay": "swap",
+      "source": {
+        "path": "resources/raw/travelling-bingo/fonts/可画乐融融.ttf",
+        "byteLength": 25356852,
+        "sha256": "2ea406b4ac7e67fd1f5e331e919770206e00c4db8a7fc44a27486ce7025a99fc"
+      },
+      "file": {
+        "path": "assets/fonts/kehua-lerongrong.woff2",
+        "byteLength": 320412,
+        "mime": "font/woff2",
+        "sha256": "3a71f38781172d0c4636b3a2f1521df310de476a20435bbc9f7b55b89ff49005"
+      }
+    },
+    {
+      "id": "ui",
+      "family": "TravellingBingo UI",
+      "role": "正文与小型 UI 文字",
+      "style": "normal",
+      "cssWeight": 400,
+      "fontDisplay": "swap",
+      "source": {
+        "path": "resources/raw/travelling-bingo/fonts/可画奶糖体.otf",
+        "byteLength": 23637420,
+        "sha256": "2ecdb9ebc94a4c3559fc04ffb430000129c1a021b7c21f99b7055912a898a0cc"
+      },
+      "file": {
+        "path": "assets/fonts/kehua-naitang.woff2",
+        "byteLength": 272060,
+        "mime": "font/woff2",
+        "sha256": "638de5aca6cfb1e614016d0110fc3ac84fe7b01bf8623734076b3574d826838e"
+      }
+    }
+  ]
+}

@@ -11,6 +11,7 @@ concurrency:
 
 jobs:
   build:
+    if: github.ref == 'refs/heads/main'
     runs-on: ubuntu-latest
     permissions:
       contents: read
@@ -30,8 +31,13 @@ jobs:
       - name: Verify source and generated assets
         run: npm run verify
 
-      - name: Build TravellingBingo
-        run: npm run build
+      - name: Install Playwright Chromium
+        run: npx playwright install --with-deps chromium
+
+      # Playwright 的 webServer 会先构建一次生产包，再用同一份产物启动预览。
+      # E2E 通过后继续组装该产物，避免为 Pages 重复构建。
+      - name: Build once and run browser E2E
+        run: npm run test:e2e
 
       # 只组装允许公开的根首页和游戏产物，研究资料与原图不会进入 Pages。
       - name: Assemble public site
@@ -50,6 +56,7 @@ jobs:
 
   deploy:
     needs: build
+    if: github.ref == 'refs/heads/main'
     runs-on: ubuntu-latest
     permissions:
       pages: write

@@ -1,12 +1,19 @@
 import { useCallback, useEffect, useMemo, useRef, useState, type FormEvent } from 'react'
 
-import { gameStateSchema } from '@/app/gameStateSchema'
+import {
+  gameStateSchema,
+  importableGameStateSchema,
+  type ImportableGameState,
+} from '@/app/gameStateSchema'
+import { useGameController } from '@/app/useGameController'
 import { useModalFocus } from '@/components/useModalFocus'
 import { PwaUpdatePrompt } from '@/components/PwaUpdatePrompt'
 import { loadContentCatalog, type ContentCatalog } from '@/content'
 import {
   createInitialGameState,
-  reduceGame,
+  migrateGameStateV1,
+  normalizeImportedGameBalance,
+  reconcileGameStateWithCatalog,
   validateImportedGameState,
   type ClaimSummary,
   type CollectionCatalog,
@@ -19,15 +26,16 @@ import {
   createBingoSave,
   downloadBingoSave,
   importBingoSave,
-  type BingoSaveImportResult,
+  type BingoSaveSummary,
 } from '@/infrastructure/persistence'
 
-const GAME_VERSION = '0.1.0-demo.1'
+const GAME_VERSION = '0.2.0-demo.1'
 const DEBUG_PASSWORD = 'TravellingBingo'
 
 interface PendingImport {
   fileName: string
-  result: BingoSaveImportResult<GameState>
+  summary: BingoSaveSummary
+  game: GameState
 }
 
 function createSeed() {
@@ -46,6 +54,7 @@ function toDomainCatalog(catalog: ContentCatalog): CollectionCatalog {
     'site-first': catalog.items
       .filter((item) => item.category === 'site-first')
       .map((item) => item.id),
+    siteFirstChronology: catalog.siteFirstChronology,
   }
 }
 
@@ -60,15 +69,15 @@ function activitySummary(game: GameState) {
 
 function buildImportPreview(pending: PendingImport | null): ImportPreview | null {
   if (!pending) return null
-  const { payload, summary } = pending.result
+  const { game, summary } = pending
   return {
     fileName: pending.fileName,
     exportedAt: summary.exportedAt,
     gameVersion: summary.gameVersion,
-    apples: payload.economy.apples,
-    collectionCount: Object.keys(payload.collections).length,
-    activityLabel: activitySummary(payload),
-    debug: payload.profile.debug,
+    apples: game.economy.apples,
+    collectionCount: Object.keys(game.collections).length,
+    activityLabel: activitySummary(game),
+    debug: game.profile.debug,
   }
 }
 
@@ -77,7 +86,7 @@ export function App() {
   const [catalogError, setCatalogError] = useState<string | null>(null)
   const [catalogAttempt, setCatalogAttempt] = useState(0)
   const [screen, setScreen] = useState<'title' | 'home'>('title')
-  const [game, setGame] = useState<GameState | null>(null)
+  const { game, replaceGame, applyAction: applyGameAction, getSnapshot } = useGameController()
   const [panel, setPanel] = useState<PanelId>('status')
   const [now, setNow] = useState(() => Date.now())
   const [dirty, setDirty] = useState(false)
@@ -90,9 +99,10 @@ export function App() {
   const [debugPassword, setDebugPassword] = useState('')
   const [debugError, setDebugError] = useState<string | null>(null)
   const [debugUnlocked, setDebugUnlocked] = useState(false)
-  const [debugDurationMs, setDebugDurationMs] = useState(10_000)
+  const [restTransitionKey, setRestTransitionKey] = useState(0)
   const titleActivations = useRef<number[]>([])
   const importAttempt = useRef(0)
+  const lastDownloadedRevision = useRef(0)
   const debugDialogRef = useModalFocus<HTMLFormElement>(debugOpen, () => setDebugOpen(false))
   const exitDialogRef = useModalFocus<HTMLElement>(exitOpen, () => setExitOpen(false))
 
@@ -156,27 +166,28 @@ export function App() {
       seed: createSeed(),
       debug: debugUnlocked,
     })
-    setGame(initial)
+    replaceGame(initial)
+    setRestTransitionKey(0)
     setDirty(true)
     setPanel('status')
     setScreen('home')
     setToast(debugUnlocked ? 'DEBUG 旅程已经开始。' : '欢迎回到铲铲饼屋。')
-  }, [catalog, debugUnlocked, invalidatePendingImport])
+  }, [catalog, debugUnlocked, invalidatePendingImport, replaceGame])
 
   const applyAction = useCallback(
     (action: GameAction) => {
-      if (!game || !domainCatalog) return
-      const transition = reduceGame(game, action, domainCatalog)
+      if (!domainCatalog) return
+      const transition = applyGameAction(action, domainCatalog)
+      if (!transition) return
       if (!transition.ok) {
         setToast(transition.error.message)
         return
       }
-      setGame(transition.state)
       setDirty(true)
       setNow(Date.now())
       for (const effect of transition.effects) {
         if (effect.type === 'item-purchased') {
-          setToast(`补给已经放进背包，花掉 ${effect.applesSpent} 个苹果。`)
+          setToast(`冰箱里补充了 ${effect.quantity} 份补给，花掉 ${effect.applesSpent} 个苹果。`)
         } else if (effect.type === 'activity-started') {
           const label = { travel: '旅行', stream: '刷播', trend: '冲热' }[effect.activity.kind]
           setToast(`${label}开始啦，回来时记得领取。`)
@@ -184,6 +195,18 @@ export function App() {
         } else if (effect.type === 'activity-claimed') {
           setReward(effect.summary)
           setPanel('status')
+        } else if (effect.type === 'pet-rested') {
+          setRestTransitionKey(effect.replayKey)
+          setPanel('status')
+          setToast('天亮啦，饼狗又有精神了。')
+        } else if (effect.type === 'pet-encouraged') {
+          setToast(`饼狗收下了鼓励，花掉 ${effect.applesSpent} 个苹果。`)
+        } else if (effect.type === 'task-progressed' && effect.completed) {
+          setToast(
+            effect.boardRefreshed
+              ? `Bingo！收好 ${effect.applesAwarded} 个苹果，新的三件小事写好啦。`
+              : `小事完成，收好 ${effect.applesAwarded} 个苹果。`,
+          )
         } else if (effect.type === 'debug-applied') {
           setToast(
             effect.changedCount
@@ -193,7 +216,7 @@ export function App() {
         }
       }
     },
-    [domainCatalog, game],
+    [applyGameAction, domainCatalog],
   )
 
   async function loadFile(file: File) {
@@ -206,14 +229,20 @@ export function App() {
       return
     }
     try {
-      const result = await importBingoSave(file, gameStateSchema)
+      // importBingoSave 会先按文件原值验证 SHA-256；schema 本身不做 transform。
+      const result = await importBingoSave<ImportableGameState>(file, importableGameStateSchema)
       if (attempt !== importAttempt.current) return
       if (!domainCatalog) {
         throw new Error('收藏目录尚未准备好，暂时不能校验这份存档。')
       }
-      const validation = validateImportedGameState(result.payload, domainCatalog)
+      const migrated =
+        result.payload.schemaVersion === 1
+          ? migrateGameStateV1(result.payload, { now: Date.now(), catalog: domainCatalog })
+          : normalizeImportedGameBalance(result.payload)
+      const imported = reconcileGameStateWithCatalog(migrated, domainCatalog)
+      const validation = validateImportedGameState(imported, domainCatalog)
       if (!validation.ok) throw new Error(validation.message)
-      setPendingImport({ fileName: file.name, result })
+      setPendingImport({ fileName: file.name, summary: result.summary, game: imported })
     } catch (error) {
       if (attempt !== importAttempt.current) return
       setPendingImport(null)
@@ -227,7 +256,7 @@ export function App() {
 
   function confirmImport() {
     if (!pendingImport || !catalog || !domainCatalog) return
-    const imported = pendingImport.result.payload
+    const imported = pendingImport.game
     const validation = validateImportedGameState(imported, domainCatalog)
     if (!validation.ok) {
       importAttempt.current += 1
@@ -236,7 +265,9 @@ export function App() {
       return
     }
     importAttempt.current += 1
-    setGame(imported)
+    replaceGame(imported)
+    lastDownloadedRevision.current = getSnapshot().revision
+    setRestTransitionKey(0)
     setDebugUnlocked((value) => value || imported.profile.debug)
     setPendingImport(null)
     setImportError(null)
@@ -247,22 +278,41 @@ export function App() {
   }
 
   async function exportGame(leaveAfter: boolean) {
-    if (!game) return
+    const exportSnapshot = getSnapshot()
+    const snapshotGame = exportSnapshot.game
+    if (!snapshotGame) return
     try {
       const exported = await createBingoSave(
-        { gameVersion: GAME_VERSION, payload: game },
+        { gameVersion: GAME_VERSION, payload: snapshotGame },
         gameStateSchema,
       )
-      const fileName = game.profile.debug
+      const latestSnapshot = getSnapshot()
+      if (latestSnapshot.revision !== exportSnapshot.revision) {
+        if (leaveAfter) setExitOpen(false)
+        setDirty(
+          latestSnapshot.game !== null &&
+            latestSnapshot.revision !== lastDownloadedRevision.current,
+        )
+        setToast(
+          leaveAfter
+            ? '刚刚又记下了新进度，请重新保存后再离开。'
+            : '刚刚又记下了新进度，这次没有下载，请再保存一次。',
+        )
+        return
+      }
+
+      const fileName = snapshotGame.profile.debug
         ? exported.fileName.replace(/\.bingo$/u, '-debug.bingo')
         : exported.fileName
       downloadBingoSave({ fileName, text: exported.text })
+      lastDownloadedRevision.current = exportSnapshot.revision
       setDirty(false)
       setExitOpen(false)
       setToast('存档已装进背包。')
       if (leaveAfter) {
         setScreen('title')
-        setGame(null)
+        replaceGame(null)
+        setRestTransitionKey(0)
         setPanel('status')
         setReward(null)
       }
@@ -292,9 +342,6 @@ export function App() {
       return
     }
     setDebugUnlocked(true)
-    setGame((current) =>
-      current ? { ...current, profile: { ...current.profile, debug: true } } : current,
-    )
     setDebugOpen(false)
     setToast('隐藏门牌打开了，DEBUG 已解锁。')
   }
@@ -327,13 +374,12 @@ export function App() {
           now={now}
           panel={panel}
           dirty={dirty}
-          debugDurationMs={debugDurationMs}
+          restTransitionKey={restTransitionKey}
           reward={reward}
           onPanel={setPanel}
           onAction={applyAction}
           onExit={() => setExitOpen(true)}
           onBackup={() => void exportGame(false)}
-          onDebugDuration={setDebugDurationMs}
           onDismissReward={() => setReward(null)}
         />
       )}
@@ -360,7 +406,7 @@ export function App() {
           >
             <span className="paper-tag paper-tag--debug">隐藏门牌</span>
             <h2 id="debug-title">输入调试暗号</h2>
-            <p>这里不是安全边界，只是给开发和验收留的一扇小门。</p>
+            <p>说出铲铲饼屋的暗号，就能调整下一段旅程。</p>
             <label className="field-label">
               暗号
               <input

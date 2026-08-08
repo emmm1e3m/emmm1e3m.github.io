@@ -1,4 +1,5 @@
-import { mkdir, rm, writeFile } from 'node:fs/promises'
+import { createHash } from 'node:crypto'
+import { mkdir, readFile, rm, writeFile } from 'node:fs/promises'
 import { resolve } from 'node:path'
 import { fileURLToPath } from 'node:url'
 
@@ -12,31 +13,152 @@ const dataPath = resolve(
   'AllForSUXINHAO/TravellingBingo/public/data/demo-visuals.json',
 )
 
-await rm(outputRoot, { recursive: true, force: true })
-await mkdir(outputRoot, { recursive: true })
+const atlasCellSize = 512
+const atlasFramePadding = 34
 
-const roomInput = resolve(rawRoot, 'chan-chan-house-v1.png')
-const roomImages = []
-for (const width of [960, 1536]) {
-  const filename = `chan-chan-house-${width}.webp`
-  const result = await sharp(roomInput)
-    .resize({ width, withoutEnlargement: true })
-    .webp({ quality: 88, effort: 6, smartSubsample: true })
-    .toFile(resolve(outputRoot, filename))
-  roomImages.push({
+function sha256(bytes) {
+  return createHash('sha256').update(bytes).digest('hex')
+}
+
+async function imageEntry(filename, result) {
+  const bytes = await readFile(resolve(outputRoot, filename))
+  return {
     width: result.width,
     height: result.height,
     path: `assets/game/${filename}`,
-    byteLength: result.size,
+    byteLength: bytes.byteLength,
     mime: 'image/webp',
-  })
+    sha256: sha256(bytes),
+  }
 }
 
-const spriteInput = resolve(rawRoot, 'bingo-sprites-transparent-v2.png')
-const spriteResult = await sharp(spriteInput)
+async function sourceImageEntry(filename) {
+  const inputPath = resolve(rawRoot, filename)
+  const bytes = await readFile(inputPath)
+  const metadata = await sharp(bytes, { failOn: 'warning' }).metadata()
+  if (metadata.format !== 'png' || !metadata.width || !metadata.height) {
+    throw new Error(`${filename} 不是有效的 PNG 母版`)
+  }
+  return {
+    width: metadata.width,
+    height: metadata.height,
+    path: `resources/raw/travelling-bingo/generated/${filename}`,
+    byteLength: bytes.byteLength,
+    mime: 'image/png',
+    sha256: sha256(bytes),
+    hasAlpha: metadata.hasAlpha === true,
+  }
+}
+
+// ImageGen 的横向母版留有宽松透明边距；这里按等分取帧、裁去空白并归一到方形单元。
+async function buildFrameAtlas(inputName, outputName, frameCount) {
+  const inputPath = resolve(rawRoot, inputName)
+  const metadata = await sharp(inputPath).metadata()
+  if (!metadata.width || !metadata.height || metadata.hasAlpha !== true) {
+    throw new Error(`${inputName} 必须是带透明通道的有效图片`)
+  }
+
+  const composites = []
+  for (let index = 0; index < frameCount; index += 1) {
+    const left = Math.floor((metadata.width * index) / frameCount)
+    const right = Math.floor((metadata.width * (index + 1)) / frameCount)
+    const extracted = await sharp(inputPath)
+      .extract({ left, top: 0, width: right - left, height: metadata.height })
+      .png()
+      .toBuffer()
+    const { data: trimmed, info: trimInfo } = await sharp(extracted)
+      .trim({ background: { r: 0, g: 0, b: 0, alpha: 0 }, threshold: 4 })
+      .png()
+      .toBuffer({ resolveWithObject: true })
+
+    const maximumFrameSize = atlasCellSize - atlasFramePadding * 2
+    const scale = Math.min(maximumFrameSize / trimInfo.width, maximumFrameSize / trimInfo.height)
+    const targetWidth = Math.max(1, Math.round(trimInfo.width * scale))
+    const targetHeight = Math.max(1, Math.round(trimInfo.height * scale))
+    const { data: normalized, info: normalizedInfo } = await sharp(trimmed)
+      .resize({ width: targetWidth, height: targetHeight, fit: 'fill' })
+      .png()
+      .toBuffer({ resolveWithObject: true })
+
+    composites.push({
+      input: normalized,
+      left: index * atlasCellSize + Math.round((atlasCellSize - normalizedInfo.width) / 2),
+      top: Math.round((atlasCellSize - normalizedInfo.height) / 2),
+    })
+  }
+
+  const { data: atlasPixels, info: atlasInfo } = await sharp({
+    create: {
+      width: atlasCellSize * frameCount,
+      height: atlasCellSize,
+      channels: 4,
+      background: { r: 0, g: 0, b: 0, alpha: 0 },
+    },
+  })
+    .composite(composites)
+    .ensureAlpha()
+    .raw()
+    .toBuffer({ resolveWithObject: true })
+
+  // libwebp 默认可重写完全透明像素的隐藏 RGB；先清零并开启 exact，避免查看器露出彩条。
+  for (let offset = 0; offset < atlasPixels.length; offset += atlasInfo.channels) {
+    if (atlasPixels[offset + 3] !== 0) continue
+    atlasPixels[offset] = 0
+    atlasPixels[offset + 1] = 0
+    atlasPixels[offset + 2] = 0
+  }
+
+  const result = await sharp(atlasPixels, {
+    raw: {
+      width: atlasInfo.width,
+      height: atlasInfo.height,
+      channels: 4,
+    },
+  })
+    // 细腿、尾巴和轮廓线不能承受有损色度采样；动画图集体积可控，发布为无损 WebP。
+    .webp({ lossless: true, exact: true, effort: 6 })
+    .toFile(resolve(outputRoot, outputName))
+
+  return {
+    ...(await imageEntry(outputName, result)),
+    encoding: 'lossless',
+    transparentPixelRgb: '000000',
+  }
+}
+
+await mkdir(outputRoot, { recursive: true })
+
+const roomInput = resolve(rawRoot, 'chan-chan-house-v2.png')
+const roomSource = await sourceImageEntry('chan-chan-house-v2.png')
+const roomImages = []
+// 房间母版改为用户参考图的竖版构图；旧横版文件名会误导响应式图片选择，定点清理。
+for (const obsoleteWidth of [960, 1536]) {
+  await rm(resolve(outputRoot, `chan-chan-house-v2-${obsoleteWidth}.webp`), { force: true })
+}
+for (const width of [768, 1098]) {
+  const filename = `chan-chan-house-v2-${width}.webp`
+  const result = await sharp(roomInput)
+    .resize({ width, withoutEnlargement: true })
+    .webp({ quality: 90, effort: 6, smartSubsample: true })
+    .toFile(resolve(outputRoot, filename))
+  roomImages.push(await imageEntry(filename, result))
+}
+
+// 旧版四态图仍供已有组件使用，新的动画图集是向后兼容的增量资源。
+const legacySpriteInput = resolve(rawRoot, 'bingo-sprites-transparent-v2.png')
+const legacySpriteSource = await sourceImageEntry('bingo-sprites-transparent-v2.png')
+const legacySpriteResult = await sharp(legacySpriteInput)
   .resize({ width: 1024, height: 1024, fit: 'fill' })
   .webp({ quality: 92, alphaQuality: 100, effort: 6 })
   .toFile(resolve(outputRoot, 'bingo-sprites-v2.webp'))
+const legacySpriteImage = await imageEntry('bingo-sprites-v2.webp', legacySpriteResult)
+
+const walkAtlasImage = await buildFrameAtlas('bingo-walk-v2.png', 'bingo-walk-v2.webp', 4)
+const actionsAtlasImage = await buildFrameAtlas('bingo-actions-v2.png', 'bingo-actions-v2.webp', 4)
+const refuseAtlasImage = await buildFrameAtlas('bingo-refuse-v2.png', 'bingo-refuse-v2.webp', 2)
+const walkAtlasSource = await sourceImageEntry('bingo-walk-v2.png')
+const actionsAtlasSource = await sourceImageEntry('bingo-actions-v2.png')
+const refuseAtlasSource = await sourceImageEntry('bingo-refuse-v2.png')
 
 await writeFile(
   dataPath,
@@ -46,19 +168,83 @@ await writeFile(
       rights: 'user-confirmed-authorized',
       generatedAt: '2026-08-08',
       room: {
-        alt: '阳光下的两层铲铲饼屋，包含床、电脑、衣架、电子琴、唱片机、冰箱、展示墙和出口',
+        alt: '暖色晨光里的两层铲铲饼屋，包含床、电脑、衣架、电子琴、唱片机、冰箱、展示墙和出口',
+        generation: {
+          tool: 'OpenAI built-in ImageGen',
+          mode: 'precise-object-edit',
+          promptSummary:
+            '以用户提供的竖版房间图为唯一构图参考，完整保留两层房间、树冠、人物与兔子装饰及全部家具位置，不再采用横向重绘。',
+        },
+        source: roomSource,
         images: roomImages,
       },
       mascotSprites: {
-        alt: '戴红色苹果头套的白色小狗饼狗四种状态',
+        alt: '戴红色苹果头套的白色小狗饼狗四种经典状态',
+        generation: {
+          tool: 'OpenAI built-in ImageGen',
+          mode: 'identity-preserve',
+          promptSummary:
+            '保留四种姿态与苹果头套身份特征，缩短身体、收细四肢并统一为头大身小的短圆比例。',
+        },
+        source: legacySpriteSource,
         layout: { columns: 2, rows: 2 },
         poses: ['idle', 'travel', 'stream', 'celebrate'],
-        image: {
-          width: spriteResult.width,
-          height: spriteResult.height,
-          path: 'assets/game/bingo-sprites-v2.webp',
-          byteLength: spriteResult.size,
-          mime: 'image/webp',
+        image: legacySpriteImage,
+      },
+      mascotAnimations: {
+        walk: {
+          alt: '饼狗走路循环的四帧动画',
+          generation: {
+            tool: 'OpenAI built-in ImageGen',
+            mode: 'identity-preserve',
+            promptSummary:
+              '锁定苹果头套和白色垂耳身份，采用更小更短的身体与纤细完整四肢，生成四肢交替且小芽轻微弹动的四帧走路循环。',
+          },
+          source: walkAtlasSource,
+          layout: {
+            columns: 4,
+            rows: 1,
+            frameWidth: atlasCellSize,
+            frameHeight: atlasCellSize,
+          },
+          frames: ['step-a', 'step-b', 'step-c', 'step-d'],
+          image: walkAtlasImage,
+        },
+        actions: {
+          alt: '饼狗补充苹果、坐下、围围巾和睡觉的四种状态',
+          generation: {
+            tool: 'OpenAI built-in ImageGen',
+            mode: 'identity-preserve',
+            promptSummary:
+              '锁定苹果头套和白色垂耳身份，采用更小更短的身体与纤细完整四肢，生成抱苹果篮、坐下、围围巾和蜷缩睡觉四种状态。',
+          },
+          source: actionsAtlasSource,
+          layout: {
+            columns: 4,
+            rows: 1,
+            frameWidth: atlasCellSize,
+            frameHeight: atlasCellSize,
+          },
+          frames: ['replenish', 'sit', 'ready', 'sleep'],
+          image: actionsAtlasImage,
+        },
+        refuse: {
+          alt: '饼狗犹豫和摇头拒绝的两帧动画',
+          generation: {
+            tool: 'OpenAI built-in ImageGen',
+            mode: 'identity-preserve',
+            promptSummary:
+              '锁定苹果头套和白色垂耳身份，采用更小更短的身体与纤细完整四肢，生成轻轻犹豫与困倦摇头两帧。',
+          },
+          source: refuseAtlasSource,
+          layout: {
+            columns: 2,
+            rows: 1,
+            frameWidth: atlasCellSize,
+            frameHeight: atlasCellSize,
+          },
+          frames: ['hesitate', 'shake-head'],
+          image: refuseAtlasImage,
         },
       },
     },
@@ -68,4 +254,4 @@ await writeFile(
   'utf8',
 )
 
-console.log('Demo 视觉素材已生成：铲铲饼屋双尺寸与饼狗四态透明精灵')
+console.log('Demo 视觉素材已生成：竖版饼屋双尺寸、经典四态精灵、两套四帧动画与两帧拒绝动画')

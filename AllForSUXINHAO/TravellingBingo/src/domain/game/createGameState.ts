@@ -1,4 +1,7 @@
+import { generateActivityPreferences } from '../pet/preferences'
+import { generateTaskBoard } from '../tasks/taskBoard'
 import { INITIAL_APPLES, INITIAL_INVENTORY } from './constants'
+import { createDefaultGameBalance } from './gameBalance'
 import type { GameState } from './types'
 
 export interface InitialGameOptions {
@@ -15,8 +18,15 @@ export function createInitialGameState(options: InitialGameOptions): GameState {
     throw new TypeError('持久随机种子不能为空')
   }
 
+  const generatedPreferences = generateActivityPreferences(options.seed, 0)
+  const generatedTasks = generateTaskBoard({
+    seed: options.seed,
+    sequence: 0,
+    now: options.now,
+  })
+
   return {
-    schemaVersion: 1,
+    schemaVersion: 2,
     profile: {
       createdAt: options.now,
       debug: options.debug ?? false,
@@ -25,7 +35,14 @@ export function createInitialGameState(options: InitialGameOptions): GameState {
     inventory: { ...INITIAL_INVENTORY },
     collections: {},
     activeActivity: null,
-    pity: { stream: 0, trend: 0 },
+    pet: {
+      location: 'center',
+      preferences: generatedPreferences.preferences,
+      tired: false,
+      restCount: 0,
+    },
+    tasks: generatedTasks.board,
+    gameBalance: createDefaultGameBalance(),
     statistics: {
       started: { travel: 0, stream: 0, trend: 0 },
       claimed: { travel: 0, stream: 0, trend: 0 },
@@ -34,7 +51,11 @@ export function createInitialGameState(options: InitialGameOptions): GameState {
     },
     random: {
       seed: options.seed,
-      sequence: 0,
+      sequences: {
+        reward: 0,
+        tasks: generatedTasks.nextSequence,
+        preferences: generatedPreferences.nextSequence,
+      },
     },
   }
 }

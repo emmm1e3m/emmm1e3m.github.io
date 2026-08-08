@@ -1,0 +1,23 @@
+.mascot-sprite {
+  display: block;
+  aspect-ratio: 1;
+  background-repeat: no-repeat;
+  background-size: 200% 200%;
+  filter: drop-shadow(0 8px 8px rgb(71 42 32 / 20%));
+}
+
+.mascot-sprite--idle {
+  background-position: 0 0;
+}
+
+.mascot-sprite--travel {
+  background-position: 100% 0;
+}
+
+.mascot-sprite--stream {
+  background-position: 0 100%;
+}
+
+.mascot-sprite--celebrate {
+  background-position: 100% 100%;
+}

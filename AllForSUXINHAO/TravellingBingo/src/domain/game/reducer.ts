@@ -1,14 +1,20 @@
 import { deriveActivityTiming } from '../activities/timing'
+import {
+  exhaustActivityPreference,
+  generateActivityPreferences,
+  isPetTired,
+} from '../pet/preferences'
 import { hashSeed } from '../rewards/prng'
 import { planActivityReward } from '../rewards/planReward'
+import { getLuckyAppleAvailability } from '../rewards/luckyApple'
+import { applyTaskEvent } from '../tasks/taskBoard'
+import { ITEM_PRICES, MAX_APPLES, MAX_ITEM_STACK, PET_ENCOURAGEMENT_APPLE_COST } from './constants'
 import {
-  BASE_ACTIVITY_DURATION_MS,
-  DUPLICATE_APPLE_COMPENSATION,
-  ITEM_PRICES,
-  MAX_APPLES,
-  MAX_DEBUG_ACTIVITY_DURATION_MS,
-  MAX_ITEM_STACK,
-} from './constants'
+  createDefaultGameBalance,
+  isValidActivityDuration,
+  isValidProbability,
+} from './gameBalance'
+import { validateCollectionCatalog } from './validateCollectionCatalog'
 import type {
   ActivityKind,
   ActivityRun,
@@ -16,6 +22,7 @@ import type {
   CollectionCatalog,
   CollectibleCategory,
   GameAction,
+  GameEffect,
   GameError,
   GameState,
   GameTransition,
@@ -37,22 +44,6 @@ function succeed(
 
 function isValidTimestamp(value: number): boolean {
   return Number.isSafeInteger(value) && value >= 0
-}
-
-function validateCatalog(catalog: CollectionCatalog): GameError | null {
-  const seen = new Set<string>()
-  for (const category of CATEGORIES) {
-    for (const id of catalog[category]) {
-      if (id.trim().length === 0 || seen.has(id)) {
-        return {
-          code: 'INVALID_CATALOG',
-          message: `收藏目录包含空 ID 或重复 ID：${id || '（空）'}`,
-        }
-      }
-      seen.add(id)
-    }
-  }
-  return null
 }
 
 function categoryForActivity(kind: ActivityKind): CollectibleCategory {
@@ -90,21 +81,23 @@ function resolveDuration(
   state: GameState,
   debugDurationMs: number | undefined,
 ): number | GameError {
-  if (debugDurationMs === undefined) return BASE_ACTIVITY_DURATION_MS
+  if (debugDurationMs === undefined) return state.gameBalance.activityDurationMs
   if (!state.profile.debug) {
-    return { code: 'DEBUG_REQUIRED', message: '只有调试档可以覆盖任务时长' }
+    return { code: 'DEBUG_REQUIRED', message: '只有调试档可以覆盖活动时长' }
   }
-  if (
-    !Number.isSafeInteger(debugDurationMs) ||
-    debugDurationMs <= 0 ||
-    debugDurationMs > MAX_DEBUG_ACTIVITY_DURATION_MS
-  ) {
+  if (!isValidActivityDuration(debugDurationMs)) {
     return {
       code: 'INVALID_DURATION',
-      message: '调试任务时长必须是 1ms 到 30 天之间的安全整数',
+      message: '调试活动时长必须是 1ms 到 30 天之间的安全整数',
     }
   }
   return debugDurationMs
+}
+
+function activityRefusalMessage(kind: ActivityKind): string {
+  if (kind === 'travel') return '饼狗今天不太想出门，先让它休息一下吧'
+  if (kind === 'stream') return '饼狗今天不太想刷播，先让它休息一下吧'
+  return '饼狗今天不太想冲热，先让它休息一下吧'
 }
 
 function startActivity(
@@ -113,25 +106,34 @@ function startActivity(
   catalog: CollectionCatalog,
 ): GameTransition {
   if (state.activeActivity !== null) {
-    return fail(state, 'ACTIVITY_ALREADY_ACTIVE', '同一时间只能进行一个长任务')
+    return fail(state, 'ACTIVITY_ALREADY_ACTIVE', '同一时间只能进行一个活动')
   }
   if (!isValidTimestamp(action.now)) {
-    return fail(state, 'INVALID_TIME', '任务开始时间无效')
+    return fail(state, 'INVALID_TIME', '活动开始时间无效')
+  }
+  if (!state.pet.preferences[action.kind]) {
+    return fail(state, 'ACTIVITY_REFUSED', activityRefusalMessage(action.kind))
   }
 
-  const catalogError = validateCatalog(catalog)
-  if (catalogError !== null) return fail(state, catalogError.code, catalogError.message)
+  const catalogValidation = validateCollectionCatalog(catalog)
+  if (!catalogValidation.ok) return fail(state, 'INVALID_CATALOG', catalogValidation.message)
   const targetCategory = categoryForActivity(action.kind)
   if (catalog[targetCategory].length === 0) {
-    return fail(state, 'EMPTY_COLLECTION_POOL', `${targetCategory} 收藏池为空，无法开始任务`)
+    return fail(state, 'EMPTY_COLLECTION_POOL', `${targetCategory} 收藏池为空，无法开始活动`)
+  }
+  if (action.useLuckyApple === true) {
+    const availability = getLuckyAppleAvailability(state, action.kind, catalog)
+    if (!availability.canUse) {
+      return fail(state, 'LUCKY_APPLE_NOT_USEFUL', availability.message)
+    }
   }
 
   const supplyId = resolveSupply(state, action.kind, action.supplyId)
   if (supplyId === null) {
-    return fail(state, 'INVALID_SUPPLY', '所选补给不能用于这个任务')
+    return fail(state, 'INVALID_SUPPLY', '所选补给不能用于这个活动')
   }
   if (state.inventory[supplyId] < 1) {
-    return fail(state, 'MISSING_REQUIRED_ITEM', `缺少任务补给：${supplyId}`)
+    return fail(state, 'MISSING_REQUIRED_ITEM', `缺少活动补给：${supplyId}`)
   }
   if (action.useLuckyApple === true && state.inventory['lucky-apple'] < 1) {
     return fail(state, 'MISSING_REQUIRED_ITEM', '缺少幸运苹果')
@@ -141,19 +143,19 @@ function startActivity(
   if (typeof duration !== 'number') return fail(state, duration.code, duration.message)
   const endsAt = action.now + duration
   if (!Number.isSafeInteger(endsAt)) {
-    return fail(state, 'INVALID_DURATION', '任务结束时间超出安全整数范围')
+    return fail(state, 'INVALID_DURATION', '活动结束时间超出安全整数范围')
   }
 
-  const sequence = state.random.sequence
-  const rewardSeed = `${state.random.seed}:${sequence}`
+  const sequence = state.random.sequences.reward
+  const rewardSeed = `${state.random.seed}:reward:${sequence}`
   const rewardPlan = planActivityReward({
     kind: action.kind,
     rewardSeed,
-    pity: state.pity,
     catalog,
     ownedCollectionIds: new Set(Object.keys(state.collections)),
     supplyId,
     usedLuckyApple: action.useLuckyApple === true,
+    probabilities: state.gameBalance.probabilities,
   })
   const runId = `run-${sequence.toString(36)}-${hashSeed(rewardSeed).toString(36)}`
   const activity: ActivityRun = {
@@ -177,7 +179,14 @@ function startActivity(
     ...state,
     inventory: nextInventory,
     activeActivity: activity,
-    random: { ...state.random, sequence: sequence + 1 },
+    pet: {
+      ...state.pet,
+      location: action.kind === 'travel' ? 'outside' : 'computer',
+    },
+    random: {
+      ...state.random,
+      sequences: { ...state.random.sequences, reward: sequence + 1 },
+    },
     statistics: {
       ...state.statistics,
       started: {
@@ -195,76 +204,59 @@ function claimActivity(
   action: Extract<GameAction, { type: 'activity/claim' }>,
 ): GameTransition {
   if (!isValidTimestamp(action.now)) {
-    return fail(state, 'INVALID_TIME', '领奖时间无效')
+    return fail(state, 'INVALID_TIME', '领取时间无效')
   }
   const activity = state.activeActivity
   if (activity === null) {
-    return fail(state, 'ACTIVITY_NOT_ACTIVE', '当前没有可领取的任务')
+    return fail(state, 'ACTIVITY_NOT_ACTIVE', '当前没有可领取的活动')
   }
   if (activity.runId !== action.runId) {
-    return fail(state, 'RUN_ID_MISMATCH', '领奖请求与当前任务不一致')
+    return fail(state, 'RUN_ID_MISMATCH', '领取请求与当前活动不一致')
   }
   if (deriveActivityTiming(activity, action.now).phase !== 'ready') {
-    return fail(state, 'ACTIVITY_NOT_READY', '任务尚未完成')
+    return fail(state, 'ACTIVITY_NOT_READY', '活动尚未完成')
   }
 
   const plannedCollection = activity.rewardPlan.collection
   const existingCollection = plannedCollection ? state.collections[plannedCollection.id] : undefined
-  const isDuplicate = existingCollection !== undefined
-  const duplicateCompensation =
-    plannedCollection !== null && isDuplicate
-      ? DUPLICATE_APPLE_COMPENSATION[plannedCollection.category]
-      : 0
-  const totalApples =
-    activity.rewardPlan.baseApples + activity.rewardPlan.modifierApples + duplicateCompensation
-  if (state.economy.apples + totalApples > MAX_APPLES) {
-    return fail(state, 'APPLE_LIMIT_REACHED', '苹果已接近上限，请先消费后再领奖')
-  }
-
   const nextCollections = { ...state.collections }
-  if (plannedCollection !== null) {
-    nextCollections[plannedCollection.id] = existingCollection
-      ? { ...existingCollection, duplicateCount: existingCollection.duplicateCount + 1 }
-      : {
-          id: plannedCollection.id,
-          firstObtainedAt: action.now,
-          duplicateCount: 0,
-        }
-  }
-
-  const nextPity = { ...state.pity }
-  if (activity.kind === 'stream' || activity.kind === 'trend') {
-    nextPity[activity.kind] = activity.rewardPlan.pityAfterClaim ?? 0
+  if (plannedCollection !== null && existingCollection === undefined) {
+    nextCollections[plannedCollection.id] = {
+      id: plannedCollection.id,
+      firstObtainedAt: action.now,
+      duplicateCount: 0,
+    }
   }
 
   const summary: ClaimSummary = {
     runId: activity.runId,
     kind: activity.kind,
-    apples: {
-      base: activity.rewardPlan.baseApples,
-      modifier: activity.rewardPlan.modifierApples,
-      duplicateCompensation,
-      total: totalApples,
-    },
+    apples: { base: 0, modifier: 0, duplicateCompensation: 0, total: 0 },
     collection:
-      plannedCollection === null ? null : { ...plannedCollection, duplicate: isDuplicate },
+      plannedCollection === null || existingCollection !== undefined
+        ? null
+        : { ...plannedCollection, duplicate: false },
     friendEventId: activity.rewardPlan.friendEventId,
-    guaranteedByPity: activity.rewardPlan.guaranteedByPity,
+    guaranteedByPity: false,
   }
+  const nextPreferences = exhaustActivityPreference(state.pet.preferences, activity.kind)
   const nextState: GameState = {
     ...state,
-    economy: { apples: state.economy.apples + totalApples },
     collections: nextCollections,
     activeActivity: null,
-    pity: nextPity,
+    pet: {
+      ...state.pet,
+      location: activity.kind === 'travel' ? 'door' : 'computer',
+      preferences: nextPreferences,
+      tired: isPetTired(nextPreferences),
+    },
     statistics: {
-      started: state.statistics.started,
+      ...state.statistics,
       claimed: {
         ...state.statistics.claimed,
         [activity.kind]: state.statistics.claimed[activity.kind] + 1,
       },
-      applesEarned: state.statistics.applesEarned + totalApples,
-      duplicateRewards: state.statistics.duplicateRewards + (isDuplicate ? 1 : 0),
+      duplicateRewards: state.statistics.duplicateRewards,
     },
   }
 
@@ -277,14 +269,14 @@ function purchaseItem(
 ): GameTransition {
   const quantity = action.quantity ?? 1
   if (!Number.isSafeInteger(quantity) || quantity <= 0) {
-    return fail(state, 'INVALID_AMOUNT', '购买数量必须是正安全整数')
+    return fail(state, 'INVALID_AMOUNT', '补充数量必须是正安全整数')
   }
   if (state.inventory[action.itemId] + quantity > MAX_ITEM_STACK) {
-    return fail(state, 'INVENTORY_LIMIT_REACHED', '道具数量将超过库存上限')
+    return fail(state, 'INVENTORY_LIMIT_REACHED', '道具数量将超过冰箱容量')
   }
   const applesSpent = ITEM_PRICES[action.itemId] * quantity
   if (!Number.isSafeInteger(applesSpent) || state.economy.apples < applesSpent) {
-    return fail(state, 'INSUFFICIENT_APPLES', '苹果不足，无法购买道具')
+    return fail(state, 'INSUFFICIENT_APPLES', '苹果不足，暂时不能补充这个道具')
   }
 
   return succeed(
@@ -298,6 +290,126 @@ function purchaseItem(
     },
     [{ type: 'item-purchased', itemId: action.itemId, quantity, applesSpent }],
   )
+}
+
+function movePet(
+  state: GameState,
+  action: Extract<GameAction, { type: 'pet/move' }>,
+): GameTransition {
+  if (state.activeActivity !== null) {
+    return fail(state, 'PET_BUSY', '饼狗正在忙，等它完成现在的活动吧')
+  }
+  if (action.location === 'outside') {
+    return fail(state, 'INVALID_LOCATION', '只有出门旅行时才能把饼狗移动到屋外')
+  }
+  return succeed({ ...state, pet: { ...state.pet, location: action.location } }, [
+    { type: 'pet-moved', location: action.location },
+  ])
+}
+
+function interactWithRoom(
+  state: GameState,
+  action: Extract<GameAction, { type: 'room/interact' }>,
+  catalog: CollectionCatalog,
+): GameTransition {
+  if (!isValidTimestamp(action.now)) return fail(state, 'INVALID_TIME', '房间互动时间无效')
+  if (state.activeActivity !== null) {
+    return fail(state, 'PET_BUSY', '饼狗正在忙，等它完成现在的活动吧')
+  }
+
+  const movedState: GameState = {
+    ...state,
+    pet: { ...state.pet, location: action.area },
+  }
+  const event =
+    action.area === 'collection-wall'
+      ? ({ type: 'collection-wall-opened' } as const)
+      : ({ type: 'room-visited', area: action.area } as const)
+  const application = applyTaskEvent(movedState, event, action.now, catalog)
+  const effects: GameEffect[] = [{ type: 'pet-moved', location: action.area }]
+  if (application.effect !== null) effects.push(application.effect)
+  return succeed(application.state, effects)
+}
+
+function restPet(
+  state: GameState,
+  action: Extract<GameAction, { type: 'pet/rest' }>,
+): GameTransition {
+  if (!isValidTimestamp(action.now)) return fail(state, 'INVALID_TIME', '休息时间无效')
+  if (state.activeActivity !== null) {
+    return fail(state, 'PET_BUSY', '饼狗正在忙，暂时不能睡觉')
+  }
+  const generated = generateActivityPreferences(
+    state.random.seed,
+    state.random.sequences.preferences,
+  )
+  const restCount = state.pet.restCount + 1
+  const nextState: GameState = {
+    ...state,
+    pet: {
+      location: 'bed',
+      preferences: generated.preferences,
+      tired: false,
+      restCount,
+    },
+    random: {
+      ...state.random,
+      sequences: { ...state.random.sequences, preferences: generated.nextSequence },
+    },
+  }
+  return succeed(nextState, [
+    {
+      type: 'pet-rested',
+      restCount,
+      preferences: generated.preferences,
+      replayKey: restCount,
+    },
+  ])
+}
+
+function encouragePet(
+  state: GameState,
+  action: Extract<GameAction, { type: 'pet/encourage' }>,
+): GameTransition {
+  if (state.activeActivity !== null) {
+    return fail(state, 'PET_BUSY', '饼狗正在忙，现在不用再鼓励它')
+  }
+  if (state.pet.preferences[action.kind]) {
+    return fail(state, 'INVALID_AMOUNT', '饼狗已经很想做这件事啦')
+  }
+  if (state.economy.apples < PET_ENCOURAGEMENT_APPLE_COST) {
+    return fail(state, 'INSUFFICIENT_APPLES', '苹果不够，先陪饼狗完成一些小任务吧')
+  }
+  return succeed(
+    {
+      ...state,
+      economy: { apples: state.economy.apples - PET_ENCOURAGEMENT_APPLE_COST },
+      pet: {
+        ...state.pet,
+        preferences: { ...state.pet.preferences, [action.kind]: true },
+        tired: false,
+      },
+    },
+    [
+      {
+        type: 'pet-encouraged',
+        kind: action.kind,
+        applesSpent: PET_ENCOURAGEMENT_APPLE_COST,
+      },
+    ],
+  )
+}
+
+function progressTask(
+  state: GameState,
+  action: Extract<GameAction, { type: 'task/event' }>,
+  catalog: CollectionCatalog,
+): GameTransition {
+  if (!isValidTimestamp(action.now)) return fail(state, 'INVALID_TIME', '任务事件时间无效')
+  const application = applyTaskEvent(state, action.event, action.now, catalog)
+  return application.effect === null
+    ? succeed(application.state)
+    : succeed(application.state, [application.effect])
 }
 
 function requireDebug(state: GameState): GameTransition | null {
@@ -359,8 +471,8 @@ function setDebugCollection(
   const denied = requireDebug(state)
   if (denied !== null) return denied
   if (!isValidTimestamp(action.now)) return fail(state, 'INVALID_TIME', '收藏时间无效')
-  const catalogError = validateCatalog(catalog)
-  if (catalogError !== null) return fail(state, catalogError.code, catalogError.message)
+  const catalogValidation = validateCollectionCatalog(catalog)
+  if (!catalogValidation.ok) return fail(state, 'INVALID_CATALOG', catalogValidation.message)
   if (findCollectionCategory(catalog, action.collectionId) === null) {
     return fail(state, 'UNKNOWN_COLLECTION', `收藏目录中不存在：${action.collectionId}`)
   }
@@ -388,8 +500,8 @@ function collectAllForDebug(
   const denied = requireDebug(state)
   if (denied !== null) return denied
   if (!isValidTimestamp(action.now)) return fail(state, 'INVALID_TIME', '收藏时间无效')
-  const catalogError = validateCatalog(catalog)
-  if (catalogError !== null) return fail(state, catalogError.code, catalogError.message)
+  const catalogValidation = validateCollectionCatalog(catalog)
+  if (!catalogValidation.ok) return fail(state, 'INVALID_CATALOG', catalogValidation.message)
 
   const nextCollections = { ...state.collections }
   let changedCount = 0
@@ -414,10 +526,10 @@ function completeActivityForDebug(
   if (denied !== null) return denied
   if (!isValidTimestamp(action.now)) return fail(state, 'INVALID_TIME', '完成时间无效')
   if (state.activeActivity === null) {
-    return fail(state, 'ACTIVITY_NOT_ACTIVE', '当前没有可立即完成的任务')
+    return fail(state, 'ACTIVITY_NOT_ACTIVE', '当前没有可立即完成的活动')
   }
   if (action.now < state.activeActivity.startedAt) {
-    return fail(state, 'INVALID_TIME', '完成时间不能早于任务开始时间')
+    return fail(state, 'INVALID_TIME', '完成时间不能早于活动开始时间')
   }
 
   return succeed(
@@ -435,8 +547,56 @@ function completeActivityForDebug(
 function clearActivityForDebug(state: GameState): GameTransition {
   const denied = requireDebug(state)
   if (denied !== null) return denied
-  return succeed({ ...state, activeActivity: null }, [
+  const location = state.activeActivity?.kind === 'travel' ? 'door' : state.pet.location
+  return succeed({ ...state, activeActivity: null, pet: { ...state.pet, location } }, [
     { type: 'debug-applied', action: 'debug/activity-clear' },
+  ])
+}
+
+function setDebugDuration(
+  state: GameState,
+  action: Extract<GameAction, { type: 'debug/duration-set' }>,
+): GameTransition {
+  const denied = requireDebug(state)
+  if (denied !== null) return denied
+  if (!isValidActivityDuration(action.durationMs)) {
+    return fail(state, 'INVALID_DURATION', '调试活动时长必须是 1ms 到 30 天之间的安全整数')
+  }
+  return succeed(
+    {
+      ...state,
+      gameBalance: { ...state.gameBalance, activityDurationMs: action.durationMs },
+    },
+    [{ type: 'debug-applied', action: action.type }],
+  )
+}
+
+function setDebugProbability(
+  state: GameState,
+  action: Extract<GameAction, { type: 'debug/probability-set' }>,
+): GameTransition {
+  const denied = requireDebug(state)
+  if (denied !== null) return denied
+  if (!isValidProbability(action.value)) {
+    return fail(state, 'INVALID_PROBABILITY', '调试概率必须在 0 到 1 之间')
+  }
+  return succeed(
+    {
+      ...state,
+      gameBalance: {
+        ...state.gameBalance,
+        probabilities: { ...state.gameBalance.probabilities, [action.key]: action.value },
+      },
+    },
+    [{ type: 'debug-applied', action: action.type }],
+  )
+}
+
+function resetDebugTuning(state: GameState): GameTransition {
+  const denied = requireDebug(state)
+  if (denied !== null) return denied
+  return succeed({ ...state, gameBalance: createDefaultGameBalance() }, [
+    { type: 'debug-applied', action: 'debug/tuning-reset' },
   ])
 }
 
@@ -453,6 +613,16 @@ export function reduceGame(
       return claimActivity(state, action)
     case 'item/purchase':
       return purchaseItem(state, action)
+    case 'room/interact':
+      return interactWithRoom(state, action, catalog)
+    case 'pet/move':
+      return movePet(state, action)
+    case 'pet/rest':
+      return restPet(state, action)
+    case 'pet/encourage':
+      return encouragePet(state, action)
+    case 'task/event':
+      return progressTask(state, action, catalog)
     case 'debug/apples-adjust':
       return adjustDebugApples(state, action)
     case 'debug/item-adjust':
@@ -465,5 +635,11 @@ export function reduceGame(
       return completeActivityForDebug(state, action)
     case 'debug/activity-clear':
       return clearActivityForDebug(state)
+    case 'debug/duration-set':
+      return setDebugDuration(state, action)
+    case 'debug/probability-set':
+      return setDebugProbability(state, action)
+    case 'debug/tuning-reset':
+      return resetDebugTuning(state)
   }
 }

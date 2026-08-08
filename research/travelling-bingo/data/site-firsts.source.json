@@ -7,6 +7,7 @@
   "items": [
     {
       "id": "site-first-power",
+      "chronology": 8,
       "category": "说唱跳",
       "title": "POWER 直拍",
       "bvid": "BV1D23262EaD",
@@ -18,6 +19,7 @@
     },
     {
       "id": "site-first-hey-mama",
+      "chronology": 7,
       "category": "纯舞",
       "title": "Hey Mama 四机位直拍",
       "bvid": "BV179v1B2Emc",
@@ -29,6 +31,7 @@
     },
     {
       "id": "site-first-xi",
+      "chronology": 6,
       "category": "国风",
       "title": "囍 直拍",
       "bvid": "BV1Dx3i6nEm8",
@@ -40,6 +43,7 @@
     },
     {
       "id": "site-first-yuan-yu-chou",
+      "chronology": 5,
       "category": "弹唱",
       "title": "愿与愁 直拍",
       "bvid": "BV1fjpAzmE1T",
@@ -51,6 +55,7 @@
     },
     {
       "id": "site-first-dawn-in-my-soul",
+      "chronology": 4,
       "category": "原创",
       "title": "Dawn in my soul",
       "bvid": "BV1i7LM6oErE",
@@ -62,6 +67,7 @@
     },
     {
       "id": "site-first-make-a-wish",
+      "chronology": 3,
       "category": "自制",
       "title": "Make A Wish 自制 MV",
       "bvid": "BV1MbZnYoEk1",
@@ -73,6 +79,7 @@
     },
     {
       "id": "site-first-talk-worthy-talk-dirty",
+      "chronology": 2,
       "category": "唱跳",
       "title": "Talk WORTHY? Talk DIRTY! 直拍",
       "bvid": "BV1rtDRBJE7s",
@@ -84,6 +91,7 @@
     },
     {
       "id": "site-first-dynamite",
+      "chronology": 1,
       "category": "纯唱",
       "title": "Dynamite Cover",
       "bvid": "BV1cfCSYfEo3",

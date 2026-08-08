@@ -76,6 +76,18 @@ async function decodeTileGrid(inputPath, temporaryDirectory, id) {
 }
 
 const manifest = JSON.parse(await readFile(manifestPath, 'utf8'))
+if (new Set(manifest.items.map((item) => item.id)).size !== manifest.items.length) {
+  throw new Error('全站第一来源清单存在重复 ID')
+}
+const chronology = [...manifest.items].sort((left, right) => left.chronology - right.chronology)
+if (
+  chronology.some(
+    (item, index) => !Number.isSafeInteger(item.chronology) || item.chronology !== index + 1,
+  ) ||
+  chronology[0]?.id !== 'site-first-dynamite'
+) {
+  throw new Error('全站第一 chronology 必须从 Dynamite 开始并按连续正整数递增')
+}
 await rm(outputRoot, { recursive: true, force: true })
 await mkdir(outputRoot, { recursive: true })
 await mkdir(resolve(publicDataPath, '..'), { recursive: true })
@@ -128,6 +140,7 @@ try {
       tags: ['全站第一', item.category],
       metadata: {
         bvid: item.bvid,
+        chronology: item.chronology,
         programCategory: item.category,
         posterKind: item.posterKind,
       },
@@ -153,4 +166,4 @@ await writeFile(
   'utf8',
 )
 
-console.log('完成：生成 8 项全站第一 Web 素材')
+console.log(`完成：生成 ${catalogItems.length} 项全站第一 Web 素材`)

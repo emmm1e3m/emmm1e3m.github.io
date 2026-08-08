@@ -3,26 +3,56 @@
   "rights": "user-confirmed-authorized",
   "generatedAt": "2026-08-08",
   "room": {
-    "alt": "阳光下的两层铲铲饼屋，包含床、电脑、衣架、电子琴、唱片机、冰箱、展示墙和出口",
+    "alt": "暖色晨光里的两层铲铲饼屋，包含床、电脑、衣架、电子琴、唱片机、冰箱、展示墙和出口",
+    "generation": {
+      "tool": "OpenAI built-in ImageGen",
+      "mode": "precise-object-edit",
+      "promptSummary": "以用户提供的竖版房间图为唯一构图参考，完整保留两层房间、树冠、人物与兔子装饰及全部家具位置，不再采用横向重绘。"
+    },
+    "source": {
+      "width": 1098,
+      "height": 1433,
+      "path": "resources/raw/travelling-bingo/generated/chan-chan-house-v2.png",
+      "byteLength": 2810197,
+      "mime": "image/png",
+      "sha256": "32060f1a48d3812dd79159a361f69dcde96eefa3c66e98969cbe02f479c23d24",
+      "hasAlpha": false
+    },
     "images": [
       {
-        "width": 960,
-        "height": 640,
-        "path": "assets/game/chan-chan-house-960.webp",
-        "byteLength": 142828,
-        "mime": "image/webp"
+        "width": 768,
+        "height": 1002,
+        "path": "assets/game/chan-chan-house-v2-768.webp",
+        "byteLength": 223842,
+        "mime": "image/webp",
+        "sha256": "e019d009d8fdc6ced709f2a32ebc4b66bd69fc27ff897b0973d5b879ce6b2f03"
       },
       {
-        "width": 1536,
-        "height": 1024,
-        "path": "assets/game/chan-chan-house-1536.webp",
-        "byteLength": 294900,
-        "mime": "image/webp"
+        "width": 1098,
+        "height": 1433,
+        "path": "assets/game/chan-chan-house-v2-1098.webp",
+        "byteLength": 389280,
+        "mime": "image/webp",
+        "sha256": "9bbe3214270a16d038d487ad6b2e7089de1fab909a36028bc99e0eb07e52ec9f"
       }
     ]
   },
   "mascotSprites": {
-    "alt": "戴红色苹果头套的白色小狗饼狗四种状态",
+    "alt": "戴红色苹果头套的白色小狗饼狗四种经典状态",
+    "generation": {
+      "tool": "OpenAI built-in ImageGen",
+      "mode": "identity-preserve",
+      "promptSummary": "保留四种姿态与苹果头套身份特征，缩短身体、收细四肢并统一为头大身小的短圆比例。"
+    },
+    "source": {
+      "width": 1254,
+      "height": 1254,
+      "path": "resources/raw/travelling-bingo/generated/bingo-sprites-transparent-v2.png",
+      "byteLength": 796149,
+      "mime": "image/png",
+      "sha256": "92fca56baf692d203210a9203ab74aefc5dfa68266fb7bd71ca167ac2ed42c96",
+      "hasAlpha": true
+    },
     "layout": {
       "columns": 2,
       "rows": 2
@@ -33,7 +63,112 @@
       "height": 1024,
       "path": "assets/game/bingo-sprites-v2.webp",
       "byteLength": 110272,
-      "mime": "image/webp"
+      "mime": "image/webp",
+      "sha256": "b104712abc1d36b5bc047ad06e5e6b8b2d194ee506242bf997c51d4138e088a6"
+    }
+  },
+  "mascotAnimations": {
+    "walk": {
+      "alt": "饼狗走路循环的四帧动画",
+      "generation": {
+        "tool": "OpenAI built-in ImageGen",
+        "mode": "identity-preserve",
+        "promptSummary": "锁定苹果头套和白色垂耳身份，采用更小更短的身体与纤细完整四肢，生成四肢交替且小芽轻微弹动的四帧走路循环。"
+      },
+      "source": {
+        "width": 1774,
+        "height": 887,
+        "path": "resources/raw/travelling-bingo/generated/bingo-walk-v2.png",
+        "byteLength": 553084,
+        "mime": "image/png",
+        "sha256": "0eeaf1eb02763cf829bcb55e9d58272e1d47616ef2c000527627467da3aee2a5",
+        "hasAlpha": true
+      },
+      "layout": {
+        "columns": 4,
+        "rows": 1,
+        "frameWidth": 512,
+        "frameHeight": 512
+      },
+      "frames": ["step-a", "step-b", "step-c", "step-d"],
+      "image": {
+        "width": 2048,
+        "height": 512,
+        "path": "assets/game/bingo-walk-v2.webp",
+        "byteLength": 415100,
+        "mime": "image/webp",
+        "sha256": "dec62a238badf06c72a0f7715ebd161d62420c7218cf5df26be0b1e642372dae",
+        "encoding": "lossless",
+        "transparentPixelRgb": "000000"
+      }
+    },
+    "actions": {
+      "alt": "饼狗补充苹果、坐下、围围巾和睡觉的四种状态",
+      "generation": {
+        "tool": "OpenAI built-in ImageGen",
+        "mode": "identity-preserve",
+        "promptSummary": "锁定苹果头套和白色垂耳身份，采用更小更短的身体与纤细完整四肢，生成抱苹果篮、坐下、围围巾和蜷缩睡觉四种状态。"
+      },
+      "source": {
+        "width": 1774,
+        "height": 887,
+        "path": "resources/raw/travelling-bingo/generated/bingo-actions-v2.png",
+        "byteLength": 677516,
+        "mime": "image/png",
+        "sha256": "aab0fe3b4e5de14177b608d00086ba6f9c106bbbed4c83fe1c8a1aaaeb70d488",
+        "hasAlpha": true
+      },
+      "layout": {
+        "columns": 4,
+        "rows": 1,
+        "frameWidth": 512,
+        "frameHeight": 512
+      },
+      "frames": ["replenish", "sit", "ready", "sleep"],
+      "image": {
+        "width": 2048,
+        "height": 512,
+        "path": "assets/game/bingo-actions-v2.webp",
+        "byteLength": 466942,
+        "mime": "image/webp",
+        "sha256": "e11cba65094a22d14e455e61f2e56864443416e784c3514da47e32a0d1defd89",
+        "encoding": "lossless",
+        "transparentPixelRgb": "000000"
+      }
+    },
+    "refuse": {
+      "alt": "饼狗犹豫和摇头拒绝的两帧动画",
+      "generation": {
+        "tool": "OpenAI built-in ImageGen",
+        "mode": "identity-preserve",
+        "promptSummary": "锁定苹果头套和白色垂耳身份，采用更小更短的身体与纤细完整四肢，生成轻轻犹豫与困倦摇头两帧。"
+      },
+      "source": {
+        "width": 1774,
+        "height": 887,
+        "path": "resources/raw/travelling-bingo/generated/bingo-refuse-v2.png",
+        "byteLength": 590000,
+        "mime": "image/png",
+        "sha256": "d0f55b178f88d5afb10ab9777380b1b6ad63f36a9b546b56e0953ef9c7cbf5ed",
+        "hasAlpha": true
+      },
+      "layout": {
+        "columns": 2,
+        "rows": 1,
+        "frameWidth": 512,
+        "frameHeight": 512
+      },
+      "frames": ["hesitate", "shake-head"],
+      "image": {
+        "width": 1024,
+        "height": 512,
+        "path": "assets/game/bingo-refuse-v2.webp",
+        "byteLength": 219540,
+        "mime": "image/webp",
+        "sha256": "bab1d3a1a24ad46c94691983b021f0969413c4815f705739e4f97b893cb5934a",
+        "encoding": "lossless",
+        "transparentPixelRgb": "000000"
+      }
     }
   }
 }

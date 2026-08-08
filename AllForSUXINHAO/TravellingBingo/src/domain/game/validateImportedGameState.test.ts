@@ -6,6 +6,7 @@ const catalog: CollectionCatalog = {
   postcard: ['postcard-1'],
   'million-shot': ['million-shot-1'],
   'site-first': ['site-first-1'],
+  siteFirstChronology: ['site-first-1'],
 }
 
 function stateWithActivity(
@@ -22,12 +23,12 @@ function stateWithActivity(
       endsAt: 2_000,
       rewardSeed: 'reward-import-validation',
       rewardPlan: {
-        baseApples: 1,
+        baseApples: 0,
         modifierApples: 0,
         collection,
         friendEventId: null,
         guaranteedByPity: false,
-        pityAfterClaim: kind === 'travel' ? null : 0,
+        pityAfterClaim: null,
       },
       supplyId:
         kind === 'travel'
@@ -104,6 +105,35 @@ describe('导入存档与当前收藏目录的一致性', () => {
     expect(validateImportedGameState(state, catalog)).toMatchObject({
       ok: false,
       code: 'REWARD_CATALOG_CATEGORY_MISMATCH',
+    })
+  })
+
+  it('旧存档只保存拥有项，目录扩充后仍然有效', () => {
+    const state = createInitialGameState({ now: 1_000, seed: 'expanded-catalog' })
+    state.collections['postcard-1'] = {
+      id: 'postcard-1',
+      firstObtainedAt: 1_000,
+      duplicateCount: 0,
+    }
+    const expandedCatalog: CollectionCatalog = {
+      ...catalog,
+      postcard: [...catalog.postcard, 'postcard-added-later'],
+    }
+
+    expect(validateImportedGameState(state, expandedCatalog)).toEqual({ ok: true })
+  })
+
+  it('拒绝不完整或重复的全站第一 chronology', () => {
+    const state = createInitialGameState({ now: 1_000, seed: 'bad-chronology' })
+    const invalidCatalog: CollectionCatalog = {
+      ...catalog,
+      'site-first': ['site-first-1', 'site-first-2'],
+      siteFirstChronology: ['site-first-1', 'site-first-1'],
+    }
+
+    expect(validateImportedGameState(state, invalidCatalog)).toMatchObject({
+      ok: false,
+      code: 'INVALID_CATALOG',
     })
   })
 })

@@ -21,9 +21,12 @@ const postcardCatalog = postcardCatalogSchema.parse(postcardCatalogJson)
 
 describe('收藏目录契约', () => {
   it('校验公开海报目录与真实来源明信片契约', () => {
-    expect(millionShotCatalog.items).toHaveLength(30)
-    expect(siteFirstCatalog.items).toHaveLength(8)
-    expect(postcardCatalog.items).toHaveLength(12)
+    expect(millionShotCatalog.items).toHaveLength(millionShotCatalog.itemCount)
+    expect(siteFirstCatalog.items).toHaveLength(siteFirstCatalog.itemCount)
+    expect(postcardCatalog.items).toHaveLength(postcardCatalog.itemCount)
+    expect(millionShotCatalog.itemCount).toBeGreaterThan(0)
+    expect(siteFirstCatalog.itemCount).toBeGreaterThan(0)
+    expect(postcardCatalog.itemCount).toBeGreaterThan(0)
     expect(postcardCatalog.items[0]?.source.platform).toBe('bilibilitoy')
     expect(postcardCatalog.items[0]?.images[0]?.path).toMatch(
       /^assets\/collectibles\/postcards\/.+\.webp$/,
@@ -32,8 +35,59 @@ describe('收藏目录契约', () => {
   })
 
   it('拒绝数量声明与 items 不一致的目录', () => {
-    const invalid = { ...millionShotCatalogJson, itemCount: 29 }
+    const invalid = {
+      ...millionShotCatalogJson,
+      itemCount: millionShotCatalogJson.items.length - 1,
+    }
     expect(millionShotCatalogSchema.safeParse(invalid).success).toBe(false)
+  })
+
+  it('放宽来源版本后仍拒绝跨类别的 generatedFrom', () => {
+    expect(
+      siteFirstCatalogSchema.safeParse({
+        ...siteFirstCatalogJson,
+        generatedFrom: postcardCatalogJson.generatedFrom,
+      }).success,
+    ).toBe(false)
+  })
+
+  it('全站第一 chronology 连续唯一，明确从 Dynamite 到 Power', () => {
+    const chronology = [...siteFirstCatalog.items]
+      .sort((left, right) => left.metadata.chronology - right.metadata.chronology)
+      .map((item) => item.id)
+    expect(chronology[0]).toBe('site-first-dynamite')
+    expect(chronology.at(-1)).toBe('site-first-power')
+    expect(
+      [...siteFirstCatalog.items]
+        .sort((left, right) => left.metadata.chronology - right.metadata.chronology)
+        .map((item) => item.metadata.chronology),
+    ).toEqual(Array.from({ length: siteFirstCatalog.itemCount }, (_, index) => index + 1))
+
+    const invalid = structuredClone(siteFirstCatalogJson)
+    invalid.items[0]!.metadata.chronology = invalid.items[1]!.metadata.chronology
+    expect(siteFirstCatalogSchema.safeParse(invalid).success).toBe(false)
+  })
+
+  it('目录数量可扩充，仍严格要求 itemCount、chronology 与唯一 ID 对应', () => {
+    const expanded = structuredClone(millionShotCatalogJson)
+    const extra = structuredClone(expanded.items[0]!)
+    extra.id = 'million-shot-future'
+    extra.metadata.sequence = Math.max(...expanded.items.map((item) => item.metadata.sequence)) + 1
+    expanded.items.push(extra)
+    expanded.itemCount = expanded.items.length
+
+    expect(millionShotCatalogSchema.safeParse(expanded).success).toBe(true)
+
+    const expandedSiteFirst = structuredClone(siteFirstCatalogJson)
+    const futureSiteFirst = structuredClone(expandedSiteFirst.items.at(-1)!)
+    futureSiteFirst.id = 'site-first-future'
+    futureSiteFirst.title = '未来的新舞台'
+    futureSiteFirst.metadata.chronology = expandedSiteFirst.items.length + 1
+    expandedSiteFirst.items.push(futureSiteFirst)
+    expandedSiteFirst.itemCount = expandedSiteFirst.items.length
+
+    const parsed = siteFirstCatalogSchema.parse(expandedSiteFirst)
+    expect(parsed.items).toHaveLength(siteFirstCatalog.itemCount + 1)
   })
 
   it('拒绝越过公开目录的图片路径', () => {
@@ -53,12 +107,16 @@ describe('目录合并与收藏进度', () => {
   it('合并真实明信片、百万直拍与全站第一', () => {
     const catalog = mergeContentCatalogs(millionShotCatalog, siteFirstCatalog, postcardCatalog)
 
-    expect(catalog.items).toHaveLength(50)
+    expect(catalog.items).toHaveLength(
+      postcardCatalog.itemCount + millionShotCatalog.itemCount + siteFirstCatalog.itemCount,
+    )
     expect(catalog.categoryCounts).toEqual({
-      postcard: 12,
-      'million-shot': 30,
-      'site-first': 8,
+      postcard: postcardCatalog.itemCount,
+      'million-shot': millionShotCatalog.itemCount,
+      'site-first': siteFirstCatalog.itemCount,
     })
+    expect(catalog.siteFirstChronology[0]).toBe('site-first-dynamite')
+    expect(catalog.siteFirstChronology.at(-1)).toBe('site-first-power')
     expect(getCollectibleById(catalog, 'postcard-2025-01-0002')?.category).toBe('postcard')
     expect(getCollectibleById(catalog, 'million-shot-152')?.title).toBe('POWER')
     expect(getCollectibleById(catalog, 'missing')).toBeUndefined()
@@ -75,7 +133,7 @@ describe('目录合并与收藏进度', () => {
     ])
 
     expect(progress.collected).toBe(3)
-    expect(progress.total).toBe(50)
+    expect(progress.total).toBe(catalog.items.length)
     expect(progress.byCategory.postcard.collected).toBe(1)
     expect(progress.byCategory['million-shot'].collected).toBe(1)
     expect(progress.byCategory['site-first'].collected).toBe(1)

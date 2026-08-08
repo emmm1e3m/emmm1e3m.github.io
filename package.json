@@ -23,6 +23,7 @@
     "assets:build": "node scripts/assets/build-web-assets.mjs",
     "assets:build:site-firsts": "node scripts/assets/build-site-first-assets.mjs",
     "assets:build:demo": "node scripts/assets/build-demo-visuals.mjs",
+    "assets:build:fonts": "node scripts/assets/build-fonts.mjs",
     "assets:build:postcards": "node scripts/assets/build-demo-postcards.mjs",
     "assets:verify": "node scripts/assets/verify-assets.mjs",
     "site:assemble": "node scripts/site/assemble-site.mjs",
@@ -31,11 +32,9 @@
     "verify": "npm run format:check && npm run lint && npm run typecheck && npm run test && npm run assets:verify"
   },
   "dependencies": {
-    "motion": "^13.0.0",
     "react": "^19.2.8",
     "react-dom": "^19.2.8",
-    "zod": "^4.4.3",
-    "zustand": "^5.0.14"
+    "zod": "^4.4.3"
   },
   "devDependencies": {
     "@eslint/js": "^10.0.1",
@@ -54,6 +53,7 @@
     "jsdom": "^29.1.1",
     "prettier": "^3.9.6",
     "sharp": "^0.35.3",
+    "subset-font": "^2.5.0",
     "typescript": "5.9.3",
     "typescript-eslint": "^8.66.0",
     "vite": "^8.2.1",

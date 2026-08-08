@@ -2,8 +2,6 @@ name: Validate TravellingBingo
 
 on:
   pull_request:
-  push:
-    branches-ignore: [main]
 
 permissions:
   contents: read
@@ -30,8 +28,9 @@ jobs:
       - name: Install Playwright Chromium
         run: npx playwright install --with-deps chromium
 
-      - name: Browser smoke tests
+      # Playwright 的 webServer 会先构建一次生产包，再用同一份产物启动预览。
+      - name: Build once and run browser E2E
         run: npm run test:e2e
 
-      - name: Build and assemble
-        run: npm run build && npm run site:assemble && npm run site:verify
+      - name: Assemble and verify production site
+        run: npm run site:assemble && npm run site:verify

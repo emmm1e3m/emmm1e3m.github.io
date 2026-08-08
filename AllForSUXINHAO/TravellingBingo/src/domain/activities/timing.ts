@@ -7,7 +7,8 @@ function assertValidNow(now: number): void {
 }
 
 /**
- * 任务进度只由绝对时间戳推导，不把倒计时快照写入状态。
+ * 活动进度只由已持久化的 startedAt/endsAt 推导，不把易漂移的倒计时值写入状态，
+ * 也不会在导入后使用当前 gameBalance 或默认时长重算 endsAt。
  * 边界前 1ms 仍在运行，恰好到 endsAt 时即可领取。
  */
 export function deriveActivityTiming(activity: ActivityRun | null, now: number): ActivityTiming {

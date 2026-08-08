@@ -1,0 +1,21 @@
+@font-face {
+  font-family: 'TravellingBingo Display';
+  src: url('/assets/fonts/kehua-lerongrong.woff2') format('woff2');
+  font-weight: 400;
+  font-style: normal;
+  font-display: swap;
+}
+
+@font-face {
+  font-family: 'TravellingBingo UI';
+  src: url('/assets/fonts/kehua-naitang.woff2') format('woff2');
+  font-weight: 400;
+  font-style: normal;
+  font-display: swap;
+}
+
+:root {
+  --font-display: 'TravellingBingo Display', 'Microsoft YaHei UI', 'PingFang SC', sans-serif;
+  --font-ui:
+    'TravellingBingo UI', 'Segoe UI Emoji', 'Microsoft YaHei UI', 'PingFang SC', sans-serif;
+}

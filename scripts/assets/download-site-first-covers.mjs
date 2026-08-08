@@ -61,7 +61,9 @@ async function ensureFallbackCover(item) {
 }
 
 const manifest = JSON.parse(await readFile(manifestPath, 'utf8'))
-if (manifest.items.length !== 8) throw new Error('全站第一清单必须恰好包含 8 项')
+if (!Array.isArray(manifest.items) || manifest.items.length < 1) {
+  throw new Error('全站第一清单至少需要 1 项')
+}
 
 const lockedItems = []
 for (const item of manifest.items) {
@@ -92,4 +94,4 @@ await writeFile(
   'utf8',
 )
 
-console.log('完成：8 项全站第一原件齐全，两个缺失海报已使用 B 站原始封面补齐')
+console.log(`完成：${manifest.items.length} 项全站第一原件齐全`)

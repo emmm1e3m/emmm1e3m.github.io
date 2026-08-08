@@ -5,6 +5,8 @@ import { fileURLToPath } from 'node:url'
 
 import sharp from 'sharp'
 
+import { collectInterfaceGlyphs } from './build-fonts.mjs'
+
 const workspaceRoot = resolve(fileURLToPath(new URL('../..', import.meta.url)))
 const publicRoot = resolve(workspaceRoot, 'AllForSUXINHAO/TravellingBingo/public')
 const sourcePath = resolve(
@@ -45,6 +47,8 @@ const postcardLockPath = resolve(postcardRawRoot, 'postcards.lock.json')
 const postcardPublicAssetRoot = resolve(publicRoot, 'assets/collectibles/postcards')
 const demoVisualsPath = resolve(publicRoot, 'data/demo-visuals.json')
 const demoGameAssetRoot = resolve(publicRoot, 'assets/game')
+const fontManifestPath = resolve(publicRoot, 'data/font-manifest.json')
+const publicFontAssetRoot = resolve(publicRoot, 'assets/fonts')
 
 const postcardEntryUrl = 'https://www.bilibili.com/toy/preview/preview_5SdX8Yet/index.htm'
 const postcardImagePathPattern =
@@ -98,6 +102,10 @@ async function verifyWebpEntry(
   )
   ensure(bytes.byteLength === entry.byteLength, `${label} 的实际字节数与目录不符`)
   if (requireAlpha) ensure(metadata.hasAlpha === true, `${label} 缺少透明通道`)
+  if (entry.encoding !== undefined) {
+    ensure(entry.encoding === 'lossless', `${label} 的编码声明不受支持`)
+    ensure(bytes.includes(Buffer.from('VP8L')), `${label} 声明为无损但 WebP 不含 VP8L 数据块`)
+  }
 
   const digest = createHash('sha256').update(bytes).digest('hex')
   if (requireSha256 || entry.sha256 !== undefined) {
@@ -106,6 +114,121 @@ async function verifyWebpEntry(
   }
 
   return { digest, metadata, target }
+}
+
+// 每格都必须留出透明安全区，避免裁掉细腿、尾巴或头顶小芽，也避免帧串到相邻单元。
+async function verifyHorizontalAtlas(target, columns, label) {
+  const { data, info } = await sharp(target)
+    .ensureAlpha()
+    .raw()
+    .toBuffer({ resolveWithObject: true })
+  ensure(info.channels === 4, `${label} 解码后缺少 RGBA 通道`)
+  ensure(info.width % columns === 0, `${label} 不能按 ${columns} 列等分`)
+  const cellWidth = info.width / columns
+  const cellArea = cellWidth * info.height
+  let transparentRgbLeakPixels = 0
+
+  for (let column = 0; column < columns; column += 1) {
+    let minX = cellWidth
+    let minY = info.height
+    let maxX = -1
+    let maxY = -1
+    let visiblePixels = 0
+    let partialPixels = 0
+
+    for (let y = 0; y < info.height; y += 1) {
+      for (let localX = 0; localX < cellWidth; localX += 1) {
+        const pixelOffset = (y * info.width + column * cellWidth + localX) * info.channels
+        const alpha = data[pixelOffset + 3]
+        if (alpha === 0) {
+          if (
+            data[pixelOffset] !== 0 ||
+            data[pixelOffset + 1] !== 0 ||
+            data[pixelOffset + 2] !== 0
+          ) {
+            transparentRgbLeakPixels += 1
+          }
+          continue
+        }
+        visiblePixels += 1
+        if (alpha < 255) partialPixels += 1
+        minX = Math.min(minX, localX)
+        minY = Math.min(minY, y)
+        maxX = Math.max(maxX, localX)
+        maxY = Math.max(maxY, y)
+      }
+    }
+
+    ensure(visiblePixels > cellArea * 0.2, `${label} 第 ${column + 1} 帧主体覆盖过小`)
+    ensure(visiblePixels < cellArea * 0.7, `${label} 第 ${column + 1} 帧透明背景不足`)
+    ensure(partialPixels > 0, `${label} 第 ${column + 1} 帧缺少抗锯齿透明边缘`)
+    ensure(
+      minX >= 24 && minY >= 24 && cellWidth - 1 - maxX >= 24 && info.height - 1 - maxY >= 24,
+      `${label} 第 ${column + 1} 帧触碰单元安全边界`,
+    )
+  }
+
+  ensure(transparentRgbLeakPixels === 0, `${label} 的完全透明像素含有隐藏彩色数据`)
+}
+
+function verifyGenerationSummary(generation, label, expectedMode) {
+  ensure(generation?.tool === 'OpenAI built-in ImageGen', `${label} 没有记录 ImageGen 来源`)
+  ensure(generation.mode === expectedMode, `${label} 的 ImageGen 生成模式不一致`)
+  ensure(
+    typeof generation.promptSummary === 'string' && generation.promptSummary.length >= 30,
+    `${label} 缺少可复核的提示词摘要`,
+  )
+}
+
+async function verifyPngSourceEntry(
+  entry,
+  { label, expectedPath, expectedWidth, expectedHeight, requireAlpha },
+) {
+  ensure(entry?.mime === 'image/png', `${label} 的 MIME 不是 image/png`)
+  ensure(entry.path === expectedPath, `${label} 的母版路径不一致`)
+  ensure(
+    entry.width === expectedWidth && entry.height === expectedHeight,
+    `${label} 的目录尺寸不一致`,
+  )
+  ensure(entry.hasAlpha === requireAlpha, `${label} 的透明通道目录信息不一致`)
+  ensure(Number.isInteger(entry.byteLength) && entry.byteLength > 0, `${label} 的字节数不合法`)
+  ensure(/^[a-f0-9]{64}$/.test(entry.sha256), `${label} 的 SHA-256 不合法`)
+
+  const target = resolveSafeRelative(
+    workspaceRoot,
+    entry.path,
+    `${label} 路径`,
+    'resources/raw/travelling-bingo/generated/',
+  )
+  const bytes = await readFile(target)
+  const metadata = await sharp(bytes, { failOn: 'warning' }).metadata()
+  ensure(metadata.format === 'png', `${label} 的实际格式不是 PNG`)
+  ensure(
+    metadata.width === entry.width && metadata.height === entry.height,
+    `${label} 的实际尺寸与目录不符`,
+  )
+  ensure(metadata.hasAlpha === requireAlpha, `${label} 的实际透明通道状态不符`)
+  ensure(bytes.byteLength === entry.byteLength, `${label} 的实际字节数与目录不符`)
+  const digest = createHash('sha256').update(bytes).digest('hex')
+  ensure(digest === entry.sha256, `${label} 的 SHA-256 与目录不符`)
+  return digest
+}
+
+async function verifyWoff2Entry(entry, label) {
+  ensure(entry?.mime === 'font/woff2', `${label} 的 MIME 不是 font/woff2`)
+  ensure(Number.isInteger(entry.byteLength) && entry.byteLength > 0, `${label} 的字节数不合法`)
+  ensure(entry.byteLength < 1024 * 1024, `${label} 超过 1 MiB 的发布上限`)
+  ensure(/^[a-f0-9]{64}$/.test(entry.sha256), `${label} 的 SHA-256 不合法`)
+
+  const target = resolveSafeRelative(publicRoot, entry.path, `${label} 路径`, 'assets/fonts/')
+  ensure(entry.path.endsWith('.woff2'), `${label} 的扩展名不是 WOFF2`)
+  const bytes = await readFile(target)
+  ensure(bytes.subarray(0, 4).toString('ascii') === 'wOF2', `${label} 的实际格式不是 WOFF2`)
+  ensure(bytes.byteLength === entry.byteLength, `${label} 的实际字节数与目录不符`)
+  ensure(
+    createHash('sha256').update(bytes).digest('hex') === entry.sha256,
+    `${label} 的 SHA-256 与目录不符`,
+  )
 }
 
 async function verifyExactDirectory(directory, expectedNames, label) {
@@ -128,14 +251,18 @@ function ensureRealPostcardReference(value, label) {
 }
 
 const source = JSON.parse(await readFile(sourcePath, 'utf8'))
-if (source.items.length !== 30) throw new Error('百万直拍来源清单不是 30 项')
+if (!Array.isArray(source.items) || source.items.length < 1) {
+  throw new Error('百万直拍来源清单至少需要 1 项')
+}
 if (source.selection.rights !== 'user-confirmed-authorized') {
   throw new Error('百万直拍来源清单缺少用户授权口径')
 }
 
 const ids = new Set(source.items.map((item) => item.id))
 const sequences = new Set(source.items.map((item) => item.sequence))
-if (ids.size !== 30 || sequences.size !== 30) throw new Error('百万直拍清单存在重复 ID 或编号')
+if (ids.size !== source.items.length || sequences.size !== source.items.length) {
+  throw new Error('百万直拍清单存在重复 ID 或编号')
+}
 
 for (const item of source.items) {
   if (!item.sourcePostUrl.startsWith('https://weibo.com/')) {
@@ -147,7 +274,9 @@ for (const item of source.items) {
 }
 
 const lock = JSON.parse(await readFile(lockPath, 'utf8'))
-if (lock.itemCount !== 30 || lock.items.length !== 30) throw new Error('海报下载锁定清单不是 30 项')
+if (lock.itemCount !== source.items.length || lock.items.length !== source.items.length) {
+  throw new Error('海报下载锁定清单与来源数量不一致')
+}
 
 let verifiedMillionOriginals = 0
 for (const item of lock.items) {
@@ -166,13 +295,18 @@ for (const item of lock.items) {
     if (error.code !== 'ENOENT') throw error
   }
 }
-if (verifiedMillionOriginals !== 0 && verifiedMillionOriginals !== 30) {
-  throw new Error(`本地百万直拍原图不完整：仅找到 ${verifiedMillionOriginals}/30`)
+if (verifiedMillionOriginals !== 0 && verifiedMillionOriginals !== source.items.length) {
+  throw new Error(
+    `本地百万直拍原图不完整：仅找到 ${verifiedMillionOriginals}/${source.items.length}`,
+  )
 }
 
 const publicCatalog = JSON.parse(await readFile(publicDataPath, 'utf8'))
-if (publicCatalog.itemCount !== 30 || publicCatalog.items.length !== 30) {
-  throw new Error('网页百万直拍目录不是 30 项')
+if (
+  publicCatalog.itemCount !== source.items.length ||
+  publicCatalog.items.length !== source.items.length
+) {
+  throw new Error('网页百万直拍目录与来源数量不一致')
 }
 for (const item of publicCatalog.items) {
   if (!Array.isArray(item.images) || item.images.length < 1) {
@@ -197,18 +331,52 @@ const siteFirstSource = JSON.parse(await readFile(siteFirstSourcePath, 'utf8'))
 const siteFirstLock = JSON.parse(await readFile(siteFirstLockPath, 'utf8'))
 const siteFirstPublicCatalog = JSON.parse(await readFile(siteFirstPublicDataPath, 'utf8'))
 if (
-  siteFirstSource.items.length !== 8 ||
-  siteFirstLock.items.length !== 8 ||
-  siteFirstPublicCatalog.items.length !== 8
+  siteFirstSource.items.length < 1 ||
+  siteFirstLock.itemCount !== siteFirstSource.items.length ||
+  siteFirstLock.items.length !== siteFirstSource.items.length ||
+  siteFirstPublicCatalog.itemCount !== siteFirstSource.items.length ||
+  siteFirstPublicCatalog.items.length !== siteFirstSource.items.length
 ) {
-  throw new Error('全站第一的来源、锁定或网页清单不是 8 项')
+  throw new Error('全站第一的来源、锁定或网页清单数量不一致')
 }
 if (siteFirstSource.rights !== 'user-confirmed-authorized') {
   throw new Error('全站第一来源清单缺少用户授权口径')
 }
 
 const siteFirstBvids = new Set(siteFirstSource.items.map((item) => item.bvid))
-if (siteFirstBvids.size !== 8) throw new Error('全站第一清单存在重复 BV 号')
+if (siteFirstBvids.size !== siteFirstSource.items.length) {
+  throw new Error('全站第一清单存在重复 BV 号')
+}
+const siteFirstSourceIds = new Set(siteFirstSource.items.map((item) => item.id))
+if (siteFirstSourceIds.size !== siteFirstSource.items.length) {
+  throw new Error('全站第一来源清单存在重复 ID')
+}
+const siteFirstPublicIds = new Set(siteFirstPublicCatalog.items.map((item) => item.id))
+if (siteFirstPublicIds.size !== siteFirstPublicCatalog.items.length) {
+  throw new Error('全站第一网页目录存在重复 ID')
+}
+
+const sourceChronology = [...siteFirstSource.items].sort(
+  (left, right) => left.chronology - right.chronology,
+)
+if (
+  sourceChronology.some((item, index) => item.chronology !== index + 1) ||
+  sourceChronology[0]?.id !== 'site-first-dynamite'
+) {
+  throw new Error('全站第一来源 chronology 必须从 Dynamite 开始并以连续正整数递增')
+}
+
+const publicChronology = [...siteFirstPublicCatalog.items].sort(
+  (left, right) => left.metadata?.chronology - right.metadata?.chronology,
+)
+if (
+  publicChronology.some(
+    (item, index) =>
+      item.metadata?.chronology !== index + 1 || item.id !== sourceChronology[index]?.id,
+  )
+) {
+  throw new Error('全站第一网页目录 chronology 与来源清单不一致')
+}
 
 for (const item of siteFirstLock.items) {
   const originalPath = resolveSafeRelative(
@@ -269,12 +437,14 @@ const postcardLock = JSON.parse(await readFile(postcardLockPath, 'utf8'))
 ensure(postcardPublicCatalog.schemaVersion === 1, '网页明信片目录版本不受支持')
 ensure(postcardLock.schemaVersion === 1, '明信片锁定目录版本不受支持')
 ensure(
-  postcardPublicCatalog.itemCount === 12 && postcardPublicCatalog.items.length === 12,
-  '网页明信片目录不是 12 项',
+  postcardPublicCatalog.itemCount > 0 &&
+    postcardPublicCatalog.items.length === postcardPublicCatalog.itemCount,
+  '网页明信片目录数量声明不一致',
 )
 ensure(
-  postcardLock.itemCount === 12 && postcardLock.items.length === 12,
-  '明信片锁定目录不是 12 项',
+  postcardLock.itemCount === postcardPublicCatalog.itemCount &&
+    postcardLock.items.length === postcardPublicCatalog.itemCount,
+  '明信片锁定目录与网页目录数量不一致',
 )
 ensure(
   postcardPublicCatalog.source?.platform === 'bilibilitoy' &&
@@ -298,11 +468,15 @@ const postcardSourceById = new Map(postcardSource.items.map((item) => [item.id, 
 const postcardLockById = new Map(postcardLock.items.map((item) => [item.id, item]))
 const selectedPostcardSourceIds = postcardPublicCatalog.selection?.selectedSourceIds
 ensure(
-  Array.isArray(selectedPostcardSourceIds) && selectedPostcardSourceIds.length === 12,
-  '网页明信片选择清单不是 12 项',
+  Array.isArray(selectedPostcardSourceIds) &&
+    selectedPostcardSourceIds.length === postcardPublicCatalog.itemCount,
+  '网页明信片选择清单与网页目录数量不一致',
 )
-ensure(new Set(selectedPostcardSourceIds).size === 12, '网页明信片选择清单存在重复 sourceId')
-ensure(postcardLockById.size === 12, '明信片锁定目录存在重复 ID')
+ensure(
+  new Set(selectedPostcardSourceIds).size === postcardPublicCatalog.itemCount,
+  '网页明信片选择清单存在重复 sourceId',
+)
+ensure(postcardLockById.size === postcardPublicCatalog.itemCount, '明信片锁定目录存在重复 ID')
 
 // 已知字节重复组中最多只能选择一张，避免把同一张真实照片包装成两件收藏品。
 for (const group of postcardDuplicates.groups) {
@@ -427,9 +601,19 @@ for (const item of postcardPublicCatalog.items) {
   }
 }
 
-ensure(postcardPublicIds.size === 12, '网页明信片 ID 数量不是 12')
-ensure(postcardDerivativePaths.size === 24, '网页明信片衍生图不是 24 个唯一文件')
-ensure(expectedRawPostcardFileNames.size === 13, '明信片原图目录不是 12 张原图加一份锁定清单')
+ensure(postcardPublicIds.size === postcardPublicCatalog.itemCount, '网页明信片 ID 存在重复')
+const expectedPostcardDerivativeCount = postcardPublicCatalog.items.reduce(
+  (total, item) => total + item.images.length,
+  0,
+)
+ensure(
+  postcardDerivativePaths.size === expectedPostcardDerivativeCount,
+  '网页明信片衍生图数量或路径唯一性不符',
+)
+ensure(
+  expectedRawPostcardFileNames.size === postcardPublicCatalog.itemCount + 1,
+  '明信片原图目录数量与网页目录不一致',
+)
 ensure(
   selectedPostcardSourceIds.every((sourceId) => postcardPublicIds.has(`postcard-${sourceId}`)),
   '网页明信片选择清单与实际收藏品不一致',
@@ -444,10 +628,21 @@ ensure(
   Array.isArray(demoVisuals.room?.images) && demoVisuals.room.images.length === 2,
   '饼屋必须有两档网页图',
 )
+const demoSourceHashes = new Set()
+verifyGenerationSummary(demoVisuals.room.generation, '饼屋母版', 'precise-object-edit')
+demoSourceHashes.add(
+  await verifyPngSourceEntry(demoVisuals.room.source, {
+    label: '饼屋 ImageGen 母版',
+    expectedPath: 'resources/raw/travelling-bingo/generated/chan-chan-house-v2.png',
+    expectedWidth: 1098,
+    expectedHeight: 1433,
+    requireAlpha: false,
+  }),
+)
 
 const expectedRoomSizes = new Map([
-  [960, 640],
-  [1536, 1024],
+  [768, 1002],
+  [1098, 1433],
 ])
 const expectedGameFileNames = new Set()
 const demoVisualHashes = new Set()
@@ -457,19 +652,30 @@ for (const image of demoVisuals.room.images) {
     `饼屋 ${image.width}px 图片尺寸不符合设计目录`,
   )
   ensure(
-    image.path === `assets/game/chan-chan-house-${image.width}.webp`,
+    image.path === `assets/game/chan-chan-house-v2-${image.width}.webp`,
     '饼屋图片路径或文件名不合法',
   )
   const verified = await verifyWebpEntry(image, {
     label: `饼屋 ${image.width}px 图片`,
     expectedPrefix: 'assets/game/',
+    requireSha256: true,
   })
   demoVisualHashes.add(verified.digest)
   expectedGameFileNames.add(image.path.split('/').at(-1))
 }
-ensure(expectedGameFileNames.size === 2, '饼屋网页图缺少 960/1536 两档唯一文件')
+ensure(expectedGameFileNames.size === 2, '饼屋网页图缺少 768/1098 两档唯一文件')
 
 const mascotSprites = demoVisuals.mascotSprites
+verifyGenerationSummary(mascotSprites?.generation, '饼狗经典四态母版', 'identity-preserve')
+demoSourceHashes.add(
+  await verifyPngSourceEntry(mascotSprites?.source, {
+    label: '饼狗经典四态 ImageGen 母版',
+    expectedPath: 'resources/raw/travelling-bingo/generated/bingo-sprites-transparent-v2.png',
+    expectedWidth: 1254,
+    expectedHeight: 1254,
+    requireAlpha: true,
+  }),
+)
 ensure(
   mascotSprites?.layout?.columns === 2 && mascotSprites.layout.rows === 2,
   '饼狗精灵表不是 2×2 布局',
@@ -489,13 +695,179 @@ ensure(
 const verifiedMascot = await verifyWebpEntry(mascotSprites.image, {
   label: '饼狗 sprite v2',
   expectedPrefix: 'assets/game/',
+  requireSha256: true,
   requireAlpha: true,
 })
 demoVisualHashes.add(verifiedMascot.digest)
 expectedGameFileNames.add('bingo-sprites-v2.webp')
-ensure(demoVisualHashes.size === 3, 'Demo 视觉目录存在完全重复文件')
+
+const expectedAnimations = new Map([
+  [
+    'walk',
+    {
+      columns: 4,
+      frames: ['step-a', 'step-b', 'step-c', 'step-d'],
+      path: 'assets/game/bingo-walk-v2.webp',
+      sourcePath: 'resources/raw/travelling-bingo/generated/bingo-walk-v2.png',
+      sourceWidth: 1774,
+      sourceHeight: 887,
+    },
+  ],
+  [
+    'actions',
+    {
+      columns: 4,
+      frames: ['replenish', 'sit', 'ready', 'sleep'],
+      path: 'assets/game/bingo-actions-v2.webp',
+      sourcePath: 'resources/raw/travelling-bingo/generated/bingo-actions-v2.png',
+      sourceWidth: 1774,
+      sourceHeight: 887,
+    },
+  ],
+  [
+    'refuse',
+    {
+      columns: 2,
+      frames: ['hesitate', 'shake-head'],
+      path: 'assets/game/bingo-refuse-v2.webp',
+      sourcePath: 'resources/raw/travelling-bingo/generated/bingo-refuse-v2.png',
+      sourceWidth: 1774,
+      sourceHeight: 887,
+    },
+  ],
+])
+ensure(
+  JSON.stringify(Object.keys(demoVisuals.mascotAnimations ?? {}).sort()) ===
+    JSON.stringify([...expectedAnimations.keys()].sort()),
+  '饼狗动画目录不是 walk/actions/refuse 三套资源',
+)
+for (const [animationId, expected] of expectedAnimations) {
+  const animation = demoVisuals.mascotAnimations[animationId]
+  verifyGenerationSummary(animation.generation, `${animationId} 动画母版`, 'identity-preserve')
+  demoSourceHashes.add(
+    await verifyPngSourceEntry(animation.source, {
+      label: `${animationId} 动画 ImageGen 母版`,
+      expectedPath: expected.sourcePath,
+      expectedWidth: expected.sourceWidth,
+      expectedHeight: expected.sourceHeight,
+      requireAlpha: true,
+    }),
+  )
+  ensure(
+    animation.layout?.columns === expected.columns &&
+      animation.layout.rows === 1 &&
+      animation.layout.frameWidth === 512 &&
+      animation.layout.frameHeight === 512,
+    `${animationId} 动画图集布局不合法`,
+  )
+  ensure(
+    JSON.stringify(animation.frames) === JSON.stringify(expected.frames),
+    `${animationId} 动画帧顺序不一致`,
+  )
+  ensure(animation.image?.path === expected.path, `${animationId} 动画路径不合法`)
+  ensure(
+    animation.image.width === expected.columns * 512 && animation.image.height === 512,
+    `${animationId} 动画图集尺寸不合法`,
+  )
+  const verified = await verifyWebpEntry(animation.image, {
+    label: `${animationId} 饼狗动画`,
+    expectedPrefix: 'assets/game/',
+    requireSha256: true,
+    requireAlpha: true,
+  })
+  ensure(animation.image.encoding === 'lossless', `${animationId} 动画没有声明无损编码`)
+  ensure(
+    animation.image.transparentPixelRgb === '000000',
+    `${animationId} 动画没有声明透明像素 RGB 清零`,
+  )
+  await verifyHorizontalAtlas(verified.target, expected.columns, `${animationId} 饼狗动画`)
+  demoVisualHashes.add(verified.digest)
+  expectedGameFileNames.add(animation.image.path.split('/').at(-1))
+}
+
+ensure(demoVisualHashes.size === 6, 'Demo 视觉目录存在完全重复文件')
+ensure(demoSourceHashes.size === 5, 'ImageGen 母版目录存在完全重复文件')
 await verifyExactDirectory(demoGameAssetRoot, expectedGameFileNames, 'Demo 游戏视觉素材目录')
 
+const fontManifest = JSON.parse(await readFile(fontManifestPath, 'utf8'))
+ensure(fontManifest.schemaVersion === 1, '字体目录版本不受支持')
+ensure(fontManifest.rights === 'user-confirmed-authorized', '字体目录缺少用户授权口径')
+const currentGlyphSet = await collectInterfaceGlyphs(workspaceRoot)
+ensure(
+  fontManifest.glyphSet?.codePointCount === currentGlyphSet.codePointCount &&
+    fontManifest.glyphSet.sha256 === currentGlyphSet.sha256 &&
+    JSON.stringify(fontManifest.glyphSet.sourceFiles) ===
+      JSON.stringify(currentGlyphSet.sourceFiles),
+  '字体子集未覆盖当前界面源码与公开数据，请重新运行 npm run assets:build:fonts',
+)
+
+const expectedFonts = new Map([
+  [
+    'display',
+    {
+      family: 'TravellingBingo Display',
+      sourcePath: 'resources/raw/travelling-bingo/fonts/可画乐融融.ttf',
+      filePath: 'assets/fonts/kehua-lerongrong.woff2',
+    },
+  ],
+  [
+    'ui',
+    {
+      family: 'TravellingBingo UI',
+      sourcePath: 'resources/raw/travelling-bingo/fonts/可画奶糖体.otf',
+      filePath: 'assets/fonts/kehua-naitang.woff2',
+    },
+  ],
+])
+ensure(
+  Array.isArray(fontManifest.fonts) && fontManifest.fonts.length === expectedFonts.size,
+  '字体目录不是两款约定字体',
+)
+const expectedFontFileNames = new Set()
+let verifiedFontSources = 0
+for (const font of fontManifest.fonts) {
+  const expected = expectedFonts.get(font.id)
+  ensure(expected, `字体目录含有未知字体 ${font.id}`)
+  ensure(font.family === expected.family, `${font.id} 的 CSS 字体族不一致`)
+  ensure(
+    font.style === 'normal' && font.cssWeight === 400 && font.fontDisplay === 'swap',
+    `${font.id} 的 @font-face 元数据不符合单字重字体约定`,
+  )
+  ensure(font.source?.path === expected.sourcePath, `${font.id} 的本地字体母版路径不一致`)
+  ensure(
+    Number.isInteger(font.source.byteLength) &&
+      font.source.byteLength > 0 &&
+      /^[a-f0-9]{64}$/.test(font.source.sha256),
+    `${font.id} 的本地母版锁定信息不合法`,
+  )
+  try {
+    const sourceTarget = resolveSafeRelative(
+      workspaceRoot,
+      font.source.path,
+      `${font.id} 本地字体母版路径`,
+      'resources/raw/travelling-bingo/fonts/',
+    )
+    const sourceBytes = await readFile(sourceTarget)
+    ensure(sourceBytes.byteLength === font.source.byteLength, `${font.id} 的本地母版字节数不符`)
+    ensure(
+      createHash('sha256').update(sourceBytes).digest('hex') === font.source.sha256,
+      `${font.id} 的本地母版 SHA-256 不符`,
+    )
+    verifiedFontSources += 1
+  } catch (error) {
+    if (error.code !== 'ENOENT') throw error
+  }
+  ensure(font.file?.path === expected.filePath, `${font.id} 的 WOFF2 路径不一致`)
+  await verifyWoff2Entry(font.file, `${font.id} 字体子集`)
+  expectedFontFileNames.add(font.file.path.split('/').at(-1))
+}
+ensure(expectedFontFileNames.size === 2, '字体子集文件名存在重复')
+ensure(
+  verifiedFontSources === 0 || verifiedFontSources === expectedFonts.size,
+  `本地字体母版不完整：仅找到 ${verifiedFontSources}/${expectedFonts.size}`,
+)
+await verifyExactDirectory(publicFontAssetRoot, expectedFontFileNames, '公开字体素材目录')
+
 console.log(
-  `素材校验通过：30 张百万直拍、8 项全站第一、473 条明信片候选、12 张真实明信片（24 个 WebP）及 3 个 Demo 视觉文件一致；本地核验百万直拍原图 ${verifiedMillionOriginals}/30`,
+  `素材校验通过：${publicCatalog.itemCount} 张百万直拍、${siteFirstPublicCatalog.itemCount} 项全站第一、${postcardSource.itemCount} 条明信片候选、${postcardPublicCatalog.itemCount} 张真实明信片（${expectedPostcardDerivativeCount} 个 WebP）、${expectedGameFileNames.size} 个 Demo 视觉文件及 ${fontManifest.fonts.length} 个 WOFF2 字体子集一致；本地核验百万直拍原图 ${verifiedMillionOriginals}/${source.items.length}、字体母版 ${verifiedFontSources}/${expectedFonts.size}`,
 )

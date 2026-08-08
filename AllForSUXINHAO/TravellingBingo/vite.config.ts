@@ -14,12 +14,11 @@ export default defineConfig({
     react(),
     VitePWA({
       registerType: 'prompt',
-      includeAssets: ['icons/app-icon.svg'],
       manifest: {
         id: '/AllForSUXINHAO/TravellingBingo/',
         name: '旅行饼狗',
         short_name: '旅行饼狗',
-        description: '离线单机粉丝向网页收集游戏',
+        description: '陪饼狗吃苹果、做任务、出门旅行，把每一份惊喜收进收藏墙。',
         lang: 'zh-CN',
         start_url: '/AllForSUXINHAO/TravellingBingo/',
         scope: '/AllForSUXINHAO/TravellingBingo/',
@@ -37,7 +36,8 @@ export default defineConfig({
       },
       workbox: {
         globPatterns: [
-          '**/*.{js,css,html,svg,woff2,json}',
+          '**/*.{js,css,html,json}',
+          'assets/fonts/*.woff2',
           'assets/game/*.webp',
           'assets/collectibles/**/*-480.webp',
         ],
@@ -47,25 +47,15 @@ export default defineConfig({
         navigateFallback: '/AllForSUXINHAO/TravellingBingo/index.html',
         runtimeCaching: [
           {
+            // 480px 缩略图已预缓存；这里只缓存按需打开的高清收藏图。
             urlPattern: ({ url }) =>
-              url.pathname.startsWith('/AllForSUXINHAO/TravellingBingo/assets/collectibles/'),
-            handler: 'CacheFirst',
+              url.pathname.startsWith('/AllForSUXINHAO/TravellingBingo/assets/collectibles/') &&
+              !url.pathname.endsWith('-480.webp'),
+            handler: 'StaleWhileRevalidate',
             options: {
-              cacheName: 'travelling-bingo-collectibles-v1',
+              cacheName: 'travelling-bingo-collectibles-hires-v2',
               expiration: {
-                maxEntries: 160,
-                maxAgeSeconds: 60 * 60 * 24 * 365,
-              },
-            },
-          },
-          {
-            urlPattern: ({ url }) =>
-              url.pathname.startsWith('/AllForSUXINHAO/TravellingBingo/assets/game/'),
-            handler: 'CacheFirst',
-            options: {
-              cacheName: 'travelling-bingo-game-art-v1',
-              expiration: {
-                maxEntries: 24,
+                maxEntries: 96,
                 maxAgeSeconds: 60 * 60 * 24 * 365,
               },
             },

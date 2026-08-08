@@ -10,6 +10,7 @@ export interface ContentCatalog {
   readonly items: readonly CollectibleItem[]
   readonly byId: Readonly<Record<string, CollectibleItem>>
   readonly categoryCounts: Readonly<Record<CollectibleCategory, number>>
+  readonly siteFirstChronology: readonly string[]
 }
 
 export interface CollectionProgressGroup {
@@ -71,6 +72,11 @@ export function mergeContentCatalogs(
     items,
     byId: Object.freeze(mutableIndex),
     categoryCounts: Object.freeze(mutableCounts),
+    siteFirstChronology: Object.freeze(
+      [...siteFirsts.items]
+        .sort((left, right) => left.metadata.chronology - right.metadata.chronology)
+        .map((item) => item.id),
+    ),
   })
 }
 

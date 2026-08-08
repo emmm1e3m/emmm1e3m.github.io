@@ -24,6 +24,23 @@ const safeRelativePathSchema = z
 
 const httpUrlSchema = z.url({ protocol: /^https?$/ })
 const isoDateTimeSchema = z.iso.datetime({ offset: true })
+const catalogSourceIdSchema = z
+  .string()
+  .trim()
+  .regex(/^[a-z0-9]+(?:-[a-z0-9]+)*$/)
+const millionShotCatalogSourceIdSchema = catalogSourceIdSchema.refine(
+  (value) => value.startsWith('weibo-million-shot-posters-'),
+  { message: '百万直拍目录必须来自 weibo-million-shot-posters 来源清单' },
+)
+const siteFirstCatalogSourceIdSchema = catalogSourceIdSchema.refine(
+  (value) => value.startsWith('bilibili-all-site-number-one-'),
+  { message: '全站第一目录必须来自 bilibili-all-site-number-one 来源清单' },
+)
+const postcardCatalogSourceIdSchema = catalogSourceIdSchema.refine(
+  (value) => value.startsWith('bilibilitoy-suxinhao-postcards-'),
+  { message: '明信片目录必须来自 bilibilitoy-suxinhao-postcards 来源清单' },
+)
+const catalogItemCountSchema = z.number().int().positive().safe()
 
 export const collectibleImageSchema = z
   .object({
@@ -88,6 +105,7 @@ export const siteFirstItemSchema = z
     metadata: z
       .object({
         bvid: z.string().regex(/^BV[0-9A-Za-z]{10}$/),
+        chronology: z.number().int().positive().safe(),
         programCategory: z.string().trim().min(1),
         posterKind: z.enum(['designed-poster', 'video-cover-fallback']),
       })
@@ -183,9 +201,9 @@ function addCatalogConsistencyChecks(
 export const millionShotCatalogSchema = z
   .object({
     schemaVersion: z.literal(1),
-    generatedFrom: z.literal('weibo-million-shot-posters-latest-30-strict'),
-    itemCount: z.literal(30),
-    items: z.array(millionShotItemSchema),
+    generatedFrom: millionShotCatalogSourceIdSchema,
+    itemCount: catalogItemCountSchema,
+    items: z.array(millionShotItemSchema).min(1),
   })
   .strict()
   .superRefine(addCatalogConsistencyChecks)
@@ -193,18 +211,39 @@ export const millionShotCatalogSchema = z
 export const siteFirstCatalogSchema = z
   .object({
     schemaVersion: z.literal(1),
-    generatedFrom: z.literal('bilibili-all-site-number-one-8'),
-    itemCount: z.literal(8),
-    items: z.array(siteFirstItemSchema),
+    generatedFrom: siteFirstCatalogSourceIdSchema,
+    itemCount: catalogItemCountSchema,
+    items: z.array(siteFirstItemSchema).min(1),
   })
   .strict()
-  .superRefine(addCatalogConsistencyChecks)
+  .superRefine((catalog, context) => {
+    addCatalogConsistencyChecks(catalog, context)
+    const chronology = [...catalog.items].sort(
+      (left, right) => left.metadata.chronology - right.metadata.chronology,
+    )
+    chronology.forEach((item, index) => {
+      if (item.metadata.chronology !== index + 1) {
+        context.addIssue({
+          code: 'custom',
+          path: ['items', catalog.items.indexOf(item), 'metadata', 'chronology'],
+          message: '全站第一 chronology 必须是从 1 开始且无缺口、无重复的连续正整数',
+        })
+      }
+    })
+    if (chronology[0]?.id !== 'site-first-dynamite') {
+      context.addIssue({
+        code: 'custom',
+        path: ['items'],
+        message: '全站第一时间序列必须从 Dynamite 开始',
+      })
+    }
+  })
 
 export const postcardCatalogSchema = z
   .object({
     schemaVersion: z.literal(1),
-    generatedFrom: z.literal('bilibilitoy-suxinhao-postcards-curated-demo-12'),
-    itemCount: z.literal(12),
+    generatedFrom: postcardCatalogSourceIdSchema,
+    itemCount: catalogItemCountSchema,
     source: z
       .object({
         platform: z.literal('bilibilitoy'),
@@ -220,7 +259,7 @@ export const postcardCatalogSchema = z
         selectedSourceIds: z.array(z.string().regex(/^[0-9]{4}-[0-9]{2}-[0-9]{4}$/)),
       })
       .strict(),
-    items: z.array(postcardItemSchema),
+    items: z.array(postcardItemSchema).min(1),
   })
   .strict()
   .superRefine((catalog, context) => {

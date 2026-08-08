@@ -40,6 +40,7 @@
       "tags": ["全站第一", "说唱跳"],
       "metadata": {
         "bvid": "BV1D23262EaD",
+        "chronology": 8,
         "programCategory": "说唱跳",
         "posterKind": "designed-poster"
       }
@@ -81,6 +82,7 @@
       "tags": ["全站第一", "纯舞"],
       "metadata": {
         "bvid": "BV179v1B2Emc",
+        "chronology": 7,
         "programCategory": "纯舞",
         "posterKind": "designed-poster"
       }
@@ -122,6 +124,7 @@
       "tags": ["全站第一", "国风"],
       "metadata": {
         "bvid": "BV1Dx3i6nEm8",
+        "chronology": 6,
         "programCategory": "国风",
         "posterKind": "designed-poster"
       }
@@ -163,6 +166,7 @@
       "tags": ["全站第一", "弹唱"],
       "metadata": {
         "bvid": "BV1fjpAzmE1T",
+        "chronology": 5,
         "programCategory": "弹唱",
         "posterKind": "designed-poster"
       }
@@ -204,6 +208,7 @@
       "tags": ["全站第一", "原创"],
       "metadata": {
         "bvid": "BV1i7LM6oErE",
+        "chronology": 4,
         "programCategory": "原创",
         "posterKind": "designed-poster"
       }
@@ -238,6 +243,7 @@
       "tags": ["全站第一", "自制"],
       "metadata": {
         "bvid": "BV1MbZnYoEk1",
+        "chronology": 3,
         "programCategory": "自制",
         "posterKind": "video-cover-fallback"
       }
@@ -279,6 +285,7 @@
       "tags": ["全站第一", "唱跳"],
       "metadata": {
         "bvid": "BV1rtDRBJE7s",
+        "chronology": 2,
         "programCategory": "唱跳",
         "posterKind": "designed-poster"
       }
@@ -320,6 +327,7 @@
       "tags": ["全站第一", "纯唱"],
       "metadata": {
         "bvid": "BV1cfCSYfEo3",
+        "chronology": 1,
         "programCategory": "纯唱",
         "posterKind": "video-cover-fallback"
       }

@@ -1,4 +1,5 @@
 import type { ActivityKind, CollectionCatalog, CollectibleCategory, GameState } from './types'
+import { validateCollectionCatalog } from './validateCollectionCatalog'
 
 const CATEGORIES: readonly CollectibleCategory[] = ['postcard', 'million-shot', 'site-first']
 
@@ -39,18 +40,14 @@ export function validateImportedGameState(
   state: GameState,
   catalog: CollectionCatalog,
 ): ImportedGameStateValidation {
+  const catalogValidation = validateCollectionCatalog(catalog)
+  if (!catalogValidation.ok) {
+    return invalid('INVALID_CATALOG', catalogValidation.message)
+  }
+
   const categoryById = new Map<string, CollectibleCategory>()
   for (const category of CATEGORIES) {
     for (const id of catalog[category]) {
-      const previousCategory = categoryById.get(id)
-      if (id.trim().length === 0 || previousCategory !== undefined) {
-        return invalid(
-          'INVALID_CATALOG',
-          previousCategory === undefined
-            ? '当前收藏目录含有空 ID，无法安全读取存档。'
-            : `当前收藏目录的 ID“${id}”同时属于多个类别，无法安全读取存档。`,
-        )
-      }
       categoryById.set(id, category)
     }
   }
