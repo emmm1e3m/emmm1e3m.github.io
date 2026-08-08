@@ -27,10 +27,10 @@
 - 公司打压相关内容按用户确认事实纳入资料和粉丝叙事。
 - 饼狗仍说明为与苏新皓相关的粉丝二创角色，不写成公司官方吉祥物。
 
-## GitHub 上线进度
+## GitHub 上线结果
 
-- 功能分支已推送并创建 PR #1；GitHub Pages Source 已统一为 **GitHub Actions**。
-- 仍需等待远端检查、合并和部署，并验证新入口可用、旧 `SUperView` / `SUperDanmaku` 路径已移除。
+- PR #1 已通过远端检查并合并到 `main`；GitHub Pages Source 已统一为 **GitHub Actions**，构建和部署成功。
+- [根首页](https://emmm1e3m.github.io/)与[旅行饼狗](https://emmm1e3m.github.io/AllForSUXINHAO/TravellingBingo/)均已在线返回 200；旧 `SUperView` / `SUperDanmaku` 的 4 个文件路径均返回 404。
 
 ## 主要入口
 
