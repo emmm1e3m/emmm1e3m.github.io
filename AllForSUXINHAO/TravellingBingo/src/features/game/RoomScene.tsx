@@ -12,6 +12,7 @@ import {
   roomPointToPercent,
   type RoomArea,
 } from './roomConfig'
+import { GAME_ROOM_WANDER_HULL, randomRoomPointInHull, ROOM_WANDER_STEP_MS } from './roomWander'
 import type { PanelId } from './GameHome'
 
 function readPet(game: GameState) {
@@ -80,7 +81,7 @@ function PetMenu({ game, open, onClose, onPanel }: PetMenuProps) {
       }}
     >
       <div className="pet-menu__heading">
-        <strong>{activity ? ACTIVITY_COPY[activity.kind].verb : '饼狗正看着你'}</strong>
+        <strong>{activity ? ACTIVITY_COPY[activity.kind].verb : '饼狗正看着你👀'}</strong>
         <button type="button" onClick={onClose}>
           收起菜单
         </button>
@@ -130,6 +131,7 @@ interface RoomSceneProps {
   dimensionToggleDisabled?: boolean
   onToggleDimension?: () => void
   onTaskEvent: (event: TaskEvent) => void
+  wanderRandom?: () => number
 }
 
 export function RoomScene({
@@ -151,12 +153,40 @@ export function RoomScene({
   dimensionToggleDisabled = false,
   onToggleDimension = () => undefined,
   onTaskEvent,
+  wanderRandom = Math.random,
 }: RoomSceneProps) {
   const [menuOpen, setMenuOpen] = useState(false)
+  const [wanderPoint, setWanderPoint] = useState(() =>
+    randomRoomPointInHull(GAME_ROOM_WANDER_HULL, wanderRandom),
+  )
+  const [reducedMotion, setReducedMotion] = useState(
+    () => globalThis.matchMedia?.('(prefers-reduced-motion: reduce)').matches ?? false,
+  )
   const petButtonRef = useRef<HTMLButtonElement>(null)
   const travelling = game.activeActivity?.kind === 'travel'
-  const pose = poseForRoom({ game, area, walking, sleeping })
-  const petCenter = roomPointToPercent(area.petCenter)
+  const wanderEligible =
+    game.activeActivity === null && !sleeping && (panel === null || panel === 'status')
+  const wandering = wanderEligible && !reducedMotion
+  const pose = poseForRoom({ game, area, walking: walking || wandering, sleeping })
+  const petCenter = roomPointToPercent(wandering ? wanderPoint : area.petCenter)
+
+  useEffect(() => {
+    const motionPreference = globalThis.matchMedia?.('(prefers-reduced-motion: reduce)')
+    const followPreference = (event: MediaQueryListEvent) => setReducedMotion(event.matches)
+    motionPreference?.addEventListener('change', followPreference)
+    return () => {
+      motionPreference?.removeEventListener('change', followPreference)
+    }
+  }, [])
+
+  useEffect(() => {
+    if (!wandering) return
+    const timer = globalThis.setInterval(
+      () => setWanderPoint(randomRoomPointInHull(GAME_ROOM_WANDER_HULL, wanderRandom)),
+      ROOM_WANDER_STEP_MS,
+    )
+    return () => globalThis.clearInterval(timer)
+  }, [wanderRandom, wandering])
 
   useEffect(() => {
     if (!travelling) return
@@ -171,8 +201,12 @@ export function RoomScene({
   }
 
   function openPetMenu() {
-    setMenuOpen((value) => !value)
-    if (!menuOpen) onTaskEvent({ type: 'pet-menu-opened' })
+    const opening = !menuOpen
+    setMenuOpen(opening)
+    if (!opening) return
+
+    onTaskEvent({ type: 'pet-menu-opened' })
+    if (game.activeActivity) onPanel('activity')
   }
 
   function closePetMenu(restoreFocus = false) {
@@ -262,10 +296,22 @@ export function RoomScene({
           )
         })}
 
+        {travelling && (
+          <button
+            className="travel-note travel-note--v2"
+            type="button"
+            aria-label="饼狗不在家，查看出门进度"
+            onClick={() => onPanel('activity')}
+          >
+            <strong>饼狗不在家</strong>
+            <span>点击查看出门进度</span>
+          </button>
+        )}
+
         {!travelling && (
           <MascotSprite
             pose={pose}
-            className={`room-mascot room-mascot--actor ${walking ? 'is-walking' : ''}`}
+            className={`room-mascot room-mascot--actor ${walking ? 'is-walking' : ''} ${wandering ? 'is-wandering' : ''}`}
             label={
               game.activeActivity
                 ? `正在${ACTIVITY_COPY[game.activeActivity.kind].verb}的饼狗`

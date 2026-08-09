@@ -71,7 +71,7 @@ test('跨标签新 Service Worker 接管前自动下载缓存，刷新后可继�
   expect(externalWorker.scriptUrl).toContain('external-e2e=')
 
   const prompt = page.locator('.pwa-update-prompt')
-  await expect(prompt).toContainText('饼屋换上新布置啦')
+  await expect(prompt).toContainText('铲铲饼屋有新布置啦')
   await expect(prompt).toContainText('打开新布置前会自动备份')
   await expect(prompt.getByRole('button', { name: '看看新布置' })).toBeVisible()
   await automaticBackup
@@ -90,8 +90,8 @@ test('跨标签新 Service Worker 接管前自动下载缓存，刷新后可继�
   expect(
     await page.evaluate(() => Reflect.get(globalThis, '__travellingBingoE2eBoot')),
   ).toBeUndefined()
-  await expect(page.getByRole('button', { name: '从缓存存档继续' })).toBeEnabled()
-  await page.getByRole('button', { name: '从缓存存档继续' }).click()
+  await expect(page.getByRole('button', { name: '继续' })).toBeEnabled()
+  await page.getByRole('button', { name: '继续' }).click()
   await expect(page.getByRole('region', { name: '铲铲饼屋互动场景' })).toBeVisible()
   await expect(page.locator('.hud-companion')).toContainText('更新保护陪伴饼狗已经')
 })

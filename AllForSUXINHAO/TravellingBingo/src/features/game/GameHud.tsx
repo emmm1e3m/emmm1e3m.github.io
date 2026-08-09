@@ -4,6 +4,7 @@ import { ACTIVITY_COPY, formatCountdown } from './gameCopy'
 
 interface GameHudProps {
   game: GameState
+  now: number
   activity: ActivityRun | null
   timing: ActivityTiming
   dirty: boolean
@@ -17,8 +18,18 @@ interface GameHudProps {
   onDebug: () => void
 }
 
+function formatRealityStayDuration(enteredAt: number, now: number) {
+  const totalSeconds = Math.max(0, Math.floor((now - enteredAt) / 1_000))
+  const hours = Math.floor(totalSeconds / 3_600)
+  const minutes = Math.floor((totalSeconds % 3_600) / 60)
+  const seconds = totalSeconds % 60
+  const minuteSecond = `${minutes.toString().padStart(2, '0')}:${seconds.toString().padStart(2, '0')}`
+  return hours > 0 ? `${hours.toString().padStart(2, '0')}:${minuteSecond}` : minuteSecond
+}
+
 export function GameHud({
   game,
+  now,
   activity,
   timing,
   dirty,
@@ -31,6 +42,11 @@ export function GameHud({
   onAlbum,
   onDebug,
 }: GameHudProps) {
+  const realityStayDuration =
+    game.world === 'reality' && game.reality.activeStay
+      ? formatRealityStayDuration(game.reality.activeStay.enteredAt, now)
+      : null
+
   return (
     <header className="game-hud game-hud--v3 game-hud--v4" inert={inert ? true : undefined}>
       <div className="game-hud__leading">
@@ -60,6 +76,15 @@ export function GameHud({
       </button>
 
       <div className="game-hud__actions">
+        {realityStayDuration && (
+          <output
+            className="reality-stay-timer numeric-copy"
+            role="timer"
+            aria-label={`本次现实停留 ${realityStayDuration}`}
+          >
+            现实 {realityStayDuration}
+          </output>
+        )}
         <div className="pet-status-bar" role="status" aria-label="饼狗状态">
           <span className="pet-status-bar__label">{statusLabel}</span>
           <span className="hud-companion">

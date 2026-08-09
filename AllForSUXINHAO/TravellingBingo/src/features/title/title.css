@@ -207,6 +207,10 @@
   grid-template-columns: repeat(3, minmax(0, 1fr));
 }
 
+.landing-actions--entries-two {
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+
 .landing-actions--entries .landing-button {
   width: 100%;
   min-width: 0;

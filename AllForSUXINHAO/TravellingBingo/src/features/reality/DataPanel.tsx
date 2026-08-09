@@ -20,7 +20,7 @@ function DataCard({ title, badge, placeholder, snapshot }: DataCardProps) {
           <span>{badge}</span>
           <h3>{title}</h3>
         </div>
-        <span className="reality-placeholder-tag">{snapshot ? '当前状态' : '玩法说明'}</span>
+        {snapshot && <span className="reality-placeholder-tag">当前状态</span>}
       </div>
       {snapshot && (
         <>
@@ -53,8 +53,8 @@ export function DataPanel({
     >
       <div className="reality-panel__heading">
         <div>
-          <span className="reality-eyebrow">二楼电脑 · 数据</span>
-          <h2 id={headingId}>刷播与冲热</h2>
+          <span className="paper-tag">数据</span>
+          <h2 id={headingId}>刷播与冲热（开发中）</h2>
         </div>
       </div>
       <p className="reality-panel__intro">
@@ -76,7 +76,10 @@ export function DataPanel({
         />
       </div>
 
-      <aside className="reality-group-card" aria-labelledby={`${headingId}-group-title`}>
+      <aside
+        className="reality-group-card reality-group-card--centered"
+        aria-labelledby={`${headingId}-group-title`}
+      >
         <div>
           <span aria-hidden="true">📡</span>
           <div>
@@ -90,7 +93,7 @@ export function DataPanel({
           rel="noopener noreferrer"
           onClick={onGroupLinkClick}
         >
-          前往
+          前往字母建设站
           <span className="visually-hidden">（在新窗口打开）</span>
         </a>
       </aside>

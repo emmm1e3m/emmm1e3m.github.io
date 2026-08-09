@@ -202,7 +202,7 @@ test('弹琴活动读条期间仍可弹四排 48 键，并只给白键映射电�
   await expect(keyboard.getByRole('group')).toHaveCount(4)
   await expect(keyboard.getByRole('button')).toHaveCount(48)
   await expect(keyboard).toContainText(
-    'C6 B5 G5 E5 G5 C6 B5 G5 E5 G5 E5，C6 B5 G5 E5 G5 C6 D6 C6 D6 E6 E6',
+    '试着从 C6 B5 G5 E5 G5 C6 B5 G5 E5 G5 E5，C6 B5 G5 E5 G5 C6 D6 C6 D6 E6 E6 开始~',
   )
   const c3 = keyboard.getByRole('button', { name: 'C3，键盘 Z' })
   const c4 = keyboard.getByRole('button', { name: 'C4，键盘 A' })

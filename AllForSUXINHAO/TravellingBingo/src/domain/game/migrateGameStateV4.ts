@@ -11,6 +11,7 @@ import { MAX_DATE_TIMESTAMP_MS } from './time'
 import type {
   GameState,
   GameStateV4,
+  GameStateV5LegacyMusic,
   MusicPlayerState,
   PomodoroSession,
   PomodoroSessionV4,
@@ -127,11 +128,8 @@ function asRecord(value: unknown): Record<string, unknown> | null {
     : null
 }
 
-/**
- * V5 复用冻结 V4 对非苹果钟字段的全部严格校验，再单独验证新版 session。
- * 构造兼容副本只用于校验，不会 transform 或改写原载荷。
- */
-export const gameStateV5Schema: z.ZodType<GameState> = z.unknown().superRefine((value, context) => {
+/** V5 复用冻结 V4 对非苹果钟字段的严格校验；兼容副本只用于校验。 */
+function refineGameStateV5(value: unknown, context: z.RefinementCtx, legacyMusic: boolean) {
   const state = asRecord(value)
   const reality = asRecord(state?.reality)
   const pomodoro = asRecord(reality?.pomodoro)
@@ -142,7 +140,10 @@ export const gameStateV5Schema: z.ZodType<GameState> = z.unknown().superRefine((
     return
   }
 
-  for (const legacyField of ['startAtSeconds', 'autoplay'] as const) {
+  const retiredFields = legacyMusic
+    ? (['startAtSeconds', 'autoplay'] as const)
+    : (['playlists', 'order', 'activePlaylistId', 'startAtSeconds', 'autoplay'] as const)
+  for (const legacyField of retiredFields) {
     if (legacyField in musicPlayer) {
       context.addIssue({
         code: 'custom',
@@ -169,6 +170,7 @@ export const gameStateV5Schema: z.ZodType<GameState> = z.unknown().superRefine((
     tasks: Object.fromEntries(Object.entries(tasks).filter(([key]) => key !== 'completedAt')),
     musicPlayer: {
       ...musicPlayer,
+      ...(legacyMusic ? {} : { playlists: {}, order: [], activePlaylistId: null }),
       startAtSeconds: 0,
       autoplay: true,
     },
@@ -238,7 +240,19 @@ export const gameStateV5Schema: z.ZodType<GameState> = z.unknown().superRefine((
       }
     }
   }
-}) as z.ZodType<GameState>
+}
+
+/** 当前 V5 严格载荷，不再持久化自定义播放列表。 */
+export const gameStateV5Schema: z.ZodType<GameState> = z
+  .unknown()
+  .superRefine((value, context) => refineGameStateV5(value, context, false)) as z.ZodType<GameState>
+
+/** 仅供读取已发布过的旧 V5 缓存；采用前必须显式移除自定义列表字段。 */
+export const gameStateV5LegacyMusicSchema: z.ZodType<GameStateV5LegacyMusic> = z
+  .unknown()
+  .superRefine((value, context) =>
+    refineGameStateV5(value, context, true),
+  ) as z.ZodType<GameStateV5LegacyMusic>
 
 export function isStrictGameStateV5(value: unknown): value is GameState {
   return gameStateV5Schema.safeParse(value).success
@@ -263,11 +277,10 @@ function migratePomodoroSession(session: PomodoroSessionV4 | null): PomodoroSess
   }
 }
 
-function migrateMusicPlayerState(player: GameStateV4['musicPlayer']): MusicPlayerState {
+function migrateMusicPlayerState(
+  player: Pick<GameStateV4['musicPlayer'], 'currentBvid' | 'currentIndex' | 'loopMode'>,
+): MusicPlayerState {
   return {
-    playlists: player.playlists,
-    order: player.order,
-    activePlaylistId: player.activePlaylistId,
     currentBvid: player.currentBvid,
     currentIndex: player.currentIndex,
     loopMode: player.loopMode,
@@ -297,12 +310,15 @@ export function migrateGameStateV4ToV5(state: GameStateV4): GameState {
   }
 }
 
-export type StoredGameState = StoredGameStateThroughV4 | GameState
+export type StoredGameState = StoredGameStateThroughV4 | GameStateV5LegacyMusic | GameState
 
 export function migrateStoredGameStateToV5(
   state: StoredGameState,
   options: MigrateGameStateV3Options,
 ): GameState {
-  if (state.schemaVersion === 5) return state
+  if (state.schemaVersion === 5) {
+    if (!('playlists' in state.musicPlayer)) return state
+    return { ...state, musicPlayer: migrateMusicPlayerState(state.musicPlayer) }
+  }
   return migrateGameStateV4ToV5(migrateStoredGameStateToV4(state, options))
 }

@@ -48,20 +48,6 @@
   font-size: clamp(1.4rem, 4vw, 2rem);
 }
 
-.reality-panel__mark {
-  width: 42px;
-  height: 42px;
-  flex: 0 0 auto;
-  display: grid;
-  place-items: center;
-  border: 1.5px solid #d3ae8b;
-  border-radius: 50%;
-  color: var(--apple, #b63748);
-  background: #fff0dc;
-  font-size: 1.25rem;
-  font-weight: 900;
-}
-
 .reality-data-grid {
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));
@@ -171,6 +157,20 @@
   font-size: 1.5rem;
 }
 
+.reality-group-card--centered {
+  flex-direction: column;
+  align-items: stretch;
+  text-align: center;
+}
+
+.reality-group-card--centered > div {
+  justify-content: center;
+}
+
+.reality-group-card--centered .reality-primary-link {
+  align-self: center;
+}
+
 .reality-primary-link,
 .reality-primary-button,
 .reality-secondary-button,
@@ -223,108 +223,20 @@
   padding: clamp(0.85rem, 3vw, 1.1rem);
 }
 
-.reality-timer-card {
-  position: relative;
-  isolation: isolate;
-  overflow: hidden;
-}
-
-.reality-timer-card > * {
-  position: relative;
-  z-index: 2;
-}
-
-.reality-timer-card__background,
-.reality-timer-card__shade {
-  position: absolute;
-  inset: 0;
-  width: 100%;
-  height: 100%;
-}
-
-.reality-timer-card__background {
-  z-index: 0;
-  object-fit: cover;
-  object-position: center;
-}
-
-.reality-timer-card__shade {
-  z-index: 1;
-  pointer-events: none;
-  background: rgb(255 248 237 / 98%);
-}
-
-.reality-timer-card.has-postcard-background .reality-timer-card__shade {
-  background: linear-gradient(
-    105deg,
-    rgb(255 248 237 / 96%) 0%,
-    rgb(255 248 237 / 84%) 58%,
-    rgb(255 248 237 / 52%) 100%
-  );
-}
-
-.reality-timer-card__badges {
-  min-width: 0;
+.reality-start-summary {
   display: flex;
-  flex: 0 1 auto;
-  flex-direction: column;
-  align-items: flex-end;
-  gap: 0.34rem;
-}
-
-.reality-background-status {
-  width: fit-content;
-  max-width: min(100%, 12rem);
-  padding: 0.3rem 0.52rem;
-  overflow-wrap: anywhere;
-  border: 1px solid #d6ad83;
-  border-radius: 999px;
-  color: #805848;
-  background: rgb(255 240 212 / 92%);
-  font-size: 0.62rem;
-  font-weight: 850;
-  line-height: 1.25;
-  text-align: right;
-}
-
-.reality-timer-companion {
-  display: flex;
-  align-items: center;
-  gap: 0.65rem;
+  flex-wrap: wrap;
+  justify-content: space-between;
+  gap: 0.35rem 0.8rem;
   margin-top: 0.8rem;
-  padding: 0.55rem 0.65rem;
-  border: 1.5px solid rgb(204 164 126 / 82%);
-  border-radius: 14px;
-  background: rgb(255 252 246 / 88%);
-  box-shadow: 0 5px 16px rgb(83 47 39 / 8%);
-}
-
-.reality-timer-companion__mascot {
-  width: clamp(58px, 18vw, 76px);
-  flex: 0 0 auto;
-  pointer-events: none;
-}
-
-.reality-timer-companion__mascot > .mascot-sprite {
-  width: 100%;
-}
-
-.reality-timer-companion p {
-  min-width: 0;
-  display: flex;
-  flex-direction: column;
-  gap: 0.18rem;
-  margin: 0;
   color: var(--muted, #765752);
   font-size: 0.68rem;
-  font-weight: 700;
-  line-height: 1.45;
-  overflow-wrap: anywhere;
+  font-weight: 750;
+  line-height: 1.5;
 }
 
-.reality-timer-companion strong {
-  color: var(--ink, #432c29);
-  font-size: 0.8rem;
+.reality-action-row--timer > * {
+  flex: 1 1 10rem;
 }
 
 .reality-card-index {
@@ -334,16 +246,14 @@
   letter-spacing: 0.12em;
 }
 
-.reality-choice-grid,
-.reality-postcard-grid {
+.reality-choice-grid {
   display: grid;
   grid-template-columns: repeat(auto-fit, minmax(min(100%, 8.5rem), 1fr));
   gap: 0.6rem;
   margin-top: 0.8rem;
 }
 
-.reality-choice-button,
-.reality-postcard-option {
+.reality-choice-button {
   max-width: 100%;
   border: 1.5px solid #d4b493;
   color: var(--ink, #432c29);
@@ -362,8 +272,7 @@
   text-align: left;
 }
 
-.reality-choice-button[aria-pressed='true'],
-.reality-postcard-option[aria-pressed='true'] {
+.reality-choice-button[aria-pressed='true'] {
   border-color: var(--apple, #b63748);
   background: #fff0ee;
   box-shadow: inset 0 0 0 1.5px var(--apple, #b63748);
@@ -374,40 +283,16 @@
   cursor: not-allowed;
 }
 
-.reality-choice-button strong,
-.reality-postcard-option strong {
+.reality-choice-button strong {
   font-size: 0.78rem;
   overflow-wrap: anywhere;
 }
 
-.reality-choice-button small,
-.reality-postcard-option small {
+.reality-choice-button small {
   margin-top: 0.16rem;
   color: var(--muted, #765752);
   font-size: 0.63rem;
   font-weight: 650;
-  overflow-wrap: anywhere;
-}
-
-.reality-timer-readout {
-  display: flex;
-  align-items: baseline;
-  justify-content: space-between;
-  gap: 0.7rem;
-  margin: 0.8rem 0 0;
-  padding: 0.7rem;
-  border-radius: 12px;
-  color: var(--muted, #765752);
-  background: #fff1d8;
-  font-size: 0.72rem;
-  font-weight: 750;
-}
-
-.reality-timer-readout strong {
-  color: var(--ink, #432c29);
-  font-family: var(--display-font, inherit);
-  font-size: 1rem;
-  font-variant-numeric: tabular-nums;
   overflow-wrap: anywhere;
 }
 
@@ -419,23 +304,6 @@
   margin-top: 0.85rem;
 }
 
-.reality-notification-note {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 0.65rem;
-  margin-top: 0.75rem;
-  padding: 0.6rem 0.7rem;
-  border-left: 3px solid #c68762;
-  border-radius: 8px;
-  color: var(--muted, #765752);
-  background: #fff6e9;
-  font-size: 0.68rem;
-  font-weight: 750;
-  overflow-wrap: anywhere;
-}
-
-.reality-notification-note button,
 .reality-todo-create button,
 .reality-todo-edit button,
 .reality-todo-actions button {
@@ -448,12 +316,6 @@
   font-size: 0.68rem;
   font-weight: 850;
   cursor: pointer;
-}
-
-.reality-notification-note button {
-  min-width: 44px;
-  min-height: 44px;
-  flex: 0 0 auto;
 }
 
 .reality-pomodoro-explanation {
@@ -521,7 +383,8 @@
   place-items: center;
   color: #876552;
   background: #ead8c4;
-  object-fit: cover;
+  object-fit: contain;
+  object-position: center;
   font-size: 0.78rem;
   font-weight: 850;
 }
@@ -546,11 +409,103 @@
   line-height: 1.5;
 }
 
-.reality-postcard-wall {
-  display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(min(100%, 112px), 1fr));
-  gap: 0.6rem;
+.reality-postcard-picker__trigger {
+  width: 100%;
   margin-top: 0.7rem;
+}
+
+.reality-postcard-dialog-backdrop,
+.reality-postcard-dialog-backdrop * {
+  min-width: 0;
+  box-sizing: border-box;
+}
+
+.reality-postcard-dialog-backdrop {
+  position: fixed;
+  z-index: 180;
+  inset: 0;
+  overflow-x: hidden;
+  overflow-y: auto;
+  padding: max(1rem, env(safe-area-inset-top)) max(1rem, env(safe-area-inset-right))
+    max(1rem, env(safe-area-inset-bottom)) max(1rem, env(safe-area-inset-left));
+  color: var(--ink, #432c29);
+  background:
+    radial-gradient(circle at 12% 8%, rgb(255 245 220 / 92%), transparent 34%), rgb(73 47 41 / 78%);
+  backdrop-filter: blur(8px);
+  font-family: var(--font-ui, 'TravellingBingo UI', 'Microsoft YaHei UI', sans-serif);
+}
+
+.reality-postcard-dialog {
+  width: min(100%, 1120px);
+  min-height: calc(
+    100dvh - max(1rem, env(safe-area-inset-top)) - max(1rem, env(safe-area-inset-bottom)) - 2rem
+  );
+  display: flex;
+  flex-direction: column;
+  margin: 0 auto;
+  padding: clamp(1rem, 3vw, 2rem);
+  border: 2px solid #81564f;
+  border-radius: 24px 29px 22px 27px;
+  background: rgb(255 250 245 / 97%);
+  box-shadow: 0 24px 75px rgb(42 25 22 / 35%);
+}
+
+.reality-postcard-dialog__header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 1rem;
+}
+
+.reality-postcard-dialog__header h2 {
+  margin: 0.25rem 0 0;
+  font-family: var(--display-font, inherit);
+  font-size: clamp(1.45rem, 4vw, 2.35rem);
+  line-height: 1.12;
+}
+
+.reality-postcard-dialog__header p {
+  margin: 0.55rem 0 0;
+  color: var(--muted, #765752);
+  font-size: 0.78rem;
+  font-weight: 700;
+  line-height: 1.55;
+}
+
+.reality-postcard-dialog__wall {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(min(100%, 170px), 1fr));
+  align-content: start;
+  gap: clamp(0.7rem, 2vw, 1.1rem);
+  margin-top: 1.2rem;
+}
+
+.reality-postcard-dialog__wall .reality-postcard-tile {
+  min-height: 190px;
+}
+
+.reality-postcard-dialog__wall .reality-postcard-tile img,
+.reality-postcard-dialog__wall .reality-postcard-tile > span {
+  height: 142px;
+}
+
+.reality-postcard-dialog__actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 0.75rem;
+  margin-top: auto;
+  padding-top: 1.25rem;
+}
+
+.reality-postcard-dialog__actions > * {
+  min-width: min(100%, 10rem);
+}
+
+.reality-postcard-dialog button:focus-visible,
+.reality-postcard-dialog input:focus-visible,
+.reality-postcard-dialog .reality-postcard-tile:has(input:focus-visible) {
+  outline: 3px solid #2f718f;
+  outline-offset: 3px;
 }
 
 .reality-postcard-tile {
@@ -590,7 +545,8 @@
   border-radius: 9px;
   color: #876552;
   background: #ead8c4;
-  object-fit: cover;
+  object-fit: contain;
+  object-position: center;
   font-size: 0.66rem;
   font-weight: 850;
 }
@@ -607,47 +563,7 @@
   outline-offset: 3px;
 }
 
-.reality-pomodoro-summary {
-  display: grid;
-  grid-template-columns: repeat(3, minmax(0, 1fr));
-  gap: 0.55rem;
-  margin: 0.8rem 0 0;
-}
-
-.reality-pomodoro-summary > div {
-  padding: 0.65rem;
-  border: 1.5px solid rgb(204 164 126 / 82%);
-  border-radius: 12px;
-  background: rgb(255 252 246 / 90%);
-}
-
-.reality-pomodoro-summary dt {
-  color: var(--muted, #765752);
-  font-size: 0.62rem;
-  font-weight: 750;
-}
-
-.reality-pomodoro-summary dd {
-  margin: 0.18rem 0 0;
-  font-size: 0.76rem;
-  font-weight: 850;
-  overflow-wrap: anywhere;
-}
-
-.reality-postcard-option {
-  min-height: 148px;
-  display: flex;
-  flex-direction: column;
-  align-items: stretch;
-  overflow: hidden;
-  padding: 0.45rem;
-  border-radius: 14px;
-  text-align: left;
-}
-
-.reality-postcard-option img,
-.reality-postcard-option__placeholder,
-.reality-postcard-option--plain > span {
+.reality-postcard-option__placeholder {
   width: 100%;
   height: 88px;
   display: grid;
@@ -655,10 +571,10 @@
   margin-bottom: 0.45rem;
   border-radius: 9px;
   background: #ead8c4;
-  object-fit: cover;
+  object-fit: contain;
+  object-position: center;
 }
 
-.reality-postcard-option--plain > span,
 .reality-postcard-option__placeholder {
   color: #876552;
   font-size: 0.68rem;
@@ -865,15 +781,21 @@
 }
 
 .pomodoro-focus__scene {
+  position: relative;
   min-height: 48vh;
-  display: flex;
-  align-items: flex-end;
-  justify-content: center;
+  overflow: hidden;
   pointer-events: none;
 }
 
 .pomodoro-focus__mascot {
-  width: min(38vw, 420px);
+  position: absolute;
+  left: var(--pomodoro-mascot-x, 50%);
+  top: var(--pomodoro-mascot-y, 56%);
+  width: clamp(96px, 12.2%, 124px);
+  transform: translate(-50%, -50%);
+  transition:
+    left var(--pomodoro-mascot-duration, 0ms) ease-in-out,
+    top var(--pomodoro-mascot-duration, 0ms) ease-in-out;
   filter: drop-shadow(0 18px 28px rgb(50 28 24 / 25%));
 }
 
@@ -1006,7 +928,7 @@ body:has(.persistent-bilibili-player--focus.is-expanded) .pomodoro-focus__worksp
 
 .pomodoro-focus__todos li {
   display: grid;
-  grid-template-columns: auto minmax(0, 1fr);
+  grid-template-columns: auto minmax(0, 1fr) auto;
   align-items: center;
   gap: 0.55rem;
   padding: 0.5rem;
@@ -1016,9 +938,65 @@ body:has(.persistent-bilibili-player--focus.is-expanded) .pomodoro-focus__worksp
   font-weight: 750;
 }
 
-.pomodoro-focus__todos li.is-complete > span {
+.pomodoro-focus__todos li.is-complete .pomodoro-focus__todo-title {
   color: var(--muted, #765752);
   text-decoration: line-through;
+}
+
+.pomodoro-focus__todo-create {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: 0.45rem;
+  margin-top: 0.65rem;
+}
+
+.pomodoro-focus__todo-create input,
+.pomodoro-focus__todo-edit input {
+  width: 100%;
+  min-height: 40px;
+  padding: 0.5rem 0.62rem;
+  border: 1.5px solid #c49a78;
+  border-radius: 10px;
+  color: var(--ink, #432c29);
+  background: #fff;
+  font: inherit;
+}
+
+.pomodoro-focus__todo-create button,
+.pomodoro-focus__todo-edit button,
+.pomodoro-focus__todo-actions button {
+  min-height: 40px;
+  padding: 0.42rem 0.62rem;
+  border: 1.5px solid #aa7d61;
+  border-radius: 10px;
+  color: var(--ink, #432c29);
+  background: #fff;
+  font-size: 0.68rem;
+  font-weight: 850;
+  cursor: pointer;
+}
+
+.pomodoro-focus__todo-create button:disabled,
+.pomodoro-focus__todo-edit button:disabled {
+  opacity: 0.48;
+  cursor: not-allowed;
+}
+
+.pomodoro-focus__todo-actions,
+.pomodoro-focus__todo-edit > div {
+  display: flex;
+  gap: 0.35rem;
+}
+
+.pomodoro-focus__todo-actions button.is-danger {
+  color: #922f3e;
+}
+
+.pomodoro-focus__todo-edit {
+  grid-column: 1 / -1;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: 0.45rem;
 }
 
 .pomodoro-focus__todos > p {
@@ -1144,23 +1122,17 @@ body:has(.persistent-bilibili-player--focus.is-expanded) .pomodoro-focus__worksp
 }
 
 @media (max-width: 680px) {
-  .reality-timer-card.has-postcard-background .reality-timer-card__shade {
-    background: rgb(255 248 237 / 84%);
-  }
-
   .reality-data-grid {
     grid-template-columns: minmax(0, 1fr);
   }
 
   .reality-group-card,
-  .reality-notification-note,
   .reality-setting-row {
     align-items: stretch;
     flex-direction: column;
   }
 
   .reality-primary-link,
-  .reality-notification-note button,
   .reality-setting-row .reality-secondary-button {
     width: 100%;
   }
@@ -1172,11 +1144,10 @@ body:has(.persistent-bilibili-player--focus.is-expanded) .pomodoro-focus__worksp
 
   .pomodoro-focus__scene {
     min-height: 26vh;
-    align-items: center;
   }
 
   .pomodoro-focus__mascot {
-    width: min(54vw, 260px);
+    width: clamp(96px, 22vw, 124px);
   }
 
   .pomodoro-focus__workspace {
@@ -1213,18 +1184,6 @@ body:has(.persistent-bilibili-player--focus.is-expanded) .pomodoro-focus__worksp
     gap: 0.45rem;
   }
 
-  .reality-background-status {
-    max-width: 8rem;
-  }
-
-  .reality-timer-companion {
-    align-items: flex-start;
-  }
-
-  .reality-timer-companion__mascot {
-    width: 54px;
-  }
-
   .reality-postcard-picker__preview {
     grid-template-columns: minmax(0, 1fr);
   }
@@ -1233,10 +1192,6 @@ body:has(.persistent-bilibili-player--focus.is-expanded) .pomodoro-focus__worksp
   .reality-postcard-picker__preview > span {
     min-height: 132px;
     max-height: 44vw;
-  }
-
-  .reality-pomodoro-summary {
-    grid-template-columns: minmax(0, 1fr);
   }
 
   .pomodoro-focus__headline {
@@ -1249,15 +1204,35 @@ body:has(.persistent-bilibili-player--focus.is-expanded) .pomodoro-focus__worksp
 
   .reality-todo-create > div,
   .reality-action-row,
-  .reality-dialog__actions {
+  .reality-dialog__actions,
+  .reality-postcard-dialog__actions {
     align-items: stretch;
     flex-direction: column;
   }
 
   .reality-todo-create button,
   .reality-action-row > *,
-  .reality-dialog__actions > * {
+  .reality-dialog__actions > *,
+  .reality-postcard-dialog__actions > * {
     width: 100%;
+  }
+
+  .pomodoro-focus__todos li {
+    grid-template-columns: auto minmax(0, 1fr);
+  }
+
+  .pomodoro-focus__todo-actions {
+    grid-column: 1 / -1;
+  }
+
+  .pomodoro-focus__todo-actions > *,
+  .pomodoro-focus__todo-edit > div > * {
+    flex: 1;
+  }
+
+  .pomodoro-focus__todo-create,
+  .pomodoro-focus__todo-edit {
+    grid-template-columns: minmax(0, 1fr);
   }
 }
 
@@ -1269,5 +1244,9 @@ body:has(.persistent-bilibili-player--focus.is-expanded) .pomodoro-focus__worksp
     transition-duration: 0.01ms !important;
     animation-duration: 0.01ms !important;
     animation-iteration-count: 1 !important;
+  }
+
+  .pomodoro-focus__mascot {
+    transition: none !important;
   }
 }

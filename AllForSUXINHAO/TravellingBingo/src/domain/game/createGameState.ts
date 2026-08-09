@@ -76,9 +76,6 @@ export function createInitialGameState(options: InitialGameOptions): GameState {
       },
     },
     musicPlayer: {
-      playlists: {},
-      order: [],
-      activePlaylistId: null,
       currentBvid: null,
       currentIndex: 0,
       loopMode: 'list',

@@ -15,26 +15,32 @@ import {
 } from './support/game'
 
 test.describe('V5 房间契约', () => {
-  test.beforeEach(({}, testInfo) => {
-    test.skip(testInfo.project.name !== 'chromium', 'V5 桌面主流程只在 Chromium 验证')
+  test.beforeEach(({ browserName }, testInfo) => {
+    test.skip(
+      browserName !== 'chromium' || testInfo.project.name !== 'chromium',
+      'V5 桌面主流程只在 Chromium 验证',
+    )
   })
 
-  test('进入前可显式检查新布置，默认读条为 10 秒', async ({ page }) => {
+  test('进入前可显式检查更新，默认读条为 10 秒', async ({ page }) => {
     test.setTimeout(90_000)
     await page.goto('./')
     await expect(page.locator('link[rel="icon"]')).toHaveAttribute('href', './icons/favicon-32.png')
     const updateRegion = page.getByRole('region', { name: '检查游戏更新' })
-    await expect(updateRegion.getByRole('button', { name: '检查新布置' })).toBeVisible()
+    await expect(updateRegion.getByRole('button', { name: '检查更新' })).toBeVisible()
     await expect
       .poll(() => page.evaluate(() => navigator.serviceWorker.getRegistration().then(Boolean)), {
         timeout: 60_000,
       })
       .toBe(true)
-    await updateRegion.getByRole('button', { name: '检查新布置' }).click()
-    await expect(updateRegion.getByRole('button', { name: '检查新布置' })).toBeEnabled({
+    await updateRegion.getByRole('button', { name: '检查更新' }).click()
+    await expect(updateRegion.getByRole('button', { name: '正在检查更新…' })).toBeDisabled()
+    await expect(updateRegion.getByRole('button', { name: '检查更新' })).toBeEnabled({
       timeout: 30_000,
     })
-    await expect(page.getByRole('status').filter({ hasText: '已经检查过新布置啦' })).toBeVisible()
+    await expect(
+      page.getByRole('status').filter({ hasText: '铲铲饼屋暂时没有新布置啦' }),
+    ).toBeVisible()
     await expect(updateRegion.getByRole('status')).toHaveCount(0)
 
     await startGame(page, { debug: true, displayName: '新布置测试', seed: 'v4-update' })
@@ -49,7 +55,7 @@ test.describe('V5 房间契约', () => {
     await expect(hudTitle).toHaveCSS('white-space', 'nowrap')
     await expect(page.locator('.apple-counter .numeric-copy')).toHaveText(/^\d+🍎$/u)
     const status = page.getByRole('status', { name: '饼狗状态' })
-    await expect(status.locator('.pet-status-bar__label')).toHaveText('状态很好')
+    await expect(status.locator('.pet-status-bar__label')).toHaveText('状态正常')
     await expect(status).toContainText('新布置测试陪伴饼狗已经 0 天')
     await expect(status).not.toContainText('🐶')
     await expect(status.getByRole('button')).toHaveCount(0)
@@ -74,7 +80,8 @@ test.describe('V5 房间契约', () => {
     await expect(confirmation.getByRole('button', { name: '继续等待' })).toBeFocused()
     await confirmation.getByRole('button', { name: '确认使用' }).click()
     await expect(activePanel.getByRole('button', { name: '看看这次的结果' })).toBeEnabled()
-    await expect(activePanel).toContainText('现有 0 份')
+    await expect(activePanel).not.toContainText('现有 0 份')
+    await expect(activePanel.getByRole('button', { name: '使用速度魔法' })).toHaveCount(0)
 
     const cancelButton = page.getByRole('button', { name: '取消当前活动' })
     const helpButton = page.getByRole('button', { name: '查看房屋玩法说明' })
@@ -107,7 +114,9 @@ test.describe('V5 房间契约', () => {
     const interest = page.locator('.interest-summary')
     await expect(interest.locator('.is-willing')).toHaveCount(3)
     await expect(interest.locator('.is-reluctant')).toHaveCount(0)
-    expect(await readSupplyCount(page, '瓶装活力魔法')).toBe(0)
+    await page.locator('[data-hotspot="冰箱"]').click()
+    const vitalityItem = page.locator('.shop-item').filter({ hasText: '瓶装活力魔法' })
+    await expect(vitalityItem.locator('small')).not.toContainText(/现有\s*0\s*份/u)
     await saveScreenshot(page, 'vitality-magic-seven-days.png', false)
   })
 
@@ -152,6 +161,9 @@ test.describe('V5 房间契约', () => {
 
     await page.clock.fastForward(10 * 60_000 + 1_000)
     await page.getByRole('button', { name: '回到旅行饼狗游戏' }).click()
+    const leaveDialog = page.getByRole('dialog', { name: '回到饼屋？' })
+    await expect(leaveDialog).toContainText('结算这次现实维度带回的苹果')
+    await leaveDialog.getByRole('button', { name: '回到饼屋' }).click()
     const returnDialog = page.getByRole('dialog', { name: '现实里的事情认真完成了吗？' })
     await expect(returnDialog).toContainText('这段时间一共攒下 1🍎')
     await returnDialog.getByRole('button', { name: '是的🥰' }).click()

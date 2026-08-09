@@ -6,7 +6,6 @@ import {
   deriveActivityTiming,
   getVitalityMagicAvailability,
   ITEM_PRICES,
-  POMODORO_PRESETS,
   type ActivityKind,
   type CollectionCatalog,
   type GameAction,
@@ -16,7 +15,7 @@ import {
   type TaskEvent,
 } from '@/domain'
 import { DebugPanel } from '@/features/debug/DebugPanel'
-import { BilibiliPlaylistPanel, useBilibiliPlayerController } from '@/features/player'
+import { BilibiliPlaylistPanel } from '@/features/player'
 import {
   DataPanel,
   WorkPanel,
@@ -72,7 +71,7 @@ function PanelFrame({
   children,
 }: {
   panel: PanelId
-  tag: string
+  tag?: string
   className?: string
   children: ReactNode
 }) {
@@ -81,9 +80,11 @@ function PanelFrame({
       className={`context-content context-content--v4 ${className}`.trim()}
       data-context-panel={panel}
     >
-      <div className="context-panel__topline">
-        <span className="paper-tag">{tag}</span>
-      </div>
+      {tag && (
+        <div className="context-panel__topline">
+          <span className="paper-tag">{tag}</span>
+        </div>
+      )}
       {children}
     </div>
   )
@@ -117,77 +118,14 @@ function InterestSummary({ game }: { game: GameState }) {
   )
 }
 
-function RecordPlayerContent({
-  game,
-  catalog,
-  onTaskEvent,
-}: {
-  game: GameState
-  catalog: ContentCatalog
-  onTaskEvent: (event: TaskEvent) => void
-}) {
-  const controller = useBilibiliPlayerController()
-  const activePlaylistId = game.musicPlayer.activePlaylistId
-  const activePlaylist =
-    activePlaylistId === null ? undefined : game.musicPlayer.playlists[activePlaylistId]
-
-  function reportRequest(request: ReturnType<typeof controller.selectPlaylist>) {
-    if (request) onTaskEvent({ type: 'record-player-opened', bvid: request.track.bvid })
-  }
-
+function RecordPlayerContent({ onTaskEvent }: { onTaskEvent: (event: TaskEvent) => void }) {
   return (
-    <>
-      <section className="record-library" aria-labelledby="record-library-title">
-        <div className="record-library__heading">
-          <h3 id="record-library-title">选择曲库</h3>
-          <small>选中内置精选可创建新列表；选中自己的列表可继续编辑。</small>
-        </div>
-        <div className="record-library__choices" role="group" aria-label="播放曲库">
-          <button
-            type="button"
-            aria-pressed={activePlaylistId === null}
-            onClick={() => reportRequest(controller.selectPlaylist(null))}
-          >
-            <strong>全站第一</strong>
-            <span className="numeric-copy">{catalog.recordPlayerVideos.length} 首</span>
-          </button>
-          {game.musicPlayer.order.map((playlistId) => {
-            const playlist = game.musicPlayer.playlists[playlistId]
-            if (!playlist) return null
-            return (
-              <button
-                key={playlist.id}
-                type="button"
-                aria-pressed={activePlaylistId === playlist.id}
-                onClick={() => reportRequest(controller.selectPlaylist(playlist.id))}
-              >
-                <strong>{playlist.name}</strong>
-                <span className="numeric-copy">{playlist.bvids.length} 首</span>
-              </button>
-            )
-          })}
-        </div>
-      </section>
-
-      <BilibiliPlaylistPanel
-        key={activePlaylistId ?? 'built-in'}
-        initialName={activePlaylist?.name ?? '我的播放列表'}
-        initialInput={activePlaylist?.bvids.join('\n') ?? ''}
-        resolveTrack={(bvid) => catalog.videosByBvid[bvid]}
-        trackListLabel="唱片列表"
-        onTrackOpened={(bvid) => onTaskEvent({ type: 'record-player-opened', bvid })}
-        submitLabel={activePlaylist ? '保存这个列表' : '创建并载入列表'}
-      />
-    </>
+    <BilibiliPlaylistPanel
+      trackListLabel="全站第一曲目"
+      onTrackOpened={(bvid) => onTaskEvent({ type: 'record-player-opened', bvid })}
+    />
   )
 }
-
-const POMODORO_DURATION_OPTIONS = POMODORO_PRESETS.map((preset) => ({
-  durationMs: preset.focusDurationMs,
-  breakDurationMs: preset.breakDurationMs,
-  label: preset.label,
-  description: preset.description,
-}))
 
 function todoIdFallback(now: number, sequence: number) {
   return `todo-${Math.max(0, Math.floor(now)).toString(36)}-${sequence.toString(36)}`
@@ -219,20 +157,6 @@ function RealityPanel({
   const session = game.reality.pomodoro.session
   const displayedDurationMs =
     session && session.status !== 'completed' ? session.focusDurationMs : selectedDurationMs
-  const durationOptions = useMemo(() => {
-    if (POMODORO_DURATION_OPTIONS.some((option) => option.durationMs === displayedDurationMs)) {
-      return POMODORO_DURATION_OPTIONS
-    }
-    return [
-      ...POMODORO_DURATION_OPTIONS,
-      {
-        durationMs: displayedDurationMs,
-        breakDurationMs: 0,
-        label: `${Math.ceil(displayedDurationMs / 60_000)} 分钟`,
-        description: '存档中的时长',
-      },
-    ].sort((left, right) => left.durationMs - right.durationMs)
-  }, [displayedDurationMs])
   const unlockedBackgrounds = useMemo(
     () => buildUnlockedPostcardBackgrounds(game, catalog),
     [catalog, game],
@@ -264,7 +188,6 @@ function RealityPanel({
     <WorkPanel
       pomodoro={{
         selectedDurationMs: displayedDurationMs,
-        durationOptions,
         session: session
           ? {
               sessionId: session.sessionId,
@@ -523,6 +446,9 @@ export function ContextPanel({
             const item = ITEM_COPY[itemId]
             const price = ITEM_PRICES[itemId]
             const affordable = game.economy.apples >= price
+            const isBottledMagic =
+              itemId === 'bottled-speed-magic' || itemId === 'bottled-vitality-magic'
+            const inventoryCount = game.inventory[itemId]
             return (
               <article className="shop-item" key={itemId}>
                 <span className="shop-item__emoji" aria-hidden="true">
@@ -531,8 +457,13 @@ export function ContextPanel({
                 <div>
                   <strong>{item.name}</strong>
                   <small>
-                    {item.note} · 现有{' '}
-                    <span className="numeric-copy">{game.inventory[itemId]}</span> 份
+                    {item.note}
+                    {(!isBottledMagic || inventoryCount > 0) && (
+                      <>
+                        {' · 现有 '}
+                        <span className="numeric-copy">{inventoryCount}</span> 份
+                      </>
+                    )}
                   </small>
                 </div>
                 <button
@@ -606,7 +537,7 @@ export function ContextPanel({
       <PanelFrame key={panel} panel={panel} tag="唱片机旁" className="record-panel">
         <h2>为房间添加一点音乐</h2>
 
-        <RecordPlayerContent game={game} catalog={catalog} onTaskEvent={onTaskEvent} />
+        <RecordPlayerContent onTaskEvent={onTaskEvent} />
       </PanelFrame>
     )
   }
@@ -632,66 +563,69 @@ export function ContextPanel({
                 onNote={(noteId) => onTaskEvent({ type: 'piano-note-played', noteId })}
               />
             )}
-            <section className="speed-magic-card" aria-labelledby="speed-magic-title">
-              <div>
-                <span className="speed-magic-card__emoji" aria-hidden="true">
-                  {ITEM_COPY['bottled-speed-magic'].emoji}
-                </span>
+            {game.inventory['bottled-speed-magic'] > 0 && (
+              <section className="speed-magic-card" aria-labelledby="speed-magic-title">
                 <div>
-                  <strong id="speed-magic-title">{ITEM_COPY['bottled-speed-magic'].name}</strong>
-                  <small>
-                    现有{' '}
-                    <span className="numeric-copy">{game.inventory['bottled-speed-magic']}</span> 份
-                  </small>
-                </div>
-              </div>
-              {timing.phase !== 'running' ? (
-                <p>活动已经完成，不需要再加速。</p>
-              ) : confirmingSpeedMagic ? (
-                <div className="speed-magic-confirm" role="group" aria-label="确认使用速度魔法">
-                  <p>会消耗 1 份速度魔法，让这次活动立刻完成。确定使用吗？</p>
-                  <div className="button-row">
-                    <button
-                      className="paper-button paper-button--primary"
-                      type="button"
-                      onClick={() => {
-                        setSpeedMagicRunId(null)
-                        onAction({
-                          type: 'magic/speed-use',
-                          runId: activity.runId,
-                          now: Date.now(),
-                        })
-                      }}
-                    >
-                      确认使用
-                    </button>
-                    <button
-                      ref={waitForActivityRef}
-                      className="paper-button"
-                      type="button"
-                      onClick={() => setSpeedMagicRunId(null)}
-                    >
-                      继续等待
-                    </button>
+                  <span className="speed-magic-card__emoji" aria-hidden="true">
+                    {ITEM_COPY['bottled-speed-magic'].emoji}
+                  </span>
+                  <div>
+                    <strong id="speed-magic-title">{ITEM_COPY['bottled-speed-magic'].name}</strong>
+                    <small>
+                      现有{' '}
+                      <span className="numeric-copy">{game.inventory['bottled-speed-magic']}</span>{' '}
+                      份
+                    </small>
                   </div>
                 </div>
-              ) : (
-                <button
-                  ref={speedMagicTriggerRef}
-                  className="paper-button"
-                  type="button"
-                  disabled={game.inventory['bottled-speed-magic'] < 1}
-                  onClick={() => {
-                    setCancelRunId(null)
-                    setSpeedMagicRunId(activity.runId)
-                  }}
-                >
-                  {game.inventory['bottled-speed-magic'] > 0
-                    ? '使用速度魔法'
-                    : '冰箱里还没有速度魔法'}
-                </button>
-              )}
-            </section>
+                {timing.phase !== 'running' ? (
+                  <p>活动已经完成，不需要再加速。</p>
+                ) : confirmingSpeedMagic ? (
+                  <div className="speed-magic-confirm" role="group" aria-label="确认使用速度魔法">
+                    <p>会消耗 1 份速度魔法，让这次活动立刻完成。确定使用吗？</p>
+                    <div className="button-row">
+                      <button
+                        className="paper-button paper-button--primary"
+                        type="button"
+                        onClick={() => {
+                          setSpeedMagicRunId(null)
+                          onAction({
+                            type: 'magic/speed-use',
+                            runId: activity.runId,
+                            now: Date.now(),
+                          })
+                        }}
+                      >
+                        确认使用
+                      </button>
+                      <button
+                        ref={waitForActivityRef}
+                        className="paper-button"
+                        type="button"
+                        onClick={() => setSpeedMagicRunId(null)}
+                      >
+                        继续等待
+                      </button>
+                    </div>
+                  </div>
+                ) : (
+                  <button
+                    ref={speedMagicTriggerRef}
+                    className="paper-button"
+                    type="button"
+                    disabled={game.inventory['bottled-speed-magic'] < 1}
+                    onClick={() => {
+                      setCancelRunId(null)
+                      setSpeedMagicRunId(activity.runId)
+                    }}
+                  >
+                    {game.inventory['bottled-speed-magic'] > 0
+                      ? '使用速度魔法'
+                      : '冰箱里还没有速度魔法'}
+                  </button>
+                )}
+              </section>
+            )}
             {timing.phase === 'ready' ? (
               <button
                 className="paper-button paper-button--primary"
@@ -754,7 +688,7 @@ export function ContextPanel({
       <PanelFrame
         key={panel}
         panel={panel}
-        tag={panel === 'reality-data' ? '二楼电脑' : '一楼电脑'}
+        tag={panel === 'reality-work' ? '工作' : undefined}
         className="reality-context-panel"
       >
         <RealityPanel
@@ -854,16 +788,11 @@ export function ContextPanel({
   }
 
   return (
-    <PanelFrame
-      key={panel}
-      panel={panel}
-      tag="今天的铲铲饼屋"
-      className="status-panel status-panel--v3"
-    >
-      <h2>{game.profile.displayName}，来看看饼狗吧</h2>
+    <PanelFrame key={panel} panel={panel} tag="铲铲饼屋" className="status-panel status-panel--v3">
+      <h2>{game.profile.displayName}，和饼狗一起玩吧</h2>
       <p className="panel-intro">
         {activity
-          ? `${ACTIVITY_COPY[activity.kind].verb}，点顶栏可以查看进度。`
+          ? `${ACTIVITY_COPY[activity.kind].verb}，点击饼狗可以查看进度。`
           : '点房间里的文字标签，饼狗会自己走到那里。'}
       </p>
 

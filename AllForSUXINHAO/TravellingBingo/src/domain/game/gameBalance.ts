@@ -93,7 +93,7 @@ export const DEFAULT_GAME_BALANCE: Readonly<GameBalance> = Object.freeze({
   activityDurationMs: BASE_ACTIVITY_DURATION_MS,
   probabilities: Object.freeze({
     postcard: 0.65,
-    millionShot: 0.4,
+    millionShot: 0.3,
     siteFirst: 0.1,
     travelFriend: 0.2,
     musicFriend: 0.2,

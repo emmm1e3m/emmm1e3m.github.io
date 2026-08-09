@@ -80,6 +80,7 @@ export {
   type StoredGameStateThroughV4,
 } from './game/migrateGameStateV3'
 export {
+  gameStateV5LegacyMusicSchema,
   gameStateV5Schema,
   isStrictGameStateV5,
   migrateGameStateV4ToV5,
@@ -134,6 +135,7 @@ export type {
   GameStateV3,
   GameStateV4,
   GameStateV5,
+  GameStateV5LegacyMusic,
   GameTransition,
   Inventory,
   ItemId,
@@ -151,7 +153,6 @@ export type {
   LegacyRoomArea,
   MusicLoopMode,
   MusicPlayerState,
-  MusicPlaylist,
   PianoNoteId,
   PlayerState,
   PomodoroSession,

@@ -500,13 +500,7 @@ export const bilibiliVideoCatalogSchema = z
       .object({
         sourceFavoriteId: z.number().int().positive().safe(),
         selectionRule: z.string().trim().min(1),
-        items: z.array(bilibiliVideoSchema).length(7),
-      })
-      .strict(),
-    extraTracks: z
-      .object({
-        selectionRule: z.string().trim().min(1),
-        items: z.array(bilibiliVideoMetadataSchema).length(2),
+        items: z.array(bilibiliVideoSchema).length(8),
       })
       .strict(),
   })
@@ -556,32 +550,20 @@ export const bilibiliVideoCatalogSchema = z
       }
       seenRecordPlayerVideos.add(video.bvid)
 
-      const mapping = catalog.posterMappings.siteFirsts[index + 1]
+      const mapping = catalog.posterMappings.siteFirsts[index]
       if (
         mapping === undefined ||
         mapping.bvid !== video.bvid ||
-        mapping.chronology !== index + 2 ||
+        mapping.chronology !== index + 1 ||
         mapping.favoriteId !== video.favoriteId ||
         mapping.favoriteOrder !== video.favoriteOrder
       ) {
         context.addIssue({
           code: 'custom',
           path: ['recordPlayer', 'items', index],
-          message: '唱片机曲库必须按全站第一 chronology 最新第 2–8 项排列',
+          message: '唱片机曲库必须按全站第一 chronology 第 1–8 项排列',
         })
       }
-    })
-
-    const seenExtraTracks = new Set<string>()
-    catalog.extraTracks.items.forEach((video, index) => {
-      if (catalog.videos[video.bvid] !== undefined || seenExtraTracks.has(video.bvid)) {
-        context.addIssue({
-          code: 'custom',
-          path: ['extraTracks', 'items', index, 'bvid'],
-          message: '额外曲目不能与视频索引或彼此重复',
-        })
-      }
-      seenExtraTracks.add(video.bvid)
     })
 
     const seenPosterIds = new Set<string>()

@@ -159,9 +159,11 @@ test.describe('390 × 844 移动端完整房间', () => {
   test('标题、HUD、房屋帮助和侧栏均无横向溢出', async ({ page }, testInfo) => {
     test.skip(testInfo.project.name !== 'mobile-chromium', '只在移动 Chromium 项目验证')
     await page.goto('./')
-    await page.getByRole('textbox', { name: '想让饼狗怎么称呼你？' }).fill('三九零')
     await expectNoHorizontalOverflow(page)
-    await page.getByRole('button', { name: '新存档' }).click()
+    await page.getByRole('button', { name: '全新旅程' }).click()
+    const newJourneyDialog = page.getByRole('dialog', { name: '开启一段全新的旅程' })
+    await newJourneyDialog.getByLabel('如何称呼你？').fill('三九零')
+    await newJourneyDialog.getByRole('button', { name: '开始全新旅程' }).click()
     await expect(page.getByRole('region', { name: '铲铲饼屋互动场景' })).toBeVisible()
     await expectNoHorizontalOverflow(page)
 
@@ -179,7 +181,7 @@ test.describe('390 × 844 移动端完整房间', () => {
     await saveScreenshot(page, 'mobile-390x844-computer.png')
   })
 
-  test('收藏详情保持 9:16，图片铺满且完整预览使用 contain', async ({ page }, testInfo) => {
+  test('收藏详情保持 9:16，详情与完整预览都留白完整显示', async ({ page }, testInfo) => {
     test.skip(testInfo.project.name !== 'mobile-chromium', '只在移动 Chromium 项目验证')
     await startGame(page, { debug: true, displayName: '移动收藏', seed: 'mobile-album-v4' })
     await openDebugPanel(page)
@@ -214,14 +216,22 @@ test.describe('390 × 844 移动端完整房间', () => {
     expect(detailBox!.width / detailBox!.height).toBeCloseTo(9 / 16, 2)
     await expectElementWithinViewport(detail)
     await expect(detailDialog.getByRole('button', { name: '关闭详情' })).toBeInViewport()
-    await expect(detail.locator('.collectible-detail__image img')).toHaveCSS('object-fit', 'cover')
+    await expect(detail.locator('.collectible-detail__image img')).toHaveCSS(
+      'object-fit',
+      'contain',
+    )
     await expect(detail.locator('.collectible-detail__copy')).toHaveCSS('scrollbar-width', 'none')
     await expectNoHorizontalOverflow(page)
 
     const player = page.getByTestId('persistent-bilibili-player')
     await expectElementWithinViewport(player)
+    const expandedPlayerBox = await player.boundingBox()
+    expect(expandedPlayerBox).not.toBeNull()
     await player.getByRole('button', { name: '隐藏画面' }).click()
     await expect(player).toHaveAttribute('data-dock-state', 'collapsed')
+    const collapsedPlayerBox = await player.boundingBox()
+    expect(collapsedPlayerBox).not.toBeNull()
+    expect(Math.abs(collapsedPlayerBox!.width - expandedPlayerBox!.width)).toBeLessThan(0.5)
     await player.getByRole('button', { name: '显示画面' }).click()
     await expect(player).toHaveAttribute('data-dock-state', 'expanded')
 

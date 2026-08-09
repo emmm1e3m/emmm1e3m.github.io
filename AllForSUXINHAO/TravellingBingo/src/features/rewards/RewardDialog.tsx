@@ -93,7 +93,7 @@ export function RewardDialog({ reward, catalog, onDismiss }: RewardDialogProps) 
         )}
 
         {!rewardItem && !friend && reward.kind === 'trend' && (
-          <p className="reward-empty">别着急，饼狗会陪你准备下一次冲刺。</p>
+          <p className="reward-empty">加油准备下一次冲刺</p>
         )}
         {!rewardItem && !friend && reward.kind !== 'trend' && reward.apples.total === 0 && (
           <p className="reward-empty">认真度过的时间，也被饼狗记住了。</p>

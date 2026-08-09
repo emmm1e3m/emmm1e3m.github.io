@@ -124,7 +124,7 @@ function PlayerHarness({ children }: { children: ReactNode }) {
     <BilibiliPlayerProvider
       state={game.musicPlayer}
       onAction={() => undefined}
-      builtInTracks={recordVideos}
+      tracks={recordVideos}
     >
       {children}
       <PersistentPlayerDock />
@@ -142,11 +142,7 @@ function ControlledPlayerHarness({
   onAction?: (action: Extract<GameAction, { type: `music/${string}` }>) => void
 }) {
   return (
-    <BilibiliPlayerProvider
-      state={game.musicPlayer}
-      onAction={onAction}
-      builtInTracks={recordVideos}
-    >
+    <BilibiliPlayerProvider state={game.musicPlayer} onAction={onAction} tracks={recordVideos}>
       {children}
       <PersistentPlayerDock />
     </BilibiliPlayerProvider>
@@ -163,10 +159,18 @@ describe('ContextPanel 信息栏交互', () => {
       />,
     )
 
-    expect(screen.getByText('今天的铲铲饼屋')).toHaveClass('paper-tag')
+    expect(screen.getByText('铲铲饼屋')).toHaveClass('paper-tag')
     expect(screen.queryByRole('button', { name: '收起信息栏' })).not.toBeInTheDocument()
+    expect(screen.getByRole('heading', { name: /和饼狗一起玩吧/u })).toBeInTheDocument()
     expect(screen.getByRole('heading', { name: '饼狗今天的心情' })).toBeInTheDocument()
     expect(screen.getByRole('heading', { name: '和饼狗一起做三件小事' })).toBeInTheDocument()
+  })
+
+  it('活动中的待机信息页提示点击饼狗查看进度', () => {
+    render(<ContextPanel {...commonProps} panel="status" game={gameWithActiveTravel()} />)
+
+    expect(screen.getByText(/点击饼狗可以查看进度/u)).toBeInTheDocument()
+    expect(screen.queryByText(/点顶栏可以查看进度/u)).not.toBeInTheDocument()
   })
 
   it('取消确认出现时聚焦安全按钮，关闭后把焦点还给触发器', async () => {
@@ -296,19 +300,42 @@ describe('ContextPanel 信息栏交互', () => {
     })
   })
 
+  it('活动中没有速度魔法时不展示零库存魔法卡', () => {
+    render(<ContextPanel {...commonProps} panel="activity" game={gameWithActiveTravel()} />)
+
+    expect(screen.queryByText('瓶装速度魔法')).not.toBeInTheDocument()
+    expect(screen.queryByText('冰箱里还没有速度魔法')).not.toBeInTheDocument()
+  })
+
   it('冰箱展示两种魔法道具 emoji，标题不再重复“为冰箱”', () => {
-    render(
-      <ContextPanel
-        {...commonProps}
-        panel="fridge"
-        game={createInitialGameState({ now: 1_000, seed: 'fridge-magic-items' })}
-      />,
-    )
+    const game = createInitialGameState({ now: 1_000, seed: 'fridge-magic-items' })
+    const { rerender } = render(<ContextPanel {...commonProps} panel="fridge" game={game} />)
 
     expect(screen.getByRole('heading', { name: '补充道具' })).toBeInTheDocument()
     expect(screen.queryByText(/为冰箱/u)).not.toBeInTheDocument()
-    expect(screen.getByText('瓶装速度魔法').closest('article')).toHaveTextContent('⚡')
-    expect(screen.getByText('瓶装活力魔法').closest('article')).toHaveTextContent('✨')
+    const speedCard = screen.getByText('瓶装速度魔法').closest('article')
+    const vitalityCard = screen.getByText('瓶装活力魔法').closest('article')
+    expect(speedCard).toHaveTextContent('⚡')
+    expect(vitalityCard).toHaveTextContent('✨')
+    expect(speedCard).not.toHaveTextContent(/现有\s*0\s*份/u)
+    expect(vitalityCard).not.toHaveTextContent(/现有\s*0\s*份/u)
+
+    rerender(
+      <ContextPanel
+        {...commonProps}
+        panel="fridge"
+        game={{
+          ...game,
+          inventory: {
+            ...game.inventory,
+            'bottled-speed-magic': 2,
+            'bottled-vitality-magic': 1,
+          },
+        }}
+      />,
+    )
+    expect(screen.getByText('瓶装速度魔法').closest('article')).toHaveTextContent(/现有\s*2\s*份/u)
+    expect(screen.getByText('瓶装活力魔法').closest('article')).toHaveTextContent(/现有\s*1\s*份/u)
   })
 
   it('旅行面板移除重复的外层旅行和门口文案', () => {
@@ -339,7 +366,7 @@ describe('ContextPanel 信息栏交互', () => {
       </PlayerHarness>,
     )
 
-    const list = screen.getByRole('list', { name: '唱片列表' })
+    const list = screen.getByRole('list', { name: '全站第一曲目' })
     const items = within(list).getAllByRole('listitem')
     expect(items).toHaveLength(recordVideos.length)
     expect(items.every((item) => item.tagName === 'LI')).toBe(true)
@@ -392,130 +419,22 @@ describe('ContextPanel 信息栏交互', () => {
     )
   })
 
-  it('唱片机接入命名列表编辑，并把新列表交给受控领域动作持久化', () => {
-    const game = createInitialGameState({ now: 1_000, seed: 'controlled-playlist-editor' })
-    const onMusicAction = vi.fn()
-    const onTaskEvent = vi.fn()
-
+  it('唱片机只展示唯一的全站第一曲库，不再提供自定义 BV 或播放列表入口', () => {
+    const game = createInitialGameState({ now: 1_000, seed: 'single-record-library' })
     render(
-      <ControlledPlayerHarness game={game} onAction={onMusicAction}>
-        <ContextPanel
-          {...commonProps}
-          panel="record-player"
-          game={game}
-          onAction={onMusicAction}
-          onTaskEvent={onTaskEvent}
-        />
+      <ControlledPlayerHarness game={game}>
+        <ContextPanel {...commonProps} panel="record-player" game={game} />
       </ControlledPlayerHarness>,
     )
 
-    expect(screen.getByRole('button', { name: /全站第一/u })).toHaveAttribute(
-      'aria-pressed',
-      'true',
-    )
-    expect(screen.getByRole('heading', { name: '整理播放列表' })).toBeVisible()
-
-    fireEvent.change(screen.getByLabelText('播放列表名称'), {
-      target: { value: '晚安唱片' },
-    })
-    fireEvent.change(screen.getByLabelText('BV 号或视频链接'), {
-      target: {
-        value: `${recordVideos[0]!.bvid}\nhttps://www.bilibili.com/video/${recordVideos[1]!.bvid}\n${recordVideos[0]!.bvid}`,
-      },
-    })
-    fireEvent.click(screen.getByRole('button', { name: '创建并载入列表' }))
-
-    const createAction = onMusicAction.mock.calls
-      .map(([action]) => action as GameAction)
-      .find((action) => action.type === 'music/playlist-create')
-    expect(createAction).toMatchObject({
-      type: 'music/playlist-create',
-      name: '晚安唱片',
-      bvids: [recordVideos[0]!.bvid, recordVideos[1]!.bvid],
-      now: expect.any(Number),
-    })
-    expect(createAction?.type).toBe('music/playlist-create')
-    if (createAction?.type !== 'music/playlist-create') throw new Error('没有创建播放列表')
-    expect(onMusicAction).toHaveBeenCalledWith({
-      type: 'music/playlist-select',
-      playlistId: createAction.playlistId,
-    })
-    expect(screen.getByText('已载入 2 首；去重 1 行；跳过 0 行。')).toBeVisible()
-    expect(onTaskEvent).toHaveBeenCalledWith({
-      type: 'record-player-opened',
-      bvid: recordVideos[0]!.bvid,
-    })
-    expect(screen.getAllByTestId('persistent-bilibili-player')).toHaveLength(1)
-    expect(screen.getByTitle('Bilibili 外链播放器：第一首测试唱片')).toBeInTheDocument()
-  })
-
-  it('曲库按钮可在自定义列表与内置精选之间切换', () => {
-    const baseGame = createInitialGameState({ now: 1_000, seed: 'playlist-library-switch' })
-    const game: GameState = {
-      ...baseGame,
-      musicPlayer: {
-        ...baseGame.musicPlayer,
-        playlists: {
-          bedtime: {
-            id: 'bedtime',
-            name: '睡前听听',
-            bvids: [recordVideos[0]!.bvid],
-            createdAt: 1_000,
-            updatedAt: 1_000,
-          },
-        },
-        order: ['bedtime'],
-        activePlaylistId: 'bedtime',
-        currentBvid: recordVideos[0]!.bvid,
-        currentIndex: 0,
-      },
-    }
-    const onMusicAction = vi.fn()
-    const onTaskEvent = vi.fn()
-
-    render(
-      <ControlledPlayerHarness game={game} onAction={onMusicAction}>
-        <ContextPanel
-          {...commonProps}
-          panel="record-player"
-          game={game}
-          onAction={onMusicAction}
-          onTaskEvent={onTaskEvent}
-        />
-      </ControlledPlayerHarness>,
-    )
-
-    expect(screen.getByRole('button', { name: /睡前听听/u })).toHaveAttribute(
-      'aria-pressed',
-      'true',
-    )
-    expect(screen.getByLabelText('播放列表名称')).toHaveValue('睡前听听')
-    expect(screen.getByLabelText('BV 号或视频链接')).toHaveValue(recordVideos[0]!.bvid)
-
-    fireEvent.click(screen.getByRole('button', { name: /全站第一/u }))
-    expect(onMusicAction).toHaveBeenCalledWith({
-      type: 'music/playlist-select',
-      playlistId: null,
-    })
-    expect(onMusicAction).toHaveBeenCalledWith({
-      type: 'music/track-select',
-      bvid: recordVideos[0]!.bvid,
-      index: 0,
-    })
-    expect(onTaskEvent).toHaveBeenCalledWith({
-      type: 'record-player-opened',
-      bvid: recordVideos[0]!.bvid,
-    })
-    const iframe = screen.getByTitle<HTMLIFrameElement>('Bilibili 外链播放器：第一首测试唱片')
-    const url = new URL(iframe.src)
-    expect(url.searchParams.get('autoplay')).toBe('1')
-    expect(url.searchParams.get('t')).toBeNull()
+    expect(screen.getByRole('heading', { name: '八首全站第一' })).toBeVisible()
+    expect(screen.queryByRole('textbox')).not.toBeInTheDocument()
   })
 
   it('现实数据和工作入口直接展示对应内容，不再嵌套 Dashboard 标签页', () => {
     const onNavigate = vi.fn()
     const dataGame = gameInReality()
-    const { rerender } = render(
+    const { container, rerender } = render(
       <ContextPanel
         {...commonProps}
         panel="reality-data"
@@ -524,8 +443,9 @@ describe('ContextPanel 信息栏交互', () => {
       />,
     )
 
-    expect(screen.getByRole('heading', { name: '刷播与冲热' })).toBeInTheDocument()
+    expect(screen.getByRole('heading', { name: '刷播与冲热（开发中）' })).toBeInTheDocument()
     expect(screen.queryByRole('tab')).not.toBeInTheDocument()
+    expect(container.querySelector('.context-panel__topline')).not.toBeInTheDocument()
 
     rerender(
       <ContextPanel
@@ -537,6 +457,9 @@ describe('ContextPanel 信息栏交互', () => {
     )
     expect(screen.getByRole('heading', { name: '苹果钟与待办' })).toBeInTheDocument()
     expect(screen.queryByRole('tab')).not.toBeInTheDocument()
+    expect(container.querySelector('.context-panel__topline')).toHaveTextContent('工作')
+    expect(container.querySelector('.context-panel__topline')).not.toHaveTextContent('一楼电脑')
+    expect(container.querySelector('.reality-panel__mark')).toBeNull()
     expect(onNavigate).not.toHaveBeenCalled()
   })
 

@@ -92,7 +92,7 @@ describe('旅行饼狗 v5 领域状态', () => {
       activityDurationMs: 10_000,
       probabilities: {
         postcard: 0.65,
-        millionShot: 0.4,
+        millionShot: 0.3,
         siteFirst: 0.1,
         travelFriend: 0.2,
         musicFriend: 0.2,

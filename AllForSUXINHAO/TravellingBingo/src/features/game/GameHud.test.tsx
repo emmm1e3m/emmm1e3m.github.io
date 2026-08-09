@@ -2,6 +2,8 @@ import { render, screen } from '@testing-library/react'
 
 import { createInitialGameState, deriveActivityTiming } from '@/domain'
 
+import globalStyles from '@/styles/global.css?raw'
+
 import gameV4Styles from './game-v4.css?raw'
 import { GameHud } from './GameHud'
 
@@ -24,6 +26,7 @@ describe('GameHud', () => {
     render(
       <GameHud
         game={game}
+        now={1_000}
         activity={null}
         timing={deriveActivityTiming(null, 1_000)}
         dirty={false}
@@ -48,5 +51,69 @@ describe('GameHud', () => {
     expect(screen.getByRole('status', { name: '饼狗状态' })).toHaveTextContent(
       '状态很好你陪伴饼狗已经 0 天',
     )
+  })
+
+  it('为顶栏各块分别提供协调的圆角矩形背景', () => {
+    for (const [selector, color] of [
+      ['.game-hud--v4 .exit-button--text', '#f8e2dc'],
+      ['.game-hud--v4 .game-hud__center', '#fff1dc'],
+      ['.game-page--v4 .pet-status-bar', '#f8eee4'],
+      ['.game-hud--v4 .reality-stay-timer', '#e5eff2'],
+      ['.game-hud--v4 .apple-counter', '#ffe9c9'],
+      ['.game-hud--v4 .hud-icon--album', '#f7dfdf'],
+      ['.game-hud--v4 .debug-chip', '#eee3f2'],
+    ] as const) {
+      expect(gameV4Styles).toMatch(
+        new RegExp(
+          `${selector.replace(/[.*+?^${}()|[\\]\\]/g, '\\$&')}\\s*\\{[^}]*background:\\s*${color};`,
+          'su',
+        ),
+      )
+    }
+    expect(gameV4Styles).toMatch(
+      /\.game-hud--v4 \.exit-button--text,[^}]*\.game-page--v4 \.pet-status-bar,[^}]*\{[^}]*border-radius:\s*14px !important;/su,
+    )
+  })
+
+  it('现实停留计时只由 enteredAt 与传入 now 格式化，回到游戏后隐藏', () => {
+    const base = createInitialGameState({ now: 1_000, seed: 'v4-reality-timer' })
+    const reality = {
+      ...base,
+      world: 'reality' as const,
+      reality: {
+        ...base.reality,
+        activeStay: { stayId: 'hud-stay', enteredAt: 1_000 },
+      },
+    }
+    const props = {
+      activity: null,
+      timing: deriveActivityTiming(null, 1_000),
+      dirty: false,
+      statusLabel: '状态正常',
+      vitalityDays: 0,
+      onExit: vi.fn(),
+      onCenter: vi.fn(),
+      onFridge: vi.fn(),
+      onAlbum: vi.fn(),
+      onDebug: vi.fn(),
+    } as const
+    const { rerender } = render(<GameHud {...props} game={reality} now={62_000} />)
+
+    expect(screen.getByRole('timer', { name: '本次现实停留 01:01' })).toHaveTextContent(
+      '现实 01:01',
+    )
+    rerender(<GameHud {...props} game={reality} now={3_662_000} />)
+    expect(screen.getByRole('timer', { name: '本次现实停留 01:01:01' })).toBeInTheDocument()
+    rerender(<GameHud {...props} game={base} now={3_662_000} />)
+    expect(screen.queryByRole('timer')).not.toBeInTheDocument()
+  })
+
+  it('全站默认与可点击区域使用 CSS 内联 SVG 场景指针', () => {
+    expect(globalStyles).toMatch(/--scene-cursor-default:\s*url\("data:image\/svg\+xml,/su)
+    expect(globalStyles).toMatch(/--scene-cursor-action:\s*url\("data:image\/svg\+xml,/su)
+    expect(globalStyles).toMatch(
+      /html,\s*body,\s*body \*\s*\{\s*cursor:\s*var\(--scene-cursor-default\) !important;/su,
+    )
+    expect(globalStyles).toContain('cursor: var(--scene-cursor-action) !important;')
   })
 })

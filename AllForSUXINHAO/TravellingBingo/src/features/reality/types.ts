@@ -13,13 +13,6 @@ export interface DataPanelProps {
   className?: string
 }
 
-export interface PomodoroDurationOption {
-  durationMs: number
-  breakDurationMs?: number
-  label: string
-  description?: string
-}
-
 export interface PomodoroSessionView {
   sessionId: string
   status: 'focus' | 'break' | 'completed'
@@ -30,7 +23,6 @@ export interface PomodoroSessionView {
 
 export interface PomodoroView {
   selectedDurationMs: number
-  durationOptions: readonly PomodoroDurationOption[]
   session: PomodoroSessionView | null
   canStart?: boolean
 }
@@ -98,7 +90,10 @@ export interface PomodoroFocusOverlayProps {
   todos: readonly RealityTodoView[]
   musicStarter?: ReactNode
   playerExpanded?: boolean
+  onTodoCreate: (title: string) => void
+  onTodoUpdate: (todoId: string, update: TodoUpdateInput) => void
   onTodoCompletionChange: (todoId: string, completed: boolean) => void
+  onTodoDelete: (todoId: string) => void
   onCancel: (sessionId: string) => void
   className?: string
 }

@@ -1,6 +1,6 @@
 .game-page.game-page--v4 {
-  /* 顶栏到主体、房间到信息栏都使用外侧留白的一半，避免三套间距漂移。 */
-  --shell-gap: calc(var(--shell-inset) / 2);
+  /* 顶栏到主体、房间到信息栏都复用唯一的场景间距。 */
+  --shell-gap: var(--scene-component-gap);
 }
 
 .game-page--v4 .game-hud--v4 {
@@ -14,24 +14,62 @@
 .game-hud--v4 .pet-status-bar__label,
 .game-hud--v4 .pet-status-bar__effect,
 .game-hud--v4 .hud-companion,
+.game-hud--v4 .reality-stay-timer,
 .game-hud--v4 .apple-counter strong,
 .game-hud--v4 .hud-icon,
 .game-hud--v4 .debug-chip {
   font-size: var(--v4-hud-copy-size);
 }
 
-/* 顶栏内部不再区分桃色、粉色或深色胶囊；图标与文字共用一套轻量样式。 */
+/* 顶栏保持统一的圆角矩形语言，每一块用轻微色差帮助快速辨认。 */
 .game-hud--v4 .exit-button--text,
 .game-hud--v4 .game-hud__center,
+.game-page--v4 .pet-status-bar,
+.game-hud--v4 .reality-stay-timer,
 .game-hud--v4 .apple-counter,
 .game-hud--v4 .hud-icon,
 .game-hud--v4 .debug-chip {
-  border: 0 !important;
+  border: 1px solid rgb(126 88 74 / 22%) !important;
+  border-radius: 14px !important;
   color: var(--v2-cocoa);
-  background: transparent;
-  box-shadow: none;
+  box-shadow: 0 3px 10px rgb(80 45 32 / 8%);
   font-family: var(--v2-body);
   font-weight: 700;
+}
+
+.game-hud--v4 .exit-button--text {
+  background: #f8e2dc;
+}
+
+.game-hud--v4 .game-hud__center {
+  background: #fff1dc;
+}
+
+.game-page--v4 .pet-status-bar {
+  background: #f8eee4;
+}
+
+.game-hud--v4 .reality-stay-timer {
+  min-height: 44px;
+  flex: 0 0 auto;
+  display: inline-flex;
+  align-items: center;
+  padding: 0.38rem 0.58rem;
+  background: #e5eff2;
+  line-height: 1;
+  white-space: nowrap;
+}
+
+.game-hud--v4 .apple-counter {
+  background: #ffe9c9;
+}
+
+.game-hud--v4 .hud-icon--album {
+  background: #f7dfdf;
+}
+
+.game-hud--v4 .debug-chip {
+  background: #eee3f2;
 }
 
 .game-hud--v4 .game-hud__center > strong,
@@ -115,12 +153,8 @@
   align-items: center;
   justify-content: flex-start;
   gap: 0.55rem;
-  padding: 0.2rem 0.3rem;
-  border: 0;
-  border-radius: 0;
+  padding: 0.38rem 0.58rem;
   color: var(--v2-cocoa);
-  background: transparent;
-  box-shadow: none;
   font-size: var(--v4-hud-copy-size);
   line-height: 1.3;
   white-space: nowrap;
@@ -209,6 +243,13 @@
   align-items: center;
   gap: 0.9rem;
   padding: clamp(1.25rem, 4vw, 2rem);
+  border: 2px solid #8b6155;
+  border-radius: 24px;
+  color: var(--v2-cocoa);
+  background: #fffaf2;
+  box-shadow:
+    0 24px 72px rgb(70 42 34 / 28%),
+    0 5px 0 rgb(117 71 51 / 16%);
 }
 
 .dimension-dialog h2,
@@ -220,6 +261,104 @@
   justify-content: flex-end;
 }
 
+.dimension-transition {
+  position: fixed;
+  z-index: 84;
+  inset: 0;
+  display: grid;
+  place-content: center;
+  justify-items: center;
+  gap: 0.8rem;
+  color: #6d4239;
+  background:
+    radial-gradient(circle at center, rgb(255 250 241 / 98%) 0 18%, transparent 48%),
+    linear-gradient(135deg, rgb(248 221 208 / 96%), rgb(255 241 215 / 96%));
+  pointer-events: all;
+}
+
+.dimension-transition--out {
+  animation: dimension-veil-in 240ms ease-out both;
+}
+
+.dimension-transition--in {
+  animation: dimension-veil-out 360ms ease-in both;
+}
+
+.dimension-transition__orbit {
+  width: 84px;
+  height: 84px;
+  display: grid;
+  place-items: center;
+  border: 2px solid rgb(126 88 74 / 34%);
+  border-radius: 50%;
+  background: #fffaf2;
+  box-shadow: 0 12px 34px rgb(80 45 32 / 16%);
+  font-size: 2rem;
+  animation: dimension-orbit 620ms cubic-bezier(0.4, 0, 0.2, 1) both;
+}
+
+.dimension-transition strong {
+  padding: 0.55rem 0.82rem;
+  border-radius: 13px;
+  background: rgb(255 250 242 / 92%);
+  box-shadow: 0 5px 18px rgb(80 45 32 / 10%);
+  font: 700 0.9rem/1.2 var(--v2-body);
+}
+
+.game-page.is-dimension-transitioning-out > .game-hud,
+.game-page.is-dimension-transitioning-out > .game-layout {
+  animation: dimension-scene-out 240ms ease-in both;
+}
+
+.game-page.is-dimension-transitioning-in > .game-hud,
+.game-page.is-dimension-transitioning-in > .game-layout {
+  animation: dimension-scene-in 360ms ease-out both;
+}
+
+@keyframes dimension-scene-out {
+  to {
+    opacity: 0;
+    transform: scale(0.975);
+  }
+}
+
+@keyframes dimension-scene-in {
+  from {
+    opacity: 0;
+    transform: scale(1.025);
+  }
+}
+
+@keyframes dimension-veil-in {
+  from {
+    opacity: 0;
+  }
+
+  to {
+    opacity: 1;
+  }
+}
+
+@keyframes dimension-veil-out {
+  from {
+    opacity: 1;
+  }
+
+  to {
+    opacity: 0;
+  }
+}
+
+@keyframes dimension-orbit {
+  from {
+    transform: rotate(-90deg) scale(0.84);
+  }
+
+  to {
+    transform: rotate(270deg) scale(1);
+  }
+}
+
 /* 饼狗坐标以房屋母版中的图像中心为锚点。 */
 .room-card--v4 .room-mascot--actor {
   transform: translate(-50%, -50%);
@@ -228,6 +367,37 @@
 /* 热点与饼狗点击框重叠时优先设施，饼狗其余可见区域仍可打开菜单。 */
 .room-card--v4 .room-hotspot {
   z-index: 9;
+}
+
+.game-page--v4 .room-mascot--actor.is-wandering {
+  will-change: left, top;
+  transition:
+    left 6.4s ease-in-out,
+    top 6.4s ease-in-out,
+    transform 180ms ease;
+}
+
+.room-card--v4 button.travel-note--v2 {
+  z-index: 10;
+  display: grid;
+  gap: 0.12rem;
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+
+.room-card--v4 .travel-note--v2 strong,
+.room-card--v4 .travel-note--v2 span {
+  display: block;
+}
+
+.room-card--v4 .travel-note--v2 strong {
+  font-family: var(--v2-display);
+  font-size: 0.78rem;
+}
+
+.room-card--v4 .travel-note--v2 span {
+  font-size: 0.62rem;
 }
 
 .room-card--v4 .room-mascot--actor:hover,
@@ -274,6 +444,7 @@
 
 .game-page--v4 .game-layout--v3.has-side-panel {
   grid-template-columns: minmax(0, 1fr) var(--v4-context-width);
+  column-gap: var(--scene-component-gap);
 }
 
 .game-page--v4 .context-panel {
@@ -292,17 +463,19 @@
   min-height: 0;
   display: flex;
   flex-direction: column;
-  gap: var(--shell-gap);
+  gap: var(--scene-component-gap);
   overflow: hidden;
 }
 
-/* 固定播放器占用信息栏底部预留区，不遮挡列表和房间角落按钮。 */
-body:has(.persistent-bilibili-player--context) .game-page--v4 .context-stack {
-  padding-bottom: 76px;
-}
+/* 桌面播放器使用已知块高；信息栏据此精确留出同一份场景间距。 */
+@media (min-width: 961px) {
+  body:has(.persistent-bilibili-player--context) .game-page--v4 .context-stack {
+    padding-bottom: calc(var(--scene-player-collapsed-block-size) + var(--scene-component-gap));
+  }
 
-body:has(.persistent-bilibili-player--context.is-expanded) .game-page--v4 .context-stack {
-  padding-bottom: min(290px, 46dvh);
+  body:has(.persistent-bilibili-player--context.is-expanded) .game-page--v4 .context-stack {
+    padding-bottom: calc(var(--scene-player-expanded-block-size) + var(--scene-component-gap));
+  }
 }
 
 .game-page--v4 .context-content--v4 {
@@ -441,168 +614,8 @@ body:has(.persistent-bilibili-player--context.is-expanded) .game-page--v4 .conte
   border-top: 1px dashed #d8b16f;
 }
 
-.game-page--v4 .record-player-panel,
-.game-page--v4 .record-player-summary,
-.game-page--v4 .record-player-controls {
-  min-width: 0;
-}
-
-.game-page--v4 .record-player-summary {
-  display: grid;
-  gap: 0.55rem;
-}
-
-.game-page--v4 .record-player-summary > div:first-child {
-  display: flex;
-  align-items: baseline;
-  justify-content: space-between;
-  gap: 0.6rem;
-}
-
-.game-page--v4 .record-player-summary small,
-.game-page--v4 .record-player-limits {
-  color: var(--v2-muted);
-  font-size: 0.68rem;
-  line-height: 1.55;
-}
-
-.game-page--v4 .record-mode-picker {
-  display: grid;
-  grid-template-columns: repeat(3, minmax(0, 1fr));
-  gap: 0.36rem;
-}
-
-.game-page--v4 .record-mode-picker button,
-.game-page--v4 .record-player-controls button {
-  min-height: 42px;
-  border: 1px solid #d9b49d;
-  border-radius: 11px;
-  color: var(--v2-cocoa);
-  background: #fff8ef;
-  cursor: pointer;
-}
-
-.game-page--v4 .record-mode-picker button[aria-pressed='true'] {
-  border-color: var(--v2-red);
-  color: var(--v2-red-dark);
-  background: #f8ded4;
-}
-
-.game-page--v4 .record-track-list {
-  margin: 0;
-  padding: 0;
-  list-style: none;
-}
-
-.game-page--v4 .record-track-list li {
-  display: grid;
-}
-
-.game-page--v4 .record-track-list button > span:last-child {
-  min-width: 0;
-  display: grid;
-  gap: 0.1rem;
-}
-
-.game-page--v4 .record-track-list button strong,
-.game-page--v4 .record-track-list button small {
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-}
-
-.game-page--v4 .record-player-controls {
-  display: grid;
-  gap: 0.5rem;
-}
-
-.game-page--v4 .record-player-controls > label {
-  display: grid;
-  grid-template-columns: minmax(0, 1fr) 5rem;
-  align-items: center;
-  gap: 0.55rem;
-  font-size: 0.72rem;
-}
-
-.game-page--v4 .record-player-controls input {
-  width: 100%;
-  min-height: 42px;
-  padding: 0.45rem;
-  border: 1px solid #d9b49d;
-  border-radius: 10px;
-  color: var(--v2-cocoa);
-  background: #fff;
-}
-
-.game-page--v4 .record-player-limits {
-  margin: 0;
-}
-
 .game-page--v4 .record-panel {
   gap: 0.8rem;
-}
-
-.game-page--v4 .record-library {
-  display: grid;
-  gap: 0.55rem;
-  padding: 0.72rem;
-  border: 1px solid #e2bda7;
-  border-radius: 15px;
-  background: rgb(255 249 240 / 78%);
-}
-
-.game-page--v4 .record-library__heading {
-  display: grid;
-  gap: 0.12rem;
-}
-
-.game-page--v4 .record-library__heading h3,
-.game-page--v4 .record-library__heading small {
-  margin: 0;
-}
-
-.game-page--v4 .record-library__heading small {
-  color: var(--v2-muted);
-  font-size: 0.72rem;
-  line-height: 1.45;
-}
-
-.game-page--v4 .record-library__choices {
-  display: grid;
-  grid-template-columns: repeat(2, minmax(0, 1fr));
-  gap: 0.42rem;
-}
-
-.game-page--v4 .record-library__choices button {
-  min-width: 0;
-  min-height: 48px;
-  display: grid;
-  gap: 0.08rem;
-  align-content: center;
-  padding: 0.5rem 0.6rem;
-  border: 1px solid #d9b49d;
-  border-radius: 12px;
-  color: var(--v2-cocoa);
-  background: #fff8ef;
-  text-align: left;
-  cursor: pointer;
-}
-
-.game-page--v4 .record-library__choices button[aria-pressed='true'] {
-  border-color: var(--v2-red);
-  background: #f8ded4;
-}
-
-.game-page--v4 .record-library__choices strong,
-.game-page--v4 .record-library__choices span {
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-}
-
-.game-page--v4 .record-library__choices span {
-  color: var(--v2-muted);
-  font-size: 0.68rem;
 }
 
 .game-page--v4 .record-panel .bilibili-playlist-panel {
@@ -615,19 +628,8 @@ body:has(.persistent-bilibili-player--context.is-expanded) .game-page--v4 .conte
   display: none;
 }
 
-.game-page--v4 .record-panel .bilibili-playlist-panel__editor textarea {
-  min-height: 5.4rem;
-  max-height: 9rem;
-}
-
 .game-page--v4 .record-panel .bilibili-playlist-panel__tracks ol {
   max-height: 13.5rem;
-}
-
-@media (max-width: 560px) {
-  .game-page--v4 .record-library__choices {
-    grid-template-columns: minmax(0, 1fr);
-  }
 }
 
 .game-page--v4 .reality-context-panel .reality-data-grid,
@@ -778,14 +780,12 @@ body:has(.persistent-bilibili-player--context.is-expanded) .game-page--v4 .conte
 
 .room-card--v4 .room-bingo-badge,
 .game-page--v4 .paper-tag,
-.game-page--v4 .activity-status-card--button > span:last-child,
 .game-page--v4 .eyebrow,
 .game-page--v4 .bingo-stamp,
 .game-page--v4 .task-number,
 .game-page--v4 .task-copy small,
 .game-page--v4 .task-progress,
 .game-page--v4 .task-progress strong,
-.game-page--v4 .task-board__empty,
 .game-page--v4 .choice-group legend,
 .game-page--v4 .debug-choice-group legend,
 .game-page--v4 .probability-editor legend,
@@ -798,12 +798,6 @@ body:has(.persistent-bilibili-player--context.is-expanded) .game-page--v4 .conte
 .game-page--v4 .pet-menu__wishes strong,
 .game-page--v4 .pet-menu__wishes span,
 .game-page--v4 .pet-menu__heading button,
-.game-page--v4 .record-player-summary small,
-.game-page--v4 .record-player-limits,
-.game-page--v4 .record-player-controls > label,
-.game-page--v4 .record-library__heading small,
-.game-page--v4 .record-library__choices span,
-.game-page--v4 .record-track-list button small,
 .game-page--v4 .probability-row > span:first-child,
 .game-page--v4 .probability-number,
 .game-page--v4 .debug-confirm strong {
@@ -829,9 +823,7 @@ body:has(.persistent-bilibili-player--context.is-expanded) .game-page--v4 .conte
 .game-page--v4 .activity-refusal strong,
 .game-page--v4 .shop-item strong,
 .game-page--v4 .interest-summary__grid strong,
-.game-page--v4 .pet-menu__heading strong,
-.game-page--v4 .record-track-list button strong,
-.game-page--v4 .record-library__choices strong {
+.game-page--v4 .pet-menu__heading strong {
   font-size: var(--v4-body-copy-size);
 }
 
@@ -844,9 +836,6 @@ body:has(.persistent-bilibili-player--context.is-expanded) .game-page--v4 .conte
 .game-page--v4 .context-content--v4 .text-action,
 .game-page--v4 .context-content--v4 .soft-toggle,
 .game-page--v4 .context-content--v4 .shop-item button,
-.game-page--v4 .context-content--v4 .record-mode-picker button,
-.game-page--v4 .context-content--v4 .record-player-controls button,
-.game-page--v4 .context-content--v4 .record-library__choices button,
 .game-page--v4 .context-content--v4 .debug-actions button,
 .game-page--v4 .pet-menu > button {
   font-size: var(--v4-body-copy-size);
@@ -870,25 +859,17 @@ body:has(.persistent-bilibili-player--context.is-expanded) .game-page--v4 .conte
 
 /* 现实面板沿用同一可读性基线，避免嵌入窄信息栏后再次缩到 10–12px。 */
 .game-page--v4 .reality-eyebrow,
-.game-page--v4 .reality-return-button,
 .game-page--v4 .reality-data-card__heading > div > span,
 .game-page--v4 .reality-placeholder-tag,
 .game-page--v4 .reality-session-status,
 .game-page--v4 .reality-unlocked-count,
 .game-page--v4 .reality-data-card__method > strong,
-.game-page--v4 .reality-background-status,
-.game-page--v4 .reality-timer-companion p,
 .game-page--v4 .reality-card-index,
 .game-page--v4 .reality-choice-button small,
-.game-page--v4 .reality-postcard-option small,
-.game-page--v4 .reality-timer-readout,
-.game-page--v4 .reality-notification-note,
-.game-page--v4 .reality-notification-note button,
 .game-page--v4 .reality-todo-create button,
 .game-page--v4 .reality-todo-edit button,
 .game-page--v4 .reality-todo-actions button,
 .game-page--v4 .reality-postcard-option__placeholder,
-.game-page--v4 .reality-postcard-option--plain > span,
 .game-page--v4 .reality-todo-create > label,
 .game-page--v4 .reality-todo-copy small,
 .game-page--v4 .reality-empty {
@@ -903,9 +884,7 @@ body:has(.persistent-bilibili-player--context.is-expanded) .game-page--v4 .conte
 .game-page--v4 .reality-primary-button,
 .game-page--v4 .reality-secondary-button,
 .game-page--v4 .reality-danger-button,
-.game-page--v4 .reality-timer-companion strong,
 .game-page--v4 .reality-choice-button strong,
-.game-page--v4 .reality-postcard-option strong,
 .game-page--v4 .reality-todo-copy strong {
   font-size: var(--v4-body-copy-size);
 }

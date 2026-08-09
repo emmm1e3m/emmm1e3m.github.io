@@ -377,6 +377,7 @@ export interface RealityState {
 
 export type MusicLoopMode = 'list' | 'single' | 'shuffle'
 
+/** 冻结 V4/旧 V5 存档校验专用，不属于当前播放器业务状态。 */
 export interface MusicPlaylist {
   id: string
   name: string
@@ -385,12 +386,8 @@ export interface MusicPlaylist {
   updatedAt: number
 }
 
-/** 仅保存用户播放列表与明确设置；内置曲目和视频元数据始终来自 content。 */
+/** 仅保存唯一内置曲库的当前位置与循环设置；曲目元数据始终来自 content。 */
 export interface MusicPlayerState {
-  playlists: Record<string, MusicPlaylist>
-  order: string[]
-  /** null 表示使用 content 提供的内置默认列表。 */
-  activePlaylistId: string | null
   currentBvid: string | null
   currentIndex: number
   loopMode: MusicLoopMode
@@ -506,6 +503,12 @@ export interface GameStateV5 {
   musicPlayer: MusicPlayerState
 }
 
+/** 同为 schemaVersion 5 的旧缓存播放器形状；只用于原值校验后收敛到当前状态。 */
+export interface GameStateV5LegacyMusic extends Omit<GameStateV5, 'musicPlayer'> {
+  musicPlayer: MusicPlayerState &
+    Pick<MusicPlayerStateV4, 'playlists' | 'order' | 'activePlaylistId'>
+}
+
 export type GameState = GameStateV5
 
 export interface ActivityTiming {
@@ -564,8 +567,6 @@ export type GameErrorCode =
   | 'TODO_LIMIT_REACHED'
   | 'POMODORO_ALREADY_RUNNING'
   | 'POMODORO_NOT_RUNNING'
-  | 'PLAYLIST_NOT_FOUND'
-  | 'PLAYLIST_LIMIT_REACHED'
   | 'DUPLICATE_ID'
   | 'INVALID_BVID'
   | 'DEBUG_REQUIRED'
@@ -616,22 +617,6 @@ export type GameAction =
   | { type: 'pomodoro/start'; now: number; durationMs: number; todoId?: string | null }
   | { type: 'pomodoro/cancel'; sessionId: string; now: number }
   | { type: 'clock/tick'; now: number }
-  | {
-      type: 'music/playlist-create'
-      playlistId: string
-      name: string
-      bvids?: string[]
-      now: number
-    }
-  | {
-      type: 'music/playlist-update'
-      playlistId: string
-      name?: string
-      bvids?: string[]
-      now: number
-    }
-  | { type: 'music/playlist-delete'; playlistId: string; now: number }
-  | { type: 'music/playlist-select'; playlistId: string | null }
   | { type: 'music/track-select'; bvid: string; index: number }
   | { type: 'music/loop-set'; loopMode: MusicLoopMode }
   | { type: 'debug/apples-adjust'; delta: number }
@@ -721,14 +706,7 @@ export type GameEffect =
     }
   | {
       type: 'music-player-updated'
-      change:
-        | 'playlist-created'
-        | 'playlist-updated'
-        | 'playlist-deleted'
-        | 'playlist-selected'
-        | 'track-selected'
-        | 'loop-set'
-      playlistId?: string | null
+      change: 'track-selected' | 'loop-set'
       bvid?: string | null
     }
   | {

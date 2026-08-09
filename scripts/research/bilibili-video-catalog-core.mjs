@@ -133,22 +133,6 @@ export function assertVideoCatalog(catalog) {
   catalog.videos.forEach((video, index) => assertVideoMetadata(video, `videos[${index}]`))
   assertUnique(catalog.videos, (video) => video.bvid, 'videos.bvid')
 
-  invariant(isRecord(catalog.extraTracks), 'extraTracks 必须是对象')
-  assertNonEmptyString(catalog.extraTracks.selectionRule, 'extraTracks.selectionRule')
-  invariant(
-    Array.isArray(catalog.extraTracks.items) && catalog.extraTracks.items.length === 2,
-    '额外曲目必须有 2 项',
-  )
-  catalog.extraTracks.items.forEach((video, index) =>
-    assertVideoMetadata(video, `extraTracks.items[${index}]`),
-  )
-  assertUnique(catalog.extraTracks.items, (video) => video.bvid, 'extraTracks.bvid')
-  const indexedBvids = new Set(catalog.videos.map((video) => video.bvid))
-  invariant(
-    catalog.extraTracks.items.every((video) => !indexedBvids.has(video.bvid)),
-    '额外曲目不能与收藏视频索引重复',
-  )
-
   invariant(isRecord(catalog.posterMappings), 'posterMappings 必须是对象')
   const millionMappings = catalog.posterMappings.millionShots
   const siteMappings = catalog.posterMappings.siteFirsts
@@ -191,13 +175,13 @@ export function assertVideoCatalog(catalog) {
   )
   assertNonEmptyString(catalog.recordPlayer.selectionRule, 'recordPlayer.selectionRule')
   invariant(
-    Array.isArray(catalog.recordPlayer.items) && catalog.recordPlayer.items.length === 7,
-    '唱片机精选必须有 7 项',
+    Array.isArray(catalog.recordPlayer.items) && catalog.recordPlayer.items.length === 8,
+    '唱片机精选必须有 8 项',
   )
   catalog.recordPlayer.items.forEach((video, index) => {
     assertFavoriteVideo(video, `recordPlayer.items[${index}]`)
-    const mapping = siteMappings[index + 1]
-    invariant(mapping?.chronology === index + 2, '唱片机精选 chronology 必须为最新第 2–8 项')
+    const mapping = siteMappings[index]
+    invariant(mapping?.chronology === index + 1, '唱片机精选 chronology 必须为第 1–8 项')
     invariant(mapping?.bvid === video.bvid, '唱片机精选与全站第一 chronology 不一致')
     invariant(mapping.favoriteId === video.favoriteId, '唱片机精选 favoriteId 与映射不一致')
     invariant(
@@ -283,6 +267,5 @@ export function buildPublicVideoCatalog(catalog) {
     ),
     posterMappings: catalog.posterMappings,
     recordPlayer: catalog.recordPlayer,
-    extraTracks: catalog.extraTracks,
   }
 }

@@ -529,6 +529,25 @@ describe('今日 Bingo 任务板', () => {
     })
   })
 
+  it('任务板未全完成时跨过多个自然日仍原样继承每项进度', () => {
+    const assignedAt = new Date(2026, 7, 1, 12).getTime()
+    const muchLater = new Date(2026, 7, 10, 9).getTime()
+    const base = createInitialGameState({ now: assignedAt, seed: 'unfinished-across-days' })
+    const state = withTasks(base, [
+      { ...task('open-backpack', 1), assignedAt, seenKeys: ['opened'] },
+      { ...task('room-stroll', 1), assignedAt, seenKeys: ['bed'] },
+      { ...task('piano-time'), assignedAt, seenKeys: [] },
+    ])
+    const sequenceBefore = state.random.sequences.tasks
+
+    expect(getTaskBoardRefreshDeadline(state.tasks)).toBeNull()
+    expect(refreshTaskBoardForNewDay(state, muchLater, catalog)).toBe(state)
+
+    const ticked = successful(reduceGame(state, { type: 'clock/tick', now: muchLater }, catalog))
+    expect(ticked.state.tasks).toEqual(state.tasks)
+    expect(ticked.state.random.sequences.tasks).toBe(sequenceBefore)
+  })
+
   it('跨日后的任务事件先刷新任务板，再命中当天的新任务', () => {
     const assignedAt = new Date(2026, 7, 8, 10).getTime()
     const completedAt = new Date(2026, 7, 8, 18).getTime()
@@ -622,6 +641,43 @@ describe('今日 Bingo 任务板', () => {
     expect(result.state.pet.location).toBe('piano')
     expect(result.state.tasks.active.map((entry) => entry.progress)).toEqual([1, 0, 0])
     expect(result.effects.map((effect) => effect.type)).toEqual(['pet-moved', 'task-progressed'])
+  })
+
+  it('衣架访问优先结算专用造型任务，不受通用房间任务排列顺序影响', () => {
+    const state = withTasks(createInitialGameState({ now: 0, seed: 'wardrobe-priority' }), [
+      task('room-stroll'),
+      task('wardrobe-choice'),
+      task('record-time'),
+    ])
+
+    const result = successful(
+      reduceGame(state, { type: 'room/interact', area: 'wardrobe', now: 100 }, catalog),
+    )
+
+    expect(result.state.pet.location).toBe('wardrobe')
+    expect(result.state.tasks.active.map((entry) => entry.progress)).toEqual([0, 1, 0])
+    expect(result.effects).toMatchObject([
+      { type: 'pet-moved', location: 'wardrobe' },
+      { type: 'task-progressed', taskId: 'wardrobe-choice', completed: true },
+    ])
+  })
+
+  it('任务板没有待完成造型任务时，衣架仍可计入通用房间走动', () => {
+    const state = withTasks(createInitialGameState({ now: 0, seed: 'wardrobe-stroll-fallback' }), [
+      task('room-stroll'),
+      task('piano-time'),
+      task('record-time'),
+    ])
+
+    const result = successful(
+      reduceGame(state, { type: 'room/interact', area: 'wardrobe', now: 100 }, catalog),
+    )
+
+    expect(result.state.tasks.active.map((entry) => entry.progress)).toEqual([1, 0, 0])
+    expect(result.effects).toMatchObject([
+      { type: 'pet-moved', location: 'wardrobe' },
+      { type: 'task-progressed', taskId: 'room-stroll', completed: false },
+    ])
   })
 
   it('展示 helper 从任务库取稳定文案与进度', () => {

@@ -1,8 +1,7 @@
-import { act, fireEvent, render, screen } from '@testing-library/react'
+import { act, fireEvent, render, screen, within } from '@testing-library/react'
 import { type PropsWithChildren, useState } from 'react'
 
 import type { GameAction, MusicPlayerState } from '@/domain/game/types'
-import videoCatalogJson from '../../../public/data/video-catalog.json'
 
 import {
   BilibiliPlayerProvider,
@@ -11,36 +10,40 @@ import {
 } from './BilibiliPlayerProvider'
 import { useBilibiliPlayerController } from './playerContext'
 import playerStyles from './player.css?raw'
-import { parseBilibiliTrackReference, type BilibiliPlayerTrack } from './playerModel'
+import type { BilibiliPlayerTrack } from './playerModel'
 
 type MusicPlayerAction = Extract<GameAction, { type: `music/${string}` }>
 
-const tracks = [
-  parseBilibiliTrackReference('BV1xx411c7mD')!,
-  parseBilibiliTrackReference('BV1B7411m7LV')!,
-  parseBilibiliTrackReference('BV17x411w7KC')!,
-].map((track, index) => ({
-  ...track,
-  title: `曲目 ${index + 1}`,
-  durationSeconds: 2,
-}))
+const tracks: readonly BilibiliPlayerTrack[] = [
+  {
+    bvid: 'BV1xx411c7mD',
+    title: '曲目 1',
+    sourceUrl: 'https://www.bilibili.com/video/BV1xx411c7mD/',
+    durationSeconds: 3,
+  },
+  {
+    bvid: 'BV1B7411m7LV',
+    title: '曲目 2',
+    sourceUrl: 'https://www.bilibili.com/video/BV1B7411m7LV/',
+    durationSeconds: 2,
+  },
+  {
+    bvid: 'BV17x411w7KC',
+    title: '曲目 3',
+    sourceUrl: 'https://www.bilibili.com/video/BV17x411w7KC/',
+    durationSeconds: 4,
+  },
+]
 
-const manualShortTracks: readonly BilibiliPlayerTrack[] = videoCatalogJson.extraTracks.items.map(
-  (video) => ({
-    bvid: video.bvid,
-    title: video.title,
-    sourceUrl: video.sourceUrl,
-    authorName: video.authorName,
-    publishedAt: video.publishedAt,
-    durationSeconds: video.durationSeconds,
-  }),
-)
+const externalCollectionTrack: BilibiliPlayerTrack = {
+  bvid: 'BV1ABCdef234',
+  title: '固定曲库外的收藏视频',
+  sourceUrl: 'https://www.bilibili.com/video/BV1ABCdef234/',
+  durationSeconds: 1,
+}
 
 function createMusicState(overrides: Partial<MusicPlayerState> = {}): MusicPlayerState {
   return {
-    playlists: {},
-    order: [],
-    activePlaylistId: null,
     currentBvid: null,
     currentIndex: 0,
     loopMode: 'list',
@@ -50,58 +53,21 @@ function createMusicState(overrides: Partial<MusicPlayerState> = {}): MusicPlaye
 
 function applyMusicAction(state: MusicPlayerState, action: MusicPlayerAction): MusicPlayerState {
   switch (action.type) {
-    case 'music/playlist-create':
-      return {
-        ...state,
-        playlists: {
-          ...state.playlists,
-          [action.playlistId]: {
-            id: action.playlistId,
-            name: action.name,
-            bvids: [...(action.bvids ?? [])],
-            createdAt: action.now,
-            updatedAt: action.now,
-          },
-        },
-        order: [...state.order, action.playlistId],
-      }
-    case 'music/playlist-update': {
-      const previous = state.playlists[action.playlistId]
-      if (!previous) return state
-      return {
-        ...state,
-        playlists: {
-          ...state.playlists,
-          [action.playlistId]: {
-            ...previous,
-            name: action.name ?? previous.name,
-            bvids: [...(action.bvids ?? previous.bvids)],
-            updatedAt: action.now,
-          },
-        },
-      }
-    }
-    case 'music/playlist-select':
-      return { ...state, activePlaylistId: action.playlistId, currentBvid: null, currentIndex: 0 }
     case 'music/track-select':
       return { ...state, currentBvid: action.bvid, currentIndex: action.index }
     case 'music/loop-set':
       return { ...state, loopMode: action.loopMode }
-    default:
-      return state
   }
 }
 
 interface PlayerHarnessProps
-  extends
-    PropsWithChildren,
-    Pick<BilibiliPlayerProviderProps, 'random' | 'now' | 'onPlayerRequested' | 'resolveTrack'> {
+  extends PropsWithChildren, Pick<BilibiliPlayerProviderProps, 'random' | 'onPlayerRequested'> {
   initialState?: MusicPlayerState
   dock?: boolean
   compact?: boolean
   onAction?: (action: MusicPlayerAction) => void
   onExpandRequest?: () => void
-  builtInTracks?: readonly BilibiliPlayerTrack[]
+  playerTracks?: readonly BilibiliPlayerTrack[]
 }
 
 function PlayerHarness({
@@ -111,7 +77,7 @@ function PlayerHarness({
   compact,
   onAction,
   onExpandRequest,
-  builtInTracks = tracks,
+  playerTracks = tracks,
   ...providerProps
 }: PlayerHarnessProps) {
   const [state, setState] = useState(initialState)
@@ -123,7 +89,7 @@ function PlayerHarness({
         onAction?.(action)
         setState((current) => applyMusicAction(current, action))
       }}
-      builtInTracks={builtInTracks}
+      tracks={playerTracks}
     >
       {children}
       {dock && <PersistentPlayerDock compact={compact} onExpandRequest={onExpandRequest} />}
@@ -131,37 +97,24 @@ function PlayerHarness({
   )
 }
 
-function CatalogTrackProbe() {
-  const controller = useBilibiliPlayerController()
-  const firstTrack = controller.state.playlist.tracks[0]
-  return (
-    <>
-      <output data-testid="catalog-active-bvid">
-        {controller.state.activeRequest?.track.bvid ?? ''}
-      </output>
-      <output data-testid="catalog-request-id">
-        {controller.state.activeRequest?.requestId ?? 0}
-      </output>
-      <button
-        type="button"
-        disabled={!firstTrack}
-        onClick={() => firstTrack && controller.selectTrack(firstTrack.bvid)}
-      >
-        播放目录第一首
-      </button>
-    </>
-  )
-}
-
 function Probe() {
   const controller = useBilibiliPlayerController()
   return (
     <section aria-label="播放器测试控制">
-      <output data-testid="playlist-name">{controller.state.playlist.name}</output>
       <output data-testid="active-bvid">{controller.state.activeRequest?.track.bvid ?? ''}</output>
       <output data-testid="request-id">{controller.state.activeRequest?.requestId ?? 0}</output>
       <button type="button" onClick={() => controller.selectTrack(tracks[0]!.bvid)}>
         选择第一首
+      </button>
+      <button
+        type="button"
+        onClick={() =>
+          controller.requestTrack(externalCollectionTrack, {
+            origin: { kind: 'collection', collectionId: 'external-collection' },
+          })
+        }
+      >
+        选择收藏视频
       </button>
       <button type="button" onClick={controller.next}>
         下一首
@@ -172,28 +125,22 @@ function Probe() {
       <button type="button" onClick={() => controller.setMode('shuffle')}>
         随机模式
       </button>
-      <button
-        type="button"
-        onClick={() =>
-          controller.loadPlaylist({ name: '新列表', tracks: [tracks[0]!, tracks[0]!, tracks[2]!] })
-        }
-      >
-        创建列表
-      </button>
     </section>
   )
 }
 
 describe('持久播放器样式', () => {
-  it('按钮保留触控尺寸，层级高于收藏墙且低于完整图片层', () => {
+  it('按钮保留触控尺寸，iframe 是不可点击的纯展示层', () => {
     expect(playerStyles).toContain(
       '.persistent-bilibili-player button {\n  min-width: 44px;\n  min-height: 44px;',
     )
     expect(playerStyles).toContain('z-index: 105;')
-    expect(playerStyles).toContain('z-index: 79;')
-    expect(playerStyles).toContain(':not(.collectible-detail-backdrop)')
-    expect(playerStyles).toContain('--player-dock-bottom: calc(var(--player-edge-block) + 4.5rem);')
-    expect(playerStyles).toContain('grid-template-columns: repeat(2, minmax(0, 1fr));')
+    expect(playerStyles).toMatch(
+      /\.persistent-bilibili-player__frame iframe \{[^}]*pointer-events: none;/su,
+    )
+    expect(playerStyles).not.toMatch(
+      /\.persistent-bilibili-player\.is-collapsed\s*\{[^}]*\bwidth:/su,
+    )
   })
 })
 
@@ -219,7 +166,7 @@ describe('BilibiliPlayerProvider', () => {
     expect(screen.getAllByTitle(/Bilibili 外链播放器/u)).toHaveLength(1)
   })
 
-  it('隐藏与显示画面保留同一 iframe，停止才卸载', () => {
+  it('图标按钮具有明确名称，显示/隐藏不重建 iframe，取消才卸载', () => {
     const onExpandRequest = vi.fn()
     render(
       <PlayerHarness onExpandRequest={onExpandRequest}>
@@ -227,24 +174,80 @@ describe('BilibiliPlayerProvider', () => {
       </PlayerHarness>,
     )
     fireEvent.click(screen.getByRole('button', { name: '选择第一首' }))
+    const dock = screen.getByTestId('persistent-bilibili-player')
     const iframe = screen.getByTitle<HTMLIFrameElement>('Bilibili 外链播放器：曲目 1')
-    expect(new URL(iframe.src).searchParams.get('t')).toBeNull()
+    expect(new URL(iframe.src).searchParams.get('t')).toBe('0')
+    expect(iframe).toHaveAttribute('tabindex', '-1')
+    expect(iframe).toHaveAttribute('inert')
+    expect(iframe).toHaveAttribute('aria-hidden', 'true')
+
+    const barButtons = within(dock).getAllByRole('button')
+    expect(barButtons.map((button) => button.getAttribute('aria-label'))).toEqual([
+      '隐藏画面',
+      '暂停播放',
+      '取消播放',
+    ])
+    expect(screen.getByRole('button', { name: '隐藏画面' })).toHaveTextContent('⏬')
+    expect(screen.getByRole('button', { name: '暂停播放' })).toHaveTextContent('⏸️')
+    expect(screen.getByRole('button', { name: '取消播放' })).toHaveTextContent('❌')
 
     fireEvent.click(screen.getByRole('button', { name: '隐藏画面' }))
     expect(screen.getByTitle('Bilibili 外链播放器：曲目 1')).toBe(iframe)
-    expect(iframe).toHaveAttribute('tabindex', '-1')
+    expect(screen.getByRole('button', { name: '显示画面' })).toHaveTextContent('⏫')
 
     fireEvent.click(screen.getByRole('button', { name: '显示画面' }))
     expect(onExpandRequest).toHaveBeenCalledOnce()
     expect(screen.getByTitle('Bilibili 外链播放器：曲目 1')).toBe(iframe)
-    expect(iframe).toHaveAttribute('tabindex', '0')
 
-    fireEvent.click(screen.getByRole('button', { name: '停止播放' }))
+    fireEvent.click(screen.getByRole('button', { name: '取消播放' }))
     expect(screen.queryByTitle(/Bilibili 外链播放器/u)).not.toBeInTheDocument()
   })
 
-  it('宿主布局切换既不重建 iframe，也不重启已开始的结束计时', () => {
+  it('暂停会卸载 iframe 停止声音，继续从同一已播秒数重建并恢复剩余计时', () => {
     vi.useFakeTimers()
+    vi.setSystemTime(0)
+    render(
+      <PlayerHarness>
+        <Probe />
+      </PlayerHarness>,
+    )
+    fireEvent.click(screen.getByRole('button', { name: '选择第一首' }))
+    const initialIframe = screen.getByTitle('Bilibili 外链播放器：曲目 1')
+    const requestId = Number(screen.getByTestId('request-id').textContent)
+    fireEvent.load(initialIframe)
+
+    act(() => vi.advanceTimersByTime(1_250))
+    fireEvent.click(screen.getByRole('button', { name: '暂停播放' }))
+    expect(screen.queryByTitle(/Bilibili 外链播放器/u)).not.toBeInTheDocument()
+    expect(screen.getByTestId('persistent-bilibili-player')).toHaveAttribute(
+      'data-playback-state',
+      'paused',
+    )
+
+    act(() => vi.advanceTimersByTime(10_000))
+    expect(Number(screen.getByTestId('request-id').textContent)).toBe(requestId)
+
+    fireEvent.click(screen.getByRole('button', { name: '继续播放' }))
+    const resumedIframe = screen.getByTitle('Bilibili 外链播放器：曲目 1')
+    expect(resumedIframe).not.toBe(initialIframe)
+    expect(new URL((resumedIframe as HTMLIFrameElement).src).searchParams.get('t')).toBe('1')
+    fireEvent.load(resumedIframe)
+
+    act(() => vi.advanceTimersByTime(1_999))
+    expect(Number(screen.getByTestId('request-id').textContent)).toBe(requestId)
+    act(() => vi.advanceTimersByTime(1))
+    expect(screen.getByTestId('active-bvid')).toHaveTextContent(tracks[1]!.bvid)
+    expect(Number(screen.getByTestId('request-id').textContent)).toBe(requestId + 1)
+    expect(
+      new URL(
+        (screen.getByTitle('Bilibili 外链播放器：曲目 2') as HTMLIFrameElement).src,
+      ).searchParams.get('t'),
+    ).toBe('0')
+  })
+
+  it('跨 compact 布局切换既不重建 iframe，也不重启已开始的计时', () => {
+    vi.useFakeTimers()
+    vi.setSystemTime(0)
     const { rerender } = render(
       <PlayerHarness compact={false}>
         <Probe />
@@ -255,7 +258,7 @@ describe('BilibiliPlayerProvider', () => {
     const requestId = Number(screen.getByTestId('request-id').textContent)
     fireEvent.load(iframe)
 
-    act(() => vi.advanceTimersByTime(1_000))
+    act(() => vi.advanceTimersByTime(1_500))
     rerender(
       <PlayerHarness compact>
         <Probe />
@@ -263,10 +266,9 @@ describe('BilibiliPlayerProvider', () => {
     )
     expect(screen.getByTitle('Bilibili 外链播放器：曲目 1')).toBe(iframe)
 
-    act(() => vi.advanceTimersByTime(999))
+    act(() => vi.advanceTimersByTime(1_499))
     expect(Number(screen.getByTestId('request-id').textContent)).toBe(requestId)
     act(() => vi.advanceTimersByTime(1))
-    expect(screen.getByTestId('active-bvid')).toHaveTextContent(tracks[1]!.bvid)
     expect(Number(screen.getByTestId('request-id').textContent)).toBe(requestId + 1)
   })
 
@@ -280,14 +282,20 @@ describe('BilibiliPlayerProvider', () => {
     fireEvent.click(screen.getByRole('button', { name: '单曲模式' }))
     fireEvent.click(screen.getByRole('button', { name: '下一首' }))
     expect(screen.getByTestId('active-bvid')).toHaveTextContent(tracks[1]!.bvid)
+    expect(
+      new URL(
+        (screen.getByTitle('Bilibili 外链播放器：曲目 2') as HTMLIFrameElement).src,
+      ).searchParams.get('t'),
+    ).toBe('0')
   })
 
   it.each([
     ['list', tracks[1]!.bvid],
     ['single', tracks[0]!.bvid],
     ['shuffle', tracks[1]!.bvid],
-  ] as const)('静态时长到点后按 %s 策略续播', (mode, expectedBvid) => {
+  ] as const)('到达实际时长后按 %s 策略续播', (mode, expectedBvid) => {
     vi.useFakeTimers()
+    vi.setSystemTime(0)
     render(
       <PlayerHarness random={() => 0}>
         <Probe />
@@ -299,81 +307,65 @@ describe('BilibiliPlayerProvider', () => {
     const requestId = Number(screen.getByTestId('request-id').textContent)
     fireEvent.load(screen.getByTitle('Bilibili 外链播放器：曲目 1'))
 
-    act(() => vi.advanceTimersByTime(2_000))
+    act(() => vi.advanceTimersByTime(3_000))
 
     expect(screen.getByTestId('active-bvid')).toHaveTextContent(expectedBvid)
     expect(Number(screen.getByTestId('request-id').textContent)).toBe(requestId + 1)
+    const nextIframe = screen.getByTitle(
+      `Bilibili 外链播放器：${mode === 'single' ? '曲目 1' : '曲目 2'}`,
+    )
+    expect(new URL((nextIframe as HTMLIFrameElement).src).searchParams.get('t')).toBe('0')
   })
 
-  it('停止播放会取消静态结束计时', () => {
+  it('固定曲库外的收藏视频在单曲模式播完后以相同来源从 0 秒重播', () => {
     vi.useFakeTimers()
+    vi.setSystemTime(0)
     const onPlayerRequested = vi.fn()
     render(
       <PlayerHarness onPlayerRequested={onPlayerRequested}>
         <Probe />
       </PlayerHarness>,
     )
-    fireEvent.click(screen.getByRole('button', { name: '选择第一首' }))
-    fireEvent.load(screen.getByTitle('Bilibili 外链播放器：曲目 1'))
-    fireEvent.click(screen.getByRole('button', { name: '停止播放' }))
-    act(() => vi.advanceTimersByTime(2_000))
-    expect(onPlayerRequested).toHaveBeenCalledOnce()
-  })
+    fireEvent.click(screen.getByRole('button', { name: '单曲模式' }))
+    fireEvent.click(screen.getByRole('button', { name: '选择收藏视频' }))
+    const requestId = Number(screen.getByTestId('request-id').textContent)
+    fireEvent.load(screen.getByTitle(`Bilibili 外链播放器：${externalCollectionTrack.title}`))
 
-  it('静态目录中的 21 秒测试视频会在完整时长后续播', () => {
-    vi.useFakeTimers()
-    expect(manualShortTracks.map((track) => [track.bvid, track.durationSeconds])).toEqual([
-      ['BV13FdBBAEUF', 21],
-      ['BV16VDdBUEfC', 21],
-    ])
-    render(
-      <PlayerHarness builtInTracks={manualShortTracks}>
-        <CatalogTrackProbe />
-      </PlayerHarness>,
+    act(() => vi.advanceTimersByTime(1_000))
+
+    expect(screen.getByTestId('active-bvid')).toHaveTextContent(externalCollectionTrack.bvid)
+    expect(Number(screen.getByTestId('request-id').textContent)).toBe(requestId + 1)
+    expect(onPlayerRequested.mock.calls.at(-1)?.[0]).toMatchObject({
+      track: externalCollectionTrack,
+      origin: { kind: 'collection', collectionId: 'external-collection' },
+    })
+    const replayed = screen.getByTitle<HTMLIFrameElement>(
+      `Bilibili 外链播放器：${externalCollectionTrack.title}`,
     )
-    fireEvent.click(screen.getByRole('button', { name: '播放目录第一首' }))
-    const requestId = Number(screen.getByTestId('catalog-request-id').textContent)
-    fireEvent.load(screen.getByTitle(`Bilibili 外链播放器：${manualShortTracks[0]!.title}`))
-
-    act(() => vi.advanceTimersByTime(20_999))
-    expect(screen.getByTestId('catalog-active-bvid')).toHaveTextContent('BV13FdBBAEUF')
-    expect(Number(screen.getByTestId('catalog-request-id').textContent)).toBe(requestId)
-
-    act(() => vi.advanceTimersByTime(1))
-    expect(screen.getByTestId('catalog-active-bvid')).toHaveTextContent('BV16VDdBUEfC')
-    expect(Number(screen.getByTestId('catalog-request-id').textContent)).toBe(requestId + 1)
+    expect(new URL(replayed.src).searchParams.get('t')).toBe('0')
   })
 
-  it('受控 GameState 接收选曲、模式与去重后的新列表 action', () => {
-    const onAction = vi.fn()
-    const onPlayerRequested = vi.fn()
+  it.each([
+    ['list', 0, tracks[0]!],
+    ['shuffle', 0.5, tracks[1]!],
+  ] as const)('固定曲库外的收藏视频按 %s 模式接入固定曲库', (mode, randomValue, expected) => {
+    vi.useFakeTimers()
+    vi.setSystemTime(0)
     render(
-      <PlayerHarness now={() => 1234} onAction={onAction} onPlayerRequested={onPlayerRequested}>
+      <PlayerHarness random={() => randomValue}>
         <Probe />
       </PlayerHarness>,
     )
-    expect(screen.getByTestId('playlist-name')).toHaveTextContent('全站第一')
+    if (mode === 'shuffle') fireEvent.click(screen.getByRole('button', { name: '随机模式' }))
+    fireEvent.click(screen.getByRole('button', { name: '选择收藏视频' }))
+    fireEvent.load(screen.getByTitle(`Bilibili 外链播放器：${externalCollectionTrack.title}`))
 
-    fireEvent.click(screen.getByRole('button', { name: '选择第一首' }))
-    expect(onAction).toHaveBeenCalledWith({
-      type: 'music/track-select',
-      bvid: tracks[0]!.bvid,
-      index: 0,
-    })
-    expect(onPlayerRequested).toHaveBeenCalledWith(
-      expect.objectContaining({ track: tracks[0], origin: { kind: 'direct' } }),
+    act(() => vi.advanceTimersByTime(1_000))
+
+    expect(screen.getByTestId('active-bvid')).toHaveTextContent(expected.bvid)
+    const nextIframe = screen.getByTitle<HTMLIFrameElement>(
+      `Bilibili 外链播放器：${expected.title}`,
     )
-
-    fireEvent.click(screen.getByRole('button', { name: '随机模式' }))
-    expect(onAction).toHaveBeenCalledWith({ type: 'music/loop-set', loopMode: 'shuffle' })
-
-    fireEvent.click(screen.getByRole('button', { name: '创建列表' }))
-    expect(onAction).toHaveBeenCalledWith({
-      type: 'music/playlist-create',
-      playlistId: 'playlist-ya-1',
-      name: '新列表',
-      bvids: [tracks[0]!.bvid, tracks[2]!.bvid],
-      now: 1234,
-    })
+    expect(new URL(nextIframe.src).searchParams.get('t')).toBe('0')
   })
 })

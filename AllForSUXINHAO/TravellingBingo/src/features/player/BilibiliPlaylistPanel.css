@@ -9,68 +9,29 @@
 }
 
 .bilibili-playlist-panel h3,
-.bilibili-playlist-panel h4,
-.bilibili-playlist-panel p {
+.bilibili-playlist-panel h4 {
   margin: 0;
 }
 
-.bilibili-playlist-panel__editor,
 .bilibili-playlist-panel__controls {
   display: grid;
   gap: 0.45rem;
 }
 
-.bilibili-playlist-panel label {
-  color: #69483e;
-  font-weight: 700;
-}
-
-.bilibili-playlist-panel input,
-.bilibili-playlist-panel textarea,
 .bilibili-playlist-panel button {
   min-height: 44px;
+  padding: 0.52rem 0.72rem;
   border: 1px solid #c89c85;
   border-radius: 12px;
   color: #53372f;
   background: #fffaf3;
   font: inherit;
-}
-
-.bilibili-playlist-panel input,
-.bilibili-playlist-panel textarea {
-  width: 100%;
-  padding: 0.65rem 0.75rem;
-}
-
-.bilibili-playlist-panel textarea {
-  resize: vertical;
-  font-family: 'TravellingBingo UI', 'Microsoft YaHei UI', sans-serif;
-}
-
-.bilibili-playlist-panel button {
-  padding: 0.52rem 0.72rem;
   cursor: pointer;
 }
 
 .bilibili-playlist-panel button:disabled {
   cursor: not-allowed;
   opacity: 0.45;
-}
-
-.bilibili-playlist-panel__feedback {
-  padding: 0.7rem 0.8rem;
-  border-radius: 12px;
-  background: #f4eadb;
-}
-
-.bilibili-playlist-panel__feedback.is-error {
-  color: #842d38;
-  background: #f9e6e2;
-}
-
-.bilibili-playlist-panel__feedback ul {
-  margin: 0.35rem 0 0;
-  padding-left: 1.2rem;
 }
 
 .bilibili-playlist-panel__modes {
@@ -110,10 +71,8 @@
 }
 
 .bilibili-playlist-panel__tracks button {
-  display: grid;
-  grid-template-columns: minmax(0, 1fr) auto;
-  gap: 0.55rem;
-  align-items: center;
+  display: block;
+  width: 100%;
   text-align: left;
 }
 
@@ -123,6 +82,7 @@
 }
 
 .bilibili-playlist-panel__tracks strong {
+  display: block;
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;

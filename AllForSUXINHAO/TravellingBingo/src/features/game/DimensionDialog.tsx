@@ -2,7 +2,8 @@ import { useRef } from 'react'
 
 import { useModalFocus } from '@/components/useModalFocus'
 
-export type DimensionDialogMode = 'confirm-enter' | 'pc-required' | 'return-required'
+export type DimensionDialogMode =
+  'confirm-enter' | 'confirm-leave' | 'pc-required' | 'return-required'
 
 interface DimensionDialogProps {
   mode: DimensionDialogMode
@@ -19,6 +20,11 @@ const DIALOG_COPY: Record<
     description:
       '这里可以安排待办、使用完整的工作与休息苹果钟，也可以查看刷播与冲热。返回饼屋时会结算这次带回的苹果。',
     confirmLabel: '进入现实维度',
+  },
+  'confirm-leave': {
+    title: '回到饼屋？',
+    description: '回到饼屋后会结算这次现实维度带回的苹果，再继续陪饼狗旅行。',
+    confirmLabel: '回到饼屋',
   },
   'pc-required': {
     title: '请使用电脑浏览器',
@@ -60,7 +66,7 @@ export function DimensionDialog({ mode, onCancel, onConfirm }: DimensionDialogPr
         <h2 id="dimension-dialog-title">{copy.title}</h2>
         <p id="dimension-dialog-description">{copy.description}</p>
         <div className="dialog-actions">
-          {mode === 'confirm-enter' && (
+          {(mode === 'confirm-enter' || mode === 'confirm-leave') && (
             <button className="paper-button" type="button" onClick={onCancel}>
               先不切换
             </button>

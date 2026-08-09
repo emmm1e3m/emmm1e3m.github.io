@@ -2,7 +2,6 @@ import { useId, useRef, useState, type FormEvent } from 'react'
 import { createPortal } from 'react-dom'
 
 import { useModalFocus } from '@/components/useModalFocus'
-import { MascotSprite } from '@/components/MascotSprite'
 import { POMODORO_PRESETS } from '@/domain'
 
 import type { RealityNotificationPermission, RealityTodoView, WorkPanelProps } from './types'
@@ -244,13 +243,7 @@ export function WorkPanel({
       aria-labelledby={headingId}
     >
       <div className="reality-panel__heading">
-        <div>
-          <span className="reality-eyebrow">一楼电脑 · 工作</span>
-          <h2 id={headingId}>苹果钟与待办</h2>
-        </div>
-        <span className="reality-panel__mark" aria-hidden="true">
-          ◷
-        </span>
+        <h2 id={headingId}>苹果钟与待办</h2>
       </div>
       <p className="reality-panel__intro">
         选一张喜欢的明信片，让饼狗陪你专注一会儿，再把今天的小事一件件完成。
@@ -309,6 +302,42 @@ export function WorkPanel({
             )}
           </div>
         )}
+
+        <div className="reality-start-summary" aria-label="本轮苹果钟设置">
+          <span>
+            专注 {selectedPreset?.label ?? '未选择'} · 休息{' '}
+            {selectedPreset ? `${Math.round(selectedPreset.breakDurationMs / 60_000)} 分钟` : '—'}
+          </span>
+          <span>明信片 · {selectedBackground?.title ?? '默认纸张'}</span>
+        </div>
+
+        <div className="reality-action-row reality-action-row--timer">
+          <button
+            ref={startTriggerRef}
+            className="reality-primary-button"
+            type="button"
+            disabled={pomodoro.canStart === false || selectedPreset === undefined || timerRunning}
+            onClick={() => {
+              setPendingCancelSessionId(null)
+              setPendingStartDurationMs(pomodoro.selectedDurationMs)
+            }}
+          >
+            开始苹果钟
+          </button>
+          {timerRunning && actions.onPomodoroCancel && (
+            <button
+              ref={cancelTriggerRef}
+              className="reality-secondary-button"
+              type="button"
+              onClick={() => {
+                setPendingStartDurationMs(null)
+                setPendingCancelSessionId(pomodoro.session!.sessionId)
+              }}
+            >
+              取消本次计时
+            </button>
+          )}
+        </div>
       </section>
 
       <section className="reality-work-card" aria-labelledby={`${headingId}-todos`}>
@@ -417,106 +446,8 @@ export function WorkPanel({
         options={unlockedBackgrounds}
         selectedId={selectedBackgroundId}
         onChange={actions.onBackgroundChange}
+        disabled={timerRunning}
       />
-
-      <section
-        className={`reality-work-card reality-timer-card ${
-          selectedBackground?.thumbnailUrl ? 'has-postcard-background' : ''
-        }`.trim()}
-        aria-labelledby={`${headingId}-summary`}
-        data-background-id={selectedBackground?.id ?? 'plain'}
-      >
-        {selectedBackground?.thumbnailUrl && (
-          <img
-            className="reality-timer-card__background"
-            src={selectedBackground.fullUrl ?? selectedBackground.thumbnailUrl}
-            alt=""
-          />
-        )}
-        <span className="reality-timer-card__shade" aria-hidden="true" />
-
-        <div className="reality-work-card__heading">
-          <div>
-            <span className="reality-card-index">04</span>
-            <h3 id={`${headingId}-summary`}>准备开始</h3>
-          </div>
-          {selectedBackground && (
-            <span className="reality-background-status">明信片 · {selectedBackground.title}</span>
-          )}
-        </div>
-
-        <dl className="reality-pomodoro-summary">
-          <div>
-            <dt>专注</dt>
-            <dd>{selectedPreset?.label ?? '请选择固定时长'}</dd>
-          </div>
-          <div>
-            <dt>休息</dt>
-            <dd>
-              {selectedPreset ? `${Math.round(selectedPreset.breakDurationMs / 60_000)} 分钟` : '—'}
-            </dd>
-          </div>
-          <div>
-            <dt>明信片</dt>
-            <dd>{selectedBackground?.title ?? '默认纸张'}</dd>
-          </div>
-        </dl>
-
-        {pomodoro.session?.remainingLabel && (
-          <p className="reality-timer-readout" role="timer">
-            <span>{pomodoro.session.statusLabel}</span>
-            <strong>{pomodoro.session.remainingLabel}</strong>
-          </p>
-        )}
-
-        <div className="reality-timer-companion">
-          <MascotSprite
-            pose={timerRunning ? (pomodoro.session?.status === 'break' ? 'warm' : 'sit') : 'idle'}
-            className="reality-timer-companion__mascot"
-            label={timerRunning ? '正在陪伴你的饼狗' : '准备陪你专注的饼狗'}
-          />
-          <p>
-            <strong>{timerRunning ? '这一轮正在进行' : '饼狗准备好啦'}</strong>
-            <span>
-              {timerRunning
-                ? pomodoro.session?.status === 'break'
-                  ? '休息一下，整轮结束后再一起回到房间。'
-                  : '先专心完成眼前这一段吧。'
-                : selectedBackground
-                  ? `“${selectedBackground.title}”已经铺好。`
-                  : '随时可以在默认纸张上开始。'}
-            </span>
-          </p>
-        </div>
-
-        <div className="reality-action-row">
-          <button
-            ref={startTriggerRef}
-            className="reality-primary-button"
-            type="button"
-            disabled={pomodoro.canStart === false || selectedPreset === undefined || timerRunning}
-            onClick={() => {
-              setPendingCancelSessionId(null)
-              setPendingStartDurationMs(pomodoro.selectedDurationMs)
-            }}
-          >
-            开始苹果钟
-          </button>
-          {timerRunning && actions.onPomodoroCancel && (
-            <button
-              ref={cancelTriggerRef}
-              className="reality-secondary-button"
-              type="button"
-              onClick={() => {
-                setPendingStartDurationMs(null)
-                setPendingCancelSessionId(pomodoro.session!.sessionId)
-              }}
-            >
-              取消本次计时
-            </button>
-          )}
-        </div>
-      </section>
 
       {pendingDeleteTodo && (
         <TodoDeleteDialog

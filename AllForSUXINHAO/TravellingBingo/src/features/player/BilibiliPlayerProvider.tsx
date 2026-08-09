@@ -3,16 +3,7 @@ import { createPortal } from 'react-dom'
 
 import type { GameAction, MusicPlayerState } from '@/domain/game/types'
 
-import {
-  adjacentTrackIndex,
-  buildBilibiliPlayerUrl,
-  canonicalBilibiliVideoUrl,
-  createNamedBilibiliPlaylist,
-  endedTrackIndex,
-  type BilibiliPlaybackMode,
-  type BilibiliPlayerTrack,
-  type NamedBilibiliPlaylist,
-} from './playerModel'
+import { adjacentTrackIndex, buildBilibiliPlayerUrl, endedTrackIndex } from './playerModel'
 import {
   createInitialBilibiliPlayerRuntimeState,
   reduceBilibiliPlayerRuntimeState,
@@ -20,6 +11,7 @@ import {
   type RequestBilibiliTrackOptions,
 } from './playerController'
 import { BilibiliPlayerContext, useBilibiliPlayerController } from './playerContext'
+import type { BilibiliPlaybackMode, BilibiliPlayerTrack } from './playerModel'
 
 import './player.css'
 
@@ -28,27 +20,38 @@ type MusicPlayerAction = Extract<GameAction, { type: `music/${string}` }>
 export interface BilibiliPlayerProviderProps extends PropsWithChildren {
   state: MusicPlayerState
   onAction: (action: MusicPlayerAction) => void
-  builtInTracks?: readonly BilibiliPlayerTrack[]
-  builtInPlaylistName?: string
-  resolveTrack?: (bvid: string) => BilibiliPlayerTrack | undefined
+  tracks: readonly BilibiliPlayerTrack[]
   random?: () => number
-  now?: () => number
   onPlayerRequested?: (request: BilibiliPlayerRequest) => void
 }
 
-export interface PersistentPlayerDockProps {
+interface PersistentPlayerDockProps {
   compact?: boolean
   className?: string
   onExpandRequest?: () => void
 }
 
-function trackFallback(bvid: string): BilibiliPlayerTrack {
-  return { bvid, title: bvid, sourceUrl: canonicalBilibiliVideoUrl(bvid) }
+interface PlaybackTimeline {
+  requestId: number | null
+  durationMs: number
+  playedMs: number
+  runningSince: number | null
+  loadedRevision: number | null
+}
+
+function initialTimeline(): PlaybackTimeline {
+  return {
+    requestId: null,
+    durationMs: 0,
+    playedMs: 0,
+    runningSince: null,
+    loadedRevision: null,
+  }
 }
 
 /**
- * 唯一的 iframe 播放宿主固定挂到 body，页面分支切换时不会重建视频。
- * 外链播放器没有受支持的结束事件，静态时长计时仅用于最佳努力续播。
+ * 唯一 iframe 宿主固定挂到 body。暂停会卸载 iframe 并冻结已播毫秒；
+ * 继续时从同一进度换算出的 t 参数重建，结束计时也使用同一份进度。
  */
 export function PersistentPlayerDock({
   compact = false,
@@ -58,12 +61,16 @@ export function PersistentPlayerDock({
   const controller = useBilibiliPlayerController()
   const controllerRef = useRef(controller)
   const endTimerRef = useRef<ReturnType<typeof globalThis.setTimeout> | null>(null)
+  const timelineRef = useRef<PlaybackTimeline>(initialTimeline())
 
   useEffect(() => {
     controllerRef.current = controller
   }, [controller])
 
   const request = controller.state.activeRequest
+  const playing = controller.state.playing
+  const playbackRevision = controller.state.playbackRevision
+  const resumeAtSeconds = controller.state.resumeAtSeconds
   const displayExpanded = controller.state.dockExpanded && !compact
 
   const clearEndTimer = useCallback(() => {
@@ -72,29 +79,85 @@ export function PersistentPlayerDock({
     endTimerRef.current = null
   }, [])
 
-  useEffect(() => clearEndTimer, [clearEndTimer, request?.requestId])
+  const ensureTimeline = useCallback((activeRequest: BilibiliPlayerRequest) => {
+    const durationMs = activeRequest.track.durationSeconds * 1000
+    if (timelineRef.current.requestId !== activeRequest.requestId) {
+      timelineRef.current = {
+        requestId: activeRequest.requestId,
+        durationMs,
+        playedMs: 0,
+        runningSince: null,
+        loadedRevision: null,
+      }
+    }
+    return timelineRef.current
+  }, [])
+
+  const freezeTimeline = useCallback(() => {
+    clearEndTimer()
+    const timeline = timelineRef.current
+    if (timeline.runningSince === null) return timeline.playedMs
+    const elapsedMs = Math.max(0, Date.now() - timeline.runningSince)
+    timeline.playedMs = Math.min(timeline.durationMs, timeline.playedMs + elapsedMs)
+    timeline.runningSince = null
+    return timeline.playedMs
+  }, [clearEndTimer])
+
+  useEffect(() => {
+    clearEndTimer()
+    timelineRef.current = initialTimeline()
+    if (request) ensureTimeline(request)
+    return clearEndTimer
+  }, [clearEndTimer, ensureTimeline, request])
+
+  useEffect(() => {
+    if (!playing) freezeTimeline()
+  }, [freezeTimeline, playing])
 
   if (!request) return null
 
-  const playerUrl = buildBilibiliPlayerUrl({ bvid: request.track.bvid })
+  const playerUrl = buildBilibiliPlayerUrl({
+    bvid: request.track.bvid,
+    startAtSeconds: resumeAtSeconds,
+  })
+  const playbackKey = `${request.requestId}-${playbackRevision}`
 
-  const startBestEffortEndTimer = () => {
-    clearEndTimer()
-    const durationSeconds = request.track.durationSeconds
+  const startEndTimer = () => {
+    const current = controllerRef.current.state
     if (
-      typeof durationSeconds !== 'number' ||
-      !Number.isSafeInteger(durationSeconds) ||
-      durationSeconds <= 0
+      current.activeRequest?.requestId !== request.requestId ||
+      !current.playing ||
+      current.playbackRevision !== playbackRevision
     ) {
       return
     }
 
-    const requestId = request.requestId
+    const activeTimeline = ensureTimeline(request)
+    if (activeTimeline.loadedRevision === playbackRevision) return
+    activeTimeline.loadedRevision = playbackRevision
+    // iframe 的 t 只使用整秒；结束计时同步回同一个整秒起点，避免两条进度漂移。
+    activeTimeline.playedMs = resumeAtSeconds * 1000
+    const remainingMs = Math.max(0, activeTimeline.durationMs - activeTimeline.playedMs)
+    if (remainingMs === 0) {
+      controllerRef.current.ended()
+      return
+    }
+
+    activeTimeline.runningSince = Date.now()
     endTimerRef.current = globalThis.setTimeout(() => {
       endTimerRef.current = null
-      if (controllerRef.current.state.activeRequest?.requestId !== requestId) return
+      const latest = controllerRef.current.state
+      if (
+        latest.activeRequest?.requestId !== request.requestId ||
+        !latest.playing ||
+        latest.playbackRevision !== playbackRevision
+      ) {
+        return
+      }
+      activeTimeline.playedMs = activeTimeline.durationMs
+      activeTimeline.runningSince = null
       controllerRef.current.ended()
-    }, durationSeconds * 1000)
+    }, remainingMs)
   }
 
   return createPortal(
@@ -103,70 +166,88 @@ export function PersistentPlayerDock({
       aria-label="持久播放器"
       data-testid="persistent-bilibili-player"
       data-dock-state={displayExpanded ? 'expanded' : 'collapsed'}
+      data-playback-state={playing ? 'playing' : 'paused'}
       data-modal-focus-peer="persistent-player"
     >
       <div className="persistent-bilibili-player__bar">
         <p>
           <strong>{request.track.title}</strong>
         </p>
-        {displayExpanded ? (
-          <button type="button" onClick={controller.hideDock}>
-            隐藏画面
-          </button>
-        ) : (
-          <button
-            type="button"
-            onClick={() => {
-              onExpandRequest?.()
-              controller.showDock()
-            }}
-          >
-            显示画面
-          </button>
-        )}
         <button
           type="button"
+          aria-label={displayExpanded ? '隐藏画面' : '显示画面'}
+          onClick={() => {
+            if (displayExpanded) {
+              controller.hideDock()
+            } else {
+              onExpandRequest?.()
+              controller.showDock()
+            }
+          }}
+        >
+          <span aria-hidden="true">{displayExpanded ? '⏬' : '⏫'}</span>
+        </button>
+        <button
+          type="button"
+          aria-label={playing ? '暂停播放' : '继续播放'}
+          onClick={() => {
+            if (playing) {
+              const frozenAtSeconds = Math.floor(freezeTimeline() / 1000)
+              timelineRef.current.playedMs = frozenAtSeconds * 1000
+              controller.pause(frozenAtSeconds)
+            } else {
+              controller.resume()
+            }
+          }}
+        >
+          <span aria-hidden="true">{playing ? '⏸️' : '▶️'}</span>
+        </button>
+        <button
+          type="button"
+          aria-label="取消播放"
           onClick={() => {
             clearEndTimer()
             controller.stop()
           }}
         >
-          停止播放
+          <span aria-hidden="true">❌</span>
         </button>
       </div>
       <div
         className="persistent-bilibili-player__frame"
+        role="img"
         aria-hidden={displayExpanded ? undefined : true}
+        aria-label="视频画面，请使用上方按钮控制播放"
       >
-        <iframe
-          key={request.requestId}
-          src={playerUrl}
-          title={`Bilibili 外链播放器：${request.track.title}`}
-          allow="autoplay; fullscreen; picture-in-picture"
-          allowFullScreen
-          referrerPolicy="strict-origin-when-cross-origin"
-          tabIndex={displayExpanded ? 0 : -1}
-          data-request-id={request.requestId}
-          onLoad={startBestEffortEndTimer}
-        />
+        {playing && (
+          <iframe
+            key={playbackKey}
+            src={playerUrl}
+            title={`Bilibili 外链播放器：${request.track.title}`}
+            allow="autoplay; fullscreen; picture-in-picture"
+            allowFullScreen
+            referrerPolicy="strict-origin-when-cross-origin"
+            tabIndex={-1}
+            inert
+            aria-hidden="true"
+            data-request-id={request.requestId}
+            data-playback-revision={playbackRevision}
+            onLoad={startEndTimer}
+          />
+        )}
       </div>
     </aside>,
     document.body,
   )
 }
 
-/**
- * Provider 只管理 GameState 投影与唯一播放器运行态；调用方仅挂载一次 Dock。
- */
+/** Provider 只管理唯一全站第一曲库的 GameState 投影与易失播放运行态。 */
 export function BilibiliPlayerProvider({
   children,
   state: controlledState,
   onAction,
-  builtInTracks = [],
-  builtInPlaylistName = '全站第一',
-  resolveTrack,
+  tracks,
   random = Math.random,
-  now = Date.now,
   onPlayerRequested,
 }: BilibiliPlayerProviderProps) {
   const [runtime, dispatch] = useReducer(
@@ -175,35 +256,20 @@ export function BilibiliPlayerProvider({
     createInitialBilibiliPlayerRuntimeState,
   )
   const requestSequenceRef = useRef(0)
-  const playlistSequenceRef = useRef(0)
-
-  const resolveBvid = useCallback(
-    (bvid: string) =>
-      resolveTrack?.(bvid) ??
-      builtInTracks.find((track) => track.bvid === bvid) ??
-      trackFallback(bvid),
-    [builtInTracks, resolveTrack],
-  )
-
-  const playlist = useMemo(() => {
-    if (controlledState.activePlaylistId === null) {
-      return createNamedBilibiliPlaylist(builtInPlaylistName, builtInTracks)
-    }
-    const source = controlledState.playlists[controlledState.activePlaylistId]
-    if (!source) return createNamedBilibiliPlaylist('空播放列表', [])
-    return createNamedBilibiliPlaylist(source.name, source.bvids.map(resolveBvid))
-  }, [builtInPlaylistName, builtInTracks, controlledState, resolveBvid])
 
   const selectedBvid = runtime.activeRequest?.track.bvid ?? controlledState.currentBvid
   const state = useMemo(
     () => ({
-      playlist,
+      tracks,
       selectedBvid,
       mode: controlledState.loopMode,
       activeRequest: runtime.activeRequest,
       dockExpanded: runtime.dockExpanded,
+      playing: runtime.playing,
+      resumeAtSeconds: runtime.resumeAtSeconds,
+      playbackRevision: runtime.playbackRevision,
     }),
-    [controlledState.loopMode, playlist, runtime, selectedBvid],
+    [controlledState.loopMode, runtime, selectedBvid, tracks],
   )
 
   const requestTrack = useCallback(
@@ -224,71 +290,6 @@ export function BilibiliPlayerProvider({
     [onPlayerRequested],
   )
 
-  const selectPlaylist = useCallback(
-    (playlistId: string | null) => {
-      const source = playlistId === null ? null : controlledState.playlists[playlistId]
-      if (playlistId !== null && !source) return null
-      const tracks = playlistId === null ? builtInTracks : (source?.bvids.map(resolveBvid) ?? [])
-      const firstTrack = tracks[0]
-      const playlistName = playlistId === null ? builtInPlaylistName : (source?.name ?? '')
-
-      onAction({ type: 'music/playlist-select', playlistId })
-      if (!firstTrack) return null
-      onAction({ type: 'music/track-select', bvid: firstTrack.bvid, index: 0 })
-      return requestTrack(firstTrack, {
-        origin:
-          playlistId === null ? { kind: 'record-player' } : { kind: 'playlist', playlistName },
-      })
-    },
-    [
-      builtInPlaylistName,
-      builtInTracks,
-      controlledState.playlists,
-      onAction,
-      requestTrack,
-      resolveBvid,
-    ],
-  )
-
-  const loadPlaylist = useCallback(
-    (nextPlaylist: NamedBilibiliPlaylist) => {
-      const normalized = createNamedBilibiliPlaylist(nextPlaylist.name, nextPlaylist.tracks)
-      const firstTrack = normalized.tracks[0]
-      const timestamp = now()
-      if (controlledState.activePlaylistId !== null) {
-        onAction({
-          type: 'music/playlist-update',
-          playlistId: controlledState.activePlaylistId,
-          name: normalized.name,
-          bvids: normalized.tracks.map((track) => track.bvid),
-          now: timestamp,
-        })
-        if (!firstTrack) return null
-        onAction({ type: 'music/track-select', bvid: firstTrack.bvid, index: 0 })
-        return requestTrack(firstTrack, {
-          origin: { kind: 'playlist', playlistName: normalized.name },
-        })
-      }
-
-      playlistSequenceRef.current += 1
-      const playlistId = `playlist-${Math.max(0, Math.floor(timestamp)).toString(36)}-${playlistSequenceRef.current.toString(36)}`
-      onAction({
-        type: 'music/playlist-create',
-        playlistId,
-        name: normalized.name,
-        bvids: normalized.tracks.map((track) => track.bvid),
-        now: timestamp,
-      })
-      onAction({ type: 'music/playlist-select', playlistId })
-      if (!firstTrack) return null
-      onAction({ type: 'music/track-select', bvid: firstTrack.bvid, index: 0 })
-      return requestTrack(firstTrack, {
-        origin: { kind: 'playlist', playlistName: normalized.name },
-      })
-    },
-    [controlledState.activePlaylistId, now, onAction, requestTrack],
-  )
-
   const setMode = useCallback(
     (mode: BilibiliPlaybackMode) => onAction({ type: 'music/loop-set', loopMode: mode }),
     [onAction],
@@ -296,13 +297,13 @@ export function BilibiliPlayerProvider({
 
   const selectTrack = useCallback(
     (bvid: string, options?: RequestBilibiliTrackOptions) => {
-      const index = state.playlist.tracks.findIndex((candidate) => candidate.bvid === bvid)
-      const track = index >= 0 ? state.playlist.tracks[index] : undefined
+      const index = tracks.findIndex((candidate) => candidate.bvid === bvid)
+      const track = index >= 0 ? tracks[index] : undefined
       if (!track) return null
       onAction({ type: 'music/track-select', bvid, index })
-      return requestTrack(track, options)
+      return requestTrack(track, options ?? { origin: { kind: 'record-player' } })
     },
-    [onAction, requestTrack, state.playlist.tracks],
+    [onAction, requestTrack, tracks],
   )
 
   const currentIndex = useCallback(() => {
@@ -310,24 +311,22 @@ export function BilibiliPlayerProvider({
     const persistedIndex = controlledState.currentIndex
     if (
       persistedIndex >= 0 &&
-      persistedIndex < state.playlist.tracks.length &&
-      state.playlist.tracks[persistedIndex]?.bvid === state.selectedBvid
+      persistedIndex < tracks.length &&
+      tracks[persistedIndex]?.bvid === state.selectedBvid
     ) {
       return persistedIndex
     }
-    const resolved = state.playlist.tracks.findIndex((track) => track.bvid === state.selectedBvid)
+    const resolved = tracks.findIndex((track) => track.bvid === state.selectedBvid)
     return resolved >= 0 ? resolved : null
-  }, [controlledState.currentIndex, state.playlist.tracks, state.selectedBvid])
+  }, [controlledState.currentIndex, state.selectedBvid, tracks])
 
   const requestIndex = useCallback(
     (index: number | null) => {
-      const track = index === null ? undefined : state.playlist.tracks[index]
+      const track = index === null ? undefined : tracks[index]
       if (!track) return null
-      return selectTrack(track.bvid, {
-        origin: state.activeRequest?.origin ?? { kind: 'record-player' },
-      })
+      return selectTrack(track.bvid, { origin: { kind: 'record-player' } })
     },
-    [selectTrack, state.activeRequest?.origin, state.playlist.tracks],
+    [selectTrack, tracks],
   )
 
   const move = useCallback(
@@ -336,29 +335,40 @@ export function BilibiliPlayerProvider({
         adjacentTrackIndex(
           state.mode,
           currentIndex(),
-          state.playlist.tracks.length,
+          tracks.length,
           direction,
           state.mode === 'shuffle' ? random() : 0,
         ),
       ),
-    [currentIndex, random, requestIndex, state.mode, state.playlist.tracks.length],
+    [currentIndex, random, requestIndex, state.mode, tracks.length],
   )
 
   const previous = useCallback(() => move(-1), [move])
   const next = useCallback(() => move(1), [move])
-  const ended = useCallback(
-    () =>
-      requestIndex(
-        endedTrackIndex(
-          state.mode,
-          currentIndex(),
-          state.playlist.tracks.length,
-          state.mode === 'shuffle' ? random() : 0,
-        ),
-      ),
-    [currentIndex, random, requestIndex, state.mode, state.playlist.tracks.length],
-  )
+  const ended = useCallback(() => {
+    const index = currentIndex()
+    const activeRequest = state.activeRequest
+    if (state.mode === 'single' && index === null && activeRequest) {
+      return requestTrack(activeRequest.track, { origin: activeRequest.origin })
+    }
+    return requestIndex(
+      endedTrackIndex(state.mode, index, tracks.length, state.mode === 'shuffle' ? random() : 0),
+    )
+  }, [
+    currentIndex,
+    random,
+    requestIndex,
+    requestTrack,
+    state.activeRequest,
+    state.mode,
+    tracks.length,
+  ])
 
+  const pause = useCallback(
+    (resumeAtSeconds: number) => dispatch({ type: 'playback/pause', resumeAtSeconds }),
+    [],
+  )
+  const resume = useCallback(() => dispatch({ type: 'playback/resume' }), [])
   const showDock = useCallback(() => dispatch({ type: 'dock/set', expanded: true }), [])
   const hideDock = useCallback(() => dispatch({ type: 'dock/set', expanded: false }), [])
   const stop = useCallback(() => dispatch({ type: 'player/stop' }), [])
@@ -366,14 +376,14 @@ export function BilibiliPlayerProvider({
   const controller = useMemo(
     () => ({
       state,
-      loadPlaylist,
-      selectPlaylist,
       setMode,
       requestTrack,
       selectTrack,
       previous,
       next,
       ended,
+      pause,
+      resume,
       showDock,
       hideDock,
       stop,
@@ -381,11 +391,11 @@ export function BilibiliPlayerProvider({
     [
       ended,
       hideDock,
-      loadPlaylist,
       next,
+      pause,
       previous,
       requestTrack,
-      selectPlaylist,
+      resume,
       selectTrack,
       setMode,
       showDock,

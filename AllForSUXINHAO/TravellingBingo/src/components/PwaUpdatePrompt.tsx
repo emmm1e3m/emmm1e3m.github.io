@@ -51,7 +51,7 @@ export function PwaUpdatePrompt({
 
   if (!offlineReady && !needRefresh) return null
 
-  const title = needRefresh ? '饼屋换上新布置啦' : '离线行囊收拾好啦'
+  const title = needRefresh ? '铲铲饼屋有新布置啦' : '离线行囊收拾好啦'
   const description = needRefresh
     ? '打开新布置前会自动备份，饼狗会在原地等你。'
     : '暂时没有网络，也能继续陪饼狗待在家里。'

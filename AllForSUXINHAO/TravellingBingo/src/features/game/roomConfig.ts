@@ -60,7 +60,7 @@ export const ROOM_AREAS: readonly RoomArea[] = [
     id: 'bed',
     panel: 'rest',
     label: '床铺',
-    buttonLabel: '去床边',
+    buttonLabel: '去床上',
     hotspot: { x: 22, y: 29 },
     petCenter: { x: 225, y: 300 },
     activityKinds: ['rest'],

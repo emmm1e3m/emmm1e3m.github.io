@@ -84,9 +84,8 @@ test('用户名、V5 收藏、魔法与现实字段可以下载并恢复', async
         pomodoro: { selectedPostcardId: unknown; session: unknown }
       }
       musicPlayer: {
-        playlists: Record<string, unknown>
-        activePlaylistId: unknown
         currentBvid: unknown
+        currentIndex: number
         loopMode: string
       }
       collectionTotal?: unknown
@@ -122,9 +121,8 @@ test('用户名、V5 收藏、魔法与现实字段可以下载并恢复', async
         pomodoro: { selectedPostcardId: null, session: null },
       },
       musicPlayer: {
-        playlists: {},
-        activePlaylistId: null,
         currentBvid: null,
+        currentIndex: 0,
         loopMode: 'list',
       },
     },
@@ -140,6 +138,8 @@ test('用户名、V5 收藏、魔法与现实字段可以下载并恢复', async
   expect(envelope.payload).not.toHaveProperty('friendCatalog')
   expect(envelope.payload.musicPlayer).not.toHaveProperty('startAtSeconds')
   expect(envelope.payload.musicPlayer).not.toHaveProperty('autoplay')
+  expect(envelope.payload.musicPlayer).not.toHaveProperty('playlists')
+  expect(envelope.payload.musicPlayer).not.toHaveProperty('activePlaylistId')
   expect(envelope.integrity.digest).toMatch(/^[A-Za-z0-9_-]{43}$/u)
 
   await page.locator('input[type="file"]').setInputFiles(savePath)

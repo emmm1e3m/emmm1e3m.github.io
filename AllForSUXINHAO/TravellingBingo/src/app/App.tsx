@@ -215,7 +215,10 @@ export function App({
   const preparedCacheRef = useRef<PreparedBrowserCache | null>(null)
   const periodicBackupInFlight = useRef(false)
   const pwaUpdateBackupPending = useRef(false)
-  const pwaUpdateBackupRequest = useRef<Promise<void> | null>(null)
+  const pwaUpdateBackupRequest = useRef<{
+    snapshot: GameState
+    request: Promise<void>
+  } | null>(null)
   const debugDialogRef = useModalFocus<HTMLFormElement>(debugOpen, () => setDebugOpen(false))
 
   const domainCatalog = useMemo(() => (catalog ? toDomainCatalog(catalog) : null), [catalog])
@@ -271,9 +274,14 @@ export function App({
     if (!snapshot) return null
 
     pwaUpdateBackupPending.current = false
+    const existing = pwaUpdateBackupRequest.current
+    if (existing?.snapshot === snapshot) return existing.request
+
     const request = downloadGameSnapshot(snapshot)
-    pwaUpdateBackupRequest.current = request
-    void request.catch((error: unknown) => {
+    const entry = { snapshot, request }
+    pwaUpdateBackupRequest.current = entry
+    void request.then(undefined, (error: unknown) => {
+      if (pwaUpdateBackupRequest.current === entry) pwaUpdateBackupRequest.current = null
       setToast(
         error instanceof Error ? error.message : '发现新布置，但当前缓存存档没有自动下载成功。',
       )
@@ -378,6 +386,7 @@ export function App({
   const startNewGame = useCallback(
     async (displayName: string) => {
       if (!catalog) return
+      invalidatePendingImport()
       void activateFromJourneyGesture()
       setEntryBusy(true)
       let initial: GameState
@@ -395,7 +404,6 @@ export function App({
         setEntryBusy(false)
         return
       }
-      invalidatePendingImport()
       const cacheSaved = persistGameToCache(initial, true)
       replaceGame(initial)
       setRealitySettlementResult(null)
@@ -421,6 +429,7 @@ export function App({
   const continueCachedGame = useCallback(() => {
     const cached = preparedCacheRef.current
     if (!cached) return
+    invalidatePendingImport()
     void activateFromJourneyGesture()
     const cacheSaved = persistGameToCache(cached.game)
     replaceGame(cached.game)
@@ -430,7 +439,7 @@ export function App({
     setPanel(null)
     setScreen('home')
     if (cacheSaved) setToast('已从浏览器缓存继续旅程。')
-  }, [activateFromJourneyGesture, persistGameToCache, replaceGame])
+  }, [activateFromJourneyGesture, invalidatePendingImport, persistGameToCache, replaceGame])
 
   const issueBrowserNotification = useCallback(
     (notificationId: string, title: string, body: string) => {
@@ -477,11 +486,11 @@ export function App({
     void checkForUpdates()
       .then(() => {
         setUpdateCheckStatus('checked')
-        setToast('已经检查过新布置啦。')
+        setToast('铲铲饼屋暂时没有新布置啦')
       })
       .catch((error: unknown) => {
         setUpdateCheckStatus('error')
-        setToast(error instanceof Error ? error.message : '检查新布置没有成功，请稍后再试。')
+        setToast(error instanceof Error ? error.message : '检查更新没有成功，请稍后再试。')
       })
   }
 
@@ -744,7 +753,7 @@ export function App({
   function requestPwaUpdate(installUpdate: InstallPwaUpdate) {
     void (async () => {
       try {
-        const backupRequest = pwaUpdateBackupRequest.current ?? startPwaUpdateBackup()
+        const backupRequest = startPwaUpdateBackup()
         if (backupRequest) await backupRequest
         await installUpdate()
       } catch (error) {

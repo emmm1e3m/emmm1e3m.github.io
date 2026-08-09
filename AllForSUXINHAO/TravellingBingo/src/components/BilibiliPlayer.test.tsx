@@ -21,9 +21,6 @@ const video: BilibiliVideo = {
 }
 
 const playerState: MusicPlayerState = {
-  playlists: {},
-  order: [],
-  activePlaylistId: null,
   currentBvid: null,
   currentIndex: 0,
   loopMode: 'list',
@@ -41,11 +38,7 @@ function renderTree(
 ) {
   return (
     <StrictMode>
-      <BilibiliPlayerProvider
-        state={playerState}
-        onAction={() => undefined}
-        builtInTracks={[video]}
-      >
+      <BilibiliPlayerProvider state={playerState} onAction={() => undefined} tracks={[video]}>
         {detailVisible && (
           <BilibiliPlayer
             video={video}
@@ -73,14 +66,17 @@ describe('BilibiliPlayer', () => {
     expect(playerUrl.searchParams.get('bvid')).toBe(video.bvid)
     expect(playerUrl.searchParams.get('autoplay')).toBe('1')
     expect(playerUrl.searchParams.get('danmaku')).toBe('0')
-    expect(playerUrl.searchParams.get('t')).toBeNull()
+    expect(playerUrl.searchParams.get('t')).toBe('0')
+    expect(iframe).toHaveAttribute('tabindex', '-1')
+    expect(iframe).toHaveAttribute('inert')
+    expect(iframe).toHaveAttribute('aria-hidden', 'true')
     expect(screen.getByText(video.title, { selector: '.bilibili-player-summary' })).toBeVisible()
     expect(screen.queryByText(video.authorName)).not.toBeInTheDocument()
     expect(screen.queryByText(video.bvid)).not.toBeInTheDocument()
     expect(screen.queryByText(/已请求|来源页|跨域|真实进度/u)).not.toBeInTheDocument()
   })
 
-  it('同一来源重渲染不重载，来源变化才创建新请求', () => {
+  it('同一详情实例重渲染不重载，重新打开详情或切换来源都从头创建请求', () => {
     const onOpened = vi.fn()
     const { rerender } = render(renderTree(true, collectionOrigin.collectionId, onOpened))
     const iframe = screen.getByTitle<HTMLIFrameElement>('Bilibili 外链播放器：测试舞台')
@@ -91,12 +87,17 @@ describe('BilibiliPlayer', () => {
     expect(screen.getByTitle('Bilibili 外链播放器：测试舞台')).toBe(iframe)
 
     rerender(renderTree(true, collectionOrigin.collectionId, onOpened))
-    expect(screen.getByTitle('Bilibili 外链播放器：测试舞台')).toBe(iframe)
-    expect(iframe).toHaveAttribute('tabindex', '0')
-    expect(onOpened).toHaveBeenCalledOnce()
+    const reopenedIframe = screen.getByTitle<HTMLIFrameElement>('Bilibili 外链播放器：测试舞台')
+    expect(reopenedIframe).not.toBe(iframe)
+    expect(new URL(reopenedIframe.src).searchParams.get('t')).toBe('0')
+    expect(onOpened).toHaveBeenCalledTimes(2)
+
+    rerender(renderTree(true, collectionOrigin.collectionId, onOpened))
+    expect(screen.getByTitle('Bilibili 外链播放器：测试舞台')).toBe(reopenedIframe)
+    expect(onOpened).toHaveBeenCalledTimes(2)
 
     rerender(renderTree(true, 'site-first-002', onOpened))
-    expect(screen.getByTitle('Bilibili 外链播放器：测试舞台')).not.toBe(iframe)
-    expect(onOpened).toHaveBeenCalledTimes(2)
+    expect(screen.getByTitle('Bilibili 外链播放器：测试舞台')).not.toBe(reopenedIframe)
+    expect(onOpened).toHaveBeenCalledTimes(3)
   })
 })

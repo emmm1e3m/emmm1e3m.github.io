@@ -471,8 +471,10 @@ export function getTaskProgressLabel(task: TaskInstance): string {
 }
 
 /** 全完成板下一次允许刷新的本地自然日零点，也是 App 统一时钟的唤醒截止时间。 */
-export function getTaskBoardRefreshDeadline(board: Pick<TaskBoard, 'completedAt'>): number | null {
-  if (board.completedAt === null) return null
+export function getTaskBoardRefreshDeadline(
+  board: Pick<TaskBoard, 'active' | 'completedAt'>,
+): number | null {
+  if (board.completedAt === null || !board.active.every(isTaskCompleted)) return null
   const completedDate = new Date(board.completedAt)
   const deadline = new Date(
     completedDate.getFullYear(),
@@ -572,11 +574,20 @@ export function applyTaskEvent(
   event: TaskEvent,
   now: number,
 ): TaskEventApplication {
-  const taskIndex = state.tasks.active.findIndex((task) => {
+  const canProgress = (task: TaskInstance) => {
     if (isTaskCompleted(task)) return false
     const key = progressKey(task.taskId, event)
     return key !== null && !task.seenKeys.includes(key)
-  })
+  }
+  // 衣架访问同时符合通用“房间走走”和专用造型任务；优先结算用户刚点开的专用任务。
+  const wardrobeTaskIndex =
+    event.type === 'room-visited' && event.area === 'wardrobe'
+      ? state.tasks.active.findIndex(
+          (task) => task.taskId === 'wardrobe-choice' && canProgress(task),
+        )
+      : -1
+  const taskIndex =
+    wardrobeTaskIndex >= 0 ? wardrobeTaskIndex : state.tasks.active.findIndex(canProgress)
   if (taskIndex < 0) return { state, effect: null }
 
   const task = state.tasks.active[taskIndex]

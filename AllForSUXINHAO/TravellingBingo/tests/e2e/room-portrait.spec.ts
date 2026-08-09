@@ -34,9 +34,7 @@ for (const viewport of [
   { width: 1440, height: 900, name: '1440x900' },
   { width: 1975, height: 1536, name: '1975x1536' },
 ] as const) {
-  test(`${viewport.name} 顶栏、房间和信息栏严格对齐且待机房间可展开`, async ({
-    page,
-  }, testInfo) => {
+  test(`${viewport.name} 顶栏、房间和待机信息栏严格对齐`, async ({ page }, testInfo) => {
     test.skip(testInfo.project.name !== 'chromium', '精确桌面布局仅在 Desktop Chromium 验证')
     await page.setViewportSize(viewport)
     await startGame(page, { seed: 'layout-e2e', displayName: '对齐测试' })
@@ -44,20 +42,24 @@ for (const viewport of [
     const hud = page.locator('.game-hud--v3')
     const layout = page.locator('.game-layout--v3')
     const room = page.locator('.room-card--v3')
-    await expect(page.locator('.context-panel')).toHaveCount(0)
+    const statusPanel = page.locator('.context-panel--status')
+    await expect(statusPanel).toBeVisible()
 
-    const [hudIdle, layoutIdle, roomIdle] = await Promise.all([
+    const [hudIdle, layoutIdle, roomIdle, statusIdle] = await Promise.all([
       hud.boundingBox(),
       layout.boundingBox(),
       room.boundingBox(),
+      statusPanel.boundingBox(),
     ])
     expect(hudIdle).not.toBeNull()
     expect(layoutIdle).not.toBeNull()
     expect(roomIdle).not.toBeNull()
+    expect(statusIdle).not.toBeNull()
     expectNear(layoutIdle!.x, hudIdle!.x)
     expectNear(layoutIdle!.x + layoutIdle!.width, hudIdle!.x + hudIdle!.width)
     expectNear(roomIdle!.x, hudIdle!.x)
-    expectNear(roomIdle!.x + roomIdle!.width, hudIdle!.x + hudIdle!.width)
+    expectNear(statusIdle!.x + statusIdle!.width, hudIdle!.x + hudIdle!.width)
+    expectNear(roomIdle!.y, statusIdle!.y)
 
     await page.locator('[data-hotspot="冰箱"]').click()
     const panel = page.locator('.context-panel--fridge')
@@ -78,10 +80,9 @@ for (const viewport of [
     const horizontalGap = panelOpen!.x - (roomOpen!.x + roomOpen!.width)
     expect(verticalGap).toBeGreaterThan(0)
     expectNear(horizontalGap, verticalGap)
-    expect(roomIdle!.width).toBeGreaterThan(roomOpen!.width + 100)
+    expectNear(roomIdle!.width, roomOpen!.width)
 
     await page.getByRole('button', { name: '回到房间概览' }).click()
-    const statusPanel = page.locator('.context-panel--status')
     await expect(statusPanel).toBeVisible()
     const roomStatus = await room.boundingBox()
     expect(roomStatus).not.toBeNull()
@@ -102,14 +103,14 @@ for (const viewport of [
   })
 }
 
-test('房间单图层、热点与饼狗落点共用同一套母版坐标', async ({ page }, testInfo) => {
+test('房间等比图层、热点与饼狗落点共用同一套母版坐标', async ({ page }, testInfo) => {
   test.skip(testInfo.project.name !== 'chromium', 'portrait 坐标只需在桌面验证一次')
   await page.setViewportSize({ width: 1440, height: 900 })
   await startGame(page)
 
   const room = page.getByRole('region', { name: '铲铲饼屋互动场景' })
   await expect(room.locator('.room-hotspot')).toHaveText([
-    '去床边',
+    '去床上',
     '去电脑前',
     '看看衣架',
     '弹弹琴',
@@ -140,12 +141,15 @@ test('房间单图层、热点与饼狗落点共用同一套母版坐标', async
   }))
   expect(imageMetrics.currentSrc).toMatch(/chan-chan-house-v2-(?:768|1098)\.webp$/u)
   expect(imageMetrics.naturalWidth / imageMetrics.naturalHeight).toBeCloseTo(ROOM_RATIO, 2)
+  await expect(roomImage).toHaveCSS('object-fit', 'contain')
+  await expect(room).toHaveCSS('background-color', 'rgba(0, 0, 0, 0)')
 
   const [roomBox, stageBox] = await Promise.all([room.boundingBox(), stage.boundingBox()])
   expect(roomBox && stageBox).toBeTruthy()
-  expectNear(stageBox!.x, roomBox!.x)
+  expect(stageBox!.width / stageBox!.height).toBeCloseTo(ROOM_RATIO, 2)
+  expect(stageBox!.width).toBeLessThan(roomBox!.width)
+  expectNear(stageBox!.x + stageBox!.width / 2, roomBox!.x + roomBox!.width / 2)
   expectNear(stageBox!.y, roomBox!.y)
-  expectNear(stageBox!.width, roomBox!.width)
   expectNear(stageBox!.height, roomBox!.height)
 
   for (const expected of HOTSPOTS) {
@@ -184,7 +188,7 @@ test('房间单图层、热点与饼狗落点共用同一套母版坐标', async
   await enterReality(page)
   await expect(room.locator('.room-hotspot')).toHaveText(['数据', '放张唱片', '工作'])
   for (const hiddenLabel of [
-    '去床边',
+    '去床上',
     '去电脑前',
     '看看衣架',
     '弹弹琴',
@@ -206,6 +210,51 @@ test('房间单图层、热点与饼狗落点共用同一套母版坐标', async
   })
   expect(workPosition.x).toBeCloseTo((420 / 1098) * 100, 5)
   expect(workPosition.y).toBeCloseTo((1172 / 1433) * 100, 5)
+})
+
+test('信息栏下方播放器在展开和收起时都复用房间侧边间距', async ({ page }, testInfo) => {
+  test.skip(testInfo.project.name !== 'chromium', '桌面三组件几何只在 Chromium 验证')
+  await page.setViewportSize({ width: 1440, height: 900 })
+  await startGame(page, { seed: 'scene-gap-e2e', displayName: '间距测试' })
+  await page.route('https://player.bilibili.com/**', async (route) => route.abort())
+
+  const room = page.getByRole('region', { name: '铲铲饼屋互动场景' })
+  await room.locator('[data-hotspot="唱片机"]').click()
+  const panel = page.locator('.context-panel--record-player')
+  await panel
+    .getByRole('list', { name: '全站第一曲目' })
+    .getByRole('listitem')
+    .first()
+    .getByRole('button')
+    .click()
+
+  const player = page.getByTestId('persistent-bilibili-player')
+  await expect(player).toHaveClass(/persistent-bilibili-player--context/u)
+
+  async function expectSharedGap() {
+    const [roomBox, panelBox, playerBox] = await Promise.all([
+      room.boundingBox(),
+      panel.boundingBox(),
+      player.boundingBox(),
+    ])
+    expect(roomBox && panelBox && playerBox).toBeTruthy()
+    const roomToPanel = panelBox!.x - (roomBox!.x + roomBox!.width)
+    const panelToPlayer = playerBox!.y - (panelBox!.y + panelBox!.height)
+    expect(roomToPanel).toBeGreaterThan(0)
+    expectNear(panelToPlayer, roomToPanel)
+  }
+
+  await expect(player).toHaveAttribute('data-dock-state', 'expanded')
+  const expandedPlayerBox = await player.boundingBox()
+  expect(expandedPlayerBox).not.toBeNull()
+  await expectSharedGap()
+
+  await player.getByRole('button', { name: '隐藏画面' }).click()
+  await expect(player).toHaveAttribute('data-dock-state', 'collapsed')
+  const collapsedPlayerBox = await player.boundingBox()
+  expect(collapsedPlayerBox).not.toBeNull()
+  expect(Math.abs(collapsedPlayerBox!.width - expandedPlayerBox!.width)).toBeLessThan(0.5)
+  await expectSharedGap()
 })
 
 test('DEBUG 仍会生成拒绝意愿，暗淡按钮询问后显示领域拒绝', async ({ page }, testInfo) => {
@@ -242,11 +291,13 @@ test('饼狗站在冰箱前时热点与角色都能用普通鼠标点击', async
 
   await fridge.click()
   await expect(page.locator('.context-panel--fridge')).toBeVisible()
-  await page.getByRole('button', { name: '回到房间概览' }).click()
   await expect(room.locator('.mascot-sprite--fridge')).toBeVisible()
+  await page.getByRole('button', { name: '回到房间概览' }).click()
+  await expect(room.locator('.room-mascot--actor')).toHaveClass(/is-wandering/u)
 
   await fridge.click()
   await expect(page.locator('.context-panel--fridge')).toBeVisible()
+  await expect(room.locator('.mascot-sprite--fridge')).toBeVisible()
   await page.getByRole('button', { name: '回到房间概览' }).click()
 
   const actor = room.getByRole('button', { name: '饼狗，打开行动菜单' })
@@ -254,12 +305,27 @@ test('饼狗站在冰箱前时热点与角色都能用普通鼠标点击', async
   await expect(page.getByRole('dialog', { name: '饼狗想做什么' })).toBeVisible()
 })
 
-test('饼狗出门后角色和房门活动入口都从房间消失', async ({ page }, testInfo) => {
+test('饼狗出门后用母版内便签替代角色，并可用键盘查看进度', async ({ page }, testInfo) => {
   test.skip(testInfo.project.name !== 'chromium', '旅行状态只在桌面验证一次')
   await startGame(page)
   const room = page.getByRole('region', { name: '铲铲饼屋互动场景' })
   await startActivity(page, '房门', '出去旅行')
   await expect(room.locator('[data-hotspot="房门"]')).toHaveCount(0)
   await expect(room.locator('.room-mascot--actor')).toHaveCount(0)
-  await expect(room.locator('.travel-note')).toHaveCount(0)
+  const note = room.getByRole('button', { name: '饼狗不在家，查看出门进度' })
+  await expect(note).toBeVisible()
+  await expect(note).toContainText('点击查看出门进度')
+  const [stageBox, noteBox] = await Promise.all([
+    room.locator('.room-stage').boundingBox(),
+    note.boundingBox(),
+  ])
+  expect(stageBox && noteBox).toBeTruthy()
+  expect(noteBox!.x).toBeGreaterThanOrEqual(stageBox!.x)
+  expect(noteBox!.y).toBeGreaterThanOrEqual(stageBox!.y)
+  expect(noteBox!.x + noteBox!.width).toBeLessThanOrEqual(stageBox!.x + stageBox!.width)
+  expect(noteBox!.y + noteBox!.height).toBeLessThanOrEqual(stageBox!.y + stageBox!.height)
+
+  await note.focus()
+  await page.keyboard.press('Enter')
+  await expect(page.locator('.context-panel--activity')).toBeVisible()
 })

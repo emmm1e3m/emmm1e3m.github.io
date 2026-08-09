@@ -4,7 +4,7 @@ import type { BilibiliPlayerController } from './playerController'
 
 export const BilibiliPlayerContext = createContext<BilibiliPlayerController | null>(null)
 
-export function useOptionalBilibiliPlayerController() {
+function useOptionalBilibiliPlayerController() {
   return useContext(BilibiliPlayerContext)
 }
 

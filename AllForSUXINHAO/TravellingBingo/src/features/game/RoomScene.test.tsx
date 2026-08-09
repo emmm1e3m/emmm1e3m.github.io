@@ -2,10 +2,19 @@ import { act, fireEvent, render, screen } from '@testing-library/react'
 
 import { createInitialGameState, type GameState } from '@/domain'
 
+import globalStyles from '@/styles/global.css?raw'
+
 import gameV3Styles from './game-v3.css?raw'
 import gameV4Styles from './game-v4.css?raw'
+import playerStyles from '../player/player.css?raw'
 import { RoomScene } from './RoomScene'
 import { DEFAULT_ROOM_AREA, ROOM_AREAS, ROOM_CANVAS, type RoomArea } from './roomConfig'
+import {
+  GAME_ROOM_WANDER_HULL,
+  randomRoomPointInHull,
+  roomPointInsideConvexHull,
+  ROOM_WANDER_STEP_MS,
+} from './roomWander'
 
 function activeGame(kind: 'music' | 'rest' | 'travel'): GameState {
   const game = createInitialGameState({ now: 1_000, seed: `room-scene-${kind}` })
@@ -45,6 +54,7 @@ function renderRoom({
   onRequestCancelPomodoro,
   dimensionToggleDisabled,
   onToggleDimension,
+  wanderRandom,
 }: {
   game?: GameState
   area?: RoomArea
@@ -58,6 +68,7 @@ function renderRoom({
   onRequestCancelPomodoro?: Parameters<typeof RoomScene>[0]['onRequestCancelPomodoro']
   dimensionToggleDisabled?: Parameters<typeof RoomScene>[0]['dimensionToggleDisabled']
   onToggleDimension?: Parameters<typeof RoomScene>[0]['onToggleDimension']
+  wanderRandom?: Parameters<typeof RoomScene>[0]['wanderRandom']
 } = {}) {
   return render(
     <RoomScene
@@ -78,12 +89,13 @@ function renderRoom({
       dimensionToggleDisabled={dimensionToggleDisabled}
       onToggleDimension={onToggleDimension}
       onTaskEvent={vi.fn()}
+      wanderRandom={wanderRandom}
     />,
   )
 }
 
 describe('房屋场景定位与返回交互', () => {
-  it('只渲染一层房屋图片，并让母版坐标层铺满整个房间卡片', () => {
+  it('只渲染一层等比房屋图片，坐标层居中且不占用两侧透明留白', () => {
     renderRoom()
 
     const room = screen.getByRole('region', { name: '铲铲饼屋互动场景' })
@@ -94,15 +106,38 @@ describe('房屋场景定位与返回交互', () => {
 
     expect(gameV3Styles).not.toContain('var(--room-backdrop-image)')
     expect(gameV3Styles).toMatch(
-      /\.room-stage\s*\{[^}]*position:\s*absolute;[^}]*inset:\s*0;[^}]*width:\s*100%;[^}]*height:\s*100%;[^}]*aspect-ratio:\s*auto;/su,
+      /\.room-stage\s*\{[^}]*position:\s*absolute;[^}]*left:\s*50%;[^}]*width:\s*auto;[^}]*height:\s*100%;[^}]*aspect-ratio:\s*1098\s*\/\s*1433;[^}]*transform:\s*translateX\(-50%\);/su,
     )
     expect(gameV3Styles).toMatch(
-      /\.room-card--v3 \.room-picture img\s*\{[^}]*object-fit:\s*fill;/su,
+      /\.room-card--v3 \.room-picture img\s*\{[^}]*object-fit:\s*contain;/su,
+    )
+    expect(gameV3Styles).toMatch(
+      /\.game-page--v3 \.room-card--v3\s*\{[^}]*background:\s*transparent;/su,
     )
   })
 
-  it.each([DEFAULT_ROOM_AREA, ...ROOM_AREAS])('$label 的饼狗中心由母版像素严格换算', (area) => {
-    renderRoom({ area })
+  it('房间、信息栏和播放器的可见留白只使用一份场景间距', () => {
+    expect(globalStyles).toContain('--scene-component-gap: clamp(10px, 0.8vw, 14px);')
+    expect(gameV3Styles).toContain('--shell-gap: var(--scene-component-gap);')
+    expect(gameV4Styles).toMatch(
+      /\.game-page--v4 \.game-layout--v3\.has-side-panel\s*\{[^}]*column-gap:\s*var\(--scene-component-gap\);/su,
+    )
+    expect(gameV4Styles).toMatch(
+      /\.persistent-bilibili-player--context\) \.game-page--v4 \.context-stack\s*\{[^}]*var\(--scene-player-collapsed-block-size\) \+ var\(--scene-component-gap\)/su,
+    )
+    expect(gameV4Styles).toMatch(
+      /\.persistent-bilibili-player--context\.is-expanded\) \.game-page--v4 \.context-stack\s*\{[^}]*var\(--scene-player-expanded-block-size\) \+ var\(--scene-component-gap\)/su,
+    )
+    expect(playerStyles).toMatch(
+      /\.persistent-bilibili-player--context\s*\{[^}]*--player-dock-bottom:\s*var\(--scene-component-gap\);[^}]*height:\s*var\(--scene-player-collapsed-block-size\);/su,
+    )
+    expect(playerStyles).toMatch(
+      /\.persistent-bilibili-player--context\.is-expanded\s*\{[^}]*height:\s*var\(--scene-player-expanded-block-size\);/su,
+    )
+  })
+
+  it.each(ROOM_AREAS)('$label 的饼狗中心由母版像素严格换算', (area) => {
+    renderRoom({ area, panel: area.panel })
 
     const mascot = screen.getByRole('button', { name: '饼狗，打开行动菜单' })
     expect(Number.parseFloat(mascot.style.getPropertyValue('--pet-x'))).toBeCloseTo(
@@ -113,6 +148,111 @@ describe('房屋场景定位与返回交互', () => {
       (area.petCenter.y / ROOM_CANVAS.height) * 100,
       12,
     )
+  })
+
+  it('待机时在游戏设施凸包内部取连续坐标，选中设施后立即停下并清理计时器', () => {
+    vi.useFakeTimers()
+    let randomState = 23
+    const random = vi.fn(() => {
+      randomState = (randomState * 48271) % 2_147_483_647
+      return randomState / 2_147_483_647
+    })
+
+    try {
+      const game = createInitialGameState({ now: 1_000, seed: 'room-scene-wander' })
+      const { rerender, unmount } = renderRoom({ game, panel: 'status', wanderRandom: random })
+      const mascot = screen.getByRole('button', { name: '饼狗，打开行动菜单' })
+
+      expect(mascot).toHaveClass('is-wandering')
+      const readPoint = () => ({
+        x: (Number.parseFloat(mascot.style.getPropertyValue('--pet-x')) / 100) * ROOM_CANVAS.width,
+        y: (Number.parseFloat(mascot.style.getPropertyValue('--pet-y')) / 100) * ROOM_CANVAS.height,
+      })
+      const firstPoint = readPoint()
+      expect(roomPointInsideConvexHull(firstPoint, GAME_ROOM_WANDER_HULL)).toBe(true)
+      expect(ROOM_AREAS.some((candidate) => candidate.petCenter.x === firstPoint.x)).toBe(false)
+
+      act(() => vi.advanceTimersByTime(ROOM_WANDER_STEP_MS))
+      const secondPoint = readPoint()
+      expect(roomPointInsideConvexHull(secondPoint, GAME_ROOM_WANDER_HULL)).toBe(true)
+      expect(secondPoint).not.toEqual(firstPoint)
+
+      const fridge = ROOM_AREAS.find((candidate) => candidate.id === 'fridge')!
+      rerender(
+        <RoomScene
+          game={game}
+          panel="fridge"
+          area={fridge}
+          walking={false}
+          sleeping={false}
+          restDarkness={0}
+          onArea={vi.fn()}
+          onPanel={vi.fn()}
+          onBackgroundActivate={vi.fn()}
+          onHelp={vi.fn()}
+          onTaskEvent={vi.fn()}
+          wanderRandom={random}
+        />,
+      )
+      expect(mascot).not.toHaveClass('is-wandering')
+      expect(Number.parseFloat(mascot.style.getPropertyValue('--pet-x'))).toBeCloseTo(
+        (fridge.petCenter.x / ROOM_CANVAS.width) * 100,
+        12,
+      )
+      const randomCalls = random.mock.calls.length
+      act(() => vi.advanceTimersByTime(ROOM_WANDER_STEP_MS * 2))
+      expect(random).toHaveBeenCalledTimes(randomCalls)
+
+      unmount()
+      expect(vi.getTimerCount()).toBe(0)
+    } finally {
+      vi.useRealTimers()
+    }
+  })
+
+  it('纯函数生成的任意漫步点都在最大凸包内部且不只取设施落点', () => {
+    let state = 7
+    const random = () => {
+      state = (state * 16807) % 2_147_483_647
+      return state / 2_147_483_647
+    }
+    const facilityPoints = new Set(
+      ROOM_AREAS.map((area) => `${area.petCenter.x},${area.petCenter.y}`),
+    )
+
+    for (let index = 0; index < 80; index += 1) {
+      const point = randomRoomPointInHull(GAME_ROOM_WANDER_HULL, random)
+      expect(roomPointInsideConvexHull(point, GAME_ROOM_WANDER_HULL)).toBe(true)
+      expect(facilityPoints.has(`${point.x},${point.y}`)).toBe(false)
+    }
+  })
+
+  it('系统减少动态效果时不启动待机漫步', () => {
+    vi.useFakeTimers()
+    vi.stubGlobal(
+      'matchMedia',
+      vi.fn(() => ({
+        matches: true,
+        media: '(prefers-reduced-motion: reduce)',
+        onchange: null,
+        addEventListener: vi.fn(),
+        removeEventListener: vi.fn(),
+        addListener: vi.fn(),
+        removeListener: vi.fn(),
+        dispatchEvent: vi.fn(),
+      })),
+    )
+
+    try {
+      renderRoom({ panel: 'status', wanderRandom: vi.fn(() => 0.5) })
+      expect(screen.getByRole('button', { name: '饼狗，打开行动菜单' })).not.toHaveClass(
+        'is-wandering',
+      )
+      expect(vi.getTimerCount()).toBe(0)
+    } finally {
+      vi.unstubAllGlobals()
+      vi.useRealTimers()
+    }
   })
 
   it('点击房屋空白回到概览，但点击设施热点不会误触发', () => {
@@ -182,7 +322,7 @@ describe('房屋场景定位与返回交互', () => {
     render(
       <RoomScene
         game={createInitialGameState({ now: 1_000, seed: 'room-scene-fridge-layer' })}
-        panel={null}
+        panel="fridge"
         area={fridge}
         walking={false}
         sleeping={false}
@@ -237,7 +377,7 @@ describe('房屋场景定位与返回交互', () => {
 
     expect(screen.getByRole('button', { name: '放张唱片' })).toBeInTheDocument()
     for (const hiddenLabel of [
-      '去床边',
+      '去床上',
       '去电脑前',
       '看看衣架',
       '弹弹琴',
@@ -255,7 +395,7 @@ describe('房屋场景定位与返回交互', () => {
     expect(screen.queryByRole('button', { name: '工作' })).not.toBeInTheDocument()
     expect(screen.queryByRole('button', { name: '数据' })).not.toBeInTheDocument()
     for (const visibleLabel of [
-      '去床边',
+      '去床上',
       '去电脑前',
       '看看衣架',
       '弹弹琴',
@@ -269,8 +409,24 @@ describe('房屋场景定位与返回交互', () => {
 
     fireEvent.click(screen.getByRole('button', { name: '饼狗，打开行动菜单' }))
     expect(screen.getByRole('dialog', { name: '饼狗想做什么' })).toBeInTheDocument()
+    expect(screen.getByText('饼狗正看着你👀')).toBeInTheDocument()
     expect(screen.getByLabelText('饼狗今天的想法')).toBeInTheDocument()
     expect(screen.queryByRole('button', { name: '和饼狗打个招呼' })).not.toBeInTheDocument()
+  })
+
+  it('未结算活动中点击饼狗同时打开菜单并进入活动进度页', () => {
+    const onPanel = vi.fn()
+    const game = activeGame('music')
+    renderRoom({
+      game,
+      area: ROOM_AREAS.find((area) => area.id === 'keyboard')!,
+      onPanel,
+    })
+
+    fireEvent.click(screen.getByRole('button', { name: /的饼狗$/u }))
+
+    expect(screen.getByRole('dialog', { name: '饼狗想做什么' })).toBeInTheDocument()
+    expect(onPanel).toHaveBeenCalledWith('activity')
   })
 
   it('旅行开始会主动收起饼狗菜单，结束后不会自动重现', async () => {
@@ -296,8 +452,10 @@ describe('房屋场景定位与返回交互', () => {
       />,
     )
 
-    expect(screen.queryByRole('button', { name: /饼狗/u })).not.toBeInTheDocument()
-    expect(screen.queryByText('饼狗出门啦')).not.toBeInTheDocument()
+    expect(screen.queryByRole('button', { name: '饼狗，打开行动菜单' })).not.toBeInTheDocument()
+    expect(screen.getByRole('button', { name: '饼狗不在家，查看出门进度' })).toHaveTextContent(
+      '饼狗不在家点击查看出门进度',
+    )
     expect(screen.getByRole('button', { name: '取消当前活动' })).toBeInTheDocument()
 
     await act(
@@ -323,6 +481,18 @@ describe('房屋场景定位与返回交互', () => {
       />,
     )
     expect(screen.queryByRole('dialog', { name: '饼狗想做什么' })).not.toBeInTheDocument()
+  })
+
+  it('旅行占位是母版内可聚焦按钮，点击后打开活动进度', () => {
+    const onPanel = vi.fn()
+    renderRoom({ game: activeGame('travel'), panel: 'status', onPanel })
+
+    const note = screen.getByRole('button', { name: '饼狗不在家，查看出门进度' })
+    note.focus()
+    expect(note).toHaveFocus()
+    expect(note).toHaveClass('travel-note', 'travel-note--v2')
+    fireEvent.click(note)
+    expect(onPanel).toHaveBeenCalledWith('activity')
   })
 
   it('帮助按钮显示信息图标并保留介绍语义', () => {

@@ -2,6 +2,7 @@ import { useState, type ChangeEvent, type FormEvent } from 'react'
 
 import { publicAsset } from '@/app/assets'
 import { MascotSprite } from '@/components/MascotSprite'
+import { useModalFocus } from '@/components/useModalFocus'
 import { isValidDisplayName, MAX_DISPLAY_NAME_LENGTH } from '@/domain'
 
 import './title.css'
@@ -31,7 +32,7 @@ export interface CachedSavePreview {
 
 export type UpdateCheckStatus = 'idle' | 'checking' | 'checked' | 'unsupported' | 'error'
 
-export interface TitleScreenProps {
+interface TitleScreenProps {
   loading: boolean
   available: boolean
   error: string | null
@@ -79,8 +80,16 @@ export function TitleScreen({
 }: TitleScreenProps) {
   const [displayName, setDisplayName] = useState('')
   const [nameTouched, setNameTouched] = useState(false)
+  const [newJourneyOpen, setNewJourneyOpen] = useState(false)
   const normalizedName = displayName.trim()
   const validName = isValidDisplayName(normalizedName)
+  const newJourneyDialogRef = useModalFocus<HTMLFormElement>(
+    newJourneyOpen,
+    () => {
+      if (!loading) setNewJourneyOpen(false)
+    },
+    { initialFocus: '#new-journey-display-name' },
+  )
 
   function handleFile(event: ChangeEvent<HTMLInputElement>) {
     const file = event.currentTarget.files?.[0]
@@ -230,62 +239,48 @@ export function TitleScreen({
             )}
           </section>
 
-          <form className="landing-new-game" onSubmit={startJourney} noValidate>
-            <label className="landing-name-field">
-              <span>想让饼狗怎么称呼你？</span>
-              <input
-                type="text"
-                value={displayName}
-                autoComplete="nickname"
-                placeholder="输入你的称呼"
-                aria-describedby="display-name-hint"
-                aria-invalid={nameTouched && !validName}
-                onChange={(event) => {
-                  setDisplayName(event.currentTarget.value)
-                  setNameTouched(true)
-                }}
-              />
-            </label>
-            <p
-              className={`landing-name-hint ${nameTouched && !validName ? 'is-error' : ''}`}
-              id="display-name-hint"
+          <div className="landing-new-game">
+            <nav
+              className={`landing-actions landing-actions--entries ${cachedPreview ? '' : 'landing-actions--entries-two'}`}
+              aria-label="存档入口"
             >
-              {nameTouched && !validName
-                ? `请输入 1 到 ${MAX_DISPLAY_NAME_LENGTH} 个字符的称呼`
-                : `最多 ${MAX_DISPLAY_NAME_LENGTH} 个字符，之后也会写进存档`}
-            </p>
-            <div className="landing-actions landing-actions--entries">
+              {cachedPreview && (
+                <button
+                  className="landing-button landing-button--primary"
+                  type="button"
+                  disabled={loading || !available}
+                  onClick={onContinueCached}
+                >
+                  继续
+                </button>
+              )}
               <button
-                className="landing-button landing-button--primary"
-                type="submit"
-                disabled={loading || !available}
-              >
-                {loading ? '正在准备饼屋…' : available ? '新存档' : '收藏目录暂不可用'}
-              </button>
-              <button
-                className="landing-button landing-button--quiet"
+                className={`landing-button ${cachedPreview ? 'landing-button--quiet' : 'landing-button--primary'}`}
                 type="button"
-                disabled={loading || !available || !cachedPreview}
-                onClick={onContinueCached}
+                disabled={loading || !available}
+                onClick={() => {
+                  setNameTouched(false)
+                  setNewJourneyOpen(true)
+                }}
               >
-                从缓存存档继续
+                全新旅程
               </button>
               <label
                 className="landing-button landing-button--quiet"
                 aria-disabled={loading || !available}
               >
-                加载本地存档
+                本地存档
                 <input
                   className="visually-hidden"
-                  aria-label="加载本地存档"
+                  aria-label="本地存档"
                   type="file"
                   accept=".bingo,application/octet-stream,application/json"
                   disabled={loading || !available}
                   onChange={handleFile}
                 />
               </label>
-            </div>
-          </form>
+            </nav>
+          </div>
 
           <section className="landing-update" aria-label="检查游戏更新">
             <button
@@ -294,7 +289,7 @@ export function TitleScreen({
               disabled={updateCheckStatus === 'checking'}
               onClick={onCheckForUpdates}
             >
-              {updateCheckStatus === 'checking' ? '正在检查新布置…' : '检查新布置'}
+              {updateCheckStatus === 'checking' ? '正在检查更新…' : '检查更新'}
             </button>
           </section>
 
@@ -334,6 +329,77 @@ export function TitleScreen({
           <MascotSprite pose="idle" className="landing-mascot" />
         </figure>
       </section>
+
+      {newJourneyOpen && (
+        <div
+          className="modal-backdrop"
+          role="presentation"
+          onMouseDown={() => {
+            if (!loading) setNewJourneyOpen(false)
+          }}
+        >
+          <form
+            ref={newJourneyDialogRef}
+            className="small-dialog"
+            role="dialog"
+            aria-modal="true"
+            aria-labelledby="new-journey-title"
+            tabIndex={-1}
+            noValidate
+            onSubmit={startJourney}
+            onMouseDown={(event) => event.stopPropagation()}
+          >
+            <span className="landing-tag">全新旅程</span>
+            <h2 id="new-journey-title">开启一段全新的旅程</h2>
+            <p>
+              {cachedPreview
+                ? '开始前会先下载当前浏览器缓存中的存档，下载完成后才会创建全新旅程。'
+                : '先告诉饼狗该如何称呼你，再一起从铲铲饼屋出发。'}
+            </p>
+            <div className="landing-name-field">
+              <input
+                id="new-journey-display-name"
+                type="text"
+                value={displayName}
+                autoComplete="nickname"
+                placeholder="如何称呼你？"
+                aria-label="如何称呼你？"
+                aria-describedby="display-name-hint"
+                aria-invalid={nameTouched && !validName}
+                onChange={(event) => {
+                  setDisplayName(event.currentTarget.value)
+                  setNameTouched(true)
+                }}
+              />
+            </div>
+            <p
+              className={`landing-name-hint ${nameTouched && !validName ? 'is-error' : ''}`}
+              id="display-name-hint"
+            >
+              {nameTouched && !validName
+                ? `请输入 1 到 ${MAX_DISPLAY_NAME_LENGTH} 个字符的称呼`
+                : `最多 ${MAX_DISPLAY_NAME_LENGTH} 个字符，之后也会写进存档`}
+            </p>
+            <div className="landing-actions">
+              <button
+                className="landing-button landing-button--primary"
+                type="submit"
+                disabled={loading || !available}
+              >
+                {loading ? '正在准备饼屋…' : cachedPreview ? '下载存档并开始' : '开始全新旅程'}
+              </button>
+              <button
+                className="landing-button landing-button--quiet"
+                type="button"
+                disabled={loading}
+                onClick={() => setNewJourneyOpen(false)}
+              >
+                先不开始
+              </button>
+            </div>
+          </form>
+        </div>
+      )}
     </main>
   )
 }

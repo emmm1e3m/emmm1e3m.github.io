@@ -139,7 +139,9 @@ describe('PianoKeyboard', () => {
     render(<PianoKeyboard />)
 
     expect(
-      screen.getByText('C6 B5 G5 E5 G5 C6 B5 G5 E5 G5 E5，C6 B5 G5 E5 G5 C6 D6 C6 D6 E6 E6'),
+      screen.getByText(
+        '试着从 C6 B5 G5 E5 G5 C6 B5 G5 E5 G5 E5，C6 B5 G5 E5 G5 C6 D6 C6 D6 E6 E6 开始~',
+      ),
     ).toBeInTheDocument()
     expect(screen.queryByText('饼狗的小钢琴')).not.toBeInTheDocument()
     expect(screen.queryByText(/[两三四]八度/u)).not.toBeInTheDocument()

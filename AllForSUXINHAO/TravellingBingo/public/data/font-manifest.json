@@ -4,8 +4,8 @@
   "generatedAt": "2026-08-08",
   "glyphSet": {
     "strategy": "all Unicode code points used by runtime game source and collectible catalogs, plus printable ASCII and Chinese punctuation",
-    "codePointCount": 1296,
-    "sha256": "5b6bd3a6efa3432992ee96694858a0f77fd879a287ad2b75153acf21fb9fad6f",
+    "codePointCount": 1313,
+    "sha256": "641ff762e495504a8b69982ac70b72ddd428dcadf6af96fd73c847c74ec3ee80",
     "sourceFiles": [
       "AllForSUXINHAO/TravellingBingo/index.html",
       "AllForSUXINHAO/TravellingBingo/public/data/million-shot-posters.json",
@@ -75,6 +75,7 @@
       "AllForSUXINHAO/TravellingBingo/src/features/game/HelpDialog.tsx",
       "AllForSUXINHAO/TravellingBingo/src/features/game/roomConfig.ts",
       "AllForSUXINHAO/TravellingBingo/src/features/game/RoomScene.tsx",
+      "AllForSUXINHAO/TravellingBingo/src/features/game/roomWander.ts",
       "AllForSUXINHAO/TravellingBingo/src/features/player/BilibiliPlayerProvider.tsx",
       "AllForSUXINHAO/TravellingBingo/src/features/player/BilibiliPlaylistPanel.css",
       "AllForSUXINHAO/TravellingBingo/src/features/player/BilibiliPlaylistPanel.tsx",
@@ -121,9 +122,9 @@
       },
       "file": {
         "path": "assets/fonts/kehua-lerongrong.woff2",
-        "byteLength": 487032,
+        "byteLength": 491920,
         "mime": "font/woff2",
-        "sha256": "ebd9698985ce9973f2e22215b211afff49855251d4bf4c68600b82d024b935f3"
+        "sha256": "f739c5eaa59316a4cf9c4428f3eb2732afe7b06ba0a73c34b6d018a1c971fbe7"
       }
     },
     {
@@ -140,9 +141,9 @@
       },
       "file": {
         "path": "assets/fonts/kehua-naitang.woff2",
-        "byteLength": 415396,
+        "byteLength": 419856,
         "mime": "font/woff2",
-        "sha256": "c3fe8831412718ddf22e8abfc7d67ed36a7dc2c25f3be85d9e0a534e371fca78"
+        "sha256": "c1640ccc9747576b3d74a17d62903e7d723ee0fa4a598e66898e8ca45a37cf85"
       }
     }
   ]

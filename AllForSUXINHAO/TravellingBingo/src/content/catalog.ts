@@ -133,10 +133,7 @@ export function mergeContentCatalogs(
     ),
     friends: Object.freeze([...friendCatalog.items]),
     friendById: Object.freeze(mutableFriendIndex),
-    videosByBvid: Object.freeze({
-      ...videoCatalog.videos,
-      ...Object.fromEntries(videoCatalog.extraTracks.items.map((video) => [video.bvid, video])),
-    }),
+    videosByBvid: Object.freeze({ ...videoCatalog.videos }),
     recordPlayerVideos: Object.freeze([...videoCatalog.recordPlayer.items]),
   })
 }

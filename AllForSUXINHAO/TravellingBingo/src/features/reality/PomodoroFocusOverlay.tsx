@@ -1,10 +1,10 @@
-import { useId, useRef, useState } from 'react'
+import { useEffect, useId, useRef, useState, type CSSProperties, type FormEvent } from 'react'
 import { createPortal } from 'react-dom'
 
 import { MascotSprite } from '@/components/MascotSprite'
 import { useModalFocus } from '@/components/useModalFocus'
 
-import type { PomodoroFocusOverlayProps } from './types'
+import type { PomodoroFocusOverlayProps, RealityTodoView } from './types'
 import './reality.css'
 
 const PLAYER_FOCUS_PEER = '[data-modal-focus-peer="persistent-player"]'
@@ -14,6 +14,19 @@ interface CancelDialogProps {
   onClose: () => void
   onConfirm: () => void
   returnFocus: () => HTMLElement | null
+}
+
+interface TodoDeleteDialogProps {
+  todo: RealityTodoView
+  onClose: () => void
+  onConfirm: () => void
+  returnFocus: () => HTMLElement | null
+}
+
+interface MascotPosition {
+  x: number
+  y: number
+  durationMs: number
 }
 
 function formatDuration(durationMs: number) {
@@ -65,6 +78,49 @@ function CancelDialog({ phaseLabel, onClose, onConfirm, returnFocus }: CancelDia
   )
 }
 
+function TodoDeleteDialog({ todo, onClose, onConfirm, returnFocus }: TodoDeleteDialogProps) {
+  const titleId = useId()
+  const descriptionId = useId()
+  const safeButtonRef = useRef<HTMLButtonElement>(null)
+  const dialogRef = useModalFocus<HTMLDivElement>(true, onClose, {
+    initialFocus: safeButtonRef,
+    returnFocus,
+  })
+
+  return (
+    <div className="pomodoro-focus__confirm-backdrop" data-modal-backdrop>
+      <div
+        ref={dialogRef}
+        className="reality-dialog pomodoro-focus__confirm"
+        role="alertdialog"
+        aria-modal="true"
+        aria-labelledby={titleId}
+        aria-describedby={descriptionId}
+        tabIndex={-1}
+      >
+        <span className="reality-dialog__symbol" aria-hidden="true">
+          🗑️
+        </span>
+        <h2 id={titleId}>确认删除这条待办？</h2>
+        <p id={descriptionId}>“{todo.title}”删除后需要重新创建才能找回。</p>
+        <div className="reality-dialog__actions">
+          <button
+            ref={safeButtonRef}
+            className="reality-secondary-button"
+            type="button"
+            onClick={onClose}
+          >
+            先不删除
+          </button>
+          <button className="reality-danger-button" type="button" onClick={onConfirm}>
+            确认删除
+          </button>
+        </div>
+      </div>
+    </div>
+  )
+}
+
 /**
  * 苹果钟进行中的全屏空间；持久播放器作为明确 peer 参与焦点圈定。
  */
@@ -74,7 +130,10 @@ export function PomodoroFocusOverlay({
   todos,
   musicStarter,
   playerExpanded = false,
+  onTodoCreate,
+  onTodoUpdate,
   onTodoCompletionChange,
+  onTodoDelete,
   onCancel,
   className = '',
 }: PomodoroFocusOverlayProps) {
@@ -82,7 +141,19 @@ export function PomodoroFocusOverlay({
   const descriptionId = useId()
   const infoRef = useRef<HTMLDivElement>(null)
   const cancelButtonRef = useRef<HTMLButtonElement>(null)
+  const newTodoInputRef = useRef<HTMLInputElement>(null)
+  const deleteReturnFocusRef = useRef<HTMLElement | null>(null)
   const [confirmingCancel, setConfirmingCancel] = useState(false)
+  const [newTodoTitle, setNewTodoTitle] = useState('')
+  const [editingTodoId, setEditingTodoId] = useState<string | null>(null)
+  const [editTitle, setEditTitle] = useState('')
+  const [pendingDeleteTodo, setPendingDeleteTodo] = useState<RealityTodoView | null>(null)
+  const [reducedMotion, setReducedMotion] = useState(false)
+  const [mascotPosition, setMascotPosition] = useState<MascotPosition>({
+    x: 50,
+    y: 56,
+    durationMs: 0,
+  })
   const phaseLabel = session.status === 'focus' ? '专注' : '休息'
   const dialogRef = useModalFocus<HTMLElement>(true, () => setConfirmingCancel(true), {
     initialFocus: infoRef,
@@ -90,6 +161,84 @@ export function PomodoroFocusOverlay({
     focusPeers: [PLAYER_FOCUS_PEER],
   })
   const backgroundUrl = background?.fullUrl ?? background?.thumbnailUrl
+
+  useEffect(() => {
+    const mediaQuery = window.matchMedia?.('(prefers-reduced-motion: reduce)')
+    let moveTimer: ReturnType<typeof globalThis.setTimeout> | null = null
+
+    function clearMoveTimer() {
+      if (moveTimer !== null) globalThis.clearTimeout(moveTimer)
+      moveTimer = null
+    }
+
+    function moveMascot() {
+      setMascotPosition({
+        x: 30 + Math.random() * 40,
+        y: 24 + Math.random() * 52,
+        durationMs: 8_000 + Math.round(Math.random() * 4_000),
+      })
+      moveTimer = globalThis.setTimeout(moveMascot, 12_000 + Math.round(Math.random() * 5_000))
+    }
+
+    function syncMotionPreference() {
+      clearMoveTimer()
+      const prefersReducedMotion = mediaQuery?.matches ?? false
+      setReducedMotion(prefersReducedMotion)
+      if (prefersReducedMotion) {
+        setMascotPosition({ x: 50, y: 56, durationMs: 0 })
+      } else {
+        moveMascot()
+      }
+    }
+
+    syncMotionPreference()
+    mediaQuery?.addEventListener('change', syncMotionPreference)
+    return () => {
+      clearMoveTimer()
+      mediaQuery?.removeEventListener('change', syncMotionPreference)
+    }
+  }, [])
+
+  function createTodo(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault()
+    const title = newTodoTitle.trim()
+    if (!title) return
+    onTodoCreate(title)
+    setNewTodoTitle('')
+  }
+
+  function startEditing(todo: RealityTodoView) {
+    setEditingTodoId(todo.id)
+    setEditTitle(todo.title)
+  }
+
+  function updateTodo(event: FormEvent<HTMLFormElement>, todoId: string) {
+    event.preventDefault()
+    const title = editTitle.trim()
+    if (!title) return
+    onTodoUpdate(todoId, { title })
+    setEditingTodoId(null)
+    setEditTitle('')
+  }
+
+  function askToDelete(todo: RealityTodoView, trigger: HTMLButtonElement) {
+    deleteReturnFocusRef.current = trigger
+    setPendingDeleteTodo(todo)
+  }
+
+  function confirmDelete() {
+    if (!pendingDeleteTodo) return
+    const todoId = pendingDeleteTodo.id
+    deleteReturnFocusRef.current = newTodoInputRef.current
+    setPendingDeleteTodo(null)
+    onTodoDelete(todoId)
+  }
+
+  const mascotStyle = {
+    '--pomodoro-mascot-x': `${mascotPosition.x}%`,
+    '--pomodoro-mascot-y': `${mascotPosition.y}%`,
+    '--pomodoro-mascot-duration': `${mascotPosition.durationMs}ms`,
+  } as CSSProperties
 
   return createPortal(
     <div
@@ -109,10 +258,15 @@ export function PomodoroFocusOverlay({
         aria-describedby={descriptionId}
         tabIndex={-1}
       >
-        <div className="pomodoro-focus__scene" aria-hidden="true">
+        <div
+          className="pomodoro-focus__scene"
+          data-reduced-motion={reducedMotion ? 'true' : 'false'}
+        >
           <MascotSprite
-            pose={session.status === 'focus' ? 'sit' : 'warm'}
+            pose="sleep"
             className="pomodoro-focus__mascot"
+            label="正在睡觉陪伴你的饼狗"
+            style={mascotStyle}
           />
         </div>
 
@@ -155,25 +309,92 @@ export function PomodoroFocusOverlay({
                 {todos.filter((todo) => todo.completed).length}/{todos.length}
               </span>
             </div>
+
+            <form className="pomodoro-focus__todo-create" onSubmit={createTodo}>
+              <label className="visually-hidden" htmlFor={`${titleId}-new-todo`}>
+                新待办
+              </label>
+              <input
+                ref={newTodoInputRef}
+                id={`${titleId}-new-todo`}
+                value={newTodoTitle}
+                placeholder="随时写下一件待办"
+                autoComplete="off"
+                onChange={(event) => setNewTodoTitle(event.target.value)}
+              />
+              <button type="submit" disabled={!newTodoTitle.trim()}>
+                添加
+              </button>
+            </form>
+
             {todos.length > 0 ? (
               <ul>
                 {todos.map((todo) => (
                   <li key={todo.id} className={todo.completed ? 'is-complete' : ''}>
-                    <label className="reality-todo-check">
-                      <input
-                        type="checkbox"
-                        checked={todo.completed}
-                        aria-label={`${todo.completed ? '标记为未完成' : '标记为已完成'}：${todo.title}`}
-                        onChange={(event) => onTodoCompletionChange(todo.id, event.target.checked)}
-                      />
-                      <span aria-hidden="true">✓</span>
-                    </label>
-                    <span>{todo.title}</span>
+                    {editingTodoId === todo.id ? (
+                      <form
+                        className="pomodoro-focus__todo-edit"
+                        aria-label={`编辑待办：${todo.title}`}
+                        onSubmit={(event) => updateTodo(event, todo.id)}
+                      >
+                        <label className="visually-hidden" htmlFor={`${titleId}-edit-${todo.id}`}>
+                          待办标题
+                        </label>
+                        <input
+                          id={`${titleId}-edit-${todo.id}`}
+                          value={editTitle}
+                          autoComplete="off"
+                          autoFocus
+                          onChange={(event) => setEditTitle(event.target.value)}
+                        />
+                        <div>
+                          <button type="submit" disabled={!editTitle.trim()}>
+                            保存
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => {
+                              setEditingTodoId(null)
+                              setEditTitle('')
+                            }}
+                          >
+                            取消
+                          </button>
+                        </div>
+                      </form>
+                    ) : (
+                      <>
+                        <label className="reality-todo-check">
+                          <input
+                            type="checkbox"
+                            checked={todo.completed}
+                            aria-label={`${todo.completed ? '标记为未完成' : '标记为已完成'}：${todo.title}`}
+                            onChange={(event) =>
+                              onTodoCompletionChange(todo.id, event.target.checked)
+                            }
+                          />
+                          <span aria-hidden="true">✓</span>
+                        </label>
+                        <span className="pomodoro-focus__todo-title">{todo.title}</span>
+                        <span className="pomodoro-focus__todo-actions">
+                          <button type="button" onClick={() => startEditing(todo)}>
+                            编辑
+                          </button>
+                          <button
+                            className="is-danger"
+                            type="button"
+                            onClick={(event) => askToDelete(todo, event.currentTarget)}
+                          >
+                            删除
+                          </button>
+                        </span>
+                      </>
+                    )}
                   </li>
                 ))}
               </ul>
             ) : (
-              <p>这轮没有待办，安心完成自己的安排吧。</p>
+              <p>这轮没有待办，随时写下一件要做的事吧。</p>
             )}
           </section>
 
@@ -184,6 +405,14 @@ export function PomodoroFocusOverlay({
           )}
         </div>
 
+        {pendingDeleteTodo && (
+          <TodoDeleteDialog
+            todo={pendingDeleteTodo}
+            returnFocus={() => deleteReturnFocusRef.current}
+            onClose={() => setPendingDeleteTodo(null)}
+            onConfirm={confirmDelete}
+          />
+        )}
         {confirmingCancel && (
           <CancelDialog
             phaseLabel={phaseLabel}

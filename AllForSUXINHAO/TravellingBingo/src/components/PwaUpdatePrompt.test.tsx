@@ -76,7 +76,7 @@ describe('PwaUpdatePrompt', () => {
       />,
     )
 
-    const prompt = screen.getByRole('status', { name: '饼屋换上新布置啦' })
+    const prompt = screen.getByRole('status', { name: '铲铲饼屋有新布置啦' })
     expect(prompt).toHaveAccessibleDescription('打开新布置前会自动备份，饼狗会在原地等你。')
     fireEvent.click(screen.getByRole('button', { name: '看看新布置' }))
 

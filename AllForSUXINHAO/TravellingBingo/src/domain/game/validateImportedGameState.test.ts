@@ -192,6 +192,45 @@ describe('导入存档与当前收藏目录的一致性', () => {
     })
   })
 
+  it('接受跨日后仍保留原进度且 completedAt 为 null 的未完成任务板', () => {
+    const state = createInitialGameState({
+      now: new Date(2026, 7, 1, 12).getTime(),
+      seed: 'unfinished-imported-task-board',
+    })
+    state.tasks.active = [
+      {
+        instanceId: 'inherited-backpack',
+        taskId: 'open-backpack',
+        assignedAt: new Date(2026, 7, 1, 12).getTime(),
+        progress: 1,
+        target: 1,
+        rewardApples: 1,
+        seenKeys: ['opened'],
+      },
+      {
+        instanceId: 'inherited-room',
+        taskId: 'room-stroll',
+        assignedAt: new Date(2026, 7, 1, 12).getTime(),
+        progress: 1,
+        target: 2,
+        rewardApples: 2,
+        seenKeys: ['bed'],
+      },
+      {
+        instanceId: 'inherited-piano',
+        taskId: 'piano-time',
+        assignedAt: new Date(2026, 7, 1, 12).getTime(),
+        progress: 0,
+        target: 1,
+        rewardApples: 1,
+        seenKeys: [],
+      },
+    ]
+    state.tasks.completedAt = null
+
+    expect(validateImportedGameState(state, catalog)).toEqual({ ok: true })
+  })
+
   it('拒绝形状合法但进度与 seenKeys 不一致的 crafted V4 任务板', () => {
     const state = createInitialGameState({ now: 1_000, seed: 'crafted-task-progress' })
     const task = state.tasks.active.find((entry) => entry.target === 1)

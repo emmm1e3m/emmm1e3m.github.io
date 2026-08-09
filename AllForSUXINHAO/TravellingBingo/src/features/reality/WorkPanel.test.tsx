@@ -30,10 +30,6 @@ function createProps(actions = createActions()): WorkPanelProps {
   return {
     pomodoro: {
       selectedDurationMs: 25 * 60 * 1_000,
-      durationOptions: [
-        { durationMs: 25 * 60 * 1_000, label: '25 分钟', description: '专注一小会儿' },
-        { durationMs: 50 * 60 * 1_000, label: '50 分钟', description: '完成一段工作' },
-      ],
       session: null,
       canStart: true,
     },
@@ -52,14 +48,19 @@ function createProps(actions = createActions()): WorkPanelProps {
 }
 
 describe('WorkPanel', () => {
-  it('依次展示设置提醒、待办、明信片选择器和开始摘要', () => {
+  it('依次展示设置提醒、待办和明信片入口，开始按钮直接位于设置区', () => {
     const { container } = render(<WorkPanel {...createProps()} />)
 
     expect(
       within(container)
         .getAllByRole('heading', { level: 3 })
         .map((heading) => heading.textContent),
-    ).toEqual(['设置苹果钟与提醒', '待办清单', '选择陪伴明信片', '准备开始'])
+    ).toEqual(['设置苹果钟与提醒', '待办清单', '陪伴明信片'])
+    const settings = screen.getByRole('region', { name: '设置苹果钟与提醒' })
+    expect(settings).toContainElement(screen.getByRole('button', { name: '开始苹果钟' }))
+    expect(screen.queryByText('准备开始')).not.toBeInTheDocument()
+    expect(screen.queryByText('04')).not.toBeInTheDocument()
+    expect(container.querySelector('.reality-panel__mark')).toBeNull()
   })
 
   it('用按钮选择时长和已解锁背景，所有改变只交给 actions', () => {
@@ -75,9 +76,15 @@ describe('WorkPanel', () => {
     fireEvent.click(screen.getByRole('button', { name: /50 分钟/u }))
     expect(actions.onDurationChange).toHaveBeenCalledWith(50 * 60 * 1_000)
 
+    fireEvent.click(screen.getByRole('button', { name: '选择陪伴明信片' }))
     fireEvent.click(screen.getByRole('radio', { name: /晚霞明信片/u }))
+    expect(actions.onBackgroundChange).not.toHaveBeenCalled()
+    fireEvent.click(screen.getByRole('button', { name: '确认明信片' }))
     expect(actions.onBackgroundChange).toHaveBeenCalledWith('postcard-2')
+
+    fireEvent.click(screen.getByRole('button', { name: '选择陪伴明信片' }))
     fireEvent.click(screen.getByRole('radio', { name: /默认纸张/u }))
+    fireEvent.click(screen.getByRole('button', { name: '确认明信片' }))
     expect(actions.onBackgroundChange).toHaveBeenCalledWith(null)
 
     expect(container.querySelector('select')).toBeNull()
@@ -110,27 +117,25 @@ describe('WorkPanel', () => {
     expect(actions.onPomodoroStart).toHaveBeenCalledWith(25 * 60 * 1_000)
   })
 
-  it('把选中的明信片真正铺到苹果钟卡片，并在默认纸张与图片背景间切换', () => {
+  it('在入口卡片预览当前明信片，并在默认纸张与图片背景间切换', () => {
     const props = createProps()
     const { container, rerender } = render(<WorkPanel {...props} selectedBackgroundId={null} />)
-    const timerCard = container.querySelector('.reality-timer-card')
+    const preview = container.querySelector('.reality-postcard-picker__preview')
 
-    expect(timerCard).toHaveAttribute('data-background-id', 'plain')
-    expect(container.querySelector('.reality-timer-card__background')).toBeNull()
-    expect(screen.getByRole('img', { name: '准备陪你专注的饼狗' })).toBeVisible()
-    expect(screen.getByText(/默认纸张上开始/u)).toBeVisible()
+    expect(preview).toHaveAttribute('data-background-id', 'plain')
+    expect(screen.getAllByText('默认纸张').length).toBeGreaterThan(0)
 
     rerender(<WorkPanel {...props} selectedBackgroundId="postcard-1" />)
 
-    const background = container.querySelector<HTMLImageElement>('.reality-timer-card__background')
-    expect(timerCard).toHaveAttribute('data-background-id', 'postcard-1')
+    const background = container.querySelector<HTMLImageElement>(
+      '.reality-postcard-picker__preview img',
+    )
+    expect(preview).toHaveAttribute('data-background-id', 'postcard-1')
     expect(background).toHaveAttribute('src', '/postcard-1.webp')
-    expect(window.getComputedStyle(background!).objectFit).toBe('cover')
     expect(screen.getByText('明信片 · 海边明信片')).toBeVisible()
-    expect(screen.getByText(/“海边明信片”已经铺好/u)).toBeVisible()
   })
 
-  it('计时中显示进度和陪伴饼狗，二次确认后才取消且明确不计下一天', async () => {
+  it('计时中锁定设置与明信片，二次确认后才取消且明确不计下一天', async () => {
     const actions = createActions()
     const props = createProps(actions)
     render(
@@ -150,10 +155,8 @@ describe('WorkPanel', () => {
     )
 
     expect(screen.getByRole('status')).toHaveTextContent('专注中')
-    expect(screen.getByText('12:34')).toBeVisible()
-    expect(screen.getByRole('img', { name: '正在陪伴你的饼狗' })).toBeVisible()
-    expect(document.querySelector('.reality-timer-companion .mascot-sprite--sit')).toBeVisible()
     expect(screen.getByRole('button', { name: '开始苹果钟' })).toBeDisabled()
+    expect(screen.getByRole('button', { name: '选择陪伴明信片' })).toBeDisabled()
 
     fireEvent.click(screen.getByRole('button', { name: '取消本次计时' }))
     expect(actions.onPomodoroCancel).not.toHaveBeenCalled()

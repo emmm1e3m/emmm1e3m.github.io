@@ -5,7 +5,7 @@
 - 游戏路径固定为 `/AllForSUXINHAO/TravellingBingo/`；仓库根首页只做入口。
 - 当前业务状态为 `GameStateV5`，`schemaVersion: 5`；新导出封套中的 `gameVersion` 为 `0.5.0-demo.1`。
 - `localStorage` 单槽缓存是日常主存档，`.bingo` 是自动备份与跨浏览器导入格式。收藏、好友和视频目录是当前版本输入，不复制进存档。
-- 标题页的三个存档入口是“新存档”“从缓存存档继续”“加载本地存档”。新建或本地导入覆盖缓存前先备份旧档；首次获得新的全站第一或认识新朋友形成关键节点时、距离上次周期备份满三天时、检测到网页更新时也自动请求下载当前档。
+- 标题页有缓存时显示“继续”，并始终提供“全新旅程”“本地存档”。全新旅程或本地导入覆盖缓存前先备份旧档；首次获得新的全站第一或认识新朋友形成关键节点时、距离上次周期备份满三天时、检测到网页更新时也自动请求下载当前档。
 - 运行时不抓取 B 站收藏夹或微博页面；BVID、作者、发布时间、海报映射和唱片机内置曲目来自构建期静态目录。
 
 ## V5 状态与迁移不变量
@@ -34,7 +34,7 @@
 - 收藏存档只保存已拥有 ID、首获时间与重复次数，不保存目录总数、全站第一指针或分类解锁数组。
 - 好友存档只保存已遇见记录，不保存好友目录总数或图片元数据。
 - V5 导入可清除已经不再拥有的苹果钟明信片背景，但不能借协调步骤掩盖非法奖励组合、未知奖励 ID 或被篡改的活动时间。
-- V5 任务板以 `completedAt` 记录最后一项完成时间；全完成板保留到完成后的下一个本地自然日，再由统一刷新入口生成新板。
+- V5 任务板以 `completedAt` 记录最后一项完成时间；全完成板保留到完成后的下一个本地零点，由统一截止时间计时自动刷新，页面休眠后聚焦时补检查；未完成板跨日保留。
 
 `GameStateV5` 在 V4 基础上新增或调整的持久字段：
 
@@ -43,8 +43,7 @@ world: game | reality
 player.effects.vitality
 reality.pomodoro.session.status / focusEndsAt / cycleEndsAt
 tasks.completedAt
-musicPlayer.playlists / order / activePlaylistId / currentBvid
-musicPlayer.currentIndex / loopMode
+musicPlayer.currentBvid / currentIndex / loopMode
 ```
 
 当前面板、弹窗焦点、琴键按下状态、奖励弹窗和布局动画仍是 UI 瞬时状态，不写入存档。
@@ -62,13 +61,13 @@ musicPlayer.currentIndex / loopMode
 
 ## 奖励与收藏
 
-- 默认概率：明信片 0.65、百万直拍 0.4、全站第一 0.1、旅行遇友 0.2、音乐好友 0.2。
+- 默认概率：明信片 0.65、百万直拍 0.3、全站第一 0.1、旅行遇友 0.2、音乐好友 0.2。
 - 幸运苹果对当前活动对应的收藏概率做 `+0.10` 加法，即提高 10 个百分点并封顶为 1，不作相对乘法。
 - 旅行先判朋友；命中后只签发朋友与固定道具，不再判明信片。没有朋友时才判明信片。
 - 音乐好友只能从活动开始时已经认识的好友集合中选择，不会解锁新好友；固定赠送 2–4🍎。
 - 明信片和百万直拍从未拥有集合随机选择；全站第一按 `siteFirstChronology` 第一个未拥有项选择。
 - DEBUG 的“一键全收集”和“清空收集”同时处理三类收藏与全部好友；不维护预制全收集存档。
-- 收藏详情整体比例为桌面或横屏 16:9、手机竖屏 9:16；卡片和详情预览使用 `cover`，点击图片后用 `contain` 完整展示并提供下载。
+- 收藏详情整体比例为桌面或横屏 16:9、手机竖屏 9:16；卡片缩略图和好友头像可用 `cover`，收藏详情、全屏预览和明信片选择器使用 `contain` 完整展示并允许留白，苹果钟运行背景使用 `cover` 铺满并允许裁切。
 
 ## 房间与 UI 锚点
 
@@ -79,7 +78,7 @@ public/assets/game/chan-chan-house-v2-768.webp
 public/assets/game/chan-chan-house-v2-1098.webp
 ```
 
-公开房图只做等比缩放和无损 WebP 编码，不裁切、不重绘。`roomConfig.ts` 以母版像素保存饼狗中心点：
+公开房图只做等比缩放和无损 WebP 编码，不裁切、不重绘；横向房间卡以 `contain` 居中显示实际图片舞台，左右允许透明留白。`roomConfig.ts` 以母版像素保存饼狗中心点：
 
 | 位置         |        中心点 |
 | ------------ | ------------: |
@@ -113,13 +112,12 @@ public/assets/game/chan-chan-house-v2-1098.webp
 
 ## 持久 B 站播放器
 
-- `BilibiliPlayerProvider` 只持有受控业务状态与唯一运行态；`PersistentPlayerDock` 被放进当前可交互的房间、收藏墙或苹果钟焦点分支，避免被模态 `inert` 禁用。
-- 每次选曲固定请求 `autoplay=1`，详情打开即请求播放。切换信息内容或维度不卸载 iframe；“停止播放”才移除当前请求。
-- 状态层只保存当前 BV、用户播放列表、列表顺序和列表/单曲/随机模式。
-- 唱片机内置曲库为当前最新七项全站第一（Talk WORTHY? Talk DIRTY! 至 POWER）；自定义曲库仍可创建、更新与切换。
-- `parseBilibiliPlaylistInput` 接受逐行 BV 号或完整 Bilibili 视频链接，拒绝无 BV 的短链接并去重；名称、BV 列表、选择与播放设置通过领域动作持久化。
-- 手动上一首、下一首与自动结束策略已拆开：单曲模式手动切歌仍移动到相邻曲目，只有自动结束时才重播当前曲目。
-- 官方 iframe 没有稳定的父页结束事件；当前只在 iframe 加载后按静态目录中的 `durationSeconds` 尽力续播。两条用户给出的短视频均记录为 21 秒，供回归测试使用。
+- `BilibiliPlayerProvider` 持有受控业务状态与单份运行态；`PersistentPlayerDock` 通过 portal 固定挂在 `document.body`，避免被房间、收藏墙或苹果钟模态层切换卸载。
+- 每次选曲固定请求 `autoplay=1`，详情打开即请求播放。iframe 是 `inert` 的纯画面层；游戏控件负责显示/隐藏、暂停/继续和取消。
+- 显示/隐藏不重建 iframe；暂停冻结游戏估算进度并卸载 iframe，继续从估算秒数重建，取消移除请求。
+- 状态层只保存当前 BV、索引和列表/单曲/随机模式；当前请求、暂停估算位置和画面展开状态不写入存档。
+- 唱片机固定提供八首全站第一（Dynamite 至 POWER），不提供自定义曲库。单曲模式主动上一首、下一首仍移动到相邻曲目，只有游戏计时结束时才重播当前曲目。
+- 官方 iframe 没有稳定的父页播放状态接口；当前从 iframe 加载后按静态目录中的 `durationSeconds` 维护游戏计时并尽力续播，不能可靠核对第三方真实进度或结束。
 
 ## 现实生活维度
 
@@ -127,13 +125,13 @@ public/assets/game/chan-chan-house-v2-1098.webp
 - `reality/settle` 中 `serious` 获得全额，`not-serious` 获得 `floor(full / 2)`；未完成十分钟时全额为 0。
 - `browserPlatform.ts` 只用 `(hover: hover) and (pointer: fine)` 表达 PC 主输入能力，不用 UA 名单或窗口宽度；进入前与确认时各检查一次。非 PC 恢复 reality 存档时只显示显式返回与结算入口。
 - 二楼“数据”直接显示刷播、冲热和运行组链接；一楼“工作”先显示待办，再显示专门的明信片选择器。
-- 苹果钟预设为 25+5、50+10、90+15 分钟。全屏层锁定启动时的明信片，并与唯一可交互播放器、待办和饼狗处于同一焦点分支。
+- 苹果钟预设为 25+5、50+10、90+15 分钟。全屏层锁定启动时的明信片并以 `cover` 铺满背景、允许裁切，与可操作的游戏播放器控件、待办和饼狗共同组成焦点 UI。
 - `clock/tick` 按绝对时间切换 focus → break → completed，并签发稳定 `notificationId` 的 effect；只在 completed 时推进陪伴日。
 
 ## 浏览器能力边界
 
 - 通知权限只能在用户点击后请求。当前实现使用页面计时器并在 `focus` / `visibilitychange` 时补检查；页面完全关闭、系统休眠或浏览器冻结时不能保证准点系统通知。
-- “检查新布置”调用当前 Service Worker registration 的 `update()`。无 Service Worker、未注册或网络失败时显示对应状态；检查本身不强制安装更新。
+- “检查更新”调用当前 Service Worker registration 的 `update()`。无 Service Worker、未注册或网络失败时显示对应状态；检查本身不强制安装更新。
 - `needRefresh` 首次表明检测到新版本时自动下载当前缓存档；随后安装该版本前再次调用同一幂等备份入口，避免无备份刷新。
 - 守候音频只在三个旅程入口的明确用户手势中创建并复用，运行期保持开启；状态栏不显示开关。它不能绕过浏览器或操作系统的后台冻结策略。
 - GitHub Pages 是静态托管，浏览器不能伪造 B 站 Referer；B 站 API、DASH/MP4 流也不向当前 Pages Origin 提供可直接播放的跨域响应。因此不固化会过期的签名流地址，也不引入未知第三方代理，继续使用官方 iframe。
@@ -145,7 +143,7 @@ public/assets/game/chan-chan-house-v2-1098.webp
 AllForSUXINHAO/TravellingBingo/src/domain/             # 领域、迁移、现实与播放器持久状态
 AllForSUXINHAO/TravellingBingo/src/app/                # 应用接线、导入导出、通知、更新
 AllForSUXINHAO/TravellingBingo/src/features/game/      # 房间、信息栏、HUD、设施
-AllForSUXINHAO/TravellingBingo/src/features/player/    # 持久播放器与列表解析
+AllForSUXINHAO/TravellingBingo/src/features/player/    # 持久播放器、固定曲库与游戏控件
 AllForSUXINHAO/TravellingBingo/src/features/reality/   # 数据、苹果钟与待办 UI
 AllForSUXINHAO/TravellingBingo/src/features/album/     # 收藏与详情
 resources/raw/travelling-bingo/                        # 授权原图、生成母版和字体源

@@ -26,16 +26,13 @@ export function HelpDialog({ open, world = 'game', onClose }: HelpDialogProps) {
         tabIndex={-1}
         onMouseDown={(event) => event.stopPropagation()}
       >
-        <span className="paper-tag help-dialog__tag">
-          <span aria-hidden="true">ℹ️</span>
-          {world === 'reality' ? '现实维度的小纸条' : '铲铲饼屋的小纸条'}
-        </span>
+        <span className="paper-tag help-dialog__tag">铲铲饼屋的小纸条</span>
         <h2 id="help-title">{world === 'reality' ? '把现实里的事慢慢做好' : '怎么陪饼狗玩'}</h2>
         {world === 'reality' ? (
           <div className="help-dialog__sections">
             <section>
               <h3>数据与工作</h3>
-              <p>二楼电脑从刷播与冲热开始，一楼电脑可以安排待办、明信片和苹果钟。</p>
+              <p>既可以刷播与冲热，也可以为工作与学习计时。</p>
             </section>
             <section>
               <h3>完整苹果钟</h3>
@@ -44,7 +41,7 @@ export function HelpDialog({ open, world = 'game', onClose }: HelpDialogProps) {
             <section>
               <h3>🍎结算</h3>
               <p>
-                回到饼屋时，请确认现实里的事情是否认真完成。认真完成会带回全部苹果，否则只带回一半。
+                每10分钟可以积攒1🍎。回到饼屋时，请确认现实里的事情是否认真完成。认真完成会带回全部苹果，否则只带回一半。
               </p>
             </section>
           </div>
@@ -60,8 +57,8 @@ export function HelpDialog({ open, world = 'game', onClose }: HelpDialogProps) {
               <p>中途取消不会增加天数，带出的补给也不会退回。</p>
             </section>
             <section>
-              <h3>🍎与回忆</h3>
-              <p>完成小事会得到🍎；🍎可以拿来补充冰箱。新的回忆和朋友会自己找到收藏墙里的位置。</p>
+              <h3>收藏记忆</h3>
+              <p>完成任务会得到🍎；🍎可以向冰箱中补充道具。和饼狗留下的记忆会被保存在收藏墙。</p>
             </section>
           </div>
         )}

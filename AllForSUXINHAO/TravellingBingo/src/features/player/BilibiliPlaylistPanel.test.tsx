@@ -1,134 +1,75 @@
-import { fireEvent, render, screen, within } from '@testing-library/react'
-import { type PropsWithChildren, useState } from 'react'
+import { fireEvent, render, screen } from '@testing-library/react'
+import { useState } from 'react'
 
 import type { GameAction, MusicPlayerState } from '@/domain/game/types'
 
-import { BilibiliPlayerProvider, PersistentPlayerDock } from './BilibiliPlayerProvider'
+import { BilibiliPlayerProvider } from './BilibiliPlayerProvider'
 import { BilibiliPlaylistPanel } from './BilibiliPlaylistPanel'
-import { parseBilibiliTrackReference, type BilibiliPlayerTrack } from './playerModel'
+import type { BilibiliPlayerTrack } from './playerModel'
 
-type MusicPlayerAction = Extract<GameAction, { type: `music/${string}` }>
+type MusicAction = Extract<GameAction, { type: `music/${string}` }>
 
-const resolvedTrack: BilibiliPlayerTrack = {
-  ...parseBilibiliTrackReference('BV1xx411c7mD')!,
-  title: '视频一',
-  authorName: '测试作者',
-  durationSeconds: 21,
-}
+const tracks: readonly BilibiliPlayerTrack[] = [
+  {
+    bvid: 'BV1xx411c7mD',
+    title: '全站第一一号',
+    sourceUrl: 'https://www.bilibili.com/video/BV1xx411c7mD/',
+    durationSeconds: 183,
+  },
+  {
+    bvid: 'BV1B7411m7LV',
+    title: '全站第一二号',
+    sourceUrl: 'https://www.bilibili.com/video/BV1B7411m7LV/',
+    durationSeconds: 198,
+  },
+]
 
-function PanelHarness({ children }: PropsWithChildren) {
+function Harness({ onTrackOpened }: { onTrackOpened?: (bvid: string) => void }) {
   const [state, setState] = useState<MusicPlayerState>({
-    playlists: {},
-    order: [],
-    activePlaylistId: null,
     currentBvid: null,
     currentIndex: 0,
     loopMode: 'list',
   })
-
-  function onAction(action: MusicPlayerAction) {
-    setState((current) => {
-      switch (action.type) {
-        case 'music/playlist-create':
-          return {
-            ...current,
-            playlists: {
-              ...current.playlists,
-              [action.playlistId]: {
-                id: action.playlistId,
-                name: action.name,
-                bvids: [...(action.bvids ?? [])],
-                createdAt: action.now,
-                updatedAt: action.now,
-              },
-            },
-            order: [...current.order, action.playlistId],
-          }
-        case 'music/playlist-select':
-          return { ...current, activePlaylistId: action.playlistId }
-        case 'music/track-select':
-          return { ...current, currentBvid: action.bvid, currentIndex: action.index }
-        case 'music/loop-set':
-          return { ...current, loopMode: action.loopMode }
-        default:
-          return current
-      }
-    })
+  const apply = (action: MusicAction) => {
+    if (action.type === 'music/track-select') {
+      setState((current) => ({
+        ...current,
+        currentBvid: action.bvid,
+        currentIndex: action.index,
+      }))
+    } else if (action.type === 'music/loop-set') {
+      setState((current) => ({ ...current, loopMode: action.loopMode }))
+    }
   }
-
   return (
-    <BilibiliPlayerProvider
-      state={state}
-      onAction={onAction}
-      resolveTrack={(bvid) => (bvid === resolvedTrack.bvid ? resolvedTrack : undefined)}
-      now={() => 1234}
-    >
-      {children}
-      <PersistentPlayerDock />
+    <BilibiliPlayerProvider state={state} onAction={apply} tracks={tracks}>
+      <BilibiliPlaylistPanel onTrackOpened={onTrackOpened} />
     </BilibiliPlayerProvider>
   )
 }
 
 describe('BilibiliPlaylistPanel', () => {
-  it('可访问地命名、逐行解析、去重并立即选中第一首', () => {
-    const onPlaylistLoaded = vi.fn()
-    render(
-      <PanelHarness>
-        <BilibiliPlaylistPanel
-          resolveTrack={(bvid) => (bvid === resolvedTrack.bvid ? resolvedTrack : undefined)}
-          onPlaylistLoaded={onPlaylistLoaded}
-        />
-      </PanelHarness>,
-    )
+  it('只展示唯一全站第一曲库，不再提供自定义 BV 或列表编辑入口', () => {
+    render(<Harness />)
 
-    fireEvent.change(screen.getByLabelText('播放列表名称'), {
-      target: { value: '  舞台   收藏  ' },
-    })
-    fireEvent.change(screen.getByLabelText('BV 号或视频链接'), {
-      target: {
-        value: [
-          'BV1xx411c7mD',
-          'https://www.bilibili.com/video/BV1B7411m7LV',
-          'https://player.bilibili.com/player.html?bvid=BV1xx411c7mD',
-          'https://b23.tv/unresolved',
-        ].join('\n'),
-      },
-    })
-    fireEvent.click(screen.getByRole('button', { name: '载入这个列表' }))
-
-    expect(screen.getByText('已载入 2 首；去重 1 行；跳过 1 行。')).toBeVisible()
-    expect(screen.getByRole('list', { name: '未载入的行' })).toHaveTextContent(
-      '第 4 行：短链接不含 BV 号',
-    )
-    expect(screen.getByRole('heading', { name: '舞台 收藏' })).toBeInTheDocument()
-    const trackList = screen.getByRole('list', { name: '舞台 收藏曲目' })
-    expect(within(trackList).getAllByRole('button')).toHaveLength(2)
-    expect(onPlaylistLoaded).toHaveBeenCalledWith('舞台 收藏', ['BV1xx411c7mD', 'BV1B7411m7LV'])
-    expect(screen.getByTitle('Bilibili 外链播放器：视频一')).toBeInTheDocument()
-
-    expect(screen.queryByLabelText('起播位置（秒）')).not.toBeInTheDocument()
-    expect(screen.queryByText('从这里重新打开')).not.toBeInTheDocument()
-    expect(screen.queryByText(/外链播放器不会/u)).not.toBeInTheDocument()
-
-    fireEvent.click(screen.getByRole('button', { name: '随机' }))
-    expect(screen.getByRole('button', { name: '随机' })).toHaveAttribute('aria-pressed', 'true')
+    expect(screen.getByRole('heading', { name: '八首全站第一' })).toBeInTheDocument()
+    expect(screen.getAllByRole('listitem')).toHaveLength(2)
+    expect(screen.queryByRole('textbox')).not.toBeInTheDocument()
   })
 
-  it('空输入和空名称使用明确错误，不替换现有列表', () => {
-    render(
-      <PanelHarness>
-        <BilibiliPlaylistPanel initialName="" />
-      </PanelHarness>,
-    )
+  it('模式、选曲和手动上下首共用唯一曲目顺序', () => {
+    const onTrackOpened = vi.fn()
+    render(<Harness onTrackOpened={onTrackOpened} />)
 
-    fireEvent.click(screen.getByRole('button', { name: '载入这个列表' }))
-    expect(screen.getByRole('alert')).toHaveTextContent('没有找到可以加入播放列表')
+    fireEvent.click(screen.getByRole('button', { name: '单曲' }))
+    expect(screen.getByRole('button', { name: '单曲' })).toHaveAttribute('aria-pressed', 'true')
 
-    fireEvent.change(screen.getByLabelText('BV 号或视频链接'), {
-      target: { value: 'BV1xx411c7mD' },
-    })
-    fireEvent.click(screen.getByRole('button', { name: '载入这个列表' }))
-    expect(screen.getByRole('alert')).toHaveTextContent('请为播放列表取一个名字')
-    expect(screen.getByRole('status')).toHaveTextContent('列表还是空的')
+    fireEvent.click(screen.getByRole('button', { name: '全站第一一号' }))
+    fireEvent.click(screen.getByRole('button', { name: '下一首' }))
+    expect(onTrackOpened).toHaveBeenNthCalledWith(1, tracks[0]!.bvid)
+    expect(onTrackOpened).toHaveBeenNthCalledWith(2, tracks[1]!.bvid)
+
+    fireEvent.click(screen.getByRole('button', { name: '上一首' }))
+    expect(onTrackOpened).toHaveBeenNthCalledWith(3, tracks[0]!.bvid)
   })
 })

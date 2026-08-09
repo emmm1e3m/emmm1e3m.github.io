@@ -44,8 +44,10 @@ export async function startGame(page: Page, options: StartGameOptions = {}) {
     await expect(debugDialog).toBeHidden()
   }
 
-  await page.getByLabel('想让饼狗怎么称呼你？').fill(displayName)
-  await page.getByRole('button', { name: '新存档' }).click()
+  await page.getByRole('button', { name: '全新旅程' }).click()
+  const newJourneyDialog = page.getByRole('dialog', { name: '开启一段全新的旅程' })
+  await newJourneyDialog.getByLabel('如何称呼你？').fill(displayName)
+  await newJourneyDialog.getByRole('button', { name: '开始全新旅程' }).click()
   await expect(page.getByRole('region', { name: '铲铲饼屋互动场景' })).toBeVisible()
   await expect(page.locator('.hud-companion')).toContainText(`${displayName}陪伴饼狗已经`)
   if (debug) {

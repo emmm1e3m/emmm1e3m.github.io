@@ -271,7 +271,7 @@ export function PianoKeyboard({ disabled = false, onNote }: PianoKeyboardProps) 
         <small>电脑键盘只对应白键</small>
       </div>
       <p className="piano__hint">
-        C6 B5 G5 E5 G5 C6 B5 G5 E5 G5 E5，C6 B5 G5 E5 G5 C6 D6 C6 D6 E6 E6
+        试着从 C6 B5 G5 E5 G5 C6 B5 G5 E5 G5 E5，C6 B5 G5 E5 G5 C6 D6 C6 D6 E6 E6 开始~
       </p>
       <div className="piano__rows">
         {PIANO_OCTAVES.map((octave) => {

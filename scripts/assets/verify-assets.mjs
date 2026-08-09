@@ -653,8 +653,7 @@ ensure(
   videoCatalog.recordPlayer?.sourceFavoriteId === videoCatalog.folders.siteFirsts.favoriteId,
   '唱片机收藏夹来源不是全站第一收藏夹',
 )
-const latestSiteFirstMappings = videoCatalog.posterMappings.siteFirsts.slice(-7)
-const expectedRecordPlayer = latestSiteFirstMappings.map((mapping) => ({
+const expectedRecordPlayer = videoCatalog.posterMappings.siteFirsts.map((mapping) => ({
   ...videoCatalog.videos[mapping.bvid],
   favoriteId: mapping.favoriteId,
   favoriteOrder: mapping.favoriteOrder,
@@ -662,7 +661,7 @@ const expectedRecordPlayer = latestSiteFirstMappings.map((mapping) => ({
 ensureJsonEqual(
   videoCatalog.recordPlayer?.items,
   expectedRecordPlayer,
-  '唱片机必须精确使用最新 7 个全站第一（chronology 第 2–8 项）',
+  '唱片机必须精确使用全部 8 个全站第一（chronology 第 1–8 项）',
 )
 
 const postcardSource = JSON.parse(await readFile(postcardSourcePath, 'utf8'))

@@ -25,19 +25,8 @@ export function BilibiliPlayer({
 
   useEffect(() => {
     if (reportedIdentityRef.current === requestIdentity) return
-
-    const activeRequest = controller.state.activeRequest
-    if (
-      activeRequest &&
-      bilibiliPlayerRequestIdentity(activeRequest.track.bvid, activeRequest.origin) ===
-        requestIdentity
-    ) {
-      reportedIdentityRef.current = requestIdentity
-      controller.showDock()
-      return
-    }
-
     reportedIdentityRef.current = requestIdentity
+    // 收藏详情每次重新打开都代表一次新点播；不得复用上次暂停留下的运行时进度。
     controller.requestTrack(video, { origin })
     onOpened?.(video.bvid)
   }, [controller, onOpened, origin, requestIdentity, video])

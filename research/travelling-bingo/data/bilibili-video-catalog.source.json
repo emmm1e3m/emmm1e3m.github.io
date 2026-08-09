@@ -1283,8 +1283,20 @@
   },
   "recordPlayer": {
     "sourceFavoriteId": 3489626721,
-    "selectionRule": "固定选取已核验全站第一 chronology 最新 7 项（Talk WORTHY? Talk DIRTY! 至 POWER）；运行时不请求 Bilibili API。",
+    "selectionRule": "固定选取已核验全站第一 chronology 第 1–8 项（Dynamite 至 POWER）；运行时不请求 Bilibili API。",
     "items": [
+      {
+        "bvid": "BV1cfCSYfEo3",
+        "title": "【登陆少年】苏新皓《Dynamite》Cover",
+        "authorName": "登陆少年组合",
+        "authorMid": 3546657239075200,
+        "publishedAt": "2024-10-19T00:07:09.000+08:00",
+        "durationSeconds": 183,
+        "coverUrl": "https://i1.hdslb.com/bfs/archive/3c14396e26878628e921e1cf0104ff5240e06da1.jpg",
+        "sourceUrl": "https://www.bilibili.com/video/BV1cfCSYfEo3/",
+        "favoriteId": 3489626721,
+        "favoriteOrder": 9
+      },
       {
         "bvid": "BV1rtDRBJE7s",
         "title": "【苏新皓｜4K直拍】Talk WORTHY? Talk DIRTY! 直拍｜浪漫主义·演唱会",
@@ -1368,31 +1380,6 @@
         "sourceUrl": "https://www.bilibili.com/video/BV1D23262EaD/",
         "favoriteId": 3489626721,
         "favoriteOrder": 3
-      }
-    ]
-  },
-  "extraTracks": {
-    "selectionRule": "用户指定的短视频，用于自定义播放列表元数据解析。",
-    "items": [
-      {
-        "bvid": "BV13FdBBAEUF",
-        "title": "苏苏跳手势舞0417",
-        "authorName": "倚门回首却",
-        "authorMid": 3690997355645688,
-        "publishedAt": "2026-04-17T10:38:19.000+08:00",
-        "durationSeconds": 21,
-        "coverUrl": "https://i1.hdslb.com/bfs/archive/244e491d8b0f3de1bf0fe4bd76a0abcd85707330.jpg",
-        "sourceUrl": "https://www.bilibili.com/video/BV13FdBBAEUF/"
-      },
-      {
-        "bvid": "BV16VDdBUEfC",
-        "title": "苏苏跳手势舞0413",
-        "authorName": "倚门回首却",
-        "authorMid": 3690997355645688,
-        "publishedAt": "2026-04-13T00:48:47.000+08:00",
-        "durationSeconds": 21,
-        "coverUrl": "https://i1.hdslb.com/bfs/archive/244e491d8b0f3de1bf0fe4bd76a0abcd85707330.jpg",
-        "sourceUrl": "https://www.bilibili.com/video/BV16VDdBUEfC/"
       }
     ]
   }

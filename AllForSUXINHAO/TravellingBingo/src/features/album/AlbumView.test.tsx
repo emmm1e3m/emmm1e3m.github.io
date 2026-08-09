@@ -66,7 +66,7 @@ function contentCatalog(
     friends,
     friendById: Object.fromEntries(friends.map((friend) => [friend.id, friend])),
     videosByBvid: Object.fromEntries(videos.map((video) => [video.bvid, video])),
-    recordPlayerVideos: [],
+    recordPlayerVideos: videos,
   }
 }
 
@@ -95,8 +95,7 @@ function AlbumHarness({
     <BilibiliPlayerProvider
       state={game.musicPlayer}
       onAction={() => undefined}
-      builtInTracks={catalog.recordPlayerVideos}
-      resolveTrack={(bvid) => catalog.videosByBvid[bvid]}
+      tracks={catalog.recordPlayerVideos}
     >
       <AlbumView catalog={catalog} game={game} onClose={onClose} onPlayerOpened={onPlayerOpened} />
       <PersistentPlayerDock />
@@ -109,6 +108,8 @@ function renderAlbum(catalog: ContentCatalog, game: GameState) {
 }
 
 describe('饼狗的收藏墙', () => {
+  afterEach(() => vi.useRealTimers())
+
   it('只解锁已拥有的分类，不显示未拥有卡片或灰色占位', () => {
     const catalog = contentCatalog([oldestPostcard, newestPostcard, millionShot, siteFirst])
     const game = gameWithCollections([
@@ -277,7 +278,9 @@ describe('饼狗的收藏墙', () => {
     expect(portraitRules).toContain('scrollbar-width: none;')
   })
 
-  it('打开收藏详情即请求自动播放，且只传递一次收藏 ID 与正确 BV', () => {
+  it('同一收藏详情重渲染不重复请求，但关闭后再点会清空暂停进度并从 0 秒播放', () => {
+    vi.useFakeTimers()
+    vi.setSystemTime(0)
     const item = {
       ...collectible('million-shot-video', 'million-shot', '带视频的百万直拍'),
       metadata: { sequence: 1, video: albumVideo },
@@ -311,8 +314,7 @@ describe('饼狗的收藏墙', () => {
     expect(detail).not.toContainElement(playerDock)
     expect(playerDock.closest('[inert]')).toBeNull()
     fireEvent.load(iframe)
-    fireEvent.error(iframe)
-    fireEvent.abort(iframe)
+    vi.advanceTimersByTime(12_500)
     expect(onPlayerOpened).toHaveBeenCalledOnce()
 
     rerender(
@@ -328,13 +330,19 @@ describe('饼狗的收藏墙', () => {
       screen.queryByRole('button', { name: /(?:打开|关闭|收起)播放器/u }),
     ).not.toBeInTheDocument()
 
+    fireEvent.click(screen.getByRole('button', { name: '暂停播放' }))
+    expect(screen.queryByTitle('Bilibili 外链播放器：收藏里的测试舞台')).not.toBeInTheDocument()
+
     fireEvent.click(within(detail).getByRole('button', { name: '关闭详情' }))
     expect(screen.queryByRole('dialog', { name: '带视频的百万直拍' })).not.toBeInTheDocument()
-    expect(screen.getByTitle('Bilibili 外链播放器：收藏里的测试舞台')).toBe(iframe)
 
     fireEvent.click(screen.getByRole('button', { name: /带视频的百万直拍/u }))
-    expect(screen.getByTitle('Bilibili 外链播放器：收藏里的测试舞台')).toBe(iframe)
+    const restartedIframe =
+      screen.getByTitle<HTMLIFrameElement>('Bilibili 外链播放器：收藏里的测试舞台')
+    expect(restartedIframe).not.toBe(iframe)
+    expect(new URL(restartedIframe.src).searchParams.get('t')).toBe('0')
     expect(screen.getAllByTestId('persistent-bilibili-player')).toHaveLength(1)
-    expect(onPlayerOpened).toHaveBeenCalledOnce()
+    expect(onPlayerOpened).toHaveBeenCalledTimes(2)
+    expect(onPlayerOpened).toHaveBeenLastCalledWith(item.id, albumVideo.bvid)
   })
 })

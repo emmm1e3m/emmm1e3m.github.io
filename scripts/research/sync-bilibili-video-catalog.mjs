@@ -183,7 +183,7 @@ export async function refreshVideoCatalog(seedCatalog) {
     })
   }
 
-  const recordPlayerItems = siteMappings.slice(-7).map((mapping) => ({
+  const recordPlayerItems = siteMappings.map((mapping) => ({
     ...videoMap.get(mapping.bvid),
     favoriteId: mapping.favoriteId,
     favoriteOrder: mapping.favoriteOrder,
@@ -225,10 +225,9 @@ export async function refreshVideoCatalog(seedCatalog) {
     recordPlayer: {
       sourceFavoriteId: siteFirstFolder.config.favoriteId,
       selectionRule:
-        '固定选取已核验全站第一 chronology 最新 7 项（Talk WORTHY? Talk DIRTY! 至 POWER）；运行时不请求 Bilibili API。',
+        '固定选取已核验全站第一 chronology 第 1–8 项（Dynamite 至 POWER）；运行时不请求 Bilibili API。',
       items: recordPlayerItems,
     },
-    extraTracks: seedCatalog.extraTracks,
   }
   return assertVideoCatalog(refreshed)
 }

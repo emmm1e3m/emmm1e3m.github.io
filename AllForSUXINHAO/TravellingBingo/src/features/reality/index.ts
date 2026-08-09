@@ -7,7 +7,6 @@ export { buildRealityTodoViews, buildUnlockedPostcardBackgrounds } from './reali
 export { WorkPanel } from './WorkPanel'
 export {
   type DataPanelProps,
-  type PomodoroDurationOption,
   type PomodoroFocusOverlayProps,
   type PomodoroSessionView,
   type PomodoroView,

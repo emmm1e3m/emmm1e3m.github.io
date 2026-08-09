@@ -101,6 +101,15 @@ function summary(overrides: Partial<ClaimSummary> = {}): ClaimSummary {
 }
 
 describe('RewardDialog', () => {
+  it('冲热未获得收藏时使用简短鼓励文案', () => {
+    render(
+      <RewardDialog reward={summary({ kind: 'trend' })} catalog={catalog} onDismiss={vi.fn()} />,
+    )
+
+    expect(screen.getByText('加油准备下一次冲刺')).toBeInTheDocument()
+    expect(screen.queryByText(/饼狗会陪你/u)).not.toBeInTheDocument()
+  })
+
   it('纯货币奖励只使用紧凑的 N🍎 文案', () => {
     render(
       <RewardDialog

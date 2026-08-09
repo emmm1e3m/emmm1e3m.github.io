@@ -3,6 +3,7 @@ import { describe, expect, it } from 'vitest'
 import { createInitialGameState } from './createGameState'
 import { gameStateV4Schema } from './migrateGameStateV3'
 import {
+  gameStateV5LegacyMusicSchema,
   gameStateV5Schema,
   migrateGameStateV4ToV5,
   migrateStoredGameStateToV5,
@@ -26,7 +27,12 @@ function initialV4(): GameStateV4 {
       pomodoro: { ...current.reality.pomodoro, session: null },
     },
     musicPlayer: {
-      ...current.musicPlayer,
+      playlists: {},
+      order: [],
+      activePlaylistId: null,
+      currentBvid: current.musicPlayer.currentBvid,
+      currentIndex: current.musicPlayer.currentIndex,
+      loopMode: current.musicPlayer.loopMode,
       startAtSeconds: 12,
       autoplay: false,
     },
@@ -113,10 +119,22 @@ describe('V4 → V5 苹果钟迁移', () => {
 })
 
 describe('V5 今日 Bingo 完成时间迁移', () => {
-  it('未完成的 V4 任务板迁为 completedAt null', () => {
-    const migrated = migrateGameStateV4ToV5(initialV4())
+  it('部分完成的 V4 任务板保留原进度并迁为 completedAt null', () => {
+    const v4 = initialV4()
+    const active = v4.tasks.active.map((task, index) =>
+      index === 0
+        ? {
+            ...task,
+            progress: task.target,
+            seenKeys: Array.from({ length: task.target }, (_, keyIndex) => `migration-${keyIndex}`),
+          }
+        : task,
+    ) as TaskBoardV4['active']
+    const partiallyCompletedV4: GameStateV4 = { ...v4, tasks: { ...v4.tasks, active } }
+    const migrated = migrateGameStateV4ToV5(partiallyCompletedV4)
 
     expect(migrated.tasks.completedAt).toBeNull()
+    expect(migrated.tasks.active).toEqual(active)
     expect(migrated.musicPlayer).not.toHaveProperty('startAtSeconds')
     expect(migrated.musicPlayer).not.toHaveProperty('autoplay')
     expect(gameStateV5Schema.safeParse(migrated).success).toBe(true)
@@ -153,13 +171,55 @@ describe('V5 今日 Bingo 完成时间迁移', () => {
     expect(gameStateV5Schema.safeParse(invalid).success).toBe(false)
   })
 
+  it('读取旧 V5 自定义列表缓存后显式丢弃列表，只保留当前曲目与循环模式', () => {
+    const current = migrateGameStateV4ToV5(initialV4())
+    const legacyV5 = {
+      ...current,
+      musicPlayer: {
+        ...current.musicPlayer,
+        playlists: {
+          bedtime: {
+            id: 'bedtime',
+            name: '旧版睡前列表',
+            bvids: ['BV1234567890'],
+            createdAt: 1,
+            updatedAt: 1,
+          },
+        },
+        order: ['bedtime'],
+        activePlaylistId: 'bedtime',
+        currentBvid: 'BV1234567890',
+        currentIndex: 0,
+        loopMode: 'single' as const,
+      },
+    }
+
+    expect(gameStateV5Schema.safeParse(legacyV5).success).toBe(false)
+    expect(gameStateV5LegacyMusicSchema.safeParse(legacyV5).success).toBe(true)
+
+    const adopted = migrateStoredGameStateToV5(legacyV5, {
+      now: 10,
+      catalog: {
+        postcard: [],
+        'million-shot': [],
+        'site-first': [],
+        siteFirstChronology: [],
+      },
+    })
+    expect(adopted.musicPlayer).toEqual({
+      currentBvid: 'BV1234567890',
+      currentIndex: 0,
+      loopMode: 'single',
+    })
+    expect(gameStateV5Schema.safeParse(adopted).success).toBe(true)
+  })
+
   it('一次深拷贝仍让迁移结果与 V4 可变分支完全隔离', () => {
     const v4 = initialV4()
     const migrated = migrateGameStateV4ToV5(v4)
 
     expect(migrated.tasks).not.toBe(v4.tasks)
     expect(migrated.reality).not.toBe(v4.reality)
-    expect(migrated.musicPlayer.playlists).not.toBe(v4.musicPlayer.playlists)
-    expect(migrated.musicPlayer.order).not.toBe(v4.musicPlayer.order)
+    expect(migrated.musicPlayer).not.toBe(v4.musicPlayer)
   })
 })

@@ -348,50 +348,31 @@ describe('V4 调试收集与用户播放列表', () => {
     })
   })
 
-  it('播放列表动作校验 BV、顺序与当前曲目，并在删除当前列表后回到内置列表', () => {
-    const initial = createInitialGameState({ now: 0, seed: 'playlist' })
-    const created = successful(
-      reduceGame(
-        initial,
-        {
-          type: 'music/playlist-create',
-          playlistId: 'my-list',
-          name: '我的歌单',
-          bvids: ['BV1xx411c7mD', 'BV1yy411c7mE'],
-          now: 1,
-        },
-        catalog,
-      ),
-    ).state
-    const selected = successful(
-      reduceGame(created, { type: 'music/playlist-select', playlistId: 'my-list' }, catalog),
-    ).state
+  it('播放器只持久化当前曲目与循环模式，并校验曲目索引', () => {
+    const initial = createInitialGameState({ now: 0, seed: 'player-state' })
     const track = successful(
-      reduceGame(selected, { type: 'music/track-select', bvid: 'BV1yy411c7mE', index: 1 }, catalog),
+      reduceGame(initial, { type: 'music/track-select', bvid: 'BV1yy411c7mE', index: 1 }, catalog),
     ).state
-    expect(track.musicPlayer).toMatchObject({
-      activePlaylistId: 'my-list',
+    expect(track.musicPlayer).toEqual({
       currentBvid: 'BV1yy411c7mE',
       currentIndex: 1,
+      loopMode: 'list',
     })
     expect(track.musicPlayer).not.toHaveProperty('startAtSeconds')
     expect(track.musicPlayer).not.toHaveProperty('autoplay')
+    expect(track.musicPlayer).not.toHaveProperty('playlists')
 
     const invalid = reduceGame(
       track,
-      { type: 'music/track-select', bvid: 'BV1xx411c7mD', index: 1 },
+      { type: 'music/track-select', bvid: 'BV1xx411c7mD', index: -1 },
       catalog,
     )
     expect(invalid.ok).toBe(false)
     expect(invalid.state).toBe(track)
 
-    const deleted = successful(
-      reduceGame(track, { type: 'music/playlist-delete', playlistId: 'my-list', now: 2 }, catalog),
+    const single = successful(
+      reduceGame(track, { type: 'music/loop-set', loopMode: 'single' }, catalog),
     ).state
-    expect(deleted.musicPlayer).toMatchObject({
-      activePlaylistId: null,
-      currentBvid: null,
-      currentIndex: 0,
-    })
+    expect(single.musicPlayer.loopMode).toBe('single')
   })
 })

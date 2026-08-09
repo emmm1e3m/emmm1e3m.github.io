@@ -283,7 +283,7 @@ test('DEBUG 全收集包含好友，Survivors 自动播放，并可清空收集'
   expect(detailBox!.width / detailBox!.height).toBeCloseTo(16 / 9, 1)
   const detailImage = detail.locator('.collectible-detail__image img')
   await expect(detailImage).toHaveJSProperty('complete', true)
-  await expect(detailImage).toHaveCSS('object-fit', 'cover')
+  await expect(detailImage).toHaveCSS('object-fit', 'contain')
   const imageMetrics = await detailImage.evaluate((image: HTMLImageElement) => ({
     currentSrc: image.currentSrc,
     naturalWidth: image.naturalWidth,

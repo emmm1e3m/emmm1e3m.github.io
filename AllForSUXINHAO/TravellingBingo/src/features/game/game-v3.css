@@ -1,5 +1,5 @@
 .game-page.game-page--v3 {
-  --shell-gap: clamp(10px, 0.8vw, 14px);
+  --shell-gap: var(--scene-component-gap);
   --shell-inset: clamp(8px, 1.25vw, 18px);
   --hud-height: 68px;
   height: 100dvh;
@@ -122,11 +122,6 @@
   background: #f8ded4;
 }
 
-.game-hud--v3 .hud-icon--help {
-  font-family: var(--v2-display);
-  font-size: 1.2rem;
-}
-
 .game-hud--v3 .debug-chip {
   min-height: 44px;
   padding-inline: 0.65rem;
@@ -162,7 +157,8 @@
   aspect-ratio: auto;
   border: 1px solid rgb(88 60 53 / 48%);
   border-radius: 27px;
-  background: #f4d9be;
+  /* 横向房间只负责裁定可用区域；PNG 以外的左右空间保持透明。 */
+  background: transparent;
   box-shadow:
     0 22px 52px rgb(91 52 38 / 16%),
     0 5px 0 rgb(117 71 51 / 12%);
@@ -179,12 +175,14 @@
 .room-stage {
   position: absolute;
   z-index: 1;
-  inset: 0;
-  width: 100%;
+  top: 0;
+  left: 50%;
+  width: auto;
   height: 100%;
-  max-width: none;
-  aspect-ratio: auto;
+  max-width: 100%;
+  aspect-ratio: 1098 / 1433;
   overflow: hidden;
+  transform: translateX(-50%);
   box-shadow: none;
 }
 
@@ -202,8 +200,8 @@
 
 .room-card--v3 .room-picture img {
   display: block;
-  /* 桌面房间是横向卡片；不裁掉上下两层，确保所有设施与母版坐标仍可操作。 */
-  object-fit: fill;
+  /* 严禁拉伸或裁切；热点和饼狗的百分比坐标只相对这块实际图片区域。 */
+  object-fit: contain;
   transform: none;
   filter: saturate(0.98) contrast(1.02);
 }
@@ -459,52 +457,6 @@
 .text-action--danger {
   border-color: #a7515b !important;
   color: #842d38 !important;
-}
-
-.record-player-panel {
-  display: grid;
-  gap: 0.72rem;
-}
-
-.record-track-list {
-  display: grid;
-  gap: 0.36rem;
-}
-
-.record-track-list button {
-  min-height: 44px;
-  display: grid;
-  grid-template-columns: 2.2rem minmax(0, 1fr);
-  align-items: center;
-  gap: 0.45rem;
-  padding: 0.48rem 0.62rem;
-  border: 1px solid #d9b49d;
-  border-radius: 12px;
-  color: var(--v2-cocoa);
-  background: #fff8ef;
-  text-align: left;
-  cursor: pointer;
-}
-
-.record-track-list button.is-selected {
-  border-color: var(--v2-red);
-  background: #f8ded4;
-}
-
-.record-track-list button strong {
-  overflow: hidden;
-  font-size: 0.82rem;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-}
-
-.record-player-empty {
-  display: grid;
-  gap: 0.25rem;
-  padding: 1rem;
-  border: 1px dashed #d4af95;
-  border-radius: 14px;
-  color: var(--v2-muted);
 }
 
 .help-dialog {
@@ -801,8 +753,7 @@
     aspect-ratio: 1098 / 1433;
   }
 
-  .game-page--v3 .context-panel,
-  .game-page--v3 .context-panel:not(.context-panel--status) {
+  .game-page--v3 .context-panel {
     position: static;
     max-height: min(76dvh, 680px);
     margin: 0;

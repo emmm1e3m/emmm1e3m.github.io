@@ -268,17 +268,6 @@ describe('游戏活动存档时长快照', () => {
         },
       },
       musicPlayer: {
-        playlists: {
-          'morning-list': {
-            id: 'morning-list',
-            name: '清晨苹果歌单',
-            bvids: ['BV1xx411c7mD'],
-            createdAt: 2_000,
-            updatedAt: 2_000,
-          },
-        },
-        order: ['morning-list'],
-        activePlaylistId: 'morning-list',
         currentBvid: 'BV1xx411c7mD',
         currentIndex: 0,
         loopMode: 'single',
@@ -304,6 +293,8 @@ describe('游戏活动存档时长快照', () => {
       'categoryCounts',
       'startAtSeconds',
       'autoplay',
+      'playlists',
+      'activePlaylistId',
     ]) {
       expect(exported.text).not.toContain(`"${forbiddenKey}"`)
     }
@@ -547,6 +538,57 @@ describe('冻结的已发布存档兼容性', () => {
       },
     })
     expect(gameStateSchema.safeParse(migrated).success).toBe(true)
+  })
+
+  it('已发布的旧 V5 列表缓存仍可导入，采用后不再导出列表字段', async () => {
+    const current = createInitialGameState({ now: 1_000, seed: 'legacy-v5-music-cache' })
+    const legacyV5: ImportableGameState = {
+      ...current,
+      musicPlayer: {
+        ...current.musicPlayer,
+        playlists: {
+          legacy: {
+            id: 'legacy',
+            name: '旧版列表',
+            bvids: ['BV1234567890'],
+            createdAt: 1_000,
+            updatedAt: 1_000,
+          },
+        },
+        order: ['legacy'],
+        activePlaylistId: 'legacy',
+        currentBvid: 'BV1234567890',
+        currentIndex: 0,
+        loopMode: 'single',
+      },
+    }
+    expect(gameStateSchema.safeParse(legacyV5).success).toBe(false)
+    expect(importableGameStateSchema.safeParse(legacyV5).success).toBe(true)
+
+    const oldSave = await createBingoSave<ImportableGameState>(
+      { gameVersion: '0.5.0-legacy-music', exportedAt: 2_000, payload: legacyV5 },
+      importableGameStateSchema,
+      { subtle: webcrypto.subtle },
+    )
+    const imported = await importBingoSave(oldSave.text, importableGameStateSchema, {
+      subtle: webcrypto.subtle,
+    })
+    const migrated = migrateStoredGameStateToV5(imported.payload, { now: 2_000, catalog })
+
+    expect(migrated.musicPlayer).toEqual({
+      currentBvid: 'BV1234567890',
+      currentIndex: 0,
+      loopMode: 'single',
+    })
+    expect(gameStateSchema.safeParse(migrated).success).toBe(true)
+
+    const currentSave = await createBingoSave(
+      { gameVersion: '0.5.0-current-music', exportedAt: 3_000, payload: migrated },
+      gameStateSchema,
+      { subtle: webcrypto.subtle },
+    )
+    expect(currentSave.text).not.toContain('"playlists"')
+    expect(currentSave.text).not.toContain('"activePlaylistId"')
   })
 
   it('固定旧档被篡改且摘要未更新时仍在迁移前拒绝', async () => {

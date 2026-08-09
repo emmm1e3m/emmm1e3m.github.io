@@ -6,29 +6,31 @@ import {
   gameStateV2Schema as frozenGameStateV2Schema,
   gameStateV3Schema as frozenGameStateV3Schema,
   gameStateV4Schema as frozenGameStateV4Schema,
+  gameStateV5LegacyMusicSchema,
   gameStateV5Schema as currentGameStateV5Schema,
   type GameState,
   type GameStateV1,
   type GameStateV2,
   type GameStateV3,
   type GameStateV4,
+  type GameStateV5LegacyMusic,
   type StoredGameState,
 } from '@/domain'
 
 /** Demo 0.1 的严格原始载荷；导入前不能添加默认值或 transform。 */
-export const gameStateV1Schema = frozenGameStateV1Schema
+const gameStateV1Schema = frozenGameStateV1Schema
 
 /** Demo 0.2 的严格原始载荷；旧 inventory 与概率字段保持冻结。 */
-export const gameStateV2ImportSchema: z.ZodType<GameStateV2> = frozenGameStateV2Schema
+const gameStateV2ImportSchema: z.ZodType<GameStateV2> = frozenGameStateV2Schema
 
 /** Demo 0.3 的严格原始载荷；不能被 V4 新物品与现实字段反向扩展。 */
-export const gameStateV3ImportSchema: z.ZodType<GameStateV3> = frozenGameStateV3Schema
+const gameStateV3ImportSchema: z.ZodType<GameStateV3> = frozenGameStateV3Schema
 
 /** V4 导入允许历史普通档规则；摘要校验后再显式规范未来活动的默认值。 */
-export const gameStateV4ImportSchema: z.ZodType<GameStateV4> = frozenGameStateV4Schema
+const gameStateV4ImportSchema: z.ZodType<GameStateV4> = frozenGameStateV4Schema
 
 /** V5 当前严格载荷；工作与休息阶段均使用绝对截止时间。 */
-export const gameStateV5ImportSchema: z.ZodType<GameState> = currentGameStateV5Schema
+const gameStateV5ImportSchema: z.ZodType<GameState> = currentGameStateV5Schema
 
 const gameStateV5ExportSchema = gameStateV5ImportSchema.superRefine((state, context) => {
   if (
@@ -61,6 +63,8 @@ export const importableGameStateSchema: z.ZodType<StoredGameState> = z.union([
   gameStateV3ImportSchema,
   gameStateV4ImportSchema,
   gameStateV5ImportSchema,
+  gameStateV5LegacyMusicSchema,
 ])
 
-export type ImportableGameState = GameStateV1 | GameStateV2 | GameStateV3 | GameStateV4 | GameState
+export type ImportableGameState =
+  GameStateV1 | GameStateV2 | GameStateV3 | GameStateV4 | GameStateV5LegacyMusic | GameState

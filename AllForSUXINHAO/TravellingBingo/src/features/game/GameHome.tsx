@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
 
 import type { BilibiliVideoMetadata, ContentCatalog } from '@/content'
 import {
@@ -10,6 +10,7 @@ import {
   type PetInterest,
   type RealityRewardDecision,
   type TaskEvent,
+  type WorldDimension,
 } from '@/domain'
 import { AlbumView } from '@/features/album/AlbumView'
 import {
@@ -70,7 +71,17 @@ export interface RealitySettlementResult {
   fullRewardApples: number
 }
 
-export interface GameHomeProps {
+type DimensionTransitionPhase = 'out' | 'in'
+
+interface DimensionTransitionState {
+  target: WorldDimension
+  phase: DimensionTransitionPhase
+}
+
+const DIMENSION_EXIT_MS = 240
+const DIMENSION_ENTER_MS = 360
+
+interface GameHomeProps {
   game: GameState
   catalog: ContentCatalog
   now: number
@@ -116,6 +127,7 @@ function ActivePomodoroOverlay({
   onTaskEvent: (event: TaskEvent) => void
 }) {
   const controller = useBilibiliPlayerController()
+  const todoSequenceRef = useRef(0)
   const session = game.reality.pomodoro.session
   if (!session || session.status === 'completed') return null
 
@@ -124,6 +136,18 @@ function ActivePomodoroOverlay({
       (item) => item.id === session.postcardId,
     ) ?? null
   const deadline = session.status === 'focus' ? session.focusEndsAt : session.cycleEndsAt
+
+  function createTodoId(actionNow: number) {
+    const randomUUID = globalThis.crypto?.randomUUID?.()
+    if (randomUUID && game.reality.todos[randomUUID] === undefined) return randomUUID
+
+    let candidate: string
+    do {
+      todoSequenceRef.current += 1
+      candidate = `todo-${Math.max(0, Math.floor(actionNow)).toString(36)}-${todoSequenceRef.current.toString(36)}`
+    } while (game.reality.todos[candidate] !== undefined)
+    return candidate
+  }
 
   return (
     <PomodoroFocusOverlay
@@ -144,7 +168,8 @@ function ActivePomodoroOverlay({
             className="reality-primary-button pomodoro-focus__start-music"
             type="button"
             onClick={() => {
-              const request = controller.selectPlaylist(null)
+              const firstTrack = catalog.recordPlayerVideos[0]
+              const request = firstTrack ? controller.selectTrack(firstTrack.bvid) : null
               if (request) onTaskEvent({ type: 'record-player-opened', bvid: request.track.bvid })
             }}
           >
@@ -155,6 +180,14 @@ function ActivePomodoroOverlay({
       onTodoCompletionChange={(todoId, completed) =>
         onAction({ type: 'todo/completion-set', todoId, completed, now: Date.now() })
       }
+      onTodoCreate={(title) => {
+        const actionNow = Date.now()
+        onAction({ type: 'todo/create', todoId: createTodoId(actionNow), title, now: actionNow })
+      }}
+      onTodoUpdate={(todoId, update) =>
+        onAction({ type: 'todo/update', todoId, ...update, now: Date.now() })
+      }
+      onTodoDelete={(todoId) => onAction({ type: 'todo/delete', todoId, now: Date.now() })}
       onCancel={(sessionId) => onAction({ type: 'pomodoro/cancel', sessionId, now: Date.now() })}
     />
   )
@@ -185,6 +218,9 @@ export function GameHome({
   const [sleeping, setSleeping] = useState(false)
   const [helpOpen, setHelpOpen] = useState(false)
   const [dimensionDialog, setDimensionDialog] = useState<DimensionDialogMode | null>(null)
+  const [dimensionTransition, setDimensionTransition] = useState<DimensionTransitionState | null>(
+    null,
+  )
   const [cancelRequest, setCancelRequest] = useState<{ token: number; runId: string } | null>(null)
   const [pomodoroCancelRequest, setPomodoroCancelRequest] = useState<{
     token: number
@@ -199,23 +235,20 @@ export function GameHome({
   const pomodoroCancelRequestSequenceRef = useRef(0)
   const vitalityPromptSequenceRef = useRef(0)
   const dimensionToggleRef = useRef<HTMLButtonElement>(null)
+  const dimensionTransitionTimerRef = useRef<ReturnType<typeof globalThis.setTimeout> | null>(null)
   const previousRestTransitionKey = useRef(restTransitionKey)
-  const builtInPlayerTracks = useMemo(
+  const playerTracks = useMemo(
     () => catalog.recordPlayerVideos.map(toPlayerTrack),
     [catalog.recordPlayerVideos],
-  )
-  const resolvePlayerTrack = useCallback(
-    (bvid: string) => {
-      const video = catalog.videosByBvid[bvid]
-      return video ? toPlayerTrack(video) : undefined
-    },
-    [catalog.videosByBvid],
   )
 
   useEffect(() => {
     return () => {
       if (walkTimerRef.current !== null) globalThis.clearTimeout(walkTimerRef.current)
       if (sleepTimerRef.current !== null) globalThis.clearTimeout(sleepTimerRef.current)
+      if (dimensionTransitionTimerRef.current !== null) {
+        globalThis.clearTimeout(dimensionTransitionTimerRef.current)
+      }
     }
   }, [])
 
@@ -237,14 +270,18 @@ export function GameHome({
   const roomArea = activity
     ? areaForActivity(activity.kind)
     : roomAreaFromLocation(game.pet.location)
-  const hasSidePanel = panel !== null && panel !== 'album'
+  // 信息栏没有“关闭”状态：外层尚未选择设施时，稳定回退到待机信息页。
+  const displayedPanel: PanelId = panel ?? 'status'
+  const hasSidePanel = displayedPanel !== 'album'
   const pendingRealitySettlement = game.reality.pendingSettlement
   const pomodoroActive =
     game.reality.pomodoro.session !== null && game.reality.pomodoro.session.status !== 'completed'
   const realityBlocked = game.world === 'reality' && !canEnterReality()
-  const visibleDimensionDialog: DimensionDialogMode | null = realityBlocked
-    ? 'return-required'
-    : dimensionDialog
+  const visibleDimensionDialog: DimensionDialogMode | null = dimensionTransition
+    ? null
+    : realityBlocked
+      ? 'return-required'
+      : dimensionDialog
   const overlayOpen =
     panel === 'album' ||
     helpOpen ||
@@ -252,6 +289,7 @@ export function GameHome({
     realitySettlementResult !== null ||
     pendingRealitySettlement !== null ||
     visibleDimensionDialog !== null ||
+    dimensionTransition !== null ||
     pomodoroActive
 
   function taskEvent(event: TaskEvent) {
@@ -312,14 +350,36 @@ export function GameHome({
   }
 
   function toggleDimension() {
-    if (pendingRealitySettlement) return
+    if (pendingRealitySettlement || dimensionTransition) return
     if (game.world === 'reality') {
-      onPanel(null)
-      onAction({ type: 'reality/leave', now: Date.now() })
+      setDimensionDialog('confirm-leave')
       return
     }
 
     setDimensionDialog(canEnterReality() ? 'confirm-enter' : 'pc-required')
+  }
+
+  function startDimensionTransition(target: WorldDimension) {
+    if (dimensionTransition) return
+    if (dimensionTransitionTimerRef.current !== null) {
+      globalThis.clearTimeout(dimensionTransitionTimerRef.current)
+    }
+
+    setDimensionDialog(null)
+    setDimensionTransition({ target, phase: 'out' })
+    dimensionTransitionTimerRef.current = globalThis.setTimeout(() => {
+      onPanel(null)
+      onAction({
+        type: target === 'reality' ? 'reality/enter' : 'reality/leave',
+        now: Date.now(),
+      })
+      setDimensionTransition({ target, phase: 'in' })
+      dimensionTransitionTimerRef.current = globalThis.setTimeout(() => {
+        setDimensionTransition(null)
+        dimensionTransitionTimerRef.current = null
+        globalThis.requestAnimationFrame(() => dimensionToggleRef.current?.focus())
+      }, DIMENSION_ENTER_MS)
+    }, DIMENSION_EXIT_MS)
   }
 
   const vitality = game.player.effects.vitality
@@ -334,17 +394,18 @@ export function GameHome({
       ? '活力满满'
       : game.pet.tired
         ? '今天想先休息'
-        : '状态很好'
+        : '状态正常'
 
   return (
-    <BilibiliPlayerProvider
-      state={game.musicPlayer}
-      onAction={onAction}
-      builtInTracks={builtInPlayerTracks}
-      resolveTrack={resolvePlayerTrack}
-    >
+    <BilibiliPlayerProvider state={game.musicPlayer} onAction={onAction} tracks={playerTracks}>
       <main
-        className={`game-page game-page--v2 game-page--v3 game-page--v4 ${hasSidePanel ? 'has-side-panel' : 'is-room-open'} ${sleeping ? 'is-sleeping' : ''}`}
+        className={`game-page game-page--v2 game-page--v3 game-page--v4 ${hasSidePanel ? 'has-side-panel' : 'is-room-open'} ${sleeping ? 'is-sleeping' : ''} ${dimensionTransition ? `is-dimension-transitioning is-dimension-transitioning-${dimensionTransition.phase}` : ''}`}
+        data-world={game.world}
+        data-dimension-transition={
+          dimensionTransition
+            ? `${dimensionTransition.phase}-${dimensionTransition.target}`
+            : undefined
+        }
         onKeyDown={(event) => {
           if (event.key !== 'Escape' || overlayOpen || panel === null) return
           onPanel(null)
@@ -352,6 +413,7 @@ export function GameHome({
       >
         <GameHud
           game={game}
+          now={now}
           activity={activity}
           timing={timing}
           dirty={dirty}
@@ -380,7 +442,7 @@ export function GameHome({
           <RoomScene
             key={activity?.runId ?? 'idle'}
             game={game}
-            panel={panel}
+            panel={displayedPanel}
             area={roomArea}
             walking={walking && !activity}
             sleeping={sleeping}
@@ -393,7 +455,9 @@ export function GameHome({
             onBackgroundActivate={() => onPanel('status')}
             onHelp={() => setHelpOpen(true)}
             dimensionToggleRef={dimensionToggleRef}
-            dimensionToggleDisabled={pendingRealitySettlement !== null}
+            dimensionToggleDisabled={
+              pendingRealitySettlement !== null || dimensionTransition !== null
+            }
             onToggleDimension={toggleDimension}
             onRequestCancelActivity={requestActivityCancel}
             pomodoroRunning={pomodoroActive}
@@ -401,12 +465,12 @@ export function GameHome({
             onTaskEvent={taskEvent}
           />
 
-          {hasSidePanel && panel && (
+          {hasSidePanel && (
             <div className="context-stack">
-              <aside className={`context-panel context-panel--v4 context-panel--${panel}`}>
+              <aside className={`context-panel context-panel--v4 context-panel--${displayedPanel}`}>
                 <div className="context-panel__handle" aria-hidden="true" />
                 <ContextPanel
-                  panel={panel}
+                  panel={displayedPanel}
                   game={game}
                   catalog={catalog}
                   now={now}
@@ -435,7 +499,7 @@ export function GameHome({
                     )
                   }}
                   vitalityPromptRequest={
-                    vitalityPromptRequest?.panel === panel ? vitalityPromptRequest : null
+                    vitalityPromptRequest?.panel === displayedPanel ? vitalityPromptRequest : null
                   }
                   onVitalityPromptRequestHandled={(token) => {
                     setVitalityPromptRequest((current) =>
@@ -479,9 +543,11 @@ export function GameHome({
                 return
               }
 
-              if (visibleDimensionDialog === 'return-required') {
-                onPanel(null)
-                onAction({ type: 'reality/leave', now: Date.now() })
+              if (
+                visibleDimensionDialog === 'confirm-leave' ||
+                visibleDimensionDialog === 'return-required'
+              ) {
+                startDimensionTransition('game')
                 return
               }
 
@@ -490,11 +556,26 @@ export function GameHome({
                 return
               }
 
-              setDimensionDialog(null)
-              onPanel(null)
-              onAction({ type: 'reality/enter', now: Date.now() })
+              startDimensionTransition('reality')
             }}
           />
+        )}
+        {dimensionTransition && (
+          <div
+            className={`dimension-transition dimension-transition--${dimensionTransition.phase} dimension-transition--to-${dimensionTransition.target}`}
+            role="status"
+            aria-label={
+              dimensionTransition.target === 'reality' ? '正在进入现实维度' : '正在回到饼屋'
+            }
+            aria-live="polite"
+          >
+            <span className="dimension-transition__orbit" aria-hidden="true">
+              🔃
+            </span>
+            <strong>
+              {dimensionTransition.target === 'reality' ? '去现实维度看看' : '回到饼屋继续旅行'}
+            </strong>
+          </div>
         )}
         {reward && <RewardDialog reward={reward} catalog={catalog} onDismiss={onDismissReward} />}
         {realitySettlementResult && (

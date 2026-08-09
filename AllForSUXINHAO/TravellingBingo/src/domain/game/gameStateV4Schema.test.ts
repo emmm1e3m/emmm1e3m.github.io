@@ -37,6 +37,9 @@ function initialState(): GameStateV4 {
     },
     musicPlayer: {
       ...current.musicPlayer,
+      playlists: {},
+      order: [],
+      activePlaylistId: null,
       startAtSeconds: 0,
       autoplay: true,
     },
