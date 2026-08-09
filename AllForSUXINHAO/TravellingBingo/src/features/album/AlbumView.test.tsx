@@ -1,8 +1,9 @@
 import { fireEvent, render, screen, within } from '@testing-library/react'
 
-import type { BilibiliVideo, CollectibleItem, ContentCatalog } from '@/content'
+import type { BilibiliVideo, CollectibleItem, ContentCatalog, FriendItem } from '@/content'
 import { createInitialGameState, type CollectibleCategory, type GameState } from '@/domain'
 
+import albumStyles from './AlbumView.css?raw'
 import { AlbumView } from './AlbumView'
 
 function collectible(id: string, category: CollectibleCategory, title: string): CollectibleItem {
@@ -46,6 +47,7 @@ const albumVideo: BilibiliVideo = {
 function contentCatalog(
   items: readonly CollectibleItem[],
   videos: readonly BilibiliVideo[] = [],
+  friends: readonly FriendItem[] = [],
 ): ContentCatalog {
   const categoryCounts: Record<CollectibleCategory, number> = {
     postcard: 0,
@@ -60,8 +62,8 @@ function contentCatalog(
     siteFirstChronology: items
       .filter((item) => item.category === 'site-first')
       .map((item) => item.id),
-    friends: [],
-    friendById: {},
+    friends,
+    friendById: Object.fromEntries(friends.map((friend) => [friend.id, friend])),
     videosByBvid: Object.fromEntries(videos.map((video) => [video.bvid, video])),
     recordPlayerVideos: [],
   }
@@ -146,10 +148,111 @@ describe('饼狗的收藏墙', () => {
     expect(screen.getByRole('button', { name: '关闭收藏墙' })).toHaveFocus()
     expect(screen.queryByRole('tab')).not.toBeInTheDocument()
     expect(screen.getByText('收藏墙还空着')).toBeVisible()
+    expect(screen.getByText('惊喜会在相遇时悄悄出现。')).toBeVisible()
+    expect(screen.queryByText(/陪饼狗慢慢生活/u)).not.toBeInTheDocument()
     expect(screen.queryByText(/\d+\s*\/\s*\d+/u)).not.toBeInTheDocument()
   })
 
-  it('收藏详情只在主动打开播放器时传递收藏 ID 与正确 BV', () => {
+  it('分类标题使用展示字体标记，收藏缩略图统一使用 cover', () => {
+    const catalog = contentCatalog([oldestPostcard])
+    renderAlbum(catalog, gameWithCollections([[oldestPostcard.id, 1_000]]))
+
+    expect(
+      screen.getByRole('tab', { name: '明信片' }).querySelector('.album-tab__label'),
+    ).not.toBeNull()
+    const card = screen.getByRole('button', { name: /最早的明信片/u })
+    expect(card.querySelector('img')).toHaveClass(
+      'collectible-picture',
+      'collectible-picture--cover',
+      'collectible-picture--thumbnail',
+    )
+  })
+
+  it('好友图片使用 cover，卡片只保留相遇次数而不显示收到苹果', () => {
+    const friend: FriendItem = {
+      id: 'signal-dog',
+      name: '信号狗',
+      kind: 'dog',
+      description: '从信号里跑来的朋友。',
+      alt: '信号狗头像',
+      image: {
+        path: 'assets/friends/signal-dog.webp',
+        width: 320,
+        height: 480,
+        byteLength: 1,
+        mime: 'image/webp',
+        sha256: '0'.repeat(64),
+      },
+      sourceCell: 1,
+    }
+    const catalog = contentCatalog([], [], [friend])
+    const initial = gameWithCollections([])
+    const game: GameState = {
+      ...initial,
+      friends: {
+        'signal-dog': {
+          id: 'signal-dog',
+          firstMetAt: 1_000,
+          lastMetAt: 2_000,
+          encounterCount: 3,
+          totalGiftApples: 12,
+        },
+      },
+    }
+    renderAlbum(catalog, game)
+
+    expect(screen.getByRole('img', { name: '信号狗头像' })).toHaveClass('friend-card__portrait')
+    expect(screen.getByText('见过 3 次')).toBeVisible()
+    expect(screen.queryByText(/收到/u)).not.toBeInTheDocument()
+    expect(screen.queryByText(/12🍎/u)).not.toBeInTheDocument()
+  })
+
+  it('图片详情可进入 contain 全屏，提供同源下载并在关闭后返回图片按钮', () => {
+    const catalog = contentCatalog([oldestPostcard])
+    renderAlbum(catalog, gameWithCollections([[oldestPostcard.id, 1_000]]))
+
+    fireEvent.click(screen.getByRole('button', { name: /最早的明信片/u }))
+    const imageButton = screen.getByRole('button', { name: '全屏查看最早的明信片' })
+    imageButton.focus()
+
+    const detailDownload = screen.getByRole('link', { name: '下载完整图片' })
+    expect(detailDownload).toHaveAttribute('href', '/assets/collectibles/postcard-old.webp')
+    expect(detailDownload).toHaveAttribute('download', 'postcard-old.webp')
+
+    fireEvent.click(imageButton)
+    const fullscreen = screen.getByRole('dialog', { name: '最早的明信片完整图片' })
+    expect(within(fullscreen).getByRole('button', { name: '退出全屏' })).toHaveFocus()
+    expect(within(fullscreen).getByRole('img', { name: /完整图片/u })).toHaveClass(
+      'collectible-fullscreen__image',
+    )
+    expect(within(fullscreen).getByRole('link', { name: '下载完整图片' })).toHaveAttribute(
+      'download',
+      'postcard-old.webp',
+    )
+
+    fireEvent.click(within(fullscreen).getByRole('button', { name: '退出全屏' }))
+    expect(imageButton).toHaveFocus()
+  })
+
+  it('详情外框按视口使用横屏 16:9 与手机竖屏 9:16，信息区只在内部滚动', () => {
+    expect(albumStyles).toContain('--collectible-detail-aspect: 16 / 9;')
+    expect(albumStyles).toContain('calc((100dvh - 32px) * 1.7777778)')
+    expect(albumStyles).toContain('aspect-ratio: var(--collectible-detail-aspect);')
+    expect(albumStyles).toContain(
+      '.album-page--v4 .collectible-detail--v4 .collectible-detail__copy {',
+    )
+
+    const portraitRules = albumStyles.slice(
+      albumStyles.indexOf('@media (max-width: 720px) and (orientation: portrait)'),
+      albumStyles.indexOf('@media (max-width: 720px) and (orientation: landscape)'),
+    )
+    expect(portraitRules).toContain('--collectible-detail-aspect: 9 / 16;')
+    expect(portraitRules).toContain('calc((100dvh - 16px) * 0.5625)')
+    expect(portraitRules).toContain('overflow-y: auto;')
+    expect(portraitRules).toContain('scrollbar-width: none;')
+  })
+
+  it('打开收藏详情即请求自动播放，且只传递一次收藏 ID 与正确 BV', () => {
     const item = {
       ...collectible('million-shot-video', 'million-shot', '带视频的百万直拍'),
       metadata: { sequence: 1, video: albumVideo },
@@ -158,20 +261,35 @@ describe('饼狗的收藏墙', () => {
     const game = gameWithCollections([[item.id, 1_000]])
     const onPlayerOpened = vi.fn()
 
-    render(
-      <AlbumView catalog={catalog} game={game} onClose={vi.fn()} onPlayerOpened={onPlayerOpened} />,
+    const onClose = vi.fn()
+    const { rerender } = render(
+      <AlbumView catalog={catalog} game={game} onClose={onClose} onPlayerOpened={onPlayerOpened} />,
     )
 
     fireEvent.click(screen.getByRole('button', { name: /带视频的百万直拍/u }))
-    fireEvent.click(screen.getByRole('button', { name: '打开播放器' }))
 
     expect(onPlayerOpened).toHaveBeenCalledOnce()
     expect(onPlayerOpened).toHaveBeenCalledWith(item.id, albumVideo.bvid)
+    expect(screen.queryByRole('button', { name: '打开播放器' })).not.toBeInTheDocument()
+    expect(screen.queryByRole('button', { name: '关闭播放器' })).not.toBeInTheDocument()
 
     const iframe = screen.getByTitle('收藏里的测试舞台播放器')
     fireEvent.load(iframe)
     fireEvent.error(iframe)
     fireEvent.abort(iframe)
     expect(onPlayerOpened).toHaveBeenCalledOnce()
+
+    rerender(
+      <AlbumView
+        catalog={catalog}
+        game={{ ...game }}
+        onClose={onClose}
+        onPlayerOpened={onPlayerOpened}
+      />,
+    )
+    expect(onPlayerOpened).toHaveBeenCalledOnce()
+    expect(
+      screen.queryByRole('button', { name: /(?:打开|关闭|收起)播放器/u }),
+    ).not.toBeInTheDocument()
   })
 })

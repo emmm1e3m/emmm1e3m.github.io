@@ -8,12 +8,15 @@ import {
   BASE_ACTIVITY_DURATION_MS,
   INITIAL_APPLES,
   ITEM_PRICES,
+  MAX_APPLES,
   MAX_COMPANION_DAYS,
   PET_ENCOURAGEMENT_APPLE_COST,
 } from './constants'
 import { createInitialGameState } from './createGameState'
 import { DEFAULT_GAME_BALANCE } from './gameBalance'
+import { gameStateV4Schema } from './migrateGameStateV3'
 import { reduceGame } from './reducer'
+import { MAX_DATE_TIMESTAMP_MS } from './time'
 import type { ActivityKind, CollectionCatalog, GameState, GameTransition, ItemId } from './types'
 
 const catalog: CollectionCatalog = {
@@ -76,17 +79,17 @@ function seedWhoseRewardRollIsBelow(limit: number, rollIndex: number): string {
   throw new Error(`没有找到小于 ${limit} 的第 ${rollIndex + 1} 次奖励随机值`)
 }
 
-describe('旅行饼狗 v3 领域状态', () => {
-  it('新游戏使用 schema v3、用户名、零天陪伴、112 秒活动与独立随机序列', () => {
+describe('旅行饼狗 v4 领域状态', () => {
+  it('新游戏使用 schema v4、用户名、零天陪伴、72 秒活动与独立随机序列', () => {
     const state = createInitialGameState({ now: 1_000, seed: 'save-seed' })
 
-    expect(state.schemaVersion).toBe(3)
+    expect(state.schemaVersion).toBe(4)
     expect(state.profile).toMatchObject({ displayName: '你', companionDays: 0 })
     expect(state.friends).toEqual({})
     expect(state.economy.apples).toBe(INITIAL_APPLES)
     expect(state.gameBalance).toEqual(DEFAULT_GAME_BALANCE)
     expect(state.gameBalance).toEqual({
-      activityDurationMs: 112_000,
+      activityDurationMs: 72_000,
       probabilities: {
         postcard: 0.65,
         millionShot: 0.4,
@@ -101,6 +104,8 @@ describe('旅行饼狗 v3 领域状态', () => {
       'signal-headphones': 4,
       'trend-toolbox': 7,
       'lucky-apple': 6,
+      'bottled-speed-magic': 8,
+      'bottled-vitality-magic': 12,
     })
     expect(PET_ENCOURAGEMENT_APPLE_COST).toBe(2)
     expect(state.tasks.active).toHaveLength(3)
@@ -109,7 +114,7 @@ describe('旅行饼狗 v3 领域状态', () => {
     expect(Object.values(state.pet.preferences).some(Boolean)).toBe(true)
   })
 
-  it('开始活动原子扣除补给，并以绝对时间推导 112 秒边界', () => {
+  it('开始活动原子扣除补给，并以绝对时间推导 72 秒边界', () => {
     const initial = willing(createInitialGameState({ now: 1_000, seed: 'travel-seed' }), 'travel')
     const started = successful(
       reduceGame(initial, { type: 'activity/start', kind: 'travel', now: 10_000 }, catalog),
@@ -737,6 +742,42 @@ describe('旅行饼狗 v3 领域状态', () => {
     })
   })
 
+  it('好友累计字段到达存档上限后仍可领取，不会生成不可再次导入的状态', () => {
+    let state = willing(createInitialGameState({ now: 0, seed: 'music-friend-cap' }), 'music')
+    state = withProbability(state, 'musicFriend', 1)
+    state = {
+      ...state,
+      friends: {
+        'signal-dog': {
+          id: 'signal-dog',
+          firstMetAt: 10,
+          lastMetAt: 10,
+          encounterCount: Number.MAX_SAFE_INTEGER,
+          totalGiftApples: MAX_APPLES,
+        },
+      },
+    }
+    const started = successful(
+      reduceGame(state, { type: 'activity/start', kind: 'music', now: 100 }, catalog),
+    ).state
+    const claimed = successful(
+      reduceGame(
+        started,
+        {
+          type: 'activity/claim',
+          runId: started.activeActivity!.runId,
+          now: started.activeActivity!.endsAt,
+        },
+        catalog,
+      ),
+    ).state
+
+    expect(claimed.friends['signal-dog']).toMatchObject({
+      encounterCount: Number.MAX_SAFE_INTEGER,
+      totalGiftApples: MAX_APPLES,
+    })
+  })
+
   it('好友图鉴为空时，即使音乐好友概率为 100% 也不会凭空创建好友', () => {
     let state = willing(createInitialGameState({ now: 0, seed: 'music-empty-book' }), 'music')
     state = withProbability(state, 'musicFriend', 1)
@@ -853,5 +894,99 @@ describe('旅行饼狗 v3 领域状态', () => {
     expect(first.activeActivity?.rewardSeed).toBe('independent-streams:reward:0')
     expect(second.random.sequences.preferences).toBe(base.random.sequences.preferences + 1)
     expect(second.random.sequences.reward).toBe(1)
+  })
+
+  it('奖励序列到达上限时在扣补给前拒绝收藏活动，睡觉仍可独立完成', () => {
+    const base = createInitialGameState({ now: 0, seed: 'reward-sequence-cap' })
+    const capped: GameState = {
+      ...base,
+      random: {
+        ...base.random,
+        sequences: {
+          reward: Number.MAX_SAFE_INTEGER,
+          tasks: base.random.sequences.tasks,
+          preferences: Number.MAX_SAFE_INTEGER,
+        },
+      },
+      pet: { ...base.pet, restCount: Number.MAX_SAFE_INTEGER },
+      statistics: {
+        ...base.statistics,
+        started: { ...base.statistics.started, rest: Number.MAX_SAFE_INTEGER },
+        claimed: { ...base.statistics.claimed, rest: Number.MAX_SAFE_INTEGER },
+        applesEarned: Number.MAX_SAFE_INTEGER,
+      },
+    }
+    const willingTravel = willing(capped, 'travel')
+    const rejected = reduceGame(
+      willingTravel,
+      { type: 'activity/start', kind: 'travel', now: 100 },
+      catalog,
+    )
+
+    expect(rejected).toMatchObject({ ok: false, error: { code: 'INVALID_AMOUNT' } })
+    expect(rejected.state).toBe(willingTravel)
+    expect(rejected.state.inventory).toBe(willingTravel.inventory)
+    expect(rejected.state.statistics).toBe(willingTravel.statistics)
+
+    const restStarted = successful(
+      reduceGame(capped, { type: 'activity/start', kind: 'rest', now: 100 }, catalog),
+    ).state
+    const restClaimed = successful(
+      reduceGame(
+        restStarted,
+        {
+          type: 'activity/claim',
+          runId: restStarted.activeActivity!.runId,
+          now: restStarted.activeActivity!.endsAt,
+        },
+        catalog,
+      ),
+    ).state
+
+    expect(restClaimed.random.sequences).toMatchObject({
+      reward: Number.MAX_SAFE_INTEGER,
+      preferences: Number.MAX_SAFE_INTEGER,
+    })
+    expect(restClaimed.pet.restCount).toBe(Number.MAX_SAFE_INTEGER)
+    expect(restClaimed.statistics.started.rest).toBe(Number.MAX_SAFE_INTEGER)
+    expect(restClaimed.statistics.claimed.rest).toBe(Number.MAX_SAFE_INTEGER)
+    expect(restClaimed.statistics.applesEarned).toBe(Number.MAX_SAFE_INTEGER)
+    expect(gameStateV4Schema.safeParse(restClaimed).success).toBe(true)
+  })
+
+  it('活动统计达到上限后饱和，仍可生成可导出的活动状态', () => {
+    const base = willing(createInitialGameState({ now: 0, seed: 'started-counter-cap' }), 'travel')
+    const capped: GameState = {
+      ...base,
+      statistics: {
+        ...base.statistics,
+        started: { ...base.statistics.started, travel: Number.MAX_SAFE_INTEGER },
+      },
+    }
+
+    const started = successful(
+      reduceGame(capped, { type: 'activity/start', kind: 'travel', now: 100 }, catalog),
+    ).state
+    expect(started.statistics.started.travel).toBe(Number.MAX_SAFE_INTEGER)
+    expect(started.random.sequences.reward).toBe(1)
+    expect(gameStateV4Schema.safeParse(started).success).toBe(true)
+  })
+
+  it('结束时间超出 Date 上限时在扣补给与推进随机序列前拒绝开始', () => {
+    const state = willing(createInitialGameState({ now: 0, seed: 'activity-date-cap' }), 'travel')
+    const before = structuredClone(state)
+    const result = reduceGame(
+      state,
+      {
+        type: 'activity/start',
+        kind: 'travel',
+        now: MAX_DATE_TIMESTAMP_MS - BASE_ACTIVITY_DURATION_MS + 1,
+      },
+      catalog,
+    )
+
+    expect(result).toMatchObject({ ok: false, error: { code: 'INVALID_DURATION' } })
+    expect(result.state).toBe(state)
+    expect(state).toEqual(before)
   })
 })

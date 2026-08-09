@@ -138,6 +138,7 @@
 
 .landing-logo:focus-visible,
 .landing-button:focus-visible,
+.landing-update__button:focus-visible,
 .landing-retry:focus-visible {
   outline: 3px solid #236d8d;
   outline-offset: 5px;
@@ -363,6 +364,50 @@
   cursor: pointer;
 }
 
+.landing-update {
+  width: min(100%, 560px);
+  display: flex;
+  align-items: center;
+  gap: 0.8rem;
+  margin-top: 0.9rem;
+  padding: 0.72rem 0.8rem;
+  border: 1px solid rgb(117 72 59 / 20%);
+  border-radius: 16px;
+  background: rgb(255 253 248 / 62%);
+}
+
+.landing-update__button {
+  min-height: 44px;
+  flex: 0 0 auto;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.35rem;
+  padding: 0.58rem 0.78rem;
+  border: 1px solid rgb(105 69 57 / 36%);
+  border-radius: 13px;
+  color: #5b4038;
+  background: #fff9ef;
+  box-shadow: 0 3px 0 rgb(115 71 55 / 14%);
+  font:
+    400 0.78rem/1.2 'TravellingBingo UI',
+    sans-serif;
+  cursor: pointer;
+}
+
+.landing-update__button:disabled {
+  opacity: 0.62;
+  cursor: wait;
+}
+
+.landing-update p {
+  margin: 0;
+  color: var(--landing-muted);
+  font-size: 0.68rem;
+  line-height: 1.5;
+  text-align: left;
+}
+
 .landing-scene {
   position: relative;
   width: min(100%, 560px, calc(76.6dvh - 112px));
@@ -517,7 +562,8 @@
   .landing-intro,
   .landing-error,
   .landing-import,
-  .landing-new-game {
+  .landing-new-game,
+  .landing-update {
     margin-inline: auto;
   }
 
@@ -582,6 +628,16 @@
     padding-block: 0.7rem;
     border-radius: 15px;
     font-size: 0.94rem;
+  }
+
+  .landing-update {
+    align-items: stretch;
+    flex-direction: column;
+    gap: 0.5rem;
+  }
+
+  .landing-update p {
+    text-align: center;
   }
 
   .landing-import {

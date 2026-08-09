@@ -37,7 +37,7 @@ async function exportAndExit(page: import('@playwright/test').Page) {
   return download
 }
 
-test('用户名、V3 收藏与好友动态存档可以下载并恢复', async ({ page }, testInfo) => {
+test('用户名、V4 收藏、魔法与现实字段可以下载并恢复', async ({ page }, testInfo) => {
   test.skip(testInfo.project.name !== 'chromium', '完整存档往返只在桌面项目验证')
   await startGame(page, { debug: true, seed: 'e2e-4', displayName: TEST_PLAYER_NAME })
   await setDebugDuration(page, '10 秒')
@@ -72,13 +72,32 @@ test('用户名、V3 收藏与好友动态存档可以下载并恢复', async ({
       schemaVersion: number
       profile: { debug: boolean; displayName: string; companionDays: number }
       economy: { apples: number }
-      inventory: { 'signal-headphones': number }
+      inventory: {
+        'signal-headphones': number
+        'bottled-speed-magic': number
+        'bottled-vitality-magic': number
+      }
       collections: Record<string, unknown>
       friends: Record<string, unknown>
       activeActivity: unknown
       tasks: { active: unknown[] }
       gameBalance: { activityDurationMs: number; probabilities: { millionShot: number } }
       random: { sequences: { reward: number; tasks: number; preferences: number } }
+      world: string
+      player: { effects: { vitality: unknown } }
+      reality: {
+        activeStay: unknown
+        pendingSettlement: unknown
+        todos: Record<string, unknown>
+        pomodoro: { selectedPostcardId: unknown; session: unknown }
+      }
+      musicPlayer: {
+        playlists: Record<string, unknown>
+        activePlaylistId: unknown
+        currentBvid: unknown
+        loopMode: string
+        startAtSeconds: number
+      }
       collectionTotal?: unknown
       categoryCounts?: unknown
       unlockedCategories?: unknown
@@ -91,14 +110,33 @@ test('用户名、V3 收藏与好友动态存档可以下载并恢复', async ({
   expect(envelope).toMatchObject({
     format: 'travelling-bingo-save',
     schemaVersion: 1,
-    gameVersion: '0.3.0-demo.1',
+    gameVersion: '0.4.0-demo.1',
     payload: {
-      schemaVersion: 3,
+      schemaVersion: 4,
       profile: { debug: true, displayName: TEST_PLAYER_NAME, companionDays: 1 },
       economy: { apples: savedAppleCount },
-      inventory: { 'signal-headphones': 0 },
+      inventory: {
+        'signal-headphones': 0,
+        'bottled-speed-magic': 0,
+        'bottled-vitality-magic': 0,
+      },
       activeActivity: null,
       gameBalance: { activityDurationMs: 10_000, probabilities: { millionShot: 1 } },
+      world: 'game',
+      player: { effects: { vitality: null } },
+      reality: {
+        activeStay: null,
+        pendingSettlement: null,
+        todos: {},
+        pomodoro: { selectedPostcardId: null, session: null },
+      },
+      musicPlayer: {
+        playlists: {},
+        activePlaylistId: null,
+        currentBvid: null,
+        loopMode: 'list',
+        startAtSeconds: 0,
+      },
     },
     integrity: { algorithm: 'SHA-256' },
   })

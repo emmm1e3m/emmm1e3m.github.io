@@ -1,10 +1,12 @@
-import { useMemo, useRef, useState, type KeyboardEvent } from 'react'
+import { useMemo, useRef, useState, type KeyboardEvent, type RefObject } from 'react'
 
 import { publicAsset } from '@/app/assets'
 import { BilibiliPlayer } from '@/components/BilibiliPlayer'
 import { useModalFocus } from '@/components/useModalFocus'
 import type { CollectibleItem, ContentCatalog } from '@/content'
 import type { CollectibleCategory, GameState } from '@/domain'
+
+import './AlbumView.css'
 
 import { categoryLabel } from './categoryLabel'
 import { CollectiblePicture } from './CollectiblePicture'
@@ -27,6 +29,73 @@ function numericDate(timestamp: number) {
 
 function tabLabel(tab: AlbumTab) {
   return tab === 'friends' ? '好朋友们' : categoryLabel(tab)
+}
+
+function largestImage(item: CollectibleItem) {
+  return [...item.images].sort((left, right) => right.width - left.width)[0]
+}
+
+function downloadFileName(item: CollectibleItem) {
+  const image = largestImage(item)
+  const extension = image.path.match(/\.[a-z0-9]+$/iu)?.[0] ?? '.webp'
+  return `${item.id}${extension}`
+}
+
+interface FullscreenPictureProps {
+  item: CollectibleItem
+  onClose: () => void
+  returnFocus: RefObject<HTMLButtonElement | null>
+}
+
+function FullscreenPicture({ item, onClose, returnFocus }: FullscreenPictureProps) {
+  const closeRef = useRef<HTMLButtonElement>(null)
+  const dialogRef = useModalFocus<HTMLElement>(true, onClose, {
+    initialFocus: closeRef,
+    returnFocus,
+  })
+  const image = largestImage(item)
+  const imageUrl = publicAsset(image.path)
+
+  return (
+    <div
+      className="modal-backdrop collectible-fullscreen-backdrop"
+      data-modal-backdrop
+      role="presentation"
+      onMouseDown={onClose}
+    >
+      <article
+        ref={dialogRef}
+        className="collectible-fullscreen"
+        role="dialog"
+        aria-modal="true"
+        aria-label={`${item.title}完整图片`}
+        tabIndex={-1}
+        onMouseDown={(event) => event.stopPropagation()}
+      >
+        <header className="collectible-fullscreen__toolbar">
+          <h3>{item.title}</h3>
+          <div>
+            <a href={imageUrl} download={downloadFileName(item)}>
+              下载完整图片
+            </a>
+            <button ref={closeRef} className="text-close-button" type="button" onClick={onClose}>
+              退出全屏
+            </button>
+          </div>
+        </header>
+        <figure className="collectible-fullscreen__canvas">
+          <img
+            className="collectible-fullscreen__image"
+            src={imageUrl}
+            alt={`${item.alt}（完整图片）`}
+            width={image.width}
+            height={image.height}
+            decoding="async"
+          />
+        </figure>
+      </article>
+    </div>
+  )
 }
 
 export function AlbumView({ catalog, game, onClose, onInspect, onPlayerOpened }: AlbumViewProps) {
@@ -60,12 +129,18 @@ export function AlbumView({ catalog, game, onClose, onInspect, onPlayerOpened }:
   const [tab, setTab] = useState<AlbumTab | null>(unlockedTabs[0] ?? null)
   const activeTab = tab && unlockedTabs.includes(tab) ? tab : (unlockedTabs[0] ?? null)
   const [selected, setSelected] = useState<CollectibleItem | null>(null)
+  const [imageFullscreen, setImageFullscreen] = useState(false)
   const albumCloseRef = useRef<HTMLButtonElement>(null)
   const detailCloseRef = useRef<HTMLButtonElement>(null)
+  const detailImageRef = useRef<HTMLButtonElement>(null)
   const albumDialogRef = useModalFocus<HTMLElement>(true, onClose, {
     initialFocus: albumCloseRef,
   })
-  const detailDialogRef = useModalFocus<HTMLElement>(Boolean(selected), () => setSelected(null), {
+  const closeDetail = () => {
+    setImageFullscreen(false)
+    setSelected(null)
+  }
+  const detailDialogRef = useModalFocus<HTMLElement>(Boolean(selected), closeDetail, {
     initialFocus: detailCloseRef,
   })
   const tabRefs = useRef<Array<HTMLButtonElement | null>>([])
@@ -91,6 +166,7 @@ export function AlbumView({ catalog, game, onClose, onInspect, onPlayerOpened }:
 
   function openDetail(item: CollectibleItem) {
     onInspect?.(item)
+    setImageFullscreen(false)
     setSelected(item)
   }
 
@@ -102,7 +178,7 @@ export function AlbumView({ catalog, game, onClose, onInspect, onPlayerOpened }:
   return (
     <section
       ref={albumDialogRef}
-      className="album-page album-page--v2 album-page--v3"
+      className="album-page album-page--v2 album-page--v3 album-page--v4"
       role="dialog"
       aria-modal="true"
       aria-labelledby="album-title"
@@ -110,7 +186,6 @@ export function AlbumView({ catalog, game, onClose, onInspect, onPlayerOpened }:
     >
       <header className="album-header">
         <div>
-          <span className="paper-tag">一路捡到的喜欢</span>
           <h2 id="album-title">饼狗的收藏墙</h2>
           {allCollected && <p>{`全部集齐 · ${ownedItems.length} / ${catalog.items.length}`}</p>}
         </div>
@@ -138,7 +213,7 @@ export function AlbumView({ catalog, game, onClose, onInspect, onPlayerOpened }:
                 onKeyDown={(event) => handleTabKey(event, index)}
                 onClick={() => setTab(value)}
               >
-                {tabLabel(value)}
+                <span className="album-tab__label">{tabLabel(value)}</span>
               </button>
             ))}
           </div>
@@ -156,6 +231,7 @@ export function AlbumView({ catalog, game, onClose, onInspect, onPlayerOpened }:
                   return (
                     <article className="friend-card" key={entry.id}>
                       <img
+                        className="friend-card__portrait"
                         src={publicAsset(friend.image.path)}
                         alt={friend.alt}
                         width={friend.image.width}
@@ -165,9 +241,7 @@ export function AlbumView({ catalog, game, onClose, onInspect, onPlayerOpened }:
                       <div>
                         <strong>{friend.name}</strong>
                         <p>{friend.description}</p>
-                        <small className="numeric-copy">
-                          见过 {entry.encounterCount} 次 · 收到 {entry.totalGiftApples}🍎
-                        </small>
+                        <small className="numeric-copy">见过 {entry.encounterCount} 次</small>
                       </div>
                     </article>
                   )
@@ -208,15 +282,21 @@ export function AlbumView({ catalog, game, onClose, onInspect, onPlayerOpened }:
         <div className="album-empty">
           <span aria-hidden="true">✦</span>
           <h3>收藏墙还空着</h3>
-          <p>陪饼狗慢慢生活，新的分类和好朋友会在第一次相遇时悄悄出现。</p>
+          <p>惊喜会在相遇时悄悄出现。</p>
         </div>
       )}
 
       {selected && (
-        <div className="modal-backdrop" role="presentation" onMouseDown={() => setSelected(null)}>
+        <div
+          className="modal-backdrop collectible-detail-backdrop"
+          data-modal-backdrop
+          role="presentation"
+          onMouseDown={closeDetail}
+        >
           <article
             ref={detailDialogRef}
-            className="collectible-detail collectible-detail--v3"
+            className="collectible-detail collectible-detail--v3 collectible-detail--v4"
+            data-media-kind={selectedVideo ? 'video' : 'image'}
             role="dialog"
             aria-modal="true"
             aria-labelledby="collectible-title"
@@ -227,12 +307,21 @@ export function AlbumView({ catalog, game, onClose, onInspect, onPlayerOpened }:
               ref={detailCloseRef}
               className="text-close-button collectible-detail__close"
               type="button"
-              onClick={() => setSelected(null)}
+              onClick={closeDetail}
             >
               关闭详情
             </button>
-            <div className="collectible-detail__image">
-              <CollectiblePicture item={selected} large />
+            <div className="collectible-detail__image collectible-detail__media">
+              <button
+                ref={detailImageRef}
+                className="collectible-detail__image-button"
+                type="button"
+                aria-label={`全屏查看${selected.title}`}
+                onClick={() => setImageFullscreen(true)}
+              >
+                <CollectiblePicture item={selected} large />
+                <span className="collectible-detail__expand-hint">查看完整图片</span>
+              </button>
             </div>
             <div className="collectible-detail__copy">
               <span className="paper-tag">{categoryLabel(selected.category)}</span>
@@ -242,15 +331,32 @@ export function AlbumView({ catalog, game, onClose, onInspect, onPlayerOpened }:
                 <BilibiliPlayer
                   video={selectedVideo}
                   compact
+                  origin={{ kind: 'collection', collectionId: selected.id }}
                   onOpened={(bvid) => onPlayerOpened?.(selected.id, bvid)}
                 />
               )}
-              <a href={selected.source.url} target="_blank" rel="noopener noreferrer">
-                查看素材来源
-              </a>
+              <div className="collectible-detail__actions">
+                <a
+                  href={publicAsset(largestImage(selected).path)}
+                  download={downloadFileName(selected)}
+                >
+                  下载完整图片
+                </a>
+                <a href={selected.source.url} target="_blank" rel="noopener noreferrer">
+                  查看素材来源
+                </a>
+              </div>
             </div>
           </article>
         </div>
+      )}
+
+      {selected && imageFullscreen && (
+        <FullscreenPicture
+          item={selected}
+          onClose={() => setImageFullscreen(false)}
+          returnFocus={detailImageRef}
+        />
       )}
     </section>
   )

@@ -1,3 +1,5 @@
+import type { ReactNode } from 'react'
+
 import type { ActivityRun, ActivityTiming, GameState } from '@/domain'
 
 import { ACTIVITY_COPY, formatCountdown } from './gameCopy'
@@ -8,6 +10,7 @@ interface GameHudProps {
   timing: ActivityTiming
   dirty: boolean
   inert?: boolean
+  statusBar?: ReactNode
   onExit: () => void
   onCenter: () => void
   onFridge: () => void
@@ -21,6 +24,7 @@ export function GameHud({
   timing,
   dirty,
   inert,
+  statusBar,
   onExit,
   onCenter,
   onFridge,
@@ -28,7 +32,7 @@ export function GameHud({
   onDebug,
 }: GameHudProps) {
   return (
-    <header className="game-hud game-hud--v3" inert={inert ? true : undefined}>
+    <header className="game-hud game-hud--v3 game-hud--v4" inert={inert ? true : undefined}>
       <div className="game-hud__leading">
         <button
           className="exit-button exit-button--text"
@@ -42,8 +46,7 @@ export function GameHud({
       </div>
 
       <button className="game-hud__center" type="button" onClick={onCenter}>
-        <span>今天也要</span>
-        <strong>好好吃苹果</strong>
+        <strong>今天也要好好吃苹果</strong>
         {activity && (
           <small>
             {ACTIVITY_COPY[activity.kind].verb} ·{' '}
@@ -57,16 +60,13 @@ export function GameHud({
       </button>
 
       <div className="game-hud__actions">
-        <span className="hud-companion">
-          {game.profile.displayName}陪伴饼狗已经{' '}
-          <span className="numeric-copy">{game.profile.companionDays}</span> 天
-        </span>
+        {statusBar}
         <div className="game-hud__buttons">
           <button
             className="apple-counter"
             type="button"
             onClick={onFridge}
-            aria-label={`有 ${game.economy.apples} 个苹果，打开冰箱`}
+            aria-label={`${game.economy.apples}🍎，打开冰箱`}
           >
             <strong className="numeric-copy">{game.economy.apples}🍎</strong>
           </button>

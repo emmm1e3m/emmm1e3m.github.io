@@ -1,0 +1,296 @@
+.album-page.album-page--v4 {
+  overscroll-behavior: contain;
+  scrollbar-width: none;
+}
+
+.album-page.album-page--v4::-webkit-scrollbar,
+.album-page--v4 .collectible-detail--v4 .collectible-detail__copy::-webkit-scrollbar,
+.album-page--v4 .collectible-detail--v4::-webkit-scrollbar {
+  width: 0;
+  height: 0;
+}
+
+.album-page--v4 .album-header h2 {
+  margin-top: 0;
+}
+
+.album-page--v4 .album-tab__label {
+  margin: 0;
+  font-family: var(--font-display);
+  font-size: inherit;
+  font-weight: 400;
+}
+
+.album-page--v4 .friend-card__portrait {
+  object-fit: cover;
+  object-position: center;
+}
+
+.album-page--v4 .collectible-detail-backdrop {
+  overflow: hidden;
+}
+
+.album-page--v4 .collectible-detail--v4 {
+  --collectible-detail-aspect: 16 / 9;
+  --collectible-detail-viewport-width: min(
+    1120px,
+    calc(100vw - 32px),
+    calc((100dvh - 32px) * 1.7777778)
+  );
+
+  box-sizing: border-box;
+  width: var(--collectible-detail-viewport-width);
+  min-width: 0;
+  height: auto;
+  min-height: 0;
+  max-width: none;
+  max-height: none;
+  aspect-ratio: var(--collectible-detail-aspect);
+  grid-template-columns: minmax(0, 11fr) minmax(280px, 5fr);
+  grid-template-rows: minmax(0, 1fr);
+  overflow: hidden;
+}
+
+.album-page--v4 .collectible-detail__media {
+  width: 100%;
+  height: 100%;
+  min-height: 0;
+  max-height: none;
+  aspect-ratio: auto;
+  padding: 0;
+}
+
+.album-page--v4 .collectible-detail__image-button {
+  position: relative;
+  width: 100%;
+  height: 100%;
+  min-height: 0;
+  overflow: hidden;
+  padding: 0;
+  border: 0;
+  color: #fff;
+  background: #e9dece;
+  cursor: zoom-in;
+}
+
+.album-page--v4 .collectible-detail__image-button .collectible-picture {
+  width: 100%;
+  height: 100%;
+  max-height: none;
+  object-fit: cover;
+}
+
+.album-page--v4 .collectible-detail__expand-hint {
+  position: absolute;
+  right: 0.75rem;
+  bottom: 0.75rem;
+  padding: 0.4rem 0.65rem;
+  border-radius: 999px;
+  background: rgb(45 29 24 / 76%);
+  font-family: var(--font-ui);
+  font-size: 0.72rem;
+  font-weight: 750;
+  letter-spacing: 0.02em;
+  backdrop-filter: blur(5px);
+}
+
+.album-page--v4 .collectible-detail--v4 .collectible-detail__copy {
+  align-self: stretch;
+  min-width: 0;
+  min-height: 0;
+  height: 100%;
+  max-height: none;
+  overflow-x: hidden;
+  overflow-y: auto;
+  padding: 2.4rem 1.8rem 1.8rem;
+  scrollbar-width: none;
+  overscroll-behavior: contain;
+}
+
+.album-page--v4 .collectible-detail__actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.7rem 1rem;
+  margin-top: 1rem;
+}
+
+.album-page--v4 .collectible-detail__actions a,
+.collectible-fullscreen__toolbar a {
+  min-height: 44px;
+  display: inline-flex;
+  align-items: center;
+  padding: 0.55rem 0.8rem;
+  border: 1px solid #a87966;
+  border-radius: 13px;
+  color: #6f4139;
+  background: #fff8ef;
+  box-shadow: 0 4px 14px rgb(79 45 33 / 11%);
+  font-family: var(--font-ui);
+  font-size: 0.78rem;
+  font-weight: 850;
+  text-decoration: none;
+}
+
+.collectible-fullscreen-backdrop {
+  z-index: 110;
+  padding: max(8px, env(safe-area-inset-top)) max(8px, env(safe-area-inset-right))
+    max(8px, env(safe-area-inset-bottom)) max(8px, env(safe-area-inset-left));
+  background: rgb(34 24 21 / 92%);
+}
+
+.collectible-fullscreen {
+  width: min(1500px, 100%);
+  height: 100%;
+  min-height: 0;
+  display: grid;
+  grid-template-rows: auto minmax(0, 1fr);
+  overflow: hidden;
+  border: 1px solid rgb(255 248 237 / 24%);
+  border-radius: 20px;
+  background: #241a17;
+  box-shadow: 0 24px 80px rgb(0 0 0 / 45%);
+}
+
+.collectible-fullscreen__toolbar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+  padding: 0.7rem 0.8rem;
+  color: #fff8ed;
+  background: rgb(21 14 12 / 80%);
+}
+
+.collectible-fullscreen__toolbar h3 {
+  min-width: 0;
+  overflow: hidden;
+  margin: 0;
+  font-family: var(--font-display);
+  font-size: clamp(1.1rem, 2vw, 1.5rem);
+  font-weight: 400;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.collectible-fullscreen__toolbar > div {
+  display: flex;
+  align-items: center;
+  gap: 0.55rem;
+}
+
+.collectible-fullscreen__toolbar a {
+  border-color: rgb(255 248 237 / 45%);
+  color: #fff8ed;
+  background: rgb(255 248 237 / 10%);
+  box-shadow: none;
+}
+
+.collectible-fullscreen__toolbar .text-close-button {
+  color: #fff8ed;
+  border-color: rgb(255 248 237 / 45%);
+  background: rgb(255 248 237 / 10%);
+  box-shadow: none;
+}
+
+.collectible-fullscreen__canvas {
+  min-width: 0;
+  min-height: 0;
+  display: grid;
+  place-items: center;
+  margin: 0;
+  padding: clamp(0.5rem, 2vw, 1.5rem);
+  overflow: hidden;
+}
+
+.collectible-fullscreen__image {
+  width: 100%;
+  height: 100%;
+  max-width: 100%;
+  max-height: 100%;
+  display: block;
+  object-fit: contain;
+}
+
+@media (max-width: 720px) and (orientation: portrait) {
+  .album-page--v4 .collectible-detail-backdrop {
+    padding: 8px;
+  }
+
+  .album-page--v4 .collectible-detail--v4 {
+    --collectible-detail-aspect: 9 / 16;
+    --collectible-detail-viewport-width: min(
+      480px,
+      calc(100vw - 16px),
+      calc((100dvh - 16px) * 0.5625)
+    );
+
+    display: grid;
+    grid-template-columns: 1fr;
+    grid-template-rows: minmax(0, 9fr) minmax(0, 7fr);
+    overflow: hidden;
+  }
+
+  .album-page--v4 .collectible-detail__media {
+    height: 100%;
+    max-height: none;
+    aspect-ratio: auto;
+  }
+
+  .album-page--v4 .collectible-detail--v4 .collectible-detail__copy {
+    min-height: 0;
+    height: 100%;
+    max-height: none;
+    overflow-x: hidden;
+    overflow-y: auto;
+    padding: 1.2rem;
+    scrollbar-width: none;
+  }
+
+  .collectible-fullscreen__toolbar {
+    align-items: flex-start;
+  }
+
+  .collectible-fullscreen__toolbar > div {
+    flex-direction: column-reverse;
+    align-items: stretch;
+  }
+
+  .collectible-fullscreen__toolbar a,
+  .collectible-fullscreen__toolbar button {
+    min-height: 40px;
+    padding-block: 0.42rem;
+  }
+}
+
+@media (max-width: 720px) and (orientation: landscape) {
+  .album-page--v4 .collectible-detail-backdrop {
+    padding: 8px;
+  }
+
+  .album-page--v4 .collectible-detail--v4 {
+    --collectible-detail-viewport-width: min(calc(100vw - 16px), calc((100dvh - 16px) * 1.7777778));
+
+    grid-template-columns: minmax(0, 9fr) minmax(190px, 7fr);
+    overflow: hidden;
+  }
+
+  .album-page--v4 .collectible-detail__media {
+    height: 100%;
+    max-height: none;
+    aspect-ratio: auto;
+  }
+
+  .album-page--v4 .collectible-detail--v4 .collectible-detail__copy {
+    min-height: 0;
+    height: 100%;
+    max-height: none;
+    overflow-y: auto;
+    padding: 1.8rem 1rem 1rem;
+  }
+}
+
+@media (max-width: 440px) {
+  .collectible-fullscreen__toolbar h3 {
+    max-width: 36vw;
+  }
+}

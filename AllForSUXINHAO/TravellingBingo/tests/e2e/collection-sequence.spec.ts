@@ -226,16 +226,19 @@ test('明信片奖励不显示活动完成，弹窗无可见滚动条与顶部�
   await saveScreenshot(page, 'postcard-reward.png', false)
 })
 
-test('一键全收集按公开清单显示 100/30/8，Survivors 详情挂载正确 BV 播放器', async ({
+test('DEBUG 全收集包含好友，Survivors 自动播放，并可一键撤销所有收集', async ({
   page,
   request,
 }, testInfo) => {
   test.skip(testInfo.project.name !== 'chromium', '完整收藏墙只在桌面 Chromium 验证')
-  const [postcards, million, siteFirsts] = await Promise.all([
+  const [postcards, million, siteFirsts, friendsResponse] = await Promise.all([
     readManifest(request, 'data/postcards.json'),
     readManifest(request, 'data/million-shot-posters.json'),
     readManifest(request, 'data/site-firsts.json'),
+    request.get('data/friends.json'),
   ])
+  expect(friendsResponse.ok()).toBe(true)
+  const friends = (await friendsResponse.json()) as { items: unknown[] }
   expect(postcards.items).toHaveLength(100)
   const expectedTotal = postcards.items.length + million.items.length + siteFirsts.items.length
   const survivors = million.items.find((item) => item.id === 'million-shot-108')!
@@ -267,12 +270,23 @@ test('一键全收集按公开清单显示 100/30/8，Survivors 详情挂载正�
     await expect(album.locator('.collectible-card')).toHaveCount(count)
   }
 
+  await album.getByRole('tab', { name: '好朋友们' }).click()
+  await expect(album.locator('.friend-card')).toHaveCount(friends.items.length)
+  await expect(album.locator('.friend-card__portrait').first()).toHaveCSS('object-fit', 'cover')
+  const friendCopies = await album.locator('.friend-card').allInnerTexts()
+  expect(friendCopies.every((copy) => !/收到\s*\d+🍎/u.test(copy))).toBe(true)
+
   await album.getByRole('tab', { name: '百万直拍' }).click()
+  await page.route('https://player.bilibili.com/**', async (route) => route.abort())
   await album.getByRole('button', { name: /Survivors，百万直拍，打开详情/u }).click()
   const detail = page.locator('.collectible-detail--v3')
   await expect(detail).toBeVisible()
+  const detailBox = await detail.boundingBox()
+  expect(detailBox).not.toBeNull()
+  expect(detailBox!.width / detailBox!.height).toBeCloseTo(16 / 9, 1)
   const detailImage = detail.locator('.collectible-detail__image img')
   await expect(detailImage).toHaveJSProperty('complete', true)
+  await expect(detailImage).toHaveCSS('object-fit', 'cover')
   const imageMetrics = await detailImage.evaluate((image: HTMLImageElement) => ({
     currentSrc: image.currentSrc,
     naturalWidth: image.naturalWidth,
@@ -295,16 +309,45 @@ test('一键全收集按公开清单显示 100/30/8，Survivors 详情挂载正�
     'href',
     video.sourceUrl,
   )
-  await page.route('https://player.bilibili.com/**', async (route) => route.abort())
-  await detail.getByRole('button', { name: '打开播放器' }).click()
-  const iframe = detail.locator('iframe[title$="播放器"]')
+  await expect(detail.getByRole('button', { name: /打开播放器|关闭播放器/u })).toHaveCount(0)
+  await expect(detail.locator('iframe')).toHaveCount(0)
+  const persistentPlayer = page.getByTestId('persistent-bilibili-player')
+  const iframe = persistentPlayer.locator('iframe[title^="Bilibili 外链播放器："]')
   await expect(iframe).toBeAttached()
+  await expect(page.locator('iframe[title^="Bilibili 外链播放器："]')).toHaveCount(1)
   await expect(detail).toContainText(video.authorName)
   await expect(detail).toContainText(publishedLabel)
   await expect(detail).toContainText(video.bvid)
   const playerUrl = new URL((await iframe.getAttribute('src'))!)
   expect(playerUrl.hostname).toBe('player.bilibili.com')
   expect(playerUrl.searchParams.get('bvid')).toBe(video.bvid)
-  expect(playerUrl.searchParams.get('autoplay')).toBe('0')
+  expect(playerUrl.searchParams.get('autoplay')).toBe('1')
+
+  await detail.getByRole('button', { name: '全屏查看Survivors' }).click()
+  const fullscreen = page.getByRole('dialog', { name: 'Survivors完整图片' })
+  await expect(fullscreen).toBeVisible()
+  await expect(fullscreen.locator('.collectible-fullscreen__image')).toHaveCSS(
+    'object-fit',
+    'contain',
+  )
+  await expect(fullscreen.getByRole('link', { name: '下载完整图片' })).toHaveAttribute(
+    'download',
+    /million-shot-108\.webp$/u,
+  )
   await saveScreenshot(page, 'survivors-video-detail.png', false)
+  await fullscreen.getByRole('button', { name: '退出全屏' }).click()
+  await detail.getByRole('button', { name: '关闭详情' }).click()
+  await album.getByRole('button', { name: '关闭收藏墙' }).click()
+
+  await openDebugPanel(page)
+  await page.getByRole('button', { name: '一键撤销全部收集', exact: true }).click()
+  await page
+    .getByRole('group', { name: '确认一键撤销全部收集' })
+    .getByRole('button', { name: '确认撤销' })
+    .click()
+  const clearedAlbum = await openAlbum(page)
+  await expect(clearedAlbum.getByRole('tab')).toHaveCount(0)
+  await expect(clearedAlbum.locator('.collectible-card')).toHaveCount(0)
+  await expect(clearedAlbum.locator('.friend-card')).toHaveCount(0)
+  await expect(clearedAlbum).toContainText('惊喜会在相遇时悄悄出现。')
 })

@@ -1,10 +1,5 @@
 import type { ActivityRun, ActivityTiming } from '../game/types'
-
-function assertValidNow(now: number): void {
-  if (!Number.isSafeInteger(now) || now < 0) {
-    throw new RangeError('当前时间必须是非负安全整数毫秒时间戳')
-  }
-}
+import { assertValidTimestamp } from '../game/time'
 
 /**
  * 活动进度只由已持久化的 startedAt/endsAt 推导，不把易漂移的倒计时值写入状态，
@@ -12,7 +7,7 @@ function assertValidNow(now: number): void {
  * 边界前 1ms 仍在运行，恰好到 endsAt 时即可领取。
  */
 export function deriveActivityTiming(activity: ActivityRun | null, now: number): ActivityTiming {
-  assertValidNow(now)
+  assertValidTimestamp(now, '当前时间必须是 Date 可表示的非负整数毫秒时间戳')
 
   if (activity === null) {
     return { phase: 'idle', remainingMs: 0, remainingSeconds: 0, progress: 0 }

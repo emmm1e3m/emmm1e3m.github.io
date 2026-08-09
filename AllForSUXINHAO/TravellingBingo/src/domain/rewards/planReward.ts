@@ -15,7 +15,7 @@ import type {
   CollectibleActivityKind,
   CollectibleCategory,
   FriendId,
-  ItemId,
+  LegacyItemId,
   PityState,
   PlannedCollectionReward,
   RewardPlan,
@@ -30,7 +30,7 @@ export interface RewardPlanningInput {
   catalog: CollectionCatalog
   ownedCollectionIds: ReadonlySet<string>
   knownFriendIds?: ReadonlySet<FriendId>
-  supplyId: ItemId | null
+  supplyId: LegacyItemId | null
   usedLuckyApple: boolean
   probabilities?: Readonly<GameProbabilities>
 }
@@ -95,7 +95,7 @@ function planCollection(
 
 /**
  * 奖励只依赖持久种子、开始时收藏/好友图鉴和当时的概率快照。
- * V3 没有首次固定掉落或保底；休息苹果和好友礼物在开始时一并固化。
+ * V3/V4 没有首次固定掉落或保底；休息苹果和好友礼物在开始时一并固化。
  */
 export function planActivityReward(input: RewardPlanningInput): RewardPlan {
   let cursor = createRandomCursor(input.rewardSeed)
@@ -104,7 +104,7 @@ export function planActivityReward(input: RewardPlanningInput): RewardPlan {
   let modifierApples = 0
   let collection: PlannedCollectionReward | null = null
   let friendId: FriendId | null = null
-  let giftItemId: ItemId | null = null
+  let giftItemId: LegacyItemId | null = null
 
   if (input.kind === 'rest') {
     baseApples = REST_COMPLETION_APPLES

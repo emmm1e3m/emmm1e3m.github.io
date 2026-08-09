@@ -3,6 +3,8 @@ import { useState } from 'react'
 import { publicAsset } from '@/app/assets'
 import type { CollectibleItem } from '@/content'
 
+import './CollectiblePicture.css'
+
 export function CollectiblePicture({
   item,
   large = false,
@@ -22,6 +24,7 @@ export function CollectiblePicture({
 
   return (
     <img
+      className={`collectible-picture collectible-picture--cover ${large ? 'collectible-picture--detail' : 'collectible-picture--thumbnail'}`}
       src={publicAsset(selected.path)}
       srcSet={shouldOfferResponsiveSources ? srcSet : undefined}
       sizes={

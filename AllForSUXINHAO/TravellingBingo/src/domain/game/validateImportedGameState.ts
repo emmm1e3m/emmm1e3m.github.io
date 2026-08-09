@@ -5,6 +5,7 @@ import {
   REST_COMPLETION_APPLES,
 } from './gameBalance'
 import { isPetTired } from '../pet/preferences'
+import { hasRetiredTask, TASK_LIBRARY, validateTaskInstanceReachability } from '../tasks/taskBoard'
 import type {
   CollectionCatalog,
   CollectibleActivityKind,
@@ -35,8 +36,10 @@ export type ImportedGameStateValidationCode =
   | 'UNKNOWN_FRIEND'
   | 'REWARD_PLAN_MISMATCH'
   | 'ACTIVITY_TIME_INVALID'
+  | 'TASK_BOARD_INVALID'
   | 'TASK_BOARD_STALLED'
   | 'PET_FATIGUE_MISMATCH'
+  | 'POMODORO_BACKGROUND_INVALID'
 
 export type ImportedGameStateValidation =
   | { ok: true }
@@ -62,8 +65,14 @@ function validateRewardPlan(state: GameState): ImportedGameStateValidation {
     invalid('REWARD_PLAN_MISMATCH', message)
 
   if (activity.kind === 'music' || activity.kind === 'rest') {
+    if (activity.legacySource !== undefined) {
+      return mismatch('V1 不存在电子琴或睡觉活动，不能携带旧版来源标记。')
+    }
     if (activity.supplyId !== null || activity.usedLuckyApple) {
       return mismatch('电子琴和睡觉活动不能携带活动补给或幸运苹果。')
+    }
+    if (plan.guaranteedByPity || plan.pityAfterClaim !== null) {
+      return mismatch('电子琴和睡觉活动不能携带旧版保底计划。')
     }
   } else if (
     (activity.kind === 'travel' &&
@@ -82,28 +91,35 @@ function validateRewardPlan(state: GameState): ImportedGameStateValidation {
       plan.friendId === null &&
       plan.giftItemId === null
       ? { ok: true }
-      : mismatch('睡觉活动只能计划固定的每日苹果，不能包含收藏或好友赠礼。')
+      : mismatch('睡觉活动只能计划固定的每日🍎，不能包含收藏或好友赠礼。')
   }
 
   if (activity.kind === 'music') {
     if (plan.baseApples !== 0 || plan.collection !== null || plan.giftItemId !== null) {
-      return mismatch('电子琴活动不能包含基础苹果、收藏或道具赠礼。')
+      return mismatch('电子琴活动不能包含基础🍎、收藏或道具赠礼。')
     }
     if (plan.friendId === null) {
       return plan.modifierApples === 0
         ? { ok: true }
-        : mismatch('没有好友造访时不能计划好友赠送的苹果。')
+        : mismatch('没有好友造访时不能计划好友赠送的🍎。')
     }
     if (state.friends[plan.friendId] === undefined) {
       return mismatch('电子琴只能召来已经认识的朋友。')
     }
     return plan.modifierApples === FRIEND_GIFT_APPLES_BY_ID[plan.friendId]
       ? { ok: true }
-      : mismatch('好友赠送的苹果数与当前好友不一致。')
+      : mismatch('好友赠送的🍎数量与当前好友不一致。')
   }
 
-  if (plan.baseApples !== 0 || plan.modifierApples !== 0) {
-    return mismatch('旅行、刷播和冲热活动不能直接计划苹果奖励。')
+  // V1 的普通活动曾冻结苹果与保底展示信息；迁移写入显式来源。
+  // 计划只兑现，不再继续旧保底计数。
+  const hasLegacyAppleReward = plan.baseApples !== 0 || plan.modifierApples !== 0
+  const hasLegacyPitySnapshot = plan.guaranteedByPity || plan.pityAfterClaim !== null
+  if ((hasLegacyAppleReward || hasLegacyPitySnapshot) && activity.legacySource !== 'v1') {
+    return mismatch('只有显式迁移的 V1 活动才能携带旧版苹果或保底计划。')
+  }
+  if (hasLegacyAppleReward && plan.giftItemId !== null) {
+    return mismatch('旧版活动的🍎计划不能同时伪造新版好友道具。')
   }
 
   if (activity.kind === 'stream' || activity.kind === 'trend') {
@@ -137,6 +153,39 @@ export function validateImportedGameState(
     return invalid('INVALID_CATALOG', catalogValidation.message)
   }
 
+  if (hasRetiredTask(state.tasks)) {
+    return invalid('TASK_BOARD_INVALID', '任务板仍包含已经退役、无法继续完成的任务。')
+  }
+  const taskInstanceIds = new Set<string>()
+  const taskTriggerGroups = new Set<string>()
+  for (const task of state.tasks.active) {
+    const template = TASK_LIBRARY[task.taskId]
+    if (taskInstanceIds.has(task.instanceId)) {
+      return invalid('TASK_BOARD_INVALID', '任务板中的任务实例 ID 必须互不重复。')
+    }
+    taskInstanceIds.add(task.instanceId)
+    if (task.progress > task.target) {
+      return invalid('TASK_BOARD_INVALID', '任务进度不能超过任务目标。')
+    }
+    if (new Set(task.seenKeys).size !== task.seenKeys.length) {
+      return invalid('TASK_BOARD_INVALID', '任务进度记录不能包含重复事件。')
+    }
+    if (task.seenKeys.length !== task.progress) {
+      return invalid('TASK_BOARD_INVALID', '任务进度必须与已记录的独立事件数量一致。')
+    }
+    const reachability = validateTaskInstanceReachability(task, catalog)
+    if (!reachability.ok) {
+      return invalid('TASK_BOARD_INVALID', reachability.message)
+    }
+    if (task.taskId === 'stage-test' && state.tasks.oneOffCompleted.includes('stage-test')) {
+      return invalid('TASK_BOARD_INVALID', '已经完成过的单次舞台测试不能再次出现在任务板。')
+    }
+    if (taskTriggerGroups.has(template.triggerGroup)) {
+      return invalid('TASK_BOARD_INVALID', '同一任务板的三项任务必须来自不同触发组。')
+    }
+    taskTriggerGroups.add(template.triggerGroup)
+  }
+
   if (state.tasks.active.every((task) => task.progress >= task.target)) {
     return invalid(
       'TASK_BOARD_STALLED',
@@ -167,6 +216,22 @@ export function validateImportedGameState(
     }
     if (!categoryById.has(entry.id)) {
       return invalid('UNKNOWN_COLLECTION', `收藏 ID“${entry.id}”不在当前收藏目录中。`)
+    }
+  }
+
+  const pomodoroPostcardIds = [
+    state.reality.pomodoro.selectedPostcardId,
+    state.reality.pomodoro.session?.postcardId ?? null,
+  ]
+  for (const postcardId of pomodoroPostcardIds) {
+    if (
+      postcardId !== null &&
+      (!catalog.postcard.includes(postcardId) || state.collections[postcardId] === undefined)
+    ) {
+      return invalid(
+        'POMODORO_BACKGROUND_INVALID',
+        `苹果钟背景“${postcardId}”不是当前已拥有的明信片。`,
+      )
     }
   }
 

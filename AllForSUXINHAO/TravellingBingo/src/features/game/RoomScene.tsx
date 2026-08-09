@@ -5,7 +5,13 @@ import { MascotSprite, type MascotPose } from '@/components/MascotSprite'
 import type { GameState, TaskEvent } from '@/domain'
 
 import { ACTIVITY_COPY } from './gameCopy'
-import { ROOM_AREAS, type RoomArea } from './roomConfig'
+import {
+  ROOM_AREAS,
+  roomAreaForWorld,
+  roomAreaVisibleInWorld,
+  roomPointToPercent,
+  type RoomArea,
+} from './roomConfig'
 import type { PanelId } from './GameHome'
 
 function readPet(game: GameState) {
@@ -46,10 +52,9 @@ interface PetMenuProps {
   open: boolean
   onClose: () => void
   onPanel: (panel: PanelId) => void
-  onGreet: () => void
 }
 
-function PetMenu({ game, open, onClose, onPanel, onGreet }: PetMenuProps) {
+function PetMenu({ game, open, onClose, onPanel }: PetMenuProps) {
   const menuRef = useRef<HTMLDivElement>(null)
   const pet = readPet(game)
 
@@ -85,35 +90,22 @@ function PetMenu({ game, open, onClose, onPanel, onGreet }: PetMenuProps) {
           查看这次活动
         </button>
       ) : (
-        <>
-          <button
-            type="button"
-            onClick={() => {
-              onGreet()
-              onClose()
-            }}
-          >
-            和饼狗打个招呼
-          </button>
-          <div className="pet-menu__wishes" aria-label="饼狗今天的想法">
-            <p className={pet.preferences.travel && !pet.tired ? '' : 'is-reluctant'}>
-              <strong>出门</strong>
-              <span>{pet.preferences.travel && !pet.tired ? '想出去走走' : '更想待在家'}</span>
-            </p>
-            <p className={pet.preferences.computer && !pet.tired ? '' : 'is-reluctant'}>
-              <strong>电脑</strong>
-              <span>
-                {pet.preferences.computer && !pet.tired ? '愿意认真坐一会儿' : '想离屏幕远一点'}
-              </span>
-            </p>
-            <p className={pet.preferences.music && !pet.tired ? '' : 'is-reluctant'}>
-              <strong>音乐</strong>
-              <span>
-                {pet.preferences.music && !pet.tired ? '想听见一点旋律' : '今天想安静一点'}
-              </span>
-            </p>
-          </div>
-        </>
+        <div className="pet-menu__wishes" aria-label="饼狗今天的想法">
+          <p className={pet.preferences.travel && !pet.tired ? '' : 'is-reluctant'}>
+            <strong>出门</strong>
+            <span>{pet.preferences.travel && !pet.tired ? '想出去走走' : '更想待在家'}</span>
+          </p>
+          <p className={pet.preferences.computer && !pet.tired ? '' : 'is-reluctant'}>
+            <strong>电脑</strong>
+            <span>
+              {pet.preferences.computer && !pet.tired ? '愿意认真坐一会儿' : '想离屏幕远一点'}
+            </span>
+          </p>
+          <p className={pet.preferences.music && !pet.tired ? '' : 'is-reluctant'}>
+            <strong>音乐</strong>
+            <span>{pet.preferences.music && !pet.tired ? '想听见一点旋律' : '今天想安静一点'}</span>
+          </p>
+        </div>
       )}
     </div>
   )
@@ -127,8 +119,12 @@ interface RoomSceneProps {
   sleeping: boolean
   restDarkness: number
   onArea: (area: RoomArea) => void
+  onReluctantArea?: (area: RoomArea) => void
   onPanel: (panel: PanelId) => void
   onBackgroundActivate: () => void
+  onRequestCancelActivity?: () => void
+  pomodoroRunning?: boolean
+  onRequestCancelPomodoro?: () => void
   onHelp: () => void
   onTaskEvent: (event: TaskEvent) => void
 }
@@ -141,8 +137,12 @@ export function RoomScene({
   sleeping,
   restDarkness,
   onArea,
+  onReluctantArea,
   onPanel,
   onBackgroundActivate,
+  onRequestCancelActivity,
+  pomodoroRunning = false,
+  onRequestCancelPomodoro,
   onHelp,
   onTaskEvent,
 }: RoomSceneProps) {
@@ -150,8 +150,16 @@ export function RoomScene({
   const petButtonRef = useRef<HTMLButtonElement>(null)
   const travelling = game.activeActivity?.kind === 'travel'
   const pose = poseForRoom({ game, area, walking, sleeping })
+  const petCenter = roomPointToPercent(area.petCenter)
+
+  useEffect(() => {
+    if (!travelling) return
+    const frame = globalThis.requestAnimationFrame(() => setMenuOpen(false))
+    return () => globalThis.cancelAnimationFrame(frame)
+  }, [travelling])
 
   function hotspotHidden(hotspot: RoomArea) {
+    if (!roomAreaVisibleInWorld(hotspot, game.world)) return true
     if (game.activeActivity?.kind === 'music' && hotspot.id === 'keyboard') return false
     return Boolean(game.activeActivity && hotspot.activityKinds?.includes(game.activeActivity.kind))
   }
@@ -173,7 +181,7 @@ export function RoomScene({
 
   return (
     <section
-      className="room-card room-card--v3"
+      className="room-card room-card--v3 room-card--v4"
       style={
         {
           '--room-backdrop-image': `url("${publicAsset('assets/game/chan-chan-house-v2-768.webp')}")`,
@@ -181,7 +189,12 @@ export function RoomScene({
       }
       aria-label="铲铲饼屋互动场景"
       onClick={(event) => {
-        if (event.target === event.currentTarget) closeRoomLayers()
+        if (
+          event.target === event.currentTarget ||
+          (event.target instanceof Element && event.target.closest('.room-picture, .room-vignette'))
+        ) {
+          closeRoomLayers()
+        }
       }}
       onKeyDown={(event) => {
         if (event.key !== 'Escape') return
@@ -208,7 +221,7 @@ export function RoomScene({
           <button
             className="room-background-dismiss"
             type="button"
-            aria-label="收起信息栏，查看完整房间"
+            aria-label="回到房间概览"
             onClick={closeRoomLayers}
           />
         )}
@@ -221,17 +234,22 @@ export function RoomScene({
           onClick={onHelp}
           aria-label="查看房屋玩法说明"
         >
-          ?
+          ℹ️
         </button>
 
-        {ROOM_AREAS.map((hotspot) =>
-          hotspotHidden(hotspot) ? null : (
+        {ROOM_AREAS.map((configuredHotspot) => {
+          if (hotspotHidden(configuredHotspot)) return null
+          const hotspot = roomAreaForWorld(configuredHotspot, game.world)
+          const reluctant = Boolean(
+            game.world === 'game' &&
+            hotspot.interest &&
+            (!game.pet.preferences[hotspot.interest] || game.pet.tired),
+          )
+          return (
             <button
               key={hotspot.id}
               className={`room-hotspot room-hotspot--text ${panel === hotspot.panel ? 'is-active' : ''} ${
-                hotspot.interest && (!game.pet.preferences[hotspot.interest] || game.pet.tired)
-                  ? 'is-reluctant'
-                  : ''
+                reluctant ? 'is-reluctant' : ''
               }`}
               data-hotspot={hotspot.label}
               data-interest={hotspot.interest}
@@ -245,12 +263,13 @@ export function RoomScene({
               onClick={() => {
                 closePetMenu()
                 onArea(hotspot)
+                if (reluctant) onReluctantArea?.(hotspot)
               }}
             >
               {hotspot.buttonLabel}
             </button>
-          ),
-        )}
+          )
+        })}
 
         {!travelling && (
           <MascotSprite
@@ -267,8 +286,8 @@ export function RoomScene({
             onActivate={openPetMenu}
             style={
               {
-                '--pet-x': `${area.petFoot.x}%`,
-                '--pet-y': `${area.petFoot.y}%`,
+                '--pet-x': `${petCenter.x}%`,
+                '--pet-y': `${petCenter.y}%`,
               } as CSSProperties
             }
           />
@@ -282,21 +301,25 @@ export function RoomScene({
             onPanel(nextPanel)
             setMenuOpen(false)
           }}
-          onGreet={() => onTaskEvent({ type: 'pet-greeted' })}
         />
-        {travelling && (
-          <p className="travel-note travel-note--v2">
-            饼狗出门啦
-            <span>回来的时候再见</span>
-          </p>
-        )}
-        {game.activeActivity && (
+        {(game.activeActivity || pomodoroRunning) && (
           <button
-            className="room-activity-return"
+            className="room-activity-return room-activity-cancel"
             type="button"
-            onClick={() => onPanel('activity')}
+            aria-label={game.activeActivity ? '取消当前活动' : '取消当前苹果钟'}
+            onClick={() => {
+              closePetMenu()
+              if (game.activeActivity) {
+                if (onRequestCancelActivity) onRequestCancelActivity()
+                else onPanel('activity')
+                return
+              }
+
+              if (onRequestCancelPomodoro) onRequestCancelPomodoro()
+              else onPanel('reality-work')
+            }}
           >
-            返回
+            <span aria-hidden="true">↩️</span>
           </button>
         )}
         <div

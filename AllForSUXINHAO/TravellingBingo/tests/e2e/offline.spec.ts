@@ -5,14 +5,17 @@ import { openAlbum, openDebugPanel, startGame } from './support/game'
 test.use({ viewport: { width: 390, height: 844 }, deviceScaleFactor: 3 })
 
 async function imageState(image: Locator) {
-  return image.evaluate((element: HTMLImageElement) => ({
-    complete: element.complete,
-    currentPath: new URL(element.currentSrc).pathname,
-    naturalWidth: element.naturalWidth,
-    naturalHeight: element.naturalHeight,
-    srcset: element.getAttribute('srcset'),
-    sizes: element.getAttribute('sizes'),
-  }))
+  return image.evaluate((element: HTMLImageElement) => {
+    const source = element.currentSrc || element.getAttribute('src') || ''
+    return {
+      complete: element.complete,
+      currentPath: source ? new URL(source, document.baseURI).pathname : '',
+      naturalWidth: element.naturalWidth,
+      naturalHeight: element.naturalHeight,
+      srcset: element.getAttribute('srcset'),
+      sizes: element.getAttribute('sizes'),
+    }
+  })
 }
 
 test('高 DPR 安装后可断网重开，收藏卡片与详情回退到预缓存 480 图', async ({

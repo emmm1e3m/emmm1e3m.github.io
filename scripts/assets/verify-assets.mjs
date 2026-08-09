@@ -66,6 +66,7 @@ const friendCatalogPath = resolve(publicRoot, 'data/friends.json')
 const friendPublicAssetRoot = resolve(publicRoot, 'assets/friends')
 const demoVisualsPath = resolve(publicRoot, 'data/demo-visuals.json')
 const demoGameAssetRoot = resolve(publicRoot, 'assets/game')
+const appIconRoot = resolve(publicRoot, 'icons')
 const fontManifestPath = resolve(publicRoot, 'data/font-manifest.json')
 const publicFontAssetRoot = resolve(publicRoot, 'assets/fonts')
 
@@ -90,6 +91,7 @@ const legacyPostcardTitles = new Map([
 ])
 const expectedFriendSourceSha256 =
   '03e90140fdc01a9002f247730e39210063b9a0509900ddc151a27279bf0dd96c'
+const expectedRoomSourceSha256 = '35a62f5b8842df2926e853ca99105f0789baeb7e446717fa5a2dbbedfc0b56f2'
 const expectedFriends = [
   {
     id: 'class-representative-bing',
@@ -165,6 +167,52 @@ async function verifyWebpEntry(
   }
 
   return { digest, metadata, target }
+}
+
+async function verifyPngEntry(
+  entry,
+  { root = publicRoot, label, expectedPrefix, requireAlpha = false },
+) {
+  ensure(entry?.mime === 'image/png', `${label} 的 MIME 不是 image/png`)
+  ensure(Number.isInteger(entry.width) && entry.width > 0, `${label} 的宽度不合法`)
+  ensure(Number.isInteger(entry.height) && entry.height > 0, `${label} 的高度不合法`)
+  ensure(Number.isInteger(entry.byteLength) && entry.byteLength > 0, `${label} 的字节数不合法`)
+  ensure(/^[a-f0-9]{64}$/.test(entry.sha256), `${label} 的 SHA-256 不合法`)
+
+  const target = resolveSafeRelative(root, entry.path, `${label} 路径`, expectedPrefix)
+  ensure(entry.path.endsWith('.png'), `${label} 的扩展名不是 PNG`)
+  const bytes = await readFile(target)
+  const metadata = await sharp(bytes, { failOn: 'warning' }).metadata()
+  ensure(metadata.format === 'png', `${label} 的实际格式不是 PNG`)
+  ensure(
+    metadata.width === entry.width && metadata.height === entry.height,
+    `${label} 的实际宽高与目录不符`,
+  )
+  ensure(bytes.byteLength === entry.byteLength, `${label} 的实际字节数与目录不符`)
+  if (requireAlpha) ensure(metadata.hasAlpha === true, `${label} 缺少透明通道`)
+  const digest = createHash('sha256').update(bytes).digest('hex')
+  ensure(digest === entry.sha256, `${label} 的 SHA-256 与目录不符`)
+  return { digest, metadata, target }
+}
+
+async function verifyDecodedPixelIdentity(sourceTarget, derivedTarget, label) {
+  const [source, derived] = await Promise.all([
+    sharp(sourceTarget, { failOn: 'warning' })
+      .ensureAlpha()
+      .raw()
+      .toBuffer({ resolveWithObject: true }),
+    sharp(derivedTarget, { failOn: 'warning' })
+      .ensureAlpha()
+      .raw()
+      .toBuffer({ resolveWithObject: true }),
+  ])
+  ensure(
+    source.info.width === derived.info.width &&
+      source.info.height === derived.info.height &&
+      source.info.channels === derived.info.channels,
+    `${label} 解码后的画布或通道不一致`,
+  )
+  ensure(source.data.equals(derived.data), `${label} 解码后不是逐像素一致`)
 }
 
 // 每格都必须留出透明安全区，避免裁掉细腿、尾巴或头顶小芽，也避免帧串到相邻单元。
@@ -259,6 +307,15 @@ async function verifyPngSourceEntry(
     `${label} 的实际尺寸与目录不符`,
   )
   ensure(metadata.hasAlpha === requireAlpha, `${label} 的实际透明通道状态不符`)
+  if (requireAlpha) {
+    const { channels } = await sharp(bytes, { failOn: 'warning' }).stats()
+    ensure(
+      entry.alphaRange?.min === channels[3].min && entry.alphaRange.max === channels[3].max,
+      `${label} 的透明度范围与实际图片不符`,
+    )
+  } else {
+    ensure(entry.alphaRange === undefined, `${label} 不应声明透明度范围`)
+  }
   ensure(bytes.byteLength === entry.byteLength, `${label} 的实际字节数与目录不符`)
   const digest = createHash('sha256').update(bytes).digest('hex')
   ensure(digest === entry.sha256, `${label} 的 SHA-256 与目录不符`)
@@ -968,22 +1025,38 @@ ensure(friendImageHashes.size === expectedFriends.length, '好友图鉴派生图
 await verifyExactDirectory(friendPublicAssetRoot, expectedFriendFileNames, '公开好友图鉴素材目录')
 
 const demoVisuals = JSON.parse(await readFile(demoVisualsPath, 'utf8'))
-ensure(demoVisuals.schemaVersion === 1, 'Demo 视觉目录版本不受支持')
+ensure(demoVisuals.schemaVersion === 2, 'Demo 视觉目录版本不受支持')
 ensure(demoVisuals.rights === 'user-confirmed-authorized', 'Demo 视觉目录缺少用户授权口径')
 ensure(
   Array.isArray(demoVisuals.room?.images) && demoVisuals.room.images.length === 2,
   '饼屋必须有两档网页图',
 )
 const demoSourceHashes = new Set()
-verifyGenerationSummary(demoVisuals.room.generation, '饼屋母版', 'precise-object-edit')
-demoSourceHashes.add(
-  await verifyPngSourceEntry(demoVisuals.room.source, {
-    label: '饼屋 ImageGen 母版',
-    expectedPath: 'resources/raw/travelling-bingo/generated/chan-chan-house-v2.png',
-    expectedWidth: 1098,
-    expectedHeight: 1433,
-    requireAlpha: false,
-  }),
+ensure(
+  demoVisuals.room.provenance?.origin === 'user-supplied-master' &&
+    demoVisuals.room.provenance.processingTool === 'sharp' &&
+    demoVisuals.room.provenance.mode === 'proportional-resize-only',
+  '饼屋母版没有记录用户原图与机械缩放来源',
+)
+ensureJsonEqual(
+  demoVisuals.room.provenance.preservation,
+  ['full-canvas', 'alpha-channel', 'original-style'],
+  '饼屋母版的保真约束不完整',
+)
+const verifiedRoomSourceHash = await verifyPngSourceEntry(demoVisuals.room.source, {
+  label: '用户提供的饼屋母版',
+  expectedPath: 'resources/raw/travelling-bingo/generated/chan-chan-house-master.png',
+  expectedWidth: 1098,
+  expectedHeight: 1433,
+  requireAlpha: true,
+})
+ensure(verifiedRoomSourceHash === expectedRoomSourceSha256, '用户提供的饼屋母版摘要不一致')
+demoSourceHashes.add(verifiedRoomSourceHash)
+const roomSourceTarget = resolveSafeRelative(
+  workspaceRoot,
+  demoVisuals.room.source.path,
+  '用户提供的饼屋母版路径',
+  'resources/raw/travelling-bingo/generated/',
 )
 
 const expectedRoomSizes = new Map([
@@ -1005,7 +1078,16 @@ for (const image of demoVisuals.room.images) {
     label: `饼屋 ${image.width}px 图片`,
     expectedPrefix: 'assets/game/',
     requireSha256: true,
+    requireAlpha: true,
   })
+  ensure(image.encoding === 'lossless', `饼屋 ${image.width}px 图片没有声明无损编码`)
+  ensure(
+    image.preservation === 'full-canvas-alpha',
+    `饼屋 ${image.width}px 图片没有声明完整画布与透明通道保真`,
+  )
+  if (image.width === 1098) {
+    await verifyDecodedPixelIdentity(roomSourceTarget, verified.target, '饼屋 1098px 无损派生图')
+  }
   demoVisualHashes.add(verified.digest)
   expectedGameFileNames.add(image.path.split('/').at(-1))
 }
@@ -1046,6 +1128,73 @@ const verifiedMascot = await verifyWebpEntry(mascotSprites.image, {
 })
 demoVisualHashes.add(verifiedMascot.digest)
 expectedGameFileNames.add('bingo-sprites-v2.webp')
+
+const appIcons = demoVisuals.appIcons
+ensure(
+  appIcons?.provenance?.origin === 'existing-mascot-sprite' &&
+    appIcons.provenance.processingTool === 'sharp' &&
+    appIcons.provenance.mode === 'mechanical-crop-resize-composite' &&
+    appIcons.provenance.background === '#fff7ed' &&
+    appIcons.provenance.redraw === false,
+  '应用图标没有记录既有饼狗素材的机械裁切来源',
+)
+ensure(appIcons.sourcePose === 'idle', '应用图标不是从饼狗 idle 姿态裁切')
+ensureJsonEqual(
+  appIcons.sourceCell,
+  { column: 0, row: 0, width: 627, height: 627 },
+  '应用图标的 sprite 单元不一致',
+)
+ensureJsonEqual(
+  appIcons.sourceRegion,
+  { left: 0, top: 0, width: 627, height: 700 },
+  '应用图标没有完整保留越过理论分格的脚部',
+)
+ensureJsonEqual(
+  appIcons.visibleBounds,
+  { left: 127, top: 143, width: 436, height: 496 },
+  '应用图标的可见像素边界不一致',
+)
+ensureJsonEqual(
+  appIcons.crop,
+  { left: 119, top: 135, width: 452, height: 512 },
+  '应用图标的机械裁切边界不一致',
+)
+ensureJsonEqual(appIcons.source, mascotSprites.source, '应用图标没有复用已锁定的饼狗母版')
+
+const expectedAppIcons = new Map([
+  ['favicon-32.png', { size: 32, purpose: 'favicon', subjectScale: 0.88 }],
+  ['apple-touch-icon-180.png', { size: 180, purpose: 'apple-touch', subjectScale: 0.84 }],
+  ['app-icon-192.png', { size: 192, purpose: 'any', subjectScale: 0.84 }],
+  ['app-icon-512.png', { size: 512, purpose: 'any', subjectScale: 0.84 }],
+  ['app-icon-maskable-512.png', { size: 512, purpose: 'maskable', subjectScale: 0.64 }],
+])
+ensure(
+  Array.isArray(appIcons.images) && appIcons.images.length === expectedAppIcons.size,
+  '应用图标目录数量不正确',
+)
+const expectedAppIconFileNames = new Set()
+const appIconHashes = new Set()
+for (const image of appIcons.images) {
+  const filename = image.path?.split('/').at(-1)
+  const expected = expectedAppIcons.get(filename)
+  ensure(expected, `应用图标目录含有未知文件 ${filename ?? '空路径'}`)
+  ensure(
+    image.width === expected.size &&
+      image.height === expected.size &&
+      image.purpose === expected.purpose &&
+      image.subjectScale === expected.subjectScale,
+    `${filename} 的尺寸、用途或角色占比不一致`,
+  )
+  const verified = await verifyPngEntry(image, {
+    label: filename,
+    expectedPrefix: 'icons/',
+    requireAlpha: true,
+  })
+  appIconHashes.add(verified.digest)
+  expectedAppIconFileNames.add(filename)
+}
+ensure(appIconHashes.size === expectedAppIcons.size, '应用图标存在完全重复文件')
+await verifyExactDirectory(appIconRoot, expectedAppIconFileNames, '公开应用图标目录')
 
 const expectedAnimations = new Map([
   [

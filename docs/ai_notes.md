@@ -1,120 +1,162 @@
 # AI 工作笔记
 
-## 当前状态
+## 稳定项目边界
 
-- 分支：`main`。
-- 固定游戏路径：`/AllForSUXINHAO/TravellingBingo/`。
-- 仓库根首页只做跳转入口；`AllForSUXINHAO/` 只容纳 `TravellingBingo/`。
-- V3 领域、存档迁移、内容目录与界面整合已经冻结；发布前仍以最新工作树的完整门禁、生产浏览器回归和线上复核为准。
+- 游戏路径固定为 `/AllForSUXINHAO/TravellingBingo/`；仓库根首页只做入口。
+- 当前业务状态为 `GameStateV4`，`schemaVersion: 4`；新导出封套中的 `gameVersion` 为 `0.4.0-demo.1`。
+- `.bingo` 是权威用户存档，PWA 缓存不是存档。收藏、好友和视频目录是当前版本输入，不复制进存档。
+- 运行时不抓取 B 站收藏夹或微博页面；BVID、作者、发布时间、海报映射和唱片机内置曲目来自构建期静态目录。
 
-## 已确认并已写入代码的 V3 领域合同
+## V4 状态与迁移不变量
 
-### 状态与计时
+应用目录 `AllForSUXINHAO/TravellingBingo/` 下的关键路径：
 
-- 业务 payload 为 `GameStateV3`，`schemaVersion: 3`。`.bingo` 外层文件格式仍使用独立的封套版本，不能把二者混为一个字段。
-- `profile` 新增 `displayName` 和 `companionDays`。用户名去除首尾空白，允许 1–16 个 Unicode 字符；新游戏陪伴天数从 0 开始。
-- `ActivityKind` 为 `travel | stream | trend | music | rest`。五类活动默认时长均为 `112_000 ms`。
-- 活动保存 `startedAt`、`endsAt`、`rewardSeed`、完整 `rewardPlan`、本次补给和幸运苹果快照。页面和导入逻辑只用绝对 `endsAt` 判断 running / ready，不以当前默认时长重算旧活动。
-- `activity/claim` 是陪伴天数唯一递增点，每次成功领取恰好 `+1`；打开面板、房间移动和普通任务事件不增加天数。
-- `activity/cancel` 可取消 running 或 ready 的当前活动。成功取消清空活动，但不增加陪伴天数、不退还已扣补给或幸运苹果，也不回滚开始活动时已经推进的奖励随机序列。
-- `rest` 和 `music` 不需要补给；`travel / stream / trend` 在开始时扣除对应库存。所有开始操作必须先通过“无其他活动、意愿、库存、时长与目录”检查。
+- `src/domain/game/types.ts`：`GameStateV1`–`GameStateV4`、动作与 effect。
+- `src/domain/game/migrateGameStateV1.ts`、`migrateGameStateV2.ts`、`migrateGameStateV3.ts`：逐代迁移。
+- `src/app/gameStateSchema.ts`：严格历史 schema 联合与 V4 导出 schema。
+- `src/app/App.tsx`：导入顺序、PWA 保存保护、通知、更新检查和守候音频接线。
 
-### 意愿与位置
+导入顺序固定为：
 
-- V3 意愿键为 `travel | computer | music`；`stream` 与 `trend` 都映射到 `computer`，`rest` 不受意愿拒绝。
-- DEBUG 调整时长与概率，不强制改写意愿。
-- 开始活动后位置为：旅行 `outside`，刷播/冲热 `computer`，弹琴 `piano`，睡觉 `bed`。旅行取消或领取后回到 `door`，其余活动停留在对应区域。
-- 睡觉完成生成新一轮意愿并清除疲劳；日夜转场只属于 UI 瞬时效果，不写进存档。
+1. 按文件原始 payload 校验 SHA-256 摘要。
+2. 用对应的严格 V1、V2、V3 或 V4 schema 解析。
+3. 显式迁移至 V4。
+4. 规范未来活动使用的平衡配置。
+5. 用当前目录协调可安全修复的旧引用。
+6. 执行最终语义校验后才进入旅程。
 
-### 奖励与概率
+必须保持：
 
-- `DEFAULT_GAME_BALANCE.probabilities`：`postcard: 0.65`、`millionShot: 0.4`、`siteFirst: 0.1`、`travelFriend: 0.2`、`musicFriend: 0.2`。
-- 幸运苹果对当次收藏掉落增加 `0.20`，苹果旅行便当对当次旅行遇友增加 `0.15`；均用 `Math.min(1, base + bonus)` 封顶。
-- 旅行先判 `travelFriend`。命中好友后写入 `friendId` 与固定道具 `giftItemId`，不再判明信片；没有命中好友时才以明信片概率继续判定。新 V3 活动严格保证旅行好友与明信片互斥。
-- 旅行好友赠送固定道具，不赠 🍎：课代饼→普通旅行便当，三好兔→苹果旅行便当，心好兔→幸运苹果，信号狗→信号耳机，饼哩饼哩→热度工具箱。
-- 弹琴只从 `knownFriendIds` 选择来访者；尚未认识好友时即使概率为 100% 也不会出现来访。固定赠礼为：课代饼 2🍎、三好兔 3🍎、心好兔 4🍎、信号狗 3🍎、饼哩饼哩 2🍎。
-- 睡觉的奖励计划固定为 `baseApples: 1`，领取时获得 1🍎、陪伴天数 `+1` 并刷新意愿。
-- 朋友记录持久化 `firstMetAt / lastMetAt / encounterCount / totalGiftApples`。旅行道具不计入 `totalGiftApples`，音乐赠礼计入。
-- 明信片和百万直拍过滤已拥有 ID 后随机选取；全站第一从 `siteFirstChronology` 找第一个未拥有 ID。三类都不重复。
-- V2 进行中旅行可能历史上同时计划朋友与明信片；迁移必须忠实保留旧奖励快照。互斥规则只约束新开始的 V3 活动，不能篡改已签发的旧活动。
+- 迁移不重算 `activeActivity.startedAt`、`endsAt`、`rewardSeed` 或 `rewardPlan`。
+- 新 V4 活动默认 `72_000 ms`；`112_000 ms` 只作为 V2/V3 历史默认和旧档兼容常量保留。
+- 收藏存档只保存已拥有 ID、首获时间与重复次数，不保存目录总数、全站第一指针或分类解锁数组。
+- 好友存档只保存已遇见记录，不保存好友目录总数或图片元数据。
+- V4 导入可清除已经不再拥有的苹果钟明信片背景，但不能借协调步骤掩盖非法奖励组合、未知奖励 ID 或被篡改的活动时间。
+- V4 任务板不再签发 `greet-bingo`；旧板迁移时用当前任务规则替换退役任务，并只推进任务随机序列。
 
-### 任务与可验证事件
+`GameStateV4` 新增的持久字段：
 
-- 任务板仍保持恰好三条，单条完成立即发放其奖励；整板完成后原子刷新，旧板最后一个事件不继续推进新板。
-- 电子琴事件是 `piano-note-played`；唱片机与收藏详情内嵌 B 站 iframe 只能可靠记录 `record-player-opened` / `collection-player-opened`。跨域播放器不能宣称视频真的播放或播放完毕。
-- 任务不能把开始一个有消耗的活动同时设计为赚取同一货币的动作；睡觉与音乐好友赠礼属于各自完整读条结果，不是补给消费返现。
+```text
+world: game | reality
+player.effects.vitality
+reality.activeStay / pendingSettlement / todos / pomodoro
+musicPlayer.playlists / order / activePlaylistId / currentBvid
+musicPlayer.currentIndex / loopMode / startAtSeconds / autoplay
+```
 
-## 存档与迁移
+当前面板、弹窗焦点、琴键按下状态、奖励弹窗和布局动画仍是 UI 瞬时状态，不写入存档。
 
-- 新导出使用 `gameVersion: 0.3.0-demo.1` 和 V3 业务 payload；摘要在迁移前针对原始 payload 校验。
-- V1 与 V2 都使用严格历史 schema 读取，然后迁移为 V3。历史档默认用户名为“你”，陪伴天数由历史 `statistics.claimed` 的旅行、刷播和冲热领取次数合计推导。
-- V1/V2 进行中活动保留原始 `startedAt`、`endsAt`、`rewardSeed` 和奖励结果；迁移、余额规范化或之后调整默认时长都不得改写旧 `endsAt`。
-- V3 往返保留用户名、陪伴天数、好友图鉴、任务、意愿、调试平衡、随机序列与进行中活动。
-- 收藏推进只持久化拥有项；不保存目录总数、全站第一下一指针或分类解锁列表。好友分类同理由 `friends` 记录派生。
-- 冻结回归夹具位于 `src/infrastructure/persistence/fixtures/`，覆盖已发布 V1 普通档、V2 进行中档与 V2 DEBUG 档。
+## 活动、意愿与魔法
 
-## 内容与素材现状
+- 活动种类仍为 `travel | stream | trend | music | rest`。开始时签发完整奖励计划，领取成功才让 `companionDays + 1`。
+- 苹果钟也是陪伴日来源：运行中的 session 首次在 `clock/tick` 或截止后的取消请求中被权威完成时，`companionDays + 1`。同一已完成 session 的重复 tick、未到点 tick、截止前取消、普通现实停留结算与待办增删改/到期通知都不加天。
+- `activity/cancel` 使用当前 `runId`；running 与 ready 都可取消。取消不计一天、不发奖励、不返还已经消耗的补给或幸运苹果。
+- 意愿键为 `travel | computer | music`；刷播和冲热共享 `computer`。睡觉不受意愿拒绝。
+- 灰色活动入口使用 `aria-disabled` 表达不愿意，但保留点击反馈；没有活力魔法时只显示拒绝，不能进入普通启动确认。
+- ⚡瓶装速度魔法价格 8🍎。只允许在当前活动仍为 running 时使用，消耗一瓶并把该活动的 `endsAt` 设为使用时间；已经 ready 时不消耗。
+- ✨瓶装活力魔法价格 12🍎。使用后立即把三组意愿设为真、清除疲劳；效果持续七个由“饼屋活动成功领取”或“苹果钟首次到点完成”推进的相伴日，不是七个自然日。苹果钟推进到第七日时同样清除效果并按偏好序列恢复当日意愿；已有有效效果或所有意愿本就可用时拒绝并不消耗。
+- 冰箱共有七种道具，所有条目通过 `ITEM_COPY` 提供 emoji；金额只使用 `N🍎`。
 
-- `public/data/postcards.json`：100 项，来自用户指定的 Bilibili Toy 归档；选择清单为人工联系表筛选，公开 480 / 960 WebP。
-- `public/data/million-shot-posters.json`：30 项，每项附静态 `video` 元数据。
-- `public/data/site-firsts.json`：8 项，每项附静态 `video` 元数据；chronology 从 Dynamite 到 POWER。
-- `public/data/friends.json`：5 位好友，公开图位于 `public/assets/friends/`。
-- `public/data/video-catalog.json`：锁定百万直拍收藏夹 `1130054521`、全站第一收藏夹 `3489626721` 的静态快照、海报映射和唱片机曲目。运行时不调用收藏夹 API；外链 iframe 使用 BVID。
-- `Survivors`（`million-shot-108`）已换成正确的第二张红白纪念海报，公开尺寸为 480 × 720 与 800 × 1200。
-- 房间唯一母版仍为 `resources/raw/travelling-bingo/generated/chan-chan-house-v2.png`（1098 × 1433），严格基于用户 `image-1` 的竖版构图。
-- 好友母版为 `resources/raw/travelling-bingo/generated/friend-atlas-v3.png`，公开图从该母版裁切；角色身份、四肢完整性和卡片裁切已做联系表视觉检查。
-- 字体源位于 `resources/raw/travelling-bingo/fonts/`；公开页面只发布字符子集 WOFF2。
+## 奖励与收藏
 
-## V3 UI 冻结契约（并发整合后再验收）
+- 默认概率：明信片 0.65、百万直拍 0.4、全站第一 0.1、旅行遇友 0.2、音乐好友 0.2。
+- 旅行先判朋友；命中后只签发朋友与固定道具，不再判明信片。没有朋友时才判明信片。
+- 音乐好友只能从活动开始时已经认识的好友集合中选择，不会解锁新好友；固定赠送 2–4🍎。
+- 明信片和百万直拍从未拥有集合随机选择；全站第一按 `siteFirstChronology` 第一个未拥有项选择。
+- DEBUG 的“一键全收集”和“一键撤销全部收集”同时处理三类收藏与全部好友；不维护预制全收集存档。
+- 收藏详情整体比例为桌面或横屏 16:9、手机竖屏 9:16；卡片和详情预览使用 `cover`，点击图片后用 `contain` 完整展示并提供下载。
 
-### 网格与待机
+## 房间与 UI 锚点
 
-- 顶栏和内容共用同一左右页面 inset：房间左边对齐顶栏左边，信息栏右边对齐顶栏右边。
-- 顶栏到内容的纵向 gap 与房间到信息栏的横向 gap 使用同一个 token，约为旧横向 gap 的一半；不要把“gap 减半”误解为页面 inset 减半。
-- `PanelId` 允许 `null`。`null` 是待机态：信息栏不渲染，房屋横向铺展。设施激活后房屋收窄并左移，信息栏从右侧出现。
-- 点击房间无热点空白或按 Escape 回到待机；点击饼狗和设施不应冒泡触发收起。
+唯一母版：`resources/raw/travelling-bingo/generated/chan-chan-house-master.png`，1098 × 1433 RGBA。应用目录下的公开文件名保留为：
 
-### 顶栏与文字
+```text
+public/assets/game/chan-chan-house-v2-768.webp
+public/assets/game/chan-chan-house-v2-1098.webp
+```
 
-- 顶栏中心固定为“今天也要 / 好好吃苹果”，保持真正居中并适当放大。
-- 右侧显示“{displayName}陪伴饼狗已经 N 天”、`N🍎`、`🖼️` 与 DEBUG。货币的可见数值一律使用 `N🍎`，不出现“补充·X个苹果”“带回 X 个苹果”或“苹果只在游戏里流通”。
-- 冰箱动作使用“为冰箱补充”；衣架面板正文使用“什么样的搭配最合适呢？”。
-- 房间设施按钮和收藏分类标签用可画乐融融；正文、小型控件和日期用可画奶糖体，日期中的“月”不能落到错误字体。
+公开房图只做等比缩放和无损 WebP 编码，不裁切、不重绘。`roomConfig.ts` 以母版像素保存饼狗中心点：
 
-### 活动、位置与结果
+| 位置         |        中心点 |
+| ------------ | ------------: |
+| 床上         |  `(225, 300)` |
+| 二楼电脑前   |  `(504, 409)` |
+| 衣架前       |  `(387, 675)` |
+| 电子琴前     | `(257, 1103)` |
+| 一楼电脑前   | `(420, 1172)` |
+| 冰箱前       |  `(633, 951)` |
+| 唱片机前     | `(783, 1030)` |
+| 收藏墙前     | `(1053, 673)` |
+| 门口         | `(980, 1176)` |
+| 默认房间中央 | `(620, 1180)` |
 
-- 每类读条开始前在信息栏二次确认；开始后左下角显示取消/返回按钮。取消必须明确提示不返还已经用掉的补给。
-- 不再显示“打开冰箱”“去电脑前”底部捷径；空闲信息栏展示三组意愿（旅行、电脑、音乐）。拒绝按钮暗淡但可点击，点击显示领域拒绝消息。
-- 饼狗脚底锚点必须和床铺、电脑、电子琴、房门严格对齐；睡觉不能落在上下层走道。旅行时不渲染饼狗 DOM。
-- 奖励对话框顶部角色图只显示当前帧，不得泄漏上一张 sprite；明信片结果不显示泛化的“活动完成”。
-- 奖励与详情隐藏可见滚动条，但仍保留滚轮、触控与键盘滚动能力。
+交互合同：
 
-### 房间功能
+- 空白点击进入 `status` 概览，显示当前任务和三组意愿；不再依赖房屋展开/收缩动画。
+- 信息栏内容切换使用 keyed 内容入场；信息栏本身不做展开/收起布局动画。
+- 信息栏顶行左侧是当前语境标签，右侧是“收起信息栏”；活动进度标签使用“这一次 Bingo”。
+- 活动中左下 `↩️` 只发起带 token 的取消确认，不能直接清空状态。
+- 右上 `ℹ️` 打开简洁说明，角标精确为“铲铲饼屋的小纸条”；它不扩写为长篇的设施与价格手册，详细价格只留在冰箱。右下按钮切换游戏/现实维度。
+- 顶栏中心固定单行“今天也要好好吃苹果”；右侧状态区显示饼狗当前活动/活力、守候音频与检查新布置。
+- 网页 favicon、Apple Touch Icon、PWA 普通图标和 maskable 图标均从既有饼狗 idle 帧机械裁切生成。
 
-- 右上角问号说明设施、读条、🍎 获得和 🍎 花费，文案保持世界内表达。
-- 电子琴覆盖两个八度，共 24 个半音；弹琴读条期间保持可交互，并通过 Web Audio 响应鼠标、触摸与键盘。
-- 唱片机使用 `ContentCatalog.recordPlayerVideos` 选择静态目录曲目，iframe 地址使用 `https://player.bilibili.com/player.html?bvid=...&p=1&autoplay=0&danmaku=0`。
-- 百万直拍和全站第一详情从条目 `metadata.video` 显示标题、作者、发布时间、BVID 与内嵌播放器；不维护另一套手写映射。
-- 收藏墙增加“好朋友们”；只在 `friends` 非空时显示。朋友相遇结果使用真实好友图，并显示本次道具或 🍎 赠礼。
+## 三排电子琴
 
-## 关键路径
+- `PIANO_NOTE_IDS` 与 `PIANO_NOTES` 覆盖 C4–B6，三个完整八度、36 个半音。
+- 界面分三排；中间一排从 C5 开始。物理键盘只映射白键：C4 排 `Z–M`、C5 排 `A–J`、C6 排 `Q–U`。
+- 鼠标、触摸和键盘都能触发琴键；黑键没有物理键盘映射。
+- Web Audio 使用多谐波和衰减包络模拟钢琴音色，首次交互后才创建或恢复音频上下文。
+- 弹琴读条与乐器交互彼此独立；读条进行时仍能演奏。
 
-- 完整实现方案：`docs/旅行饼狗网页完整实现方案.md`
-- 原始纲要：`docs/specs/旅行饼狗开发纲要.md`
-- Web 应用：`AllForSUXINHAO/TravellingBingo/`
-- V3 领域状态与调参：`AllForSUXINHAO/TravellingBingo/src/domain/`
-- 页面、房间与动画：`AllForSUXINHAO/TravellingBingo/src/features/`
-- 存档：`AllForSUXINHAO/TravellingBingo/src/infrastructure/persistence/`
-- 内容 schema 与合并目录：`AllForSUXINHAO/TravellingBingo/src/content/`
-- 素材母版：`resources/raw/travelling-bingo/`
-- 素材和站点脚本：`scripts/`
-- Pages 工作流：`.github/workflows/static.yml`
+## 持久 B 站播放器
 
-## 待最终验证
+- `BilibiliPlayerProvider` 在 `GameHome` 外层持有唯一生产 iframe；信息栏和收藏详情只发送播放请求。
+- 每次选曲固定请求 `autoplay=1`，详情打开即请求播放。收起信息栏或切换维度不卸载 iframe；“停止并关闭”才移除当前请求。
+- 状态层保存当前 BV、用户播放列表、列表顺序、主动设置的起播秒数和列表/单曲/随机模式。
+- 唱片机信息栏已挂载 `BilibiliPlaylistPanel`：可在内置“百万直拍精选”和已保存曲库间切换；从内置曲库提交时创建并选中新列表，从自定义曲库提交时更新现有列表。
+- `parseBilibiliPlaylistInput` 接受逐行 BV 号或完整 Bilibili 视频链接，拒绝无 BV 的短链接并去重；名称、BV 列表、选择与播放设置通过领域动作持久化。
+- B 站 iframe 跨域；父页面不能可靠读取暂停、真实进度、结束或实际自动播放结果。因此：
+  - 任务事件只代表用户请求打开播放器；
+  - 起播秒数只是 URL 请求，不是父页面可校准的进度条；
+  - 播放模式只决定玩家主动上一首/下一首时的选曲；
+  - 不伪造视频结束后的自动续播。
 
-1. 等并发 UI、内容和 App 接口稳定后，检查 `git diff`，确认没有代理覆盖或漏接 `friends` / `videosByBvid` / `recordPlayerVideos`。
-2. 运行 `npm run verify`、`npm run build`、`npm run site:assemble`、`npm run site:verify`。
-3. 运行桌面和移动端 Playwright，覆盖待机展开、设施收缩、二次确认、取消无返还、睡觉床铺位置、电子琴、播放器和好友结果。
-4. 浏览器验证旅行朋友与明信片互斥、音乐只召唤已认识好友、65%/10% 概率边界和 DEBUG 不强制意愿。
-5. 对 V1/V2 冻结夹具、V3 往返、旧活动绝对 `endsAt` 和内容目录扩充做完整回归。
-6. 本地完成后再提交、推送与部署；上线后重新打开根入口和游戏路径，检查网络、PWA 缓存与控制台。
+## 现实生活维度
+
+- `reality/enter` 记录绝对 `enteredAt`；`reality/leave` 计算完整十分钟数并生成 `pendingSettlement`。
+- `reality/settle` 中 `serious` 获得全额，`not-serious` 获得 `floor(full / 2)`；未完成十分钟时全额为 0。
+- 二楼“数据”页显示刷播、冲热的精确入口说明、待开发操作步骤和运行组链接 `https://www.weibo.com/u/7878664767`。
+- 一楼“工作”页提供 5、25、50 分钟苹果钟、已解锁明信片背景与待办 CRUD。待办、背景、绝对结束时间和通知签发标记都持久化。
+- `clock/tick` 按绝对时间完成苹果钟和到期待办，并签发稳定 `notificationId` 的 effect。只有首次完成到点苹果钟会原子推进一天陪伴天数与活力状态；单独的待办到期不推进。App 只在已有权限时调用 `Notification`；否则使用页内提示。
+
+## 浏览器能力边界
+
+- 通知权限只能在用户点击后请求。当前实现使用页面计时器并在 `focus` / `visibilitychange` 时补检查；页面完全关闭、系统休眠或浏览器冻结时不能保证准点系统通知。
+- “检查新布置”调用当前 Service Worker registration 的 `update()`。无 Service Worker、未注册或网络失败时显示对应状态；检查本身不强制安装更新。
+- 10 Hz、gain 0.01 的守候音频只在开始或确认导入旅程的用户手势中创建，App 生命周期内复用；关闭时将增益归零并 suspend。它不能绕过浏览器或操作系统的后台冻结策略。
+- 有声自动播放由第三方 iframe 与浏览器策略共同决定。代码只能发请求并提供来源页回退，不能承诺声音一定开始。
+
+## 关键目录与验证入口
+
+```text
+AllForSUXINHAO/TravellingBingo/src/domain/             # 领域、迁移、现实与播放器持久状态
+AllForSUXINHAO/TravellingBingo/src/app/                # 应用接线、导入导出、通知、更新
+AllForSUXINHAO/TravellingBingo/src/features/game/      # 房间、信息栏、HUD、设施
+AllForSUXINHAO/TravellingBingo/src/features/player/    # 持久播放器与列表解析
+AllForSUXINHAO/TravellingBingo/src/features/reality/   # 数据、苹果钟与待办 UI
+AllForSUXINHAO/TravellingBingo/src/features/album/     # 收藏与详情
+resources/raw/travelling-bingo/                        # 授权原图、生成母版和字体源
+scripts/                                               # 素材、目录、站点与验证脚本
+```
+
+完整验证顺序：
+
+```powershell
+npm run verify
+npm run build
+npm run site:assemble
+npm run site:verify
+npm run test:e2e
+```
+
+`npm run verify` 不包含 Playwright；浏览器 E2E 必须单独执行。测试播放器时只能断言请求 URL、iframe 生命周期、任务事件和持久状态，不能断言跨域 iframe 的真实播放状态。

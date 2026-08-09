@@ -1,0 +1,168 @@
+.modal-backdrop.reward-backdrop--v4 {
+  --reward-viewport-gap: clamp(6px, 2dvh, 16px);
+  padding: var(--reward-viewport-gap);
+  overflow: hidden;
+}
+
+.reward-card.reward-card--v4 {
+  box-sizing: border-box;
+  display: grid;
+  width: min(460px, 100%);
+  max-height: calc(100dvh - 32px);
+  justify-items: center;
+  gap: clamp(0.32rem, 1.2dvh, 0.58rem);
+  padding: clamp(0.65rem, 1.8dvh, 0.95rem) clamp(0.72rem, 2.4vw, 1rem);
+  overflow: hidden;
+  overflow-y: hidden;
+}
+
+.reward-card.reward-card--v4 .reward-mascot {
+  width: clamp(68px, 12dvh, 88px);
+  margin: -0.2rem auto -0.35rem;
+}
+
+.reward-card.reward-card--v4 > .paper-tag,
+.reward-card.reward-card--v4 h2,
+.reward-card.reward-card--v4 .reward-empty,
+.reward-card.reward-card--v4 .reward-apples,
+.reward-card.reward-card--v4 > .paper-button {
+  margin-block: 0;
+}
+
+.reward-card.reward-card--v4 h2 {
+  font-size: clamp(1.16rem, 3.8dvh, 1.48rem);
+  line-height: 1.15;
+}
+
+.reward-card.reward-card--v4 .reward-collectible,
+.reward-card.reward-card--v4 .reward-friend {
+  box-sizing: border-box;
+  width: 100%;
+  min-width: 0;
+}
+
+.reward-card.reward-card--v4 .reward-collectible {
+  grid-template-columns: 120px minmax(0, 1fr);
+  gap: 0.7rem;
+  padding: 0.55rem;
+}
+
+.reward-collectible__media,
+.reward-friend__media {
+  position: relative;
+  display: block;
+  overflow: hidden;
+  contain: paint;
+  isolation: isolate;
+  border-radius: 11px;
+  background: #f2dfca;
+}
+
+.reward-collectible__media {
+  width: 120px;
+  aspect-ratio: 3 / 4;
+}
+
+.reward-collectible__media--postcard {
+  aspect-ratio: 4 / 3;
+}
+
+.reward-collectible__media--site-first {
+  aspect-ratio: 5 / 7;
+}
+
+.reward-card.reward-card--v4 .reward-collectible__media > .collectible-picture {
+  display: block;
+  width: calc(100% + 2px);
+  height: calc(100% + 2px);
+  max-width: none;
+  margin: -1px;
+  object-fit: cover;
+  object-position: center;
+  border-radius: 0;
+  background: transparent;
+}
+
+.reward-card.reward-card--v4 .reward-friend {
+  grid-template-columns: 96px minmax(0, 1fr);
+  gap: 0.7rem;
+  padding: 0.55rem;
+}
+
+.reward-friend__media {
+  width: 96px;
+  aspect-ratio: 1;
+}
+
+/* 好友原图由母版格位裁出；向内收 2% 可消除格位边线，同时保持 cover。 */
+.reward-card.reward-card--v4 .reward-friend__media > img {
+  display: block;
+  width: 104%;
+  height: 104%;
+  max-width: none;
+  margin: -2%;
+  object-fit: cover;
+  object-position: center;
+  border-radius: 0;
+  background: transparent;
+}
+
+.reward-card.reward-card--v4 > .paper-button {
+  min-height: 44px;
+}
+
+@media (max-width: 420px), (max-height: 560px) {
+  .reward-card.reward-card--v4 {
+    gap: 0.3rem;
+    padding: 0.5rem 0.62rem;
+  }
+
+  .reward-card.reward-card--v4 .reward-mascot {
+    width: 56px;
+    margin-bottom: -0.3rem;
+  }
+
+  .reward-card.reward-card--v4 h2 {
+    font-size: 1.1rem;
+  }
+
+  .reward-card.reward-card--v4 .reward-collectible,
+  .reward-card.reward-card--v4 .reward-friend {
+    grid-template-columns: 82px minmax(0, 1fr);
+    gap: 0.48rem;
+    padding: 0.42rem;
+  }
+
+  .reward-collectible__media,
+  .reward-friend__media {
+    width: 82px;
+  }
+
+  .reward-card.reward-card--v4 > .paper-button {
+    min-height: 40px;
+    padding-block: 0.48rem;
+  }
+}
+
+@media (max-height: 420px) {
+  .reward-card.reward-card--v4 .reward-mascot,
+  .reward-card.reward-card--v4 > .paper-tag {
+    display: none;
+  }
+
+  .reward-card.reward-card--v4 {
+    gap: 0.24rem;
+    padding-block: 0.35rem;
+  }
+
+  .reward-card.reward-card--v4 .reward-collectible,
+  .reward-card.reward-card--v4 .reward-friend {
+    grid-template-columns: 72px minmax(0, 1fr);
+    padding: 0.32rem;
+  }
+
+  .reward-collectible__media,
+  .reward-friend__media {
+    width: 72px;
+  }
+}

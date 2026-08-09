@@ -1,4 +1,5 @@
 import { createInitialGameState } from './createGameState'
+import { gameStateV4Schema } from './migrateGameStateV3'
 import type { ActivityRun, CollectionCatalog, GameState } from './types'
 import { validateImportedGameState } from './validateImportedGameState'
 
@@ -142,11 +143,172 @@ describe('导入存档与当前收藏目录的一致性', () => {
 
   it('拒绝三条任务都已完成却没有自动刷新的停滞任务板', () => {
     const state = createInitialGameState({ now: 1_000, seed: 'stalled-task-board' })
-    for (const task of state.tasks.active) task.progress = task.target
+    state.tasks.active = [
+      {
+        instanceId: 'completed-backpack',
+        taskId: 'open-backpack',
+        assignedAt: 1_000,
+        progress: 1,
+        target: 1,
+        rewardApples: 1,
+        seenKeys: ['opened'],
+      },
+      {
+        instanceId: 'completed-room',
+        taskId: 'room-stroll',
+        assignedAt: 1_000,
+        progress: 3,
+        target: 3,
+        rewardApples: 2,
+        seenKeys: ['bed', 'computer', 'wardrobe'],
+      },
+      {
+        instanceId: 'completed-piano',
+        taskId: 'piano-time',
+        assignedAt: 1_000,
+        progress: 1,
+        target: 1,
+        rewardApples: 1,
+        seenKeys: ['piano:C4'],
+      },
+    ]
 
     expect(validateImportedGameState(state, catalog)).toMatchObject({
       ok: false,
       code: 'TASK_BOARD_STALLED',
+    })
+  })
+
+  it('拒绝形状合法但进度与 seenKeys 不一致的 crafted V4 任务板', () => {
+    const state = createInitialGameState({ now: 1_000, seed: 'crafted-task-progress' })
+    const task = state.tasks.active.find((entry) => entry.target === 1)
+    if (task === undefined) throw new Error('测试任务板至少应包含一项目标为 1 的任务')
+    task.progress = 0
+    task.seenKeys = ['opened']
+
+    expect(gameStateV4Schema.safeParse(state).success).toBe(true)
+    expect(validateImportedGameState(state, catalog)).toMatchObject({
+      ok: false,
+      code: 'TASK_BOARD_INVALID',
+    })
+  })
+
+  it('拒绝唯一 key 已耗尽却仍未达到历史 target 的 crafted V4 任务板', () => {
+    const state = createInitialGameState({ now: 1_000, seed: 'crafted-exhausted-task' })
+    state.tasks.active = [
+      {
+        instanceId: 'crafted-open-backpack',
+        taskId: 'open-backpack',
+        assignedAt: 1_000,
+        progress: 1,
+        target: 2,
+        rewardApples: 1,
+        seenKeys: ['opened'],
+      },
+      {
+        instanceId: 'crafted-room-stroll',
+        taskId: 'room-stroll',
+        assignedAt: 1_000,
+        progress: 0,
+        target: 3,
+        rewardApples: 2,
+        seenKeys: [],
+      },
+      {
+        instanceId: 'crafted-piano-time',
+        taskId: 'piano-time',
+        assignedAt: 1_000,
+        progress: 0,
+        target: 1,
+        rewardApples: 1,
+        seenKeys: [],
+      },
+    ]
+
+    expect(gameStateV4Schema.safeParse(state).success).toBe(true)
+    expect(validateImportedGameState(state, catalog)).toMatchObject({
+      ok: false,
+      code: 'TASK_BOARD_INVALID',
+    })
+  })
+
+  it('逐项拒绝被伪造的任务计数、实例与触发组，同时保留历史目标奖励快照', () => {
+    const mutateCases: Array<(state: GameState) => void> = [
+      (state) => {
+        state.tasks.active[0].progress = state.tasks.active[0].target + 1
+      },
+      (state) => {
+        state.tasks.active[0].progress = 1
+        state.tasks.active[0].seenKeys = ['same', 'same']
+      },
+      (state) => {
+        state.tasks.active[1].instanceId = state.tasks.active[0].instanceId
+      },
+      (state) => {
+        state.tasks.active[1] = {
+          ...structuredClone(state.tasks.active[0]),
+          instanceId: state.tasks.active[1].instanceId,
+        }
+      },
+    ]
+
+    for (const [index, mutate] of mutateCases.entries()) {
+      const state = createInitialGameState({ now: 1_000, seed: `crafted-task-${index}` })
+      mutate(state)
+      expect(validateImportedGameState(state, catalog)).toMatchObject({
+        ok: false,
+        code: 'TASK_BOARD_INVALID',
+      })
+    }
+
+    const historicalSnapshot = createInitialGameState({ now: 1_000, seed: 'historical-task' })
+    historicalSnapshot.tasks.active = [
+      {
+        instanceId: 'historical-room',
+        taskId: 'room-stroll',
+        assignedAt: 1_000,
+        progress: 1,
+        target: 3,
+        rewardApples: 9,
+        seenKeys: ['bed'],
+      },
+      {
+        instanceId: 'historical-backpack',
+        taskId: 'open-backpack',
+        assignedAt: 1_000,
+        progress: 0,
+        target: 1,
+        rewardApples: 7,
+        seenKeys: [],
+      },
+      {
+        instanceId: 'historical-piano',
+        taskId: 'piano-time',
+        assignedAt: 1_000,
+        progress: 0,
+        target: 1,
+        rewardApples: 5,
+        seenKeys: [],
+      },
+    ]
+    expect(validateImportedGameState(historicalSnapshot, catalog)).toEqual({ ok: true })
+  })
+
+  it('拒绝 V4 任务板中已经退役且无法继续完成的任务', () => {
+    const state = createInitialGameState({ now: 1_000, seed: 'crafted-retired-task' })
+    state.tasks.active[0] = {
+      instanceId: 'retired-greeting',
+      taskId: 'greet-bingo',
+      assignedAt: 1_000,
+      progress: 0,
+      target: 1,
+      rewardApples: 1,
+      seenKeys: [],
+    }
+
+    expect(validateImportedGameState(state, catalog)).toMatchObject({
+      ok: false,
+      code: 'TASK_BOARD_INVALID',
     })
   })
 

@@ -57,6 +57,20 @@ if (unexpectedEntries.length > 0 || allForSuxinhaoEntries.length !== 1) {
 }
 
 const serviceWorker = await readFile(resolve(gameRoot, 'sw.js'), 'utf8')
+const webManifest = JSON.parse(await readFile(resolve(gameRoot, 'manifest.webmanifest'), 'utf8'))
+const expectedManifestIcons = [
+  { src: 'icons/app-icon-192.png', sizes: '192x192', type: 'image/png', purpose: 'any' },
+  { src: 'icons/app-icon-512.png', sizes: '512x512', type: 'image/png', purpose: 'any' },
+  {
+    src: 'icons/app-icon-maskable-512.png',
+    sizes: '512x512',
+    type: 'image/png',
+    purpose: 'maskable',
+  },
+]
+if (JSON.stringify(webManifest.icons) !== JSON.stringify(expectedManifestIcons)) {
+  throw new Error('Web App Manifest 没有精确引用饼狗 PNG 应用图标')
+}
 const precacheMatch = serviceWorker.match(/precacheAndRoute\((\[[\s\S]*?\])(?:,|\))/u)
 if (!precacheMatch) throw new Error('无法读取 Service Worker 预缓存清单')
 
@@ -80,8 +94,17 @@ if (duplicatePrecacheUrls.length > 0) {
 }
 
 const precacheByUrl = new Map(precacheEntries.map((entry) => [entry.url, entry]))
-if (!precacheByUrl.has('icons/app-icon.svg')) {
-  throw new Error('Service Worker 缺少应用图标预缓存项')
+const expectedIconFiles = [
+  'icons/app-icon-192.png',
+  'icons/app-icon-512.png',
+  'icons/app-icon-maskable-512.png',
+  'icons/apple-touch-icon-180.png',
+  'icons/favicon-32.png',
+]
+for (const iconPath of expectedIconFiles) {
+  if (!precacheByUrl.has(iconPath)) {
+    throw new Error(`Service Worker 缺少应用图标预缓存项：${iconPath}`)
+  }
 }
 
 const fixedAssetEntries = precacheEntries.filter(
@@ -89,6 +112,7 @@ const fixedAssetEntries = precacheEntries.filter(
     entry.url.startsWith('assets/game/') ||
     entry.url.startsWith('assets/fonts/') ||
     entry.url.startsWith('assets/friends/') ||
+    entry.url.startsWith('icons/') ||
     entry.url === 'data/friends.json' ||
     entry.url === 'data/video-catalog.json' ||
     (entry.url.startsWith('assets/collectibles/') && entry.url.endsWith('-480.webp')),
@@ -151,7 +175,7 @@ function isAllowedGameFile(relativePath) {
       relativePath,
     ) ||
     /^data\/[a-z0-9][a-z0-9-]*\.json$/u.test(relativePath) ||
-    relativePath === 'icons/app-icon.svg'
+    /^icons\/[a-z0-9][a-z0-9-]*\.png$/u.test(relativePath)
   )
 }
 
@@ -196,6 +220,7 @@ for (const relativePath of publishedGameFiles.filter(
     entry.startsWith('assets/game/') ||
     entry.startsWith('assets/fonts/') ||
     entry.startsWith('assets/friends/') ||
+    entry.startsWith('icons/') ||
     entry === 'data/friends.json' ||
     entry === 'data/video-catalog.json' ||
     (entry.startsWith('assets/collectibles/') && entry.endsWith('-480.webp')),
@@ -204,6 +229,11 @@ for (const relativePath of publishedGameFiles.filter(
   if (!precacheEntry || typeof precacheEntry.revision !== 'string' || !precacheEntry.revision) {
     throw new Error(`固定名资源必须带内容 revision 预缓存：${relativePath}`)
   }
+}
+
+const publishedIconFiles = publishedGameFiles.filter((entry) => entry.startsWith('icons/')).sort()
+if (JSON.stringify(publishedIconFiles) !== JSON.stringify([...expectedIconFiles].sort())) {
+  throw new Error(`发布包应用图标目录不精确：实际 ${publishedIconFiles.join(', ') || '为空'}`)
 }
 
 const expectedFriendFiles = [

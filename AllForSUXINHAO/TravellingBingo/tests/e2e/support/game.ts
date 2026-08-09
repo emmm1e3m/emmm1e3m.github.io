@@ -58,7 +58,7 @@ export async function openDebugPanel(page: Page) {
   await expect(page.getByRole('heading', { name: '调试房间规则' })).toBeVisible()
 }
 
-export async function setDebugDuration(page: Page, label: '10 秒' | '30 秒' | '112 秒') {
+export async function setDebugDuration(page: Page, label: '10 秒' | '30 秒' | '1 分 12 秒') {
   await openDebugPanel(page)
   const choice = page.getByRole('button', { name: label, exact: true })
   await choice.click()
@@ -87,11 +87,17 @@ export async function readAppleCount(page: Page) {
 }
 
 export async function readCompanionDays(page: Page) {
-  return readNumber(await page.locator('.hud-companion .numeric-copy').innerText())
+  const companion = page.locator('.hud-companion')
+  return readNumber((await companion.getAttribute('title')) ?? (await companion.innerText()))
 }
 
 export async function openRoomArea(page: Page, area: string) {
-  await page.locator(`[data-hotspot="${area}"]`).click()
+  const hotspot = page.locator(`[data-hotspot="${area}"]`)
+  if ((await hotspot.getAttribute('class'))?.includes('is-active')) {
+    const openPanel = page.locator('.context-panel:visible')
+    if ((await openPanel.count()) > 0) return
+  }
+  await hotspot.click()
 }
 
 export async function buySupply(page: Page, itemName: string) {
@@ -127,7 +133,7 @@ export async function prepareActivity(page: Page, area: string, activityName: st
 export async function startActivity(page: Page, area: string, activityName: string) {
   const { card, confirmation } = await prepareActivity(page, area, activityName)
   await confirmation.getByRole('button', { name: '确认开始' }).click()
-  await expect(page.getByRole('button', { name: '返回', exact: true })).toBeVisible()
+  await expect(page.getByRole('button', { name: '取消当前活动', exact: true })).toBeVisible()
   return card
 }
 
@@ -144,13 +150,12 @@ export async function completeActivity(page: Page) {
 }
 
 export async function cancelActivity(page: Page) {
-  await page.getByRole('button', { name: '返回', exact: true }).click()
-  await page.getByRole('button', { name: '取消这次活动' }).click()
+  await page.getByRole('button', { name: '取消当前活动', exact: true }).click()
   const confirmation = page.getByRole('group', { name: '确认取消活动' })
   await expect(confirmation).toBeVisible()
   await expect(confirmation.getByRole('button', { name: '继续活动' })).toBeFocused()
   await confirmation.getByRole('button', { name: '确定取消' }).click()
-  await expect(page.getByRole('button', { name: '返回', exact: true })).toHaveCount(0)
+  await expect(page.getByRole('button', { name: '取消当前活动', exact: true })).toHaveCount(0)
 }
 
 export async function openAlbum(page: Page) {
@@ -161,7 +166,7 @@ export async function openAlbum(page: Page) {
 }
 
 export async function saveScreenshot(page: Page, fileName: string, fullPage = true) {
-  const outputDirectory = path.resolve(process.cwd(), 'output', 'playwright', 'v3-final')
+  const outputDirectory = path.resolve(process.cwd(), 'output', 'playwright', 'v4-final')
   await mkdir(outputDirectory, { recursive: true })
   await page.screenshot({
     path: path.join(outputDirectory, fileName),
@@ -195,4 +200,41 @@ export async function expectElementWithinViewport(locator: Locator) {
   expect(result.left).toBeGreaterThanOrEqual(-1)
   expect(result.right).toBeLessThanOrEqual(result.viewportWidth + 1)
   expect(result.top).toBeGreaterThanOrEqual(-1)
+  expect(result.bottom).toBeLessThanOrEqual(result.viewportHeight + 1)
+}
+
+export async function expectMinimumTouchTarget(
+  locator: Locator,
+  label: string,
+  minimumWidth = 44,
+  minimumHeight = 44,
+) {
+  await expect(locator, `${label} 应当可见`).toBeVisible()
+  const box = await locator.boundingBox()
+  expect(box, `${label} 应当有可测量的触控区域`).not.toBeNull()
+  expect(box!.width, `${label} 的宽度应当至少为 ${minimumWidth}px`).toBeGreaterThanOrEqual(
+    minimumWidth,
+  )
+  expect(box!.height, `${label} 的高度应当至少为 ${minimumHeight}px`).toBeGreaterThanOrEqual(
+    minimumHeight,
+  )
+}
+
+export async function expectNoOverlap(
+  first: Locator,
+  second: Locator,
+  labels: [string, string] = ['第一个组件', '第二个组件'],
+) {
+  const [firstBox, secondBox] = await Promise.all([first.boundingBox(), second.boundingBox()])
+  expect(firstBox, `${labels[0]}应当有可见边界`).not.toBeNull()
+  expect(secondBox, `${labels[1]}应当有可见边界`).not.toBeNull()
+  const horizontalOverlap =
+    Math.min(firstBox!.x + firstBox!.width, secondBox!.x + secondBox!.width) -
+    Math.max(firstBox!.x, secondBox!.x)
+  const verticalOverlap =
+    Math.min(firstBox!.y + firstBox!.height, secondBox!.y + secondBox!.height) -
+    Math.max(firstBox!.y, secondBox!.y)
+  expect(horizontalOverlap <= 0 || verticalOverlap <= 0, `${labels[0]}与${labels[1]}不应重叠`).toBe(
+    true,
+  )
 }

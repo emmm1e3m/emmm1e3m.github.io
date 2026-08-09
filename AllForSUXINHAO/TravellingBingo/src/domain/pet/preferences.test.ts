@@ -29,6 +29,12 @@ describe('饼狗活动偏好', () => {
     }
   })
 
+  it('偏好序列到达安全整数上限后饱和，不生成不可导出的下一值', () => {
+    const generated = generateActivityPreferences('preference-cap', Number.MAX_SAFE_INTEGER)
+    expect(generated.nextSequence).toBe(Number.MAX_SAFE_INTEGER)
+    expect(Object.values(generated.preferences).some(Boolean)).toBe(true)
+  })
+
   it('三个兴趣都能独立成为愿意或拒绝项，并覆盖拒绝 0/1/2 项', () => {
     const values = {
       travel: new Set<boolean>(),

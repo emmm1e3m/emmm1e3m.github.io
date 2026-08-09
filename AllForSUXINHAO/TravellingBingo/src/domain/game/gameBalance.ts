@@ -1,5 +1,9 @@
-import { BASE_ACTIVITY_DURATION_MS, MAX_DEBUG_ACTIVITY_DURATION_MS } from './constants'
-import type { FriendId, ItemId } from './types'
+import {
+  BASE_ACTIVITY_DURATION_MS,
+  LEGACY_ACTIVITY_DURATION_MS,
+  MAX_DEBUG_ACTIVITY_DURATION_MS,
+} from './constants'
+import type { FriendId, LegacyItemId } from './types'
 
 export const PROBABILITY_KEYS = [
   'postcard',
@@ -23,6 +27,8 @@ export interface GameBalance {
   activityDurationMs: number
   probabilities: GameProbabilities
 }
+
+export type GameBalanceV3 = GameBalance
 
 /** 严格对应 schemaVersion 2 的旧平衡结构。 */
 export interface GameBalanceV2 {
@@ -53,7 +59,7 @@ export const FRIEND_GIFT_APPLES_BY_ID: Readonly<Record<FriendId, number>> = Obje
 })
 
 /** 旅行遇友只赠送道具，不形成“花苹果又赚苹果”的活动闭环。 */
-export const FRIEND_GIFT_ITEM_BY_ID: Readonly<Record<FriendId, ItemId>> = Object.freeze({
+export const FRIEND_GIFT_ITEM_BY_ID: Readonly<Record<FriendId, LegacyItemId>> = Object.freeze({
   'class-representative-bing': 'travel-basic',
   'san-hao-rabbit': 'travel-apple',
   'xin-hao-rabbit': 'lucky-apple',
@@ -62,12 +68,24 @@ export const FRIEND_GIFT_ITEM_BY_ID: Readonly<Record<FriendId, ItemId>> = Object
 })
 
 export const DEFAULT_GAME_BALANCE_V2: Readonly<GameBalanceV2> = Object.freeze({
-  activityDurationMs: BASE_ACTIVITY_DURATION_MS,
+  activityDurationMs: LEGACY_ACTIVITY_DURATION_MS,
   probabilities: Object.freeze({
     postcard: 1,
     millionShot: 0.4,
     siteFirst: 0.1,
     friend: 0.2,
+  }),
+})
+
+/** schemaVersion 3 新活动使用的历史默认；V3 -> V4 时只保留 DEBUG 自定义值。 */
+export const DEFAULT_GAME_BALANCE_V3: Readonly<GameBalanceV3> = Object.freeze({
+  activityDurationMs: LEGACY_ACTIVITY_DURATION_MS,
+  probabilities: Object.freeze({
+    postcard: 0.65,
+    millionShot: 0.4,
+    siteFirst: 0.1,
+    travelFriend: 0.2,
+    musicFriend: 0.2,
   }),
 })
 
@@ -88,7 +106,7 @@ export const COLLECTION_DROP_CHANCES = {
   trend: DEFAULT_GAME_BALANCE.probabilities.siteFirst,
 } as const
 
-/** @deprecated 请直接读取 DEFAULT_GAME_BALANCE.probabilities.friend。 */
+/** @deprecated 请直接读取 DEFAULT_GAME_BALANCE.probabilities.travelFriend。 */
 export const FRIEND_EVENT_CHANCE = DEFAULT_GAME_BALANCE.probabilities.travelFriend
 
 export function createDefaultGameBalance(): GameBalance {
@@ -102,6 +120,13 @@ export function createDefaultGameBalanceV2(): GameBalanceV2 {
   return {
     activityDurationMs: DEFAULT_GAME_BALANCE_V2.activityDurationMs,
     probabilities: { ...DEFAULT_GAME_BALANCE_V2.probabilities },
+  }
+}
+
+export function createDefaultGameBalanceV3(): GameBalanceV3 {
+  return {
+    activityDurationMs: DEFAULT_GAME_BALANCE_V3.activityDurationMs,
+    probabilities: { ...DEFAULT_GAME_BALANCE_V3.probabilities },
   }
 }
 

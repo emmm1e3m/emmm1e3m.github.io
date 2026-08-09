@@ -1,10 +1,14 @@
 import { describe, expect, it } from 'vitest'
 
 import { TASK_LIBRARY } from '../tasks/taskBoard'
+import { MAX_APPLES } from './constants'
 import { gameStateV1Schema, isStrictGameStateV1, migrateGameStateV1 } from './migrateGameStateV1'
 import { migrateGameStateV1ToV3, migrateStoredGameStateToV3 } from './migrateGameStateV2'
+import { migrateGameStateV1ToV4 } from './migrateGameStateV3'
 import { reduceGame } from './reducer'
 import type { CollectionCatalog, GameStateV1 } from './types'
+import { validateImportedGameState } from './validateImportedGameState'
+import { MAX_DATE_TIMESTAMP_MS } from './time'
 
 const catalog: CollectionCatalog = {
   postcard: ['postcard-1'],
@@ -39,8 +43,8 @@ function legacyState(): GameStateV1 {
         modifierApples: 3,
         collection: { id: 'postcard-1', category: 'postcard' },
         friendEventId: 'signal-dog',
-        guaranteedByPity: false,
-        pityAfterClaim: null,
+        guaranteedByPity: true,
+        pityAfterClaim: 6,
       },
       supplyId: 'travel-basic',
       usedLuckyApple: true,
@@ -82,27 +86,33 @@ describe('v1 存档显式迁移', () => {
         activeActivity: { ...legacy.activeActivity!, visualPose: 'travel' },
       }).success,
     ).toBe(false)
+
+    const dateBoundary = structuredClone(legacy)
+    dateBoundary.profile.createdAt = MAX_DATE_TIMESTAMP_MS
+    expect(isStrictGameStateV1(dateBoundary)).toBe(true)
+    dateBoundary.profile.createdAt = MAX_DATE_TIMESTAMP_MS + 1
+    expect(isStrictGameStateV1(dateBoundary)).toBe(false)
   })
 
-  it('活动中的旧档只返还一次补给，清零未领苹果与尚未领取的重复收藏', () => {
+  it('活动中的旧档保留完整奖励与时间快照，不返还已经消耗的补给', () => {
     const legacy = legacyState()
     const original = structuredClone(legacy)
     const migrated = migrateGameStateV1(legacy, { now: 9_000, catalog })
 
     expect(migrated.schemaVersion).toBe(2)
-    expect(migrated.inventory['travel-basic']).toBe(1)
-    expect(migrated.inventory['lucky-apple']).toBe(1)
+    expect(migrated.inventory['travel-basic']).toBe(0)
+    expect(migrated.inventory['lucky-apple']).toBe(0)
     expect(migrated.activeActivity).toMatchObject({
       runId: 'legacy-run',
       startedAt: 2_000,
       endsAt: 4_322_000,
       rewardPlan: {
-        baseApples: 0,
-        modifierApples: 0,
-        collection: null,
+        baseApples: 8,
+        modifierApples: 3,
+        collection: { id: 'postcard-1', category: 'postcard' },
         friendEventId: 'signal-dog',
-        guaranteedByPity: false,
-        pityAfterClaim: null,
+        guaranteedByPity: true,
+        pityAfterClaim: 6,
       },
     })
     expect(migrated.pet.location).toBe('outside')
@@ -137,13 +147,16 @@ describe('v1 存档显式迁移', () => {
       endsAt: 4_322_000,
       rewardSeed: 'legacy-seed:6',
       rewardPlan: {
-        collection: null,
+        baseApples: 8,
+        modifierApples: 3,
+        collection: { id: 'postcard-1', category: 'postcard' },
         friendId: 'signal-dog',
         giftItemId: null,
-        modifierApples: 0,
+        guaranteedByPity: true,
+        pityAfterClaim: 6,
       },
     })
-    expect(migrated.inventory).toMatchObject({ 'travel-basic': 1, 'lucky-apple': 1 })
+    expect(migrated.inventory).toMatchObject({ 'travel-basic': 0, 'lucky-apple': 0 })
     expect(migrateStoredGameStateToV3(legacy, { now: 9_000, catalog })).toEqual(migrated)
   })
 
@@ -157,13 +170,19 @@ describe('v1 存档显式迁移', () => {
       ...catalog,
       postcard: [...catalog.postcard, 'postcard-2'],
     }
-    const migrated = migrateGameStateV1ToV3(legacy, { now: 9_000, catalog: expandedCatalog })
+    const migratedV4 = migrateGameStateV1ToV4(legacy, {
+      now: 9_000,
+      catalog: expandedCatalog,
+    })
+    expect(validateImportedGameState(migratedV4, expandedCatalog)).toEqual({ ok: true })
+    expect(migratedV4.activeActivity?.legacySource).toBe('v1')
+    const applesBefore = migratedV4.economy.apples
     const claimed = reduceGame(
-      migrated,
+      migratedV4,
       {
         type: 'activity/claim',
-        runId: migrated.activeActivity!.runId,
-        now: migrated.activeActivity!.endsAt,
+        runId: migratedV4.activeActivity!.runId,
+        now: migratedV4.activeActivity!.endsAt,
       },
       expandedCatalog,
     )
@@ -174,14 +193,70 @@ describe('v1 存档显式迁移', () => {
       encounterCount: 1,
       totalGiftApples: 0,
     })
+    expect(claimed.state.economy.apples).toBe(applesBefore + 11)
+    expect(claimed.state.inventory).toMatchObject({ 'travel-basic': 0, 'lucky-apple': 0 })
     expect(claimed.effects[0]).toMatchObject({
       summary: {
+        apples: { base: 8, modifier: 3, total: 11 },
         collection: { id: 'postcard-2' },
         friendId: 'signal-dog',
         giftItemId: null,
         giftApples: 0,
+        guaranteedByPity: true,
       },
     })
+  })
+
+  it('V1 已拥有的计划收藏按历史规则结算重复次数与补偿', () => {
+    const legacy = legacyState()
+    const migrated = migrateGameStateV1ToV4(legacy, { now: 9_000, catalog })
+    const applesBefore = migrated.economy.apples
+    const duplicateRewardsBefore = migrated.statistics.duplicateRewards
+    expect(migrated.activeActivity?.legacySource).toBe('v1')
+    expect(validateImportedGameState(migrated, catalog)).toEqual({ ok: true })
+
+    const claimed = reduceGame(
+      migrated,
+      {
+        type: 'activity/claim',
+        runId: migrated.activeActivity!.runId,
+        now: migrated.activeActivity!.endsAt,
+      },
+      catalog,
+    )
+    if (!claimed.ok) throw new Error(claimed.error.message)
+
+    expect(claimed.state.economy.apples).toBe(applesBefore + 8 + 3 + 2)
+    expect(claimed.state.collections['postcard-1']?.duplicateCount).toBe(1)
+    expect(claimed.state.statistics.duplicateRewards).toBe(duplicateRewardsBefore + 1)
+    expect(claimed.effects[0]).toMatchObject({
+      summary: {
+        apples: { base: 8, modifier: 3, duplicateCompensation: 2, total: 13 },
+        collection: { id: 'postcard-1', duplicate: true },
+        guaranteedByPity: true,
+      },
+    })
+  })
+
+  it('V1 冻结奖励空间不足时保持整次待领取，不截断或部分写入', () => {
+    const migrated = migrateGameStateV1ToV4(legacyState(), { now: 9_000, catalog })
+    const capped: typeof migrated = {
+      ...migrated,
+      economy: { apples: MAX_APPLES - 1 },
+    }
+    const result = reduceGame(
+      capped,
+      {
+        type: 'activity/claim',
+        runId: capped.activeActivity!.runId,
+        now: capped.activeActivity!.endsAt,
+      },
+      catalog,
+    )
+
+    expect(result).toMatchObject({ ok: false, error: { code: 'APPLE_LIMIT_REACHED' } })
+    expect(result.state).toBe(capped)
+    expect(result.effects).toEqual([])
   })
 
   it('拒绝无效迁移时间', () => {

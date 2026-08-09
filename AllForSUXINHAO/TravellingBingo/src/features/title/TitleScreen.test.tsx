@@ -15,6 +15,8 @@ function props(onStart = vi.fn()) {
     onCancelImport: vi.fn(),
     onRetryCatalog: vi.fn(),
     onTitleActivate: vi.fn(),
+    updateCheckStatus: 'idle' as const,
+    onCheckForUpdates: vi.fn(),
   }
 }
 
@@ -42,5 +44,23 @@ describe('TitleScreen 新游戏称呼', () => {
 
     expect(onStart).toHaveBeenCalledOnce()
     expect(onStart).toHaveBeenCalledWith('小饼干')
+  })
+
+  it('进入游戏前可以显式检查新布置并展示真实进行中状态', () => {
+    const onCheckForUpdates = vi.fn()
+    const { rerender } = render(<TitleScreen {...props()} onCheckForUpdates={onCheckForUpdates} />)
+
+    fireEvent.click(screen.getByRole('button', { name: '检查新布置' }))
+    expect(onCheckForUpdates).toHaveBeenCalledOnce()
+
+    rerender(
+      <TitleScreen
+        {...props()}
+        updateCheckStatus="checking"
+        onCheckForUpdates={onCheckForUpdates}
+      />,
+    )
+    expect(screen.getByRole('button', { name: '正在检查新布置…' })).toBeDisabled()
+    expect(screen.getByRole('status')).toHaveTextContent('正在向门外张望')
   })
 })

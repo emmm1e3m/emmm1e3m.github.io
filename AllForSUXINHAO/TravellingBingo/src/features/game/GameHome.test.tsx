@@ -4,7 +4,7 @@ import { useState } from 'react'
 import type { BilibiliVideo, CollectibleItem, ContentCatalog } from '@/content'
 import { createInitialGameState, type GameState } from '@/domain'
 
-import { STAGE_TEST_URL } from './gameCopy'
+import { ACTIVITY_COPY, STAGE_TEST_URL } from './gameCopy'
 import { GameHome, type PanelId } from './GameHome'
 
 const postcard = {
@@ -38,14 +38,14 @@ const catalog: ContentCatalog = {
 }
 
 const albumVideo: BilibiliVideo = {
-  bvid: 'BV1videoBridge',
+  bvid: 'BV1ABCdef234',
   title: '收藏播放器桥接测试',
   authorName: '苏新皓',
   authorMid: 1,
   publishedAt: '2026-06-19T12:00:00.000Z',
   durationSeconds: 112,
   coverUrl: 'https://i0.hdslb.com/video-bridge.jpg',
-  sourceUrl: 'https://www.bilibili.com/video/BV1videoBridge',
+  sourceUrl: 'https://www.bilibili.com/video/BV1ABCdef234',
   favoriteId: 1,
   favoriteOrder: 1,
 }
@@ -275,7 +275,6 @@ describe('收藏墙模态框', () => {
     )
 
     fireEvent.click(screen.getByRole('button', { name: /带视频的收藏/u }))
-    fireEvent.click(screen.getByRole('button', { name: '打开播放器' }))
 
     expect(onAction).toHaveBeenCalledWith({
       type: 'task/event',
@@ -290,7 +289,7 @@ describe('收藏墙模态框', () => {
 })
 
 describe('房间互动', () => {
-  it('待机时铺满房间，设施展开信息栏，点房间空白再收起', () => {
+  it('待机时铺满房间，设施展开信息栏，点房间空白回到任务与兴趣概览', () => {
     render(<RoomPanelHarness />)
 
     expect(screen.queryByRole('complementary')).not.toBeInTheDocument()
@@ -299,8 +298,9 @@ describe('房间互动', () => {
     fireEvent.click(screen.getByRole('button', { name: '去电脑前' }))
     expect(screen.getByRole('complementary')).toBeInTheDocument()
 
-    fireEvent.click(screen.getByRole('button', { name: '收起信息栏，查看完整房间' }))
-    expect(screen.queryByRole('complementary')).not.toBeInTheDocument()
+    fireEvent.click(screen.getByRole('button', { name: '回到房间概览' }))
+    expect(screen.getByRole('complementary')).toBeInTheDocument()
+    expect(screen.getByText('饼狗今天的心情')).toBeInTheDocument()
   })
 
   it('房间文字按钮派发原子互动，点击饼狗打开可访问菜单', () => {
@@ -382,7 +382,7 @@ describe('房间互动', () => {
     const purchaseButtons = Array.from(
       container.querySelectorAll<HTMLButtonElement>('.shop-item button'),
     )
-    expect(purchaseButtons).toHaveLength(5)
+    expect(purchaseButtons).toHaveLength(7)
     for (const button of purchaseButtons) expect(button).toHaveTextContent(/^\d+🍎$/u)
   })
 
@@ -428,7 +428,8 @@ describe('房间互动', () => {
 
     expect(screen.queryByRole('button', { name: /饼狗.*行动菜单/u })).not.toBeInTheDocument()
     expect(screen.queryByRole('button', { name: '去门口' })).not.toBeInTheDocument()
-    expect(screen.getByText('饼狗出门啦')).toBeInTheDocument()
+    expect(screen.queryByText('饼狗出门啦')).not.toBeInTheDocument()
+    expect(screen.getAllByText(/旅行中/u).length).toBeGreaterThan(0)
   })
 
   it('休息成功后重播日夜过场', async () => {
@@ -548,7 +549,7 @@ describe('房间互动', () => {
     expect(screen.queryByRole('dialog', { name: '饼狗想做什么' })).not.toBeInTheDocument()
   })
 
-  it('休息读条一开始就暗场，饼狗脚底落在床面，并提供返回入口', () => {
+  it('休息读条一开始就暗场，饼狗中心落在床面，并提供取消入口', () => {
     const onPanel = vi.fn()
     const { container } = render(
       <GameHome
@@ -570,11 +571,17 @@ describe('房间互动', () => {
     const mascot = screen.getByRole('button', { name: /正在睡觉中的饼狗/u })
     expect(overlay).toHaveClass('is-resting')
     expect(Number(overlay?.style.getPropertyValue('--rest-darkness'))).toBeGreaterThan(0)
-    expect(mascot.style.getPropertyValue('--pet-x')).toBe('27%')
-    expect(mascot.style.getPropertyValue('--pet-y')).toBe('30%')
+    expect(Number.parseFloat(mascot.style.getPropertyValue('--pet-x'))).toBeCloseTo(
+      (225 / 1098) * 100,
+      12,
+    )
+    expect(Number.parseFloat(mascot.style.getPropertyValue('--pet-y'))).toBeCloseTo(
+      (300 / 1433) * 100,
+      12,
+    )
     expect(mascot.querySelector('.mascot-sprite--sleep')).toBeInTheDocument()
 
-    fireEvent.click(screen.getByRole('button', { name: '返回' }))
+    fireEvent.click(screen.getByRole('button', { name: '取消当前活动' }))
     expect(onPanel).toHaveBeenCalledWith('activity')
   })
 
@@ -596,8 +603,9 @@ describe('房间互动', () => {
     )
 
     expect(screen.getByRole('button', { name: '弹弹琴' })).toBeInTheDocument()
-    const keyboard = screen.getByRole('group', { name: 'C4 到 B5 的两八度琴键' })
-    expect(within(keyboard).getAllByRole('button')).toHaveLength(24)
+    const keyboardRows = screen.getAllByRole('group', { name: /^C[4-6] 到 B[4-6] 琴键$/u })
+    expect(keyboardRows).toHaveLength(3)
+    expect(keyboardRows.flatMap((row) => within(row).getAllByRole('button'))).toHaveLength(36)
   })
 })
 
@@ -662,6 +670,224 @@ describe('舞台测试与调试控件', () => {
 
     expect(document.querySelector('select')).not.toBeInTheDocument()
     expect(screen.getAllByRole('slider')).toHaveLength(5)
-    expect(screen.getByRole('button', { name: '112 秒' })).toHaveAttribute('aria-pressed', 'true')
+    expect(screen.getByRole('button', { name: '1 分 12 秒' })).toHaveAttribute(
+      'aria-pressed',
+      'true',
+    )
+  })
+})
+
+describe('V4 壳层接线', () => {
+  it('状态条按休息需要与活动阶段派生，不固定误报状态很好', () => {
+    const base = collectedGame()
+    const props = {
+      catalog,
+      panel: null,
+      dirty: false,
+      reward: null,
+      onPanel: vi.fn(),
+      onAction: vi.fn(),
+      onExit: vi.fn(),
+      onBackup: vi.fn(),
+      onDismissReward: vi.fn(),
+    }
+    const { rerender } = render(
+      <GameHome {...props} game={{ ...base, pet: { ...base.pet, tired: true } }} now={1_000} />,
+    )
+
+    const statusBar = screen.getByRole('group', { name: '饼狗状态' })
+    expect(statusBar).toHaveTextContent('今天想先休息')
+    expect(statusBar.closest('header')).toHaveClass('game-hud--v4')
+    expect(statusBar.parentElement).toHaveClass('game-hud__actions')
+
+    rerender(<GameHome {...props} game={activeGame('music')} now={2_000} />)
+    expect(screen.getByRole('group', { name: '饼狗状态' })).toHaveTextContent(
+      ACTIVITY_COPY.music.verb,
+    )
+
+    rerender(<GameHome {...props} game={activeGame('music')} now={114_000} />)
+    expect(screen.getByRole('group', { name: '饼狗状态' })).toHaveTextContent('完成啦')
+  })
+
+  it('右下维度按钮只派发领域动作，现实返回后由待结算弹窗确认奖励', () => {
+    const onAction = vi.fn()
+    const game = collectedGame()
+    const props = {
+      catalog,
+      now: 1_000,
+      panel: null,
+      dirty: false,
+      reward: null,
+      onPanel: vi.fn(),
+      onAction,
+      onExit: vi.fn(),
+      onBackup: vi.fn(),
+      onDismissReward: vi.fn(),
+    }
+    const { rerender } = render(<GameHome {...props} game={game} />)
+
+    fireEvent.click(screen.getByRole('button', { name: '切换到现实生活维度' }))
+    expect(onAction).toHaveBeenCalledWith({ type: 'reality/enter', now: expect.any(Number) })
+
+    const pendingGame: GameState = {
+      ...game,
+      reality: {
+        ...game.reality,
+        pendingSettlement: {
+          stayId: 'reality-stay-1',
+          enteredAt: 1_000,
+          leftAt: 1_201_000,
+          fullRewardApples: 2,
+        },
+      },
+    }
+    rerender(<GameHome {...props} game={pendingGame} />)
+    fireEvent.click(screen.getByRole('button', { name: '没有🥺' }))
+    expect(onAction).toHaveBeenCalledWith({
+      type: 'reality/settle',
+      stayId: 'reality-stay-1',
+      decision: 'not-serious',
+      now: expect.any(Number),
+    })
+  })
+
+  it('房间 ↩️ 只消费一次取消请求，先打开二次确认且不会直接终止活动', async () => {
+    const onAction = vi.fn()
+
+    function ActiveHarness() {
+      const [panel, setPanel] = useState<PanelId | null>(null)
+      return (
+        <GameHome
+          game={activeGame('rest')}
+          catalog={catalog}
+          now={2_000}
+          panel={panel}
+          dirty={false}
+          reward={null}
+          onPanel={setPanel}
+          onAction={onAction}
+          onExit={vi.fn()}
+          onBackup={vi.fn()}
+          onDismissReward={vi.fn()}
+        />
+      )
+    }
+
+    render(<ActiveHarness />)
+    fireEvent.click(screen.getByRole('button', { name: '取消当前活动' }))
+    expect(await screen.findByRole('group', { name: '确认取消活动' })).toBeInTheDocument()
+    expect(onAction).not.toHaveBeenCalledWith(expect.objectContaining({ type: 'activity/cancel' }))
+
+    fireEvent.click(screen.getByRole('button', { name: '继续活动' }))
+    expect(screen.queryByRole('group', { name: '确认取消活动' })).not.toBeInTheDocument()
+  })
+
+  it('现实苹果钟运行时房间 ↩️ 打开工作信息栏的取消确认，确认后才派发取消', async () => {
+    const base = collectedGame()
+    const game: GameState = {
+      ...base,
+      world: 'reality',
+      reality: {
+        ...base.reality,
+        activeStay: { stayId: 'reality-pomodoro-stay', enteredAt: 1_000 },
+        pomodoro: {
+          ...base.reality.pomodoro,
+          session: {
+            sessionId: 'pomodoro-room-request',
+            status: 'running',
+            startedAt: 1_000,
+            endsAt: 1_501_000,
+            durationMs: 25 * 60_000,
+            completedAt: null,
+            notificationIssuedAt: null,
+            todoId: null,
+            postcardId: null,
+          },
+        },
+      },
+    }
+    const onAction = vi.fn()
+
+    function PomodoroHarness() {
+      const [panel, setPanel] = useState<PanelId | null>(null)
+      return (
+        <GameHome
+          game={game}
+          catalog={catalog}
+          now={2_000}
+          panel={panel}
+          dirty={false}
+          reward={null}
+          onPanel={setPanel}
+          onAction={onAction}
+          onExit={vi.fn()}
+          onBackup={vi.fn()}
+          onDismissReward={vi.fn()}
+        />
+      )
+    }
+
+    render(<PomodoroHarness />)
+    fireEvent.click(screen.getByRole('button', { name: '取消当前苹果钟' }))
+
+    expect(await screen.findByRole('alertdialog', { name: '确认取消苹果钟？' })).toBeVisible()
+    await waitFor(() => expect(screen.getByRole('button', { name: '继续专注' })).toHaveFocus())
+    expect(onAction).not.toHaveBeenCalledWith(expect.objectContaining({ type: 'pomodoro/cancel' }))
+
+    fireEvent.click(screen.getByRole('button', { name: '确认取消' }))
+    expect(onAction).toHaveBeenCalledWith({
+      type: 'pomodoro/cancel',
+      sessionId: 'pomodoro-room-request',
+      now: expect.any(Number),
+    })
+  })
+
+  it('点击灰态电脑热点立即打开唯一的共享活力确认，确认后只使用魔法', async () => {
+    const base = collectedGame()
+    const game: GameState = {
+      ...base,
+      inventory: {
+        ...base.inventory,
+        'signal-headphones': 1,
+        'trend-toolbox': 1,
+        'bottled-vitality-magic': 1,
+      },
+      pet: {
+        ...base.pet,
+        tired: false,
+        preferences: { travel: true, computer: false, music: true },
+      },
+    }
+    const onAction = vi.fn()
+
+    function ReluctantComputerHarness() {
+      const [panel, setPanel] = useState<PanelId | null>(null)
+      return (
+        <GameHome
+          game={game}
+          catalog={catalog}
+          now={1_000}
+          panel={panel}
+          dirty={false}
+          reward={null}
+          onPanel={setPanel}
+          onAction={onAction}
+          onExit={vi.fn()}
+          onBackup={vi.fn()}
+          onDismissReward={vi.fn()}
+        />
+      )
+    }
+
+    render(<ReluctantComputerHarness />)
+    fireEvent.click(screen.getByRole('button', { name: '去电脑前' }))
+
+    expect(await screen.findAllByRole('group', { name: '确认使用活力魔法' })).toHaveLength(1)
+    expect(screen.getByText('认真刷播和全力冲热共享同一份“电脑”意愿。')).toBeVisible()
+    expect(onAction).not.toHaveBeenCalledWith(expect.objectContaining({ type: 'activity/start' }))
+
+    fireEvent.click(screen.getByRole('button', { name: '使用活力魔法' }))
+    expect(onAction).toHaveBeenCalledWith({ type: 'magic/vitality-use', now: expect.any(Number) })
+    expect(onAction).not.toHaveBeenCalledWith(expect.objectContaining({ type: 'activity/start' }))
   })
 })

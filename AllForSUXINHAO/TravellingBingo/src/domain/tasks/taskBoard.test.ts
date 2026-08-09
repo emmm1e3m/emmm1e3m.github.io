@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest'
 
 import { MAX_APPLES } from '../game/constants'
 import { createInitialGameState } from '../game/createGameState'
+import { gameStateV4Schema } from '../game/migrateGameStateV3'
 import { reduceGame } from '../game/reducer'
 import type {
   CollectionCatalog,
@@ -14,8 +15,11 @@ import {
   generateTaskBoard,
   getTaskPresentation,
   getTaskProgressLabel,
+  hasRetiredTask,
   isTaskCompleted,
+  replaceRetiredTaskBoard,
   TASK_LIBRARY,
+  validateTaskInstanceReachability,
 } from './taskBoard'
 
 const catalog: CollectionCatalog = {
@@ -30,7 +34,7 @@ function successful(transition: GameTransition): Extract<GameTransition, { ok: t
   return transition
 }
 
-function task(taskId: TaskId, progress = 0, suffix = taskId): TaskInstance {
+function task(taskId: TaskId, progress = 0, suffix: string = taskId): TaskInstance {
   const template = TASK_LIBRARY[taskId]
   return {
     instanceId: `instance-${suffix}`,
@@ -55,15 +59,52 @@ function withTasks(
 
 describe('三任务自动刷新板', () => {
   it('每板恰好三条，模板与触发组均不重复', () => {
-    for (let sequence = 0; sequence < 20; sequence += 1) {
+    for (let sequence = 0; sequence < 40; sequence += 1) {
       const generated = generateTaskBoard({ seed: 'board-shape', sequence, now: 100 })
       const ids = generated.board.active.map((entry) => entry.taskId)
       const groups = ids.map((id) => TASK_LIBRARY[id].triggerGroup)
 
       expect(new Set(ids).size).toBe(3)
       expect(new Set(groups).size).toBe(3)
+      expect(ids).not.toContain('greet-bingo')
       expect(generated.nextSequence).toBe(sequence + 1)
     }
+  })
+
+  it('任务序列、完成总数与苹果收入到安全上限后保持可导出', () => {
+    const generated = generateTaskBoard({
+      seed: 'task-counter-cap',
+      sequence: Number.MAX_SAFE_INTEGER,
+      now: 100,
+    })
+    expect(generated.nextSequence).toBe(Number.MAX_SAFE_INTEGER)
+
+    const base = createInitialGameState({ now: 0, seed: 'task-counter-cap' })
+    const state = withTasks(
+      {
+        ...base,
+        tasks: { ...base.tasks, completedCount: Number.MAX_SAFE_INTEGER },
+        statistics: { ...base.statistics, applesEarned: Number.MAX_SAFE_INTEGER },
+        random: {
+          ...base.random,
+          sequences: { ...base.random.sequences, tasks: Number.MAX_SAFE_INTEGER },
+        },
+      },
+      [task('open-backpack', 1), task('wardrobe-choice', 1), task('stage-test')],
+    )
+    const completed = successful(
+      reduceGame(
+        state,
+        { type: 'task/event', event: { type: 'stage-test-opened' }, now: 1_000 },
+        catalog,
+      ),
+    )
+
+    expect(completed.state.tasks.completedCount).toBe(Number.MAX_SAFE_INTEGER)
+    expect(completed.state.statistics.applesEarned).toBe(Number.MAX_SAFE_INTEGER)
+    expect(completed.state.random.sequences.tasks).toBe(Number.MAX_SAFE_INTEGER)
+    expect(completed.effects[0]).toMatchObject({ completed: true, boardRefreshed: true })
+    expect(gameStateV4Schema.safeParse(completed.state).success).toBe(true)
   })
 
   it('最近六项会优先避开，直到候选触发组不足', () => {
@@ -79,6 +120,160 @@ describe('三任务自动刷新板', () => {
     const freshCount = second.board.active.filter((entry) => !firstIds.has(entry.taskId)).length
     expect(freshCount).toBeGreaterThanOrEqual(2)
     expect(second.board.recentTemplateIds).toHaveLength(6)
+  })
+
+  it('退役任务仅保留旧模板兼容，并使用 tasks 序列确定性替换旧槽位', () => {
+    const base = createInitialGameState({ now: 0, seed: 'retired-board' })
+    const retainedRoomTask = {
+      ...task('room-stroll', 1),
+      seenKeys: ['bed'],
+    }
+    const retainedMusicTask = task('piano-time')
+    const legacyBoard = {
+      ...base.tasks,
+      active: [task('greet-bingo'), retainedRoomTask, retainedMusicTask] as [
+        TaskInstance,
+        TaskInstance,
+        TaskInstance,
+      ],
+      recentTemplateIds: ['greet-bingo', 'open-backpack'] as TaskId[],
+    }
+    const before = structuredClone(legacyBoard)
+    const sequences = { reward: 19, tasks: 7, preferences: 3 }
+    const input = {
+      board: legacyBoard,
+      seed: 'retired-board',
+      sequence: sequences.tasks,
+      now: 5_000,
+      catalog,
+      collections: { 'postcard-1': {} },
+    }
+
+    const first = replaceRetiredTaskBoard(input)
+    const repeated = replaceRetiredTaskBoard(input)
+    const nextSequences = { ...sequences, tasks: first.nextSequence }
+
+    expect(hasRetiredTask(legacyBoard)).toBe(true)
+    expect(first).toEqual(repeated)
+    expect(legacyBoard).toEqual(before)
+    expect(first.nextSequence).toBe(sequences.tasks + 1)
+    expect(nextSequences).toEqual({ reward: 19, tasks: 8, preferences: 3 })
+    expect(hasRetiredTask(first.board)).toBe(false)
+    expect(first.board.active[0]).toMatchObject({
+      assignedAt: 5_000,
+      progress: 0,
+      seenKeys: [],
+    })
+    expect(first.board.active[1]).toBe(retainedRoomTask)
+    expect(first.board.active[2]).toBe(retainedMusicTask)
+    expect(
+      new Set(first.board.active.map((entry) => TASK_LIBRARY[entry.taskId].triggerGroup)).size,
+    ).toBe(3)
+
+    const unchanged = replaceRetiredTaskBoard({
+      ...input,
+      board: first.board,
+      sequence: first.nextSequence,
+    })
+    expect(unchanged.board).toBe(first.board)
+    expect(unchanged.nextSequence).toBe(first.nextSequence)
+  })
+
+  it('退役任务在 tasks 序列上限仍可确定性替换且序列饱和', () => {
+    const base = createInitialGameState({ now: 0, seed: 'retired-cap' })
+    const board = {
+      ...base.tasks,
+      active: [task('greet-bingo'), task('room-stroll'), task('piano-time')] as [
+        TaskInstance,
+        TaskInstance,
+        TaskInstance,
+      ],
+    }
+    const replaced = replaceRetiredTaskBoard({
+      board,
+      seed: 'retired-cap',
+      sequence: Number.MAX_SAFE_INTEGER,
+      now: 100,
+      catalog,
+    })
+
+    expect(hasRetiredTask(replaced.board)).toBe(false)
+    expect(replaced.nextSequence).toBe(Number.MAX_SAFE_INTEGER)
+  })
+
+  it('保留可达的历史目标快照，并拒绝已经耗尽唯一 key 的任务', () => {
+    const historicalRoom: TaskInstance = {
+      ...task('room-stroll'),
+      target: 3,
+      rewardApples: 2,
+      progress: 1,
+      seenKeys: ['bed'],
+    }
+    expect(validateTaskInstanceReachability(historicalRoom, catalog)).toEqual({
+      ok: true,
+    })
+
+    for (const taskId of [
+      'open-backpack',
+      'wardrobe-choice',
+      'open-memories',
+      'stage-test',
+    ] as const) {
+      const exhausted: TaskInstance = {
+        ...task(taskId),
+        target: 2,
+        progress: 1,
+        seenKeys: [
+          taskId === 'wardrobe-choice'
+            ? 'wardrobe'
+            : taskId === 'open-memories'
+              ? 'wall'
+              : 'opened',
+        ],
+      }
+      expect(validateTaskInstanceReachability(exhausted, catalog)).toMatchObject({ ok: false })
+    }
+  })
+
+  it('按房间、琴键、视频和收藏命名空间验证历史 seenKeys 与可达上限', () => {
+    const invalidTasks: TaskInstance[] = [
+      { ...task('room-stroll'), target: 10 },
+      { ...task('room-stroll', 1), seenKeys: ['not-a-room'] },
+      { ...task('piano-time'), target: 37 },
+      { ...task('piano-time', 1), seenKeys: ['piano:C3'] },
+      { ...task('record-time', 1), seenKeys: ['video:not-a-bvid'] },
+      { ...task('two-melodies', 1), seenKeys: ['audio:C4'] },
+      { ...task('revisit-two', 1), seenKeys: ['removed-collection'] },
+      { ...task('remember-postcard', 1), seenKeys: ['million-1'] },
+      { ...task('remember-postcard'), target: 2 },
+    ]
+
+    for (const instance of invalidTasks) {
+      expect(validateTaskInstanceReachability(instance, catalog)).toMatchObject({ ok: false })
+    }
+
+    expect(
+      validateTaskInstanceReachability(
+        { ...task('record-time', 1), seenKeys: ['video:BV1xx411c7mD'] },
+        catalog,
+      ),
+    ).toEqual({ ok: true })
+    expect(
+      validateTaskInstanceReachability(
+        { ...task('two-melodies', 2), seenKeys: ['piano:C4', 'video:BV1xx411c7mD'] },
+        catalog,
+      ),
+    ).toEqual({ ok: true })
+
+    for (const legacy of [
+      { ...task('piano-time', 1), seenKeys: ['piano'] },
+      { ...task('record-time', 1), seenKeys: ['record-player'] },
+      { ...task('two-melodies', 2), seenKeys: ['piano', 'record-player'] },
+    ]) {
+      expect(validateTaskInstanceReachability(legacy, catalog)).toEqual({
+        ok: true,
+      })
+    }
   })
 
   it('只有一份收藏时不会抽到需要查看两份不同收藏的任务', () => {
@@ -255,6 +450,7 @@ describe('三任务自动刷新板', () => {
     expect(result.state.tasks.oneOffCompleted).toContain('stage-test')
     expect(result.state.tasks.active.every((entry) => entry.progress === 0)).toBe(true)
     expect(result.state.tasks.active.some((entry) => entry.taskId === 'stage-test')).toBe(false)
+    expect(result.state.tasks.active.some((entry) => entry.taskId === 'greet-bingo')).toBe(false)
     expect(result.state.random.sequences.tasks).toBe(sequenceBefore + 1)
     expect(result.effects).toMatchObject([
       {
@@ -326,6 +522,10 @@ describe('三任务自动刷新板', () => {
 
   it('展示 helper 从任务库取稳定文案与进度', () => {
     const entry = task('revisit-two', 1)
+    expect(getTaskPresentation('greet-bingo')).toEqual({
+      title: '看看饼狗的小背包',
+      description: '打开一次饼狗菜单',
+    })
     expect(getTaskPresentation('record-time')).toEqual({
       title: '看看一张唱片',
       description: '主动打开唱片播放器看看',

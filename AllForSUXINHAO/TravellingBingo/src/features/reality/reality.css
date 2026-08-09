@@ -1,0 +1,961 @@
+.reality-dashboard,
+.reality-panel,
+.reality-dashboard *,
+.reality-panel * {
+  min-width: 0;
+}
+
+.reality-dashboard {
+  width: min(100%, 980px);
+  max-width: 100%;
+  overflow: hidden;
+  border: 2px solid var(--outline, #81564f);
+  border-radius: 26px 31px 24px 29px;
+  color: var(--ink, #432c29);
+  background:
+    linear-gradient(rgb(255 250 245 / 94%), rgb(255 250 245 / 98%)),
+    repeating-linear-gradient(0deg, transparent 0 31px, rgb(120 88 70 / 7%) 31px 32px);
+  box-shadow: var(--shadow, 0 18px 50px rgb(82 44 40 / 14%));
+}
+
+.reality-dashboard__header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 1rem;
+  padding: clamp(1rem, 4vw, 1.6rem);
+  border-bottom: 1.5px dashed #d8b997;
+}
+
+.reality-dashboard__header h2,
+.reality-panel__heading h2,
+.reality-dialog h2 {
+  margin: 0.24rem 0 0;
+  font-family: var(--display-font, inherit);
+  line-height: 1.12;
+  letter-spacing: -0.035em;
+  overflow-wrap: anywhere;
+}
+
+.reality-dashboard__header h2 {
+  font-size: clamp(1.7rem, 5vw, 2.6rem);
+}
+
+.reality-dashboard__header p,
+.reality-panel__intro {
+  max-width: 44rem;
+  margin: 0.55rem 0 0;
+  color: var(--muted, #765752);
+  font-size: 0.84rem;
+  font-weight: 650;
+  line-height: 1.65;
+}
+
+.reality-eyebrow {
+  display: inline-flex;
+  color: var(--apple, #b63748);
+  font-size: 0.68rem;
+  font-weight: 950;
+  letter-spacing: 0.13em;
+  text-transform: uppercase;
+}
+
+.reality-return-button {
+  min-height: 44px;
+  flex: 0 0 auto;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.35rem;
+  padding: 0.55rem 0.72rem;
+  border: 1.5px solid #c49d7e;
+  border-radius: 14px;
+  color: var(--ink, #432c29);
+  background: #fff4e4;
+  box-shadow: 0 3px 0 #d8baa0;
+  font-size: 0.72rem;
+  font-weight: 850;
+  cursor: pointer;
+}
+
+.reality-return-button span {
+  font-size: 1rem;
+}
+
+.reality-dashboard__reward-note {
+  display: flex;
+  align-items: flex-start;
+  gap: 0.5rem;
+  margin: 0;
+  padding: 0.72rem clamp(0.8rem, 3vw, 1.3rem);
+  color: var(--muted, #765752);
+  border-bottom: 1.5px solid #ead3bd;
+  background: #fff9ef;
+  font-size: 0.72rem;
+  font-weight: 750;
+  line-height: 1.55;
+  overflow-wrap: anywhere;
+}
+
+.reality-dashboard__reward-note > span {
+  flex: 0 0 auto;
+}
+
+.reality-tabs {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.6rem;
+  padding: 0.8rem clamp(0.8rem, 3vw, 1.3rem);
+  border-bottom: 1.5px solid #ead3bd;
+  background: #fff3e2;
+}
+
+.reality-tab {
+  min-height: 54px;
+  flex: 1 1 9rem;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.5rem;
+  padding: 0.65rem 0.8rem;
+  border: 1.5px solid #d4b493;
+  border-radius: 14px 17px 13px 16px;
+  color: var(--muted, #765752);
+  background: #fffaf5;
+  text-align: left;
+  cursor: pointer;
+}
+
+.reality-tab[aria-selected='true'] {
+  color: #fffaf2;
+  border-color: #762b35;
+  background: linear-gradient(145deg, #c34955, var(--apple, #b63748));
+  box-shadow: 0 3px 0 #762b35;
+}
+
+.reality-tab:disabled {
+  opacity: 0.48;
+  cursor: not-allowed;
+}
+
+.reality-tab__icon {
+  flex: 0 0 auto;
+  font-size: 1.25rem;
+}
+
+.reality-tab__copy {
+  display: flex;
+  flex-direction: column;
+  overflow-wrap: anywhere;
+}
+
+.reality-tab__copy strong {
+  font-size: 0.85rem;
+}
+
+.reality-tab__copy small {
+  margin-top: 0.08rem;
+  font-size: 0.64rem;
+  font-weight: 700;
+  opacity: 0.78;
+}
+
+.reality-dashboard__panels,
+.reality-dashboard__panel {
+  max-width: 100%;
+}
+
+.reality-dashboard__panel {
+  padding: clamp(0.85rem, 3vw, 1.35rem);
+}
+
+.reality-dashboard__panel[hidden] {
+  display: none;
+}
+
+.reality-panel {
+  width: 100%;
+  max-width: 100%;
+}
+
+.reality-panel__heading,
+.reality-work-card__heading,
+.reality-data-card__heading {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 0.75rem;
+}
+
+.reality-panel__heading h2 {
+  font-size: clamp(1.4rem, 4vw, 2rem);
+}
+
+.reality-panel__mark {
+  width: 42px;
+  height: 42px;
+  flex: 0 0 auto;
+  display: grid;
+  place-items: center;
+  border: 1.5px solid #d3ae8b;
+  border-radius: 50%;
+  color: var(--apple, #b63748);
+  background: #fff0dc;
+  font-size: 1.25rem;
+  font-weight: 900;
+}
+
+.reality-data-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 0.8rem;
+  margin-top: 1rem;
+}
+
+.reality-data-card,
+.reality-work-card,
+.reality-group-card {
+  border: 1.5px solid #ddc1a1;
+  border-radius: 18px 21px 17px 19px;
+  background: #fff8ed;
+}
+
+.reality-data-card {
+  padding: 1rem;
+}
+
+.reality-data-card__heading h3,
+.reality-group-card h3,
+.reality-work-card__heading h3 {
+  margin: 0.16rem 0 0;
+  font-size: 1rem;
+  overflow-wrap: anywhere;
+}
+
+.reality-data-card__heading > div > span {
+  color: #9a6656;
+  font-size: 0.6rem;
+  font-weight: 900;
+  letter-spacing: 0.12em;
+}
+
+.reality-placeholder-tag,
+.reality-session-status,
+.reality-unlocked-count {
+  width: fit-content;
+  max-width: 100%;
+  flex: 0 1 auto;
+  padding: 0.3rem 0.52rem;
+  border: 1px solid #d6ad83;
+  border-radius: 999px;
+  color: #805848;
+  background: #fff0d4;
+  font-size: 0.62rem;
+  font-weight: 850;
+  line-height: 1.25;
+  overflow-wrap: anywhere;
+}
+
+.reality-data-card__status {
+  display: block;
+  margin-top: 1rem;
+  color: var(--apple, #b63748);
+  font-size: 1.05rem;
+  overflow-wrap: anywhere;
+}
+
+.reality-data-card__summary {
+  padding-top: 0.45rem;
+}
+
+.reality-data-card__method {
+  margin-top: 0.75rem;
+  padding: 0.7rem;
+  border: 1.5px dashed #d3ae8b;
+  border-radius: 11px;
+  background: #fffdf8;
+}
+
+.reality-data-card__method > strong {
+  color: var(--ink, #432c29);
+  font-size: 0.72rem;
+  overflow-wrap: anywhere;
+}
+
+.reality-data-card p,
+.reality-group-card p,
+.reality-dialog p {
+  margin: 0.38rem 0 0;
+  color: var(--muted, #765752);
+  font-size: 0.78rem;
+  font-weight: 650;
+  line-height: 1.6;
+  overflow-wrap: anywhere;
+}
+
+.reality-group-card {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+  margin-top: 0.8rem;
+  padding: 0.9rem;
+  background: linear-gradient(145deg, #fff5d9, #ffe8dc);
+}
+
+.reality-group-card > div {
+  min-width: 0;
+  display: flex;
+  align-items: center;
+  gap: 0.7rem;
+}
+
+.reality-group-card > div > span {
+  font-size: 1.5rem;
+}
+
+.reality-primary-link,
+.reality-primary-button,
+.reality-secondary-button,
+.reality-danger-button {
+  min-height: 44px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0.65rem 0.9rem;
+  border: 1.5px solid #762b35;
+  border-radius: 13px 16px 12px 15px;
+  color: #fffaf2;
+  background: var(--apple, #b63748);
+  box-shadow: 0 3px 0 #762b35;
+  font-size: 0.76rem;
+  font-weight: 850;
+  line-height: 1.25;
+  text-align: center;
+  text-decoration: none;
+  overflow-wrap: anywhere;
+  cursor: pointer;
+}
+
+.reality-primary-link {
+  flex: 0 0 auto;
+}
+
+.reality-secondary-button {
+  color: var(--ink, #432c29);
+  border-color: #b48c6d;
+  background: #fffaf5;
+  box-shadow: 0 3px 0 #d8baa0;
+}
+
+.reality-danger-button {
+  border-color: #691f2b;
+  background: #9e2d3d;
+  box-shadow: 0 3px 0 #691f2b;
+}
+
+.reality-primary-button:disabled,
+.reality-secondary-button:disabled,
+.reality-danger-button:disabled {
+  opacity: 0.48;
+  cursor: not-allowed;
+}
+
+.reality-work-card {
+  margin-top: 0.9rem;
+  padding: clamp(0.85rem, 3vw, 1.1rem);
+}
+
+.reality-timer-card {
+  position: relative;
+  isolation: isolate;
+  overflow: hidden;
+}
+
+.reality-timer-card > * {
+  position: relative;
+  z-index: 2;
+}
+
+.reality-timer-card__background,
+.reality-timer-card__shade {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+}
+
+.reality-timer-card__background {
+  z-index: 0;
+  object-fit: cover;
+  object-position: center;
+}
+
+.reality-timer-card__shade {
+  z-index: 1;
+  pointer-events: none;
+  background: rgb(255 248 237 / 98%);
+}
+
+.reality-timer-card.has-postcard-background .reality-timer-card__shade {
+  background: linear-gradient(
+    105deg,
+    rgb(255 248 237 / 96%) 0%,
+    rgb(255 248 237 / 84%) 58%,
+    rgb(255 248 237 / 52%) 100%
+  );
+}
+
+.reality-timer-card__badges {
+  min-width: 0;
+  display: flex;
+  flex: 0 1 auto;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 0.34rem;
+}
+
+.reality-background-status {
+  width: fit-content;
+  max-width: min(100%, 12rem);
+  padding: 0.3rem 0.52rem;
+  overflow-wrap: anywhere;
+  border: 1px solid #d6ad83;
+  border-radius: 999px;
+  color: #805848;
+  background: rgb(255 240 212 / 92%);
+  font-size: 0.62rem;
+  font-weight: 850;
+  line-height: 1.25;
+  text-align: right;
+}
+
+.reality-timer-companion {
+  display: flex;
+  align-items: center;
+  gap: 0.65rem;
+  margin-top: 0.8rem;
+  padding: 0.55rem 0.65rem;
+  border: 1.5px solid rgb(204 164 126 / 82%);
+  border-radius: 14px;
+  background: rgb(255 252 246 / 88%);
+  box-shadow: 0 5px 16px rgb(83 47 39 / 8%);
+}
+
+.reality-timer-companion__mascot {
+  width: clamp(58px, 18vw, 76px);
+  flex: 0 0 auto;
+  pointer-events: none;
+}
+
+.reality-timer-companion__mascot > .mascot-sprite {
+  width: 100%;
+}
+
+.reality-timer-companion p {
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 0.18rem;
+  margin: 0;
+  color: var(--muted, #765752);
+  font-size: 0.68rem;
+  font-weight: 700;
+  line-height: 1.45;
+  overflow-wrap: anywhere;
+}
+
+.reality-timer-companion strong {
+  color: var(--ink, #432c29);
+  font-size: 0.8rem;
+}
+
+.reality-card-index {
+  display: block;
+  color: var(--apple, #b63748);
+  font: 900 0.62rem/1 var(--display-font, inherit);
+  letter-spacing: 0.12em;
+}
+
+.reality-choice-grid,
+.reality-postcard-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, 8.5rem), 1fr));
+  gap: 0.6rem;
+  margin-top: 0.8rem;
+}
+
+.reality-choice-button,
+.reality-postcard-option {
+  max-width: 100%;
+  border: 1.5px solid #d4b493;
+  color: var(--ink, #432c29);
+  background: #fffdf8;
+  cursor: pointer;
+}
+
+.reality-choice-button {
+  min-height: 60px;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  justify-content: center;
+  padding: 0.7rem;
+  border-radius: 13px;
+  text-align: left;
+}
+
+.reality-choice-button[aria-pressed='true'],
+.reality-postcard-option[aria-pressed='true'] {
+  border-color: var(--apple, #b63748);
+  background: #fff0ee;
+  box-shadow: inset 0 0 0 1.5px var(--apple, #b63748);
+}
+
+.reality-choice-button:disabled {
+  opacity: 0.55;
+  cursor: not-allowed;
+}
+
+.reality-choice-button strong,
+.reality-postcard-option strong {
+  font-size: 0.78rem;
+  overflow-wrap: anywhere;
+}
+
+.reality-choice-button small,
+.reality-postcard-option small {
+  margin-top: 0.16rem;
+  color: var(--muted, #765752);
+  font-size: 0.63rem;
+  font-weight: 650;
+  overflow-wrap: anywhere;
+}
+
+.reality-timer-readout {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 0.7rem;
+  margin: 0.8rem 0 0;
+  padding: 0.7rem;
+  border-radius: 12px;
+  color: var(--muted, #765752);
+  background: #fff1d8;
+  font-size: 0.72rem;
+  font-weight: 750;
+}
+
+.reality-timer-readout strong {
+  color: var(--ink, #432c29);
+  font-family: var(--display-font, inherit);
+  font-size: 1rem;
+  font-variant-numeric: tabular-nums;
+  overflow-wrap: anywhere;
+}
+
+.reality-action-row,
+.reality-dialog__actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.65rem;
+  margin-top: 0.85rem;
+}
+
+.reality-notification-note {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.65rem;
+  margin-top: 0.75rem;
+  padding: 0.6rem 0.7rem;
+  border-left: 3px solid #c68762;
+  border-radius: 8px;
+  color: var(--muted, #765752);
+  background: #fff6e9;
+  font-size: 0.68rem;
+  font-weight: 750;
+  overflow-wrap: anywhere;
+}
+
+.reality-notification-note button,
+.reality-todo-create button,
+.reality-todo-edit button,
+.reality-todo-actions button {
+  min-height: 36px;
+  padding: 0.42rem 0.6rem;
+  border: 1.5px solid #aa7d61;
+  border-radius: 10px;
+  color: var(--ink, #432c29);
+  background: #fff;
+  font-size: 0.68rem;
+  font-weight: 850;
+  cursor: pointer;
+}
+
+.reality-notification-note button {
+  min-width: 44px;
+  min-height: 44px;
+  flex: 0 0 auto;
+}
+
+.reality-postcard-option {
+  min-height: 148px;
+  display: flex;
+  flex-direction: column;
+  align-items: stretch;
+  overflow: hidden;
+  padding: 0.45rem;
+  border-radius: 14px;
+  text-align: left;
+}
+
+.reality-postcard-option img,
+.reality-postcard-option__placeholder,
+.reality-postcard-option--plain > span {
+  width: 100%;
+  height: 88px;
+  display: grid;
+  place-items: center;
+  margin-bottom: 0.45rem;
+  border-radius: 9px;
+  background: #ead8c4;
+  object-fit: cover;
+}
+
+.reality-postcard-option--plain > span,
+.reality-postcard-option__placeholder {
+  color: #876552;
+  font-size: 0.68rem;
+  font-weight: 850;
+}
+
+.reality-todo-create {
+  margin-top: 0.8rem;
+}
+
+.reality-todo-create > label {
+  display: block;
+  margin-bottom: 0.35rem;
+  color: var(--muted, #765752);
+  font-size: 0.68rem;
+  font-weight: 850;
+}
+
+.reality-todo-create > div {
+  display: flex;
+  gap: 0.5rem;
+}
+
+.reality-todo-create input,
+.reality-todo-edit input {
+  width: 100%;
+  min-height: 42px;
+  padding: 0.55rem 0.65rem;
+  border: 1.5px solid #c6a483;
+  border-radius: 10px;
+  color: var(--ink, #432c29);
+  background: #fffdf8;
+}
+
+.reality-todo-create button:disabled,
+.reality-todo-edit button:disabled {
+  opacity: 0.48;
+  cursor: not-allowed;
+}
+
+.reality-todo-list {
+  display: grid;
+  gap: 0.55rem;
+  margin: 0.8rem 0 0;
+  padding: 0;
+  list-style: none;
+}
+
+.reality-todo-list > li {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 0.6rem;
+  padding: 0.65rem;
+  border: 1.5px solid #e0c7aa;
+  border-radius: 13px;
+  background: #fffaf3;
+}
+
+.reality-todo-list > li.is-complete .reality-todo-copy strong {
+  color: var(--muted, #765752);
+  text-decoration: line-through;
+}
+
+.reality-todo-check {
+  position: relative;
+  width: 34px;
+  height: 34px;
+  display: grid;
+  place-items: center;
+  flex: 0 0 auto;
+  border: 1.5px solid #ba9274;
+  border-radius: 10px;
+  background: #fff;
+  cursor: pointer;
+}
+
+.reality-todo-check input {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  opacity: 0;
+}
+
+.reality-todo-check span {
+  color: transparent;
+  font-weight: 950;
+}
+
+.reality-todo-check:has(input:checked) {
+  border-color: #6d7f4d;
+  background: #e6edcf;
+}
+
+.reality-todo-check input:checked + span {
+  color: #506438;
+}
+
+.reality-todo-copy {
+  display: flex;
+  flex-direction: column;
+  overflow-wrap: anywhere;
+}
+
+.reality-todo-copy strong {
+  font-size: 0.78rem;
+}
+
+.reality-todo-copy small {
+  margin-top: 0.14rem;
+  color: var(--muted, #765752);
+  font-size: 0.62rem;
+  font-weight: 650;
+}
+
+.reality-todo-actions {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+  gap: 0.35rem;
+}
+
+.reality-todo-actions button.is-danger {
+  color: #8f2838;
+  border-color: #d09a9d;
+  background: #fff0f0;
+}
+
+.reality-todo-edit {
+  grid-column: 1 / -1;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: 0.5rem;
+}
+
+.reality-todo-edit > div {
+  display: flex;
+  gap: 0.35rem;
+}
+
+.reality-empty {
+  margin: 0.8rem 0 0;
+  padding: 0.8rem;
+  border: 1.5px dashed #cfac8c;
+  border-radius: 12px;
+  color: var(--muted, #765752);
+  background: #fff8ed;
+  font-size: 0.76rem;
+  font-weight: 700;
+  line-height: 1.5;
+  text-align: center;
+  overflow-wrap: anywhere;
+}
+
+.reality-dialog-backdrop {
+  position: fixed;
+  z-index: 120;
+  inset: 0;
+  display: grid;
+  place-items: center;
+  overflow-x: hidden;
+  overflow-y: auto;
+  padding: max(1rem, env(safe-area-inset-top)) max(1rem, env(safe-area-inset-right))
+    max(1rem, env(safe-area-inset-bottom)) max(1rem, env(safe-area-inset-left));
+  background: rgb(55 34 31 / 58%);
+  backdrop-filter: blur(4px);
+}
+
+/* Portal 脱离游戏页祖先后，自带 V4 字体和字号变量，避免回退到旧版小字。 */
+.reality-dialog-backdrop--v4 {
+  --v4-body-copy-size: 0.9rem;
+  --v4-support-copy-size: 0.82rem;
+  font-family: var(--font-ui, 'TravellingBingo UI', 'Microsoft YaHei UI', sans-serif);
+}
+
+.reality-dialog-backdrop--v4 .reality-dialog p,
+.reality-dialog-backdrop--v4 .reality-primary-button,
+.reality-dialog-backdrop--v4 .reality-secondary-button,
+.reality-dialog-backdrop--v4 .reality-danger-button {
+  font-size: var(--v4-body-copy-size);
+}
+
+.reality-dialog {
+  width: min(100%, 430px);
+  max-width: 100%;
+  padding: clamp(1rem, 5vw, 1.45rem);
+  overflow-wrap: anywhere;
+  border: 2px solid var(--outline, #81564f);
+  border-radius: 23px 27px 21px 25px;
+  color: var(--ink, #432c29);
+  background: var(--paper, #fffaf5);
+  box-shadow:
+    0 22px 65px rgb(45 25 23 / 28%),
+    5px 6px 0 rgb(101 68 59 / 22%);
+}
+
+.reality-dialog__symbol {
+  width: 50px;
+  height: 50px;
+  display: grid;
+  place-items: center;
+  margin-bottom: 0.7rem;
+  border-radius: 16px;
+  background: #fff0d7;
+  font-size: 1.5rem;
+}
+
+.reality-dialog h2 {
+  font-size: clamp(1.35rem, 6vw, 1.9rem);
+}
+
+.reality-dialog p strong {
+  color: var(--apple, #b63748);
+  white-space: nowrap;
+}
+
+.reality-dialog__actions > * {
+  flex: 1 1 8rem;
+}
+
+.reality-return-dialog__actions > * {
+  min-height: 50px;
+  font-size: 0.86rem;
+}
+
+.reality-dashboard button:focus-visible,
+.reality-dashboard a:focus-visible,
+.reality-dashboard input:focus-visible,
+.reality-panel button:focus-visible,
+.reality-panel a:focus-visible,
+.reality-panel input:focus-visible,
+.reality-dialog button:focus-visible,
+.reality-dialog input:focus-visible,
+.reality-todo-check:has(input:focus-visible) {
+  outline: 3px solid #2f718f;
+  outline-offset: 3px;
+}
+
+@media (max-width: 680px) {
+  .reality-timer-card.has-postcard-background .reality-timer-card__shade {
+    background: rgb(255 248 237 / 84%);
+  }
+
+  .reality-data-grid {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .reality-group-card,
+  .reality-notification-note {
+    align-items: stretch;
+    flex-direction: column;
+  }
+
+  .reality-primary-link,
+  .reality-notification-note button {
+    width: 100%;
+  }
+
+  .reality-todo-list > li {
+    grid-template-columns: auto minmax(0, 1fr);
+  }
+
+  .reality-todo-actions {
+    grid-column: 1 / -1;
+  }
+
+  .reality-todo-actions button {
+    flex: 1 1 7rem;
+  }
+
+  .reality-todo-edit {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .reality-todo-edit > div > button {
+    flex: 1;
+  }
+}
+
+@media (max-width: 420px) {
+  .reality-dashboard__header {
+    gap: 0.55rem;
+  }
+
+  .reality-tabs {
+    gap: 0.45rem;
+  }
+
+  .reality-tab {
+    flex-basis: 100%;
+    justify-content: flex-start;
+  }
+
+  .reality-panel__heading,
+  .reality-work-card__heading,
+  .reality-data-card__heading {
+    gap: 0.45rem;
+  }
+
+  .reality-background-status {
+    max-width: 8rem;
+  }
+
+  .reality-timer-companion {
+    align-items: flex-start;
+  }
+
+  .reality-timer-companion__mascot {
+    width: 54px;
+  }
+
+  .reality-todo-create > div,
+  .reality-action-row,
+  .reality-dialog__actions {
+    align-items: stretch;
+    flex-direction: column;
+  }
+
+  .reality-todo-create button,
+  .reality-action-row > *,
+  .reality-dialog__actions > * {
+    width: 100%;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .reality-dashboard *,
+  .reality-panel *,
+  .reality-dialog * {
+    scroll-behavior: auto !important;
+    transition-duration: 0.01ms !important;
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+  }
+}

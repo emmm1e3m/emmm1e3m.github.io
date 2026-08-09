@@ -3,6 +3,8 @@ import { dirname, resolve } from 'node:path'
 import { isDeepStrictEqual } from 'node:util'
 import { fileURLToPath } from 'node:url'
 
+import { format } from 'prettier'
+
 import {
   assertVideoCatalog,
   buildPublicVideoCatalog,
@@ -25,6 +27,14 @@ const siteFirstSourcePath = resolve(
 const publicCatalogPath = resolve(
   workspaceRoot,
   'AllForSUXINHAO/TravellingBingo/public/data/video-catalog.json',
+)
+const publicMillionManifestPath = resolve(
+  workspaceRoot,
+  'AllForSUXINHAO/TravellingBingo/public/data/million-shot-posters.json',
+)
+const publicSiteFirstManifestPath = resolve(
+  workspaceRoot,
+  'AllForSUXINHAO/TravellingBingo/public/data/site-firsts.json',
 )
 const favoriteApiUrl = 'https://api.bilibili.com/x/v3/fav/resource/list'
 const viewApiUrl = 'https://api.bilibili.com/x/web-interface/view'
@@ -241,6 +251,69 @@ function applyManifestVideos(manifest, mappings, catalog, kind) {
   }
 }
 
+function applyPublicManifestVideos(publicManifest, sourceManifest, kind) {
+  if (!Array.isArray(publicManifest.items) || !Array.isArray(sourceManifest.items)) {
+    throw new Error(`${kind} 的来源或公开目录缺少 items`)
+  }
+  if (publicManifest.items.length !== sourceManifest.items.length) {
+    throw new Error(`${kind} 的来源与公开目录数量不一致`)
+  }
+
+  const sourceById = new Map(sourceManifest.items.map((item) => [item.id, item]))
+  if (sourceById.size !== sourceManifest.items.length) {
+    throw new Error(`${kind} 来源目录存在重复 ID`)
+  }
+  const seenPublicIds = new Set()
+  return {
+    ...publicManifest,
+    items: publicManifest.items.map((item) => {
+      if (seenPublicIds.has(item.id)) throw new Error(`${kind} 公开目录存在重复 ID：${item.id}`)
+      seenPublicIds.add(item.id)
+      const sourceItem = sourceById.get(item.id)
+      if (!sourceItem) throw new Error(`${kind} 公开目录存在来源未定义的 ${item.id}`)
+      if (!sourceItem.video) throw new Error(`${kind} 来源目录的 ${item.id} 缺少 video`)
+      if (!item.metadata || typeof item.metadata !== 'object' || Array.isArray(item.metadata)) {
+        throw new Error(`${kind} 公开目录的 ${item.id} 缺少 metadata`)
+      }
+      return {
+        ...item,
+        metadata: {
+          ...item.metadata,
+          video: sourceItem.video,
+        },
+      }
+    }),
+  }
+}
+
+export function buildSynchronizedPosterCatalogs({
+  catalog,
+  millionSource,
+  siteFirstSource,
+  millionPublic,
+  siteFirstPublic,
+}) {
+  assertVideoCatalog(catalog)
+  const nextMillionSource = applyManifestVideos(
+    millionSource,
+    catalog.posterMappings.millionShots,
+    catalog,
+    '百万直拍',
+  )
+  const nextSiteFirstSource = applyManifestVideos(
+    siteFirstSource,
+    catalog.posterMappings.siteFirsts,
+    catalog,
+    '全站第一',
+  )
+  return {
+    millionSource: nextMillionSource,
+    siteFirstSource: nextSiteFirstSource,
+    millionPublic: applyPublicManifestVideos(millionPublic, nextMillionSource, '百万直拍'),
+    siteFirstPublic: applyPublicManifestVideos(siteFirstPublic, nextSiteFirstSource, '全站第一'),
+  }
+}
+
 function assertManifestVideos(manifest, mappings, catalog, kind) {
   const expected = applyManifestVideos(manifest, mappings, catalog, kind)
   for (let index = 0; index < manifest.items.length; index += 1) {
@@ -257,47 +330,84 @@ async function readJson(path) {
 }
 
 async function writeJson(path, value) {
+  const output = await format(JSON.stringify(value), {
+    parser: 'json',
+    printWidth: 100,
+    endOfLine: 'lf',
+  })
+  try {
+    if ((await readFile(path, 'utf8')) === output) return
+  } catch (error) {
+    if (error.code !== 'ENOENT') throw error
+  }
   await mkdir(dirname(path), { recursive: true })
-  await writeFile(path, `${JSON.stringify(value, null, 2)}\n`, 'utf8')
+  await writeFile(path, output, 'utf8')
 }
 
 export async function buildOfflineCatalog() {
-  const [catalog, millionManifest, siteFirstManifest] = await Promise.all([
+  const [
+    catalog,
+    millionManifest,
+    siteFirstManifest,
+    publicMillionManifest,
+    publicSiteFirstManifest,
+  ] = await Promise.all([
     readJson(catalogSourcePath),
     readJson(millionSourcePath),
     readJson(siteFirstSourcePath),
+    readJson(publicMillionManifestPath),
+    readJson(publicSiteFirstManifestPath),
   ])
   assertVideoCatalog(catalog)
   assertManifestVideos(millionManifest, catalog.posterMappings.millionShots, catalog, '百万直拍')
   assertManifestVideos(siteFirstManifest, catalog.posterMappings.siteFirsts, catalog, '全站第一')
-  await writeJson(publicCatalogPath, buildPublicVideoCatalog(catalog))
+  const nextPublicMillionManifest = applyPublicManifestVideos(
+    publicMillionManifest,
+    millionManifest,
+    '百万直拍',
+  )
+  const nextPublicSiteFirstManifest = applyPublicManifestVideos(
+    publicSiteFirstManifest,
+    siteFirstManifest,
+    '全站第一',
+  )
+  await Promise.all([
+    writeJson(publicCatalogPath, buildPublicVideoCatalog(catalog)),
+    writeJson(publicMillionManifestPath, nextPublicMillionManifest),
+    writeJson(publicSiteFirstManifestPath, nextPublicSiteFirstManifest),
+  ])
   return catalog
 }
 
 async function refreshAndWriteCatalog() {
-  const [seedCatalog, millionManifest, siteFirstManifest] = await Promise.all([
+  const [
+    seedCatalog,
+    millionManifest,
+    siteFirstManifest,
+    publicMillionManifest,
+    publicSiteFirstManifest,
+  ] = await Promise.all([
     readJson(catalogSourcePath),
     readJson(millionSourcePath),
     readJson(siteFirstSourcePath),
+    readJson(publicMillionManifestPath),
+    readJson(publicSiteFirstManifestPath),
   ])
   const catalog = await refreshVideoCatalog(seedCatalog)
-  const nextMillionManifest = applyManifestVideos(
-    millionManifest,
-    catalog.posterMappings.millionShots,
+  const synchronized = buildSynchronizedPosterCatalogs({
     catalog,
-    '百万直拍',
-  )
-  const nextSiteFirstManifest = applyManifestVideos(
-    siteFirstManifest,
-    catalog.posterMappings.siteFirsts,
-    catalog,
-    '全站第一',
-  )
+    millionSource: millionManifest,
+    siteFirstSource: siteFirstManifest,
+    millionPublic: publicMillionManifest,
+    siteFirstPublic: publicSiteFirstManifest,
+  })
   await Promise.all([
     writeJson(catalogSourcePath, catalog),
-    writeJson(millionSourcePath, nextMillionManifest),
-    writeJson(siteFirstSourcePath, nextSiteFirstManifest),
+    writeJson(millionSourcePath, synchronized.millionSource),
+    writeJson(siteFirstSourcePath, synchronized.siteFirstSource),
     writeJson(publicCatalogPath, buildPublicVideoCatalog(catalog)),
+    writeJson(publicMillionManifestPath, synchronized.millionPublic),
+    writeJson(publicSiteFirstManifestPath, synchronized.siteFirstPublic),
   ])
   return catalog
 }

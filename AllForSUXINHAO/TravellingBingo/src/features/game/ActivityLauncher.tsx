@@ -1,24 +1,16 @@
-import { useEffect, useId, useRef, useState } from 'react'
+import { useEffect, useId, useRef, useState, type KeyboardEvent } from 'react'
 
 import {
   getLuckyAppleAvailability,
+  getVitalityMagicAvailability,
   interestForActivity,
   type ActivityKind,
   type CollectionCatalog,
   type GameAction,
   type GameState,
-  type ItemId,
 } from '@/domain'
 
 import { ACTIVITY_COPY, ITEM_COPY } from './gameCopy'
-
-const ACTIVITY_SCENE_LABEL: Record<ActivityKind, string> = {
-  travel: '门口计划',
-  stream: '电脑计划',
-  trend: '电脑计划',
-  music: '音乐计划',
-  rest: '休息计划',
-}
 
 function readPetPreferences(game: GameState) {
   return game.pet
@@ -31,14 +23,28 @@ interface ActivityLauncherProps {
   onAction: (action: GameAction) => void
   onNeedSupplies: () => void
   onNeedRest: () => void
+  /** 房间灰态热点发出的一次性“立即说明意愿”请求。 */
+  vitalityPromptRequestToken?: number | null
+  onVitalityPromptRequestHandled?: (token: number) => void
 }
 
 interface LuckyAppleSelection {
   game: GameState
   catalog: CollectionCatalog
   kind: ActivityKind
-  supplyId: ItemId | null
+  supplyId: ActivitySupplyId | null
 }
+
+interface RefusalNotice {
+  game: GameState
+  kind: ActivityKind
+  attempt: number
+  source: 'launcher' | 'hotspot'
+}
+
+type ActivityStartAction = Extract<GameAction, { type: 'activity/start' }>
+type ActivitySupplyId = NonNullable<ActivityStartAction['supplyId']>
+type ConfirmationKind = 'activity' | 'vitality'
 
 export function ActivityLauncher({
   kind,
@@ -47,22 +53,30 @@ export function ActivityLauncher({
   onAction,
   onNeedSupplies,
   onNeedRest,
+  vitalityPromptRequestToken,
+  onVitalityPromptRequestHandled,
 }: ActivityLauncherProps) {
   const copy = ACTIVITY_COPY[kind]
-  const [travelSupply, setTravelSupply] = useState<ItemId>('travel-basic')
-  const [confirming, setConfirming] = useState(false)
+  const [travelSupply, setTravelSupply] = useState<ActivitySupplyId>('travel-basic')
+  const [confirmation, setConfirmation] = useState<ConfirmationKind | null>(null)
+  const [refusalNotice, setRefusalNotice] = useState<RefusalNotice | null>(null)
   const [luckySelection, setLuckySelection] = useState<LuckyAppleSelection | null>(null)
   const cardRef = useRef<HTMLElement>(null)
   const launchButtonRef = useRef<HTMLButtonElement>(null)
   const cancelButtonRef = useRef<HTMLButtonElement>(null)
   const hadConfirmationRef = useRef(false)
+  const handledVitalityPromptRef = useRef<number | null>(null)
   const luckyNoteId = useId()
-  const supply = kind === 'travel' ? travelSupply : copy.supply
+  const refusalNoteId = useId()
+  const supply = (kind === 'travel' ? travelSupply : copy.supply) as ActivitySupplyId | null
   const available = supply === null ? 1 : game.inventory[supply]
   const pet = readPetPreferences(game)
   const interest = interestForActivity(kind)
   const wanted = interest === null || (pet.preferences[interest] && !pet.tired)
-  const canStart = game.activeActivity === null && available > 0
+  const canPrepare = game.activeActivity === null && available > 0
+  const canStart = canPrepare && wanted
+  const vitalityAvailability = getVitalityMagicAvailability(game)
+  const canOfferVitality = !wanted && interest !== null && vitalityAvailability.canUse
   const luckyAvailability = getLuckyAppleAvailability(game, kind, catalog, supply ?? undefined)
   const hasLuckyApple = game.inventory['lucky-apple'] > 0
   const canChooseLuckyApple = luckyAvailability.canUse && hasLuckyApple
@@ -83,7 +97,7 @@ export function ActivityLauncher({
         : '这次的回忆已经稳稳在路上了，幸运苹果先留在冰箱里吧。'
 
   useEffect(() => {
-    if (confirming) {
+    if (confirmation !== null) {
       hadConfirmationRef.current = true
       cancelButtonRef.current?.focus({ preventScroll: true })
       return
@@ -99,10 +113,96 @@ export function ActivityLauncher({
     }
 
     cardRef.current?.focus({ preventScroll: true })
-  }, [confirming])
+  }, [confirmation])
+
+  useEffect(() => {
+    const token = vitalityPromptRequestToken
+    if (token === null || token === undefined || handledVitalityPromptRef.current === token) return
+
+    const frame = globalThis.requestAnimationFrame(() => {
+      handledVitalityPromptRef.current = token
+      if (!wanted && interest !== null) {
+        if (canOfferVitality) {
+          setConfirmation('vitality')
+        } else {
+          setConfirmation(null)
+          setRefusalNotice((notice) => ({
+            game,
+            kind,
+            attempt: notice?.game === game && notice.kind === kind ? notice.attempt + 1 : 1,
+            source: 'hotspot',
+          }))
+        }
+      }
+      onVitalityPromptRequestHandled?.(token)
+    })
+    return () => globalThis.cancelAnimationFrame(frame)
+  }, [
+    canOfferVitality,
+    game,
+    interest,
+    kind,
+    onVitalityPromptRequestHandled,
+    vitalityPromptRequestToken,
+    wanted,
+  ])
+
+  useEffect(() => {
+    if (
+      refusalNotice?.source !== 'hotspot' ||
+      refusalNotice.game !== game ||
+      refusalNotice.kind !== kind
+    ) {
+      return
+    }
+    cardRef.current?.focus({ preventScroll: true })
+  }, [game, kind, refusalNotice])
+
+  function closeConfirmation() {
+    setConfirmation(null)
+  }
+
+  function handleConfirmationKeyDown(event: KeyboardEvent<HTMLDivElement>) {
+    if (event.key !== 'Escape') return
+    event.stopPropagation()
+    closeConfirmation()
+  }
+
+  function handleLaunchAttempt() {
+    if (!canPrepare) return
+    if (wanted) {
+      setConfirmation('activity')
+      return
+    }
+
+    if (canOfferVitality) {
+      setConfirmation('vitality')
+      return
+    }
+
+    // 使用递增 key 让连续尝试也能重新播报同一句角色提示。
+    setRefusalNotice((notice) => ({
+      game,
+      kind,
+      attempt: notice?.game === game && notice.kind === kind ? notice.attempt + 1 : 1,
+      source: 'launcher',
+    }))
+  }
+
+  function useVitalityMagic() {
+    if (!canOfferVitality) {
+      closeConfirmation()
+      return
+    }
+    onAction({ type: 'magic/vitality-use', now: Date.now() })
+    closeConfirmation()
+  }
 
   function startActivity() {
-    if (!canStart) return
+    if (!canStart) {
+      closeConfirmation()
+      return
+    }
     onAction({
       type: 'activity/start',
       kind,
@@ -110,7 +210,7 @@ export function ActivityLauncher({
       ...(supply === null ? {} : { supplyId: supply }),
       useLuckyApple,
     })
-    setConfirming(false)
+    closeConfirmation()
   }
 
   return (
@@ -121,7 +221,6 @@ export function ActivityLauncher({
       data-interest={wanted ? 'willing' : 'reluctant'}
     >
       <div className="activity-card__copy">
-        <span className="eyebrow">{ACTIVITY_SCENE_LABEL[kind]}</span>
         <h3>{copy.name}</h3>
         <p>{copy.note}</p>
       </div>
@@ -177,9 +276,18 @@ export function ActivityLauncher({
       )}
 
       {!wanted && (
-        <div className="activity-refusal" role="note">
+        <div className="activity-refusal" id={refusalNoteId} role="note">
           <strong>{pet.tired ? '饼狗有点累了' : copy.refuse}</strong>
-          <span>按钮仍然可以按；如果它摇摇头，就陪它去床边休息。</span>
+          <span>
+            {canOfferVitality
+              ? '冰箱里有活力魔法，可以先问问要不要使用。'
+              : '可以先陪它休息，醒来后再问问。'}
+          </span>
+          {refusalNotice?.game === game && refusalNotice.kind === kind && !canOfferVitality && (
+            <p className="activity-refusal-alert" key={refusalNotice.attempt} role="alert">
+              {pet.tired ? '饼狗现在有点累' : copy.refuse}，可以休息后再问问。
+            </p>
+          )}
           <button type="button" onClick={onNeedRest}>
             去床铺休息
           </button>
@@ -188,10 +296,41 @@ export function ActivityLauncher({
 
       {available < 1 && supply !== null ? (
         <button className="paper-button" type="button" onClick={onNeedSupplies}>
-          为冰箱补充{ITEM_COPY[supply].name}
+          补充{ITEM_COPY[supply].name}
         </button>
-      ) : confirming ? (
-        <div className="activity-confirm" role="group" aria-label={`确认${copy.name}`}>
+      ) : confirmation === 'vitality' ? (
+        <div
+          className="activity-confirm activity-confirm--vitality"
+          role="group"
+          aria-label="确认使用活力魔法"
+          onKeyDown={handleConfirmationKeyDown}
+        >
+          <p>使用一瓶活力魔法后，饼狗会重新有精神。要现在使用吗？</p>
+          <div className="button-row">
+            <button
+              className="paper-button paper-button--primary"
+              type="button"
+              onClick={useVitalityMagic}
+            >
+              使用活力魔法
+            </button>
+            <button
+              ref={cancelButtonRef}
+              className="paper-button"
+              type="button"
+              onClick={closeConfirmation}
+            >
+              先不使用
+            </button>
+          </div>
+        </div>
+      ) : confirmation === 'activity' ? (
+        <div
+          className="activity-confirm"
+          role="group"
+          aria-label={`确认${copy.name}`}
+          onKeyDown={handleConfirmationKeyDown}
+        >
           <p>
             {supply ? `带上${ITEM_COPY[supply].name}，` : ''}
             和饼狗一起开始这段时间吗？
@@ -208,7 +347,7 @@ export function ActivityLauncher({
               ref={cancelButtonRef}
               className="paper-button"
               type="button"
-              onClick={() => setConfirming(false)}
+              onClick={closeConfirmation}
             >
               再想想
             </button>
@@ -219,8 +358,9 @@ export function ActivityLauncher({
           ref={launchButtonRef}
           className={`paper-button paper-button--primary ${!wanted ? 'is-reluctant' : ''}`}
           type="button"
-          disabled={!canStart}
-          onClick={() => setConfirming(true)}
+          disabled={!canPrepare}
+          aria-describedby={!wanted ? refusalNoteId : undefined}
+          onClick={handleLaunchAttempt}
         >
           {game.activeActivity
             ? '现在有一件事正在进行'

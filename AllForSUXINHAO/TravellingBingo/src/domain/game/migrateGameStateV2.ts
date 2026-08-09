@@ -3,23 +3,24 @@ import { z } from 'zod'
 import { validateCollectionCatalog } from './validateCollectionCatalog'
 import {
   FRIEND_EVENT_IDS,
-  ITEM_IDS,
+  LEGACY_ITEM_IDS,
   MAX_APPLES,
   MAX_COMPANION_DAYS,
   MAX_ITEM_STACK,
 } from './constants'
-import { createDefaultGameBalance, isValidActivityDuration } from './gameBalance'
+import { createDefaultGameBalanceV3, isValidActivityDuration } from './gameBalance'
 import { migrateGameStateV1, type MigrateGameStateV1Options } from './migrateGameStateV1'
+import { assertValidTimestamp, MAX_DATE_TIMESTAMP_MS } from './time'
 import type {
   ActivityRun,
   CollectionCatalog,
-  GameState,
   GameStateV1,
   GameStateV2,
+  GameStateV3,
   LegacyActivityCounters,
 } from './types'
 
-const timestamp = z.number().int().nonnegative().safe()
+const timestamp = z.number().int().nonnegative().max(MAX_DATE_TIMESTAMP_MS)
 const safeCounter = z.number().int().nonnegative().safe()
 const probability = z.number().min(0).max(1).finite()
 const activityDuration = z
@@ -28,7 +29,7 @@ const activityDuration = z
   .positive()
   .safe()
   .refine(isValidActivityDuration, '活动时长超出允许范围')
-const itemId = z.enum(ITEM_IDS)
+const itemId = z.enum(LEGACY_ITEM_IDS)
 const friendId = z.enum(FRIEND_EVENT_IDS)
 const activityKind = z.enum(['travel', 'stream', 'trend'])
 const collectibleCategory = z.enum(['postcard', 'million-shot', 'site-first'])
@@ -197,14 +198,14 @@ function migrateActiveActivity(state: GameStateV2): ActivityRun | null {
     endsAt: activity.endsAt,
     rewardSeed: activity.rewardSeed,
     rewardPlan: {
-      baseApples: 0,
-      modifierApples: 0,
+      baseApples: activity.rewardPlan.baseApples,
+      modifierApples: activity.rewardPlan.modifierApples,
       collection: structuredClone(activity.rewardPlan.collection),
       friendId: activity.rewardPlan.friendEventId,
       // 旧活动只兑现当时已经计划的结果，不按 V3 规则追加新礼物。
       giftItemId: null,
-      guaranteedByPity: false,
-      pityAfterClaim: null,
+      guaranteedByPity: activity.rewardPlan.guaranteedByPity,
+      pityAfterClaim: activity.rewardPlan.pityAfterClaim,
     },
     supplyId: activity.supplyId,
     usedLuckyApple: activity.usedLuckyApple,
@@ -215,14 +216,12 @@ function migrateActiveActivity(state: GameStateV2): ActivityRun | null {
 export function migrateGameStateV2ToV3(
   state: GameStateV2,
   options: MigrateGameStateV2Options,
-): GameState {
-  if (!Number.isSafeInteger(options.now) || options.now < 0) {
-    throw new RangeError('迁移时间必须是非负安全整数毫秒时间戳')
-  }
+): GameStateV3 {
+  assertValidTimestamp(options.now, '迁移时间必须是 Date 可表示的非负整数毫秒时间戳')
   const catalogValidation = validateCollectionCatalog(options.catalog)
   if (!catalogValidation.ok) throw new TypeError(catalogValidation.message)
 
-  const gameBalance = createDefaultGameBalance()
+  const gameBalance = createDefaultGameBalanceV3()
   if (state.profile.debug) {
     gameBalance.activityDurationMs = state.gameBalance.activityDurationMs
     gameBalance.probabilities = {
@@ -270,12 +269,12 @@ export function migrateGameStateV2ToV3(
   }
 }
 
-export type StoredGameState = GameStateV1 | GameStateV2 | GameState
+export type StoredGameStateThroughV3 = GameStateV1 | GameStateV2 | GameStateV3
 
 export function migrateStoredGameStateToV3(
-  state: StoredGameState,
+  state: StoredGameStateThroughV3,
   options: MigrateGameStateV1Options,
-): GameState {
+): GameStateV3 {
   if (state.schemaVersion === 3) return state
   const v2 = state.schemaVersion === 1 ? migrateGameStateV1(state, options) : state
   return migrateGameStateV2ToV3(v2, options)
@@ -284,6 +283,6 @@ export function migrateStoredGameStateToV3(
 export function migrateGameStateV1ToV3(
   state: GameStateV1,
   options: MigrateGameStateV1Options,
-): GameState {
+): GameStateV3 {
   return migrateGameStateV2ToV3(migrateGameStateV1(state, options), options)
 }

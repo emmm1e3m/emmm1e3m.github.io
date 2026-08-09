@@ -15,6 +15,17 @@ const HOTSPOTS = [
   { name: '房门', x: 92, y: 74 },
 ] as const
 
+const GAME_PET_CENTERS = [
+  { hotspot: '床铺', x: 225, y: 300 },
+  { hotspot: '电脑', x: 504, y: 409 },
+  { hotspot: '衣架', x: 387, y: 675 },
+  { hotspot: '电子琴', x: 257, y: 1103 },
+  { hotspot: '冰箱', x: 633, y: 951 },
+  { hotspot: '唱片机', x: 783, y: 1030 },
+  { hotspot: '收藏墙', x: 1053, y: 673 },
+  { hotspot: '房门', x: 980, y: 1176 },
+] as const
+
 function expectNear(actual: number, expected: number, tolerance = 2) {
   expect(Math.abs(actual - expected)).toBeLessThanOrEqual(tolerance)
 }
@@ -69,7 +80,7 @@ for (const viewport of [
     expectNear(horizontalGap, verticalGap)
     expect(roomIdle!.width).toBeGreaterThan(roomOpen!.width + 100)
 
-    await page.getByRole('button', { name: '收起信息栏，查看完整房间' }).click()
+    await page.getByRole('button', { name: '收起信息栏' }).click()
     await expect(page.locator('.context-panel')).toHaveCount(0)
     await expect
       .poll(async () => (await room.boundingBox())?.width ?? 0)
@@ -87,6 +98,7 @@ for (const viewport of [
     await help.click()
     const helpDialog = page.getByRole('dialog', { name: '怎么陪饼狗玩' })
     await expect(helpDialog).toBeVisible()
+    await expect(helpDialog).toContainText('铲铲饼屋的小纸条')
     await expect(helpDialog).toContainText('旅行、刷播、冲热、弹琴和睡觉')
     await expect(helpDialog).toContainText('中途取消不会增加天数，带出的补给也不会退回')
     await helpDialog.getByRole('button', { name: '知道啦' }).click()
@@ -101,6 +113,28 @@ test('房间原图、热点与饼狗落点共用同一套 portrait 坐标', asyn
   await startGame(page)
 
   const room = page.getByRole('region', { name: '铲铲饼屋互动场景' })
+  await expect(room.locator('.room-hotspot')).toHaveText([
+    '去床边',
+    '去电脑前',
+    '看看衣架',
+    '弹弹琴',
+    '打开冰箱',
+    '放张唱片',
+    '看看收藏墙',
+    '去门口',
+  ])
+  await expect(room.getByRole('button', { name: '数据', exact: true })).toHaveCount(0)
+  await expect(room.getByRole('button', { name: '工作', exact: true })).toHaveCount(0)
+  await expect(room.locator('.room-hotspot').first()).toHaveCSS(
+    'font-family',
+    /TravellingBingo Display/u,
+  )
+  expect(
+    await room
+      .locator('.room-hotspot')
+      .first()
+      .evaluate((element) => Number.parseFloat(getComputedStyle(element).fontSize)),
+  ).toBeGreaterThanOrEqual(13)
   const stage = room.locator('.room-stage')
   const roomImage = room.getByRole('img', { name: /纵向展开的两层铲铲饼屋/u })
   await expect(roomImage).toHaveJSProperty('complete', true)
@@ -127,10 +161,53 @@ test('房间原图、热点与饼狗落点共用同一套 portrait 坐标', asyn
     expect(normalizedY, `${expected.name} 纵向坐标`).toBeCloseTo(expected.y, 0)
   }
 
-  await room.locator('[data-hotspot="冰箱"]').click()
-  await expect(room.locator('.mascot-sprite--fridge')).toBeVisible({ timeout: 2_000 })
-  await expect(room.locator('.room-mascot--actor')).toHaveCSS('--pet-x', '54%')
-  await expect(room.locator('.room-mascot--actor')).toHaveCSS('--pet-y', '77%')
+  for (const expected of GAME_PET_CENTERS) {
+    await room.locator(`[data-hotspot="${expected.hotspot}"]`).click()
+    const mascot = room.locator('.room-mascot--actor')
+    const position = await mascot.evaluate((element) => {
+      const style = getComputedStyle(element)
+      return {
+        x: Number.parseFloat(style.getPropertyValue('--pet-x')),
+        y: Number.parseFloat(style.getPropertyValue('--pet-y')),
+      }
+    })
+    expect(position.x, `${expected.hotspot} 饼狗横向中心`).toBeCloseTo((expected.x / 1098) * 100, 5)
+    expect(position.y, `${expected.hotspot} 饼狗纵向中心`).toBeCloseTo((expected.y / 1433) * 100, 5)
+    if (expected.hotspot === '收藏墙') {
+      await page
+        .getByRole('dialog', { name: '饼狗的收藏墙' })
+        .getByRole('button', {
+          name: '关闭收藏墙',
+        })
+        .click()
+    }
+  }
+
+  await page.getByRole('button', { name: '切换到现实生活维度' }).click()
+  await expect(room.locator('.room-hotspot')).toHaveText(['数据', '放张唱片', '工作'])
+  for (const hiddenLabel of [
+    '去床边',
+    '去电脑前',
+    '看看衣架',
+    '弹弹琴',
+    '打开冰箱',
+    '看看收藏墙',
+    '去门口',
+  ]) {
+    await expect(room.getByRole('button', { name: hiddenLabel, exact: true })).toHaveCount(0)
+  }
+  const workComputer = room.locator('[data-hotspot="一楼电脑"]')
+  await expect(workComputer).toHaveText('工作')
+  await workComputer.click()
+  const workPosition = await room.locator('.room-mascot--actor').evaluate((element) => {
+    const style = getComputedStyle(element)
+    return {
+      x: Number.parseFloat(style.getPropertyValue('--pet-x')),
+      y: Number.parseFloat(style.getPropertyValue('--pet-y')),
+    }
+  })
+  expect(workPosition.x).toBeCloseTo((420 / 1098) * 100, 5)
+  expect(workPosition.y).toBeCloseTo((1172 / 1433) * 100, 5)
 })
 
 test('DEBUG 仍会生成拒绝意愿，暗淡按钮询问后显示领域拒绝', async ({ page }, testInfo) => {
@@ -144,6 +221,8 @@ test('DEBUG 仍会生成拒绝意愿，暗淡按钮询问后显示领域拒绝',
   await expect(card).toHaveAttribute('data-interest', 'reluctant')
   const askButton = card.getByRole('button', { name: '问问饼狗要不要出去旅行' })
   await expect(askButton).toHaveClass(/is-reluctant/u)
+  await expect(askButton).not.toHaveAttribute('aria-disabled', 'true')
+  await expect(askButton).toBeEnabled()
   const visual = await askButton.evaluate((element) => {
     const style = getComputedStyle(element)
     return { opacity: Number(style.opacity), filter: style.filter }
@@ -151,10 +230,30 @@ test('DEBUG 仍会生成拒绝意愿，暗淡按钮询问后显示领域拒绝',
   expect(visual.opacity < 1 || visual.filter !== 'none').toBe(true)
 
   await askButton.click()
-  const confirmation = card.getByRole('group', { name: '确认出去旅行' })
-  await confirmation.getByRole('button', { name: '确认开始' }).click()
-  await expect(page.getByRole('status').filter({ hasText: '饼狗今天不太想出门' })).toBeVisible()
-  await expect(page.getByRole('button', { name: '返回', exact: true })).toHaveCount(0)
+  await expect(card.getByRole('alert')).toContainText('饼狗今天更想待在家里')
+  await expect(card.getByRole('group', { name: '确认出去旅行' })).toHaveCount(0)
+  await expect(page.getByRole('button', { name: '取消当前活动', exact: true })).toHaveCount(0)
+})
+
+test('饼狗站在冰箱前时热点与角色都能用普通鼠标点击', async ({ page }, testInfo) => {
+  test.skip(testInfo.project.name !== 'chromium', '设施与角色层级只在桌面验证一次')
+  await page.setViewportSize({ width: 1440, height: 1000 })
+  await startGame(page, { displayName: '层级测试', seed: 'fridge-layer-v4' })
+  const room = page.getByRole('region', { name: '铲铲饼屋互动场景' })
+  const fridge = room.locator('[data-hotspot="冰箱"]')
+
+  await fridge.click()
+  await expect(page.locator('.context-panel--fridge')).toBeVisible()
+  await page.getByRole('button', { name: '收起信息栏' }).click()
+  await expect(room.locator('.mascot-sprite--fridge')).toBeVisible()
+
+  await fridge.click()
+  await expect(page.locator('.context-panel--fridge')).toBeVisible()
+  await page.getByRole('button', { name: '收起信息栏' }).click()
+
+  const actor = room.getByRole('button', { name: '饼狗，打开行动菜单' })
+  await actor.click()
+  await expect(page.getByRole('dialog', { name: '饼狗想做什么' })).toBeVisible()
 })
 
 test('饼狗出门后角色和房门活动入口都从房间消失', async ({ page }, testInfo) => {
@@ -164,5 +263,5 @@ test('饼狗出门后角色和房门活动入口都从房间消失', async ({ pa
   await startActivity(page, '房门', '出去旅行')
   await expect(room.locator('[data-hotspot="房门"]')).toHaveCount(0)
   await expect(room.locator('.room-mascot--actor')).toHaveCount(0)
-  await expect(room.locator('.travel-note')).toContainText('饼狗出门啦')
+  await expect(room.locator('.travel-note')).toHaveCount(0)
 })

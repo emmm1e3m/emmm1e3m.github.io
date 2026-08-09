@@ -18,7 +18,9 @@ export interface ImportPreview {
   companionDays: number
 }
 
-interface TitleScreenProps {
+export type UpdateCheckStatus = 'idle' | 'checking' | 'checked' | 'unsupported' | 'error'
+
+export interface TitleScreenProps {
   loading: boolean
   available: boolean
   error: string | null
@@ -30,6 +32,19 @@ interface TitleScreenProps {
   onCancelImport: () => void
   onRetryCatalog: () => void
   onTitleActivate: () => void
+  updateCheckStatus: UpdateCheckStatus
+  onCheckForUpdates: () => void
+}
+
+const UPDATE_CHECK_COPY: Readonly<Record<UpdateCheckStatus, { button: string; status: string }>> = {
+  idle: { button: '检查新布置', status: '进入前，可以先看看饼屋有没有新布置。' },
+  checking: { button: '正在检查新布置…', status: '正在向门外张望，请稍等。' },
+  checked: { button: '再检查一次', status: '已经检查过，现在看到的是最新布置。' },
+  unsupported: {
+    button: '检查新布置',
+    status: '这里暂时不能自动检查；刷新页面也可以重新查看布置。',
+  },
+  error: { button: '重新检查新布置', status: '刚才没能看清，再试一次吧。' },
 }
 
 function formatExportTime(value: number) {
@@ -55,6 +70,8 @@ export function TitleScreen({
   onCancelImport,
   onRetryCatalog,
   onTitleActivate,
+  updateCheckStatus,
+  onCheckForUpdates,
 }: TitleScreenProps) {
   const [displayName, setDisplayName] = useState('')
   const [nameTouched, setNameTouched] = useState(false)
@@ -204,6 +221,21 @@ export function TitleScreen({
               </div>
             </form>
           )}
+
+          <section className="landing-update" aria-label="检查游戏更新">
+            <button
+              className="landing-update__button"
+              type="button"
+              disabled={updateCheckStatus === 'checking'}
+              onClick={onCheckForUpdates}
+            >
+              <span aria-hidden="true">🏠</span>
+              {UPDATE_CHECK_COPY[updateCheckStatus].button}
+            </button>
+            <p role="status" aria-live="polite">
+              {UPDATE_CHECK_COPY[updateCheckStatus].status}
+            </p>
+          </section>
 
           {error && (
             <p className="landing-error" role="alert">

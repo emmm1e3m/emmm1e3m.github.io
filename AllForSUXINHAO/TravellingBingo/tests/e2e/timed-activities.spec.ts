@@ -26,11 +26,12 @@ interface AudioProbeStats {
   contexts: number
   oscillators: number
   closes: number
+  suspends: number
 }
 
 async function installAudioContextProbe(page: Page) {
   await page.addInitScript(() => {
-    const stats: AudioProbeStats = { contexts: 0, oscillators: 0, closes: 0 }
+    const stats: AudioProbeStats = { contexts: 0, oscillators: 0, closes: 0, suspends: 0 }
     ;(globalThis as typeof globalThis & { __audioProbe: AudioProbeStats }).__audioProbe = stats
 
     class FakeAudioParam {
@@ -46,6 +47,7 @@ async function installAudioContextProbe(page: Page) {
       connect() {
         return this
       }
+      disconnect() {}
       start() {}
       stop() {}
     }
@@ -56,16 +58,26 @@ async function installAudioContextProbe(page: Page) {
       connect() {
         return this
       }
+      disconnect() {}
     }
 
     class FakeAudioContext {
       state = 'running'
       currentTime = 0
       destination = {}
+      onstatechange: (() => void) | null = null
       constructor() {
         stats.contexts += 1
       }
       resume() {
+        this.state = 'running'
+        this.onstatechange?.()
+        return Promise.resolve()
+      }
+      suspend() {
+        stats.suspends += 1
+        this.state = 'suspended'
+        this.onstatechange?.()
         return Promise.resolve()
       }
       createOscillator() {
@@ -97,7 +109,7 @@ async function readAudioProbe(page: Page) {
 
 test.describe('所有读条活动的确认与取消', () => {
   for (const activity of ACTIVITIES) {
-    test(`${activity.name} 必须二次确认，返回取消后不加天也不返还补给`, async ({
+    test(`${activity.name} 必须二次确认，↩️取消后不加天也不返还补给`, async ({
       page,
     }, testInfo) => {
       test.skip(testInfo.project.name !== 'chromium', '活动矩阵只在桌面项目运行')
@@ -111,10 +123,10 @@ test.describe('所有读条活动的确认与取消', () => {
       const supplyBefore = activity.supply ? await readSupplyCount(page, activity.supply) : null
 
       const { confirmation } = await prepareActivity(page, activity.area, activity.name)
-      await expect(page.getByRole('button', { name: '返回', exact: true })).toHaveCount(0)
+      await expect(page.getByRole('button', { name: '取消当前活动', exact: true })).toHaveCount(0)
       await expect(confirmation.getByRole('button', { name: '再想想' })).toBeFocused()
       await confirmation.getByRole('button', { name: '确认开始' }).click()
-      await expect(page.getByRole('button', { name: '返回', exact: true })).toBeVisible()
+      await expect(page.getByRole('button', { name: '取消当前活动', exact: true })).toBeVisible()
 
       const applesAfterStart = await readAppleCount(page)
       const supplyAfterStart = activity.supply ? await readSupplyCount(page, activity.supply) : null
@@ -159,7 +171,8 @@ test('睡觉读条时饼狗在床上且房间变暗，领取后增加 1 天和 1
       y: style.getPropertyValue('--pet-y').trim(),
     }
   })
-  expect(petPosition).toEqual({ x: '27%', y: '30%' })
+  expect(Number.parseFloat(petPosition.x)).toBeCloseTo((225 / 1098) * 100, 5)
+  expect(Number.parseFloat(petPosition.y)).toBeCloseTo((300 / 1433) * 100, 5)
   const darkness = room.locator('.day-night-overlay')
   await expect(darkness).toHaveClass(/is-resting/u)
   await expect
@@ -177,17 +190,32 @@ test('睡觉读条时饼狗在床上且房间变暗，领取后增加 1 天和 1
   await reward.getByRole('button', { name: '回到房间' }).click()
 })
 
-test('弹琴活动读条期间仍可弹完整 24 键两八度电子琴', async ({ page }, testInfo) => {
+test('弹琴活动读条期间仍可弹三排 36 键，并只给白键映射电脑键盘', async ({ page }, testInfo) => {
   test.skip(testInfo.project.name !== 'chromium', 'WebAudio 琴键只在桌面 Chromium 验证')
   await startGame(page, { debug: true, seed: 'music-e2e', displayName: '琴键测试' })
   await setDebugDuration(page, '10 秒')
   await startActivity(page, '电子琴', '一起弹琴')
 
-  const keyboard = page.getByRole('group', { name: 'C4 到 B5 的两八度琴键' })
+  const keyboard = page.locator('.piano').filter({ hasText: '和饼狗弹一小段' })
   await expect(keyboard).toBeVisible()
-  await expect(keyboard.getByRole('button')).toHaveCount(24)
+  await expect(keyboard.locator('.piano__row')).toHaveCount(3)
+  await expect(keyboard.getByRole('group')).toHaveCount(3)
+  await expect(keyboard.getByRole('button')).toHaveCount(36)
+  await expect(keyboard).toContainText(
+    '从 A5 G5 G5 B5 G5 E5 G5 G5 B4 C5，D5 C5 A5 A5 A5 B5 B5 B5 B5 C6 开始试试',
+  )
   const c4 = keyboard.getByRole('button', { name: 'C4，键盘 Z' })
+  const c5 = keyboard.getByRole('button', { name: 'C5，键盘 A' })
+  const cSharp5 = keyboard.getByRole('button', { name: 'C#5', exact: true })
   await expect(c4).toBeEnabled()
+  await expect(c5).toBeEnabled()
+  await expect(cSharp5).not.toHaveAccessibleName(/键盘/u)
+  const overflow = await keyboard.evaluate((element) => ({
+    horizontal: element.scrollWidth - element.clientWidth,
+    vertical: element.scrollHeight - element.clientHeight,
+  }))
+  expect(overflow.horizontal).toBeLessThanOrEqual(1)
+  expect(overflow.vertical).toBeLessThanOrEqual(1)
   await page.keyboard.down('z')
   await expect(c4).toHaveAttribute('aria-pressed', 'true')
   await page.keyboard.up('z')
@@ -207,22 +235,25 @@ test('电子琴在 inert 弹窗后不响应，收藏墙切走面板会卸载音�
   await page.locator('[data-hotspot="电子琴"]').click()
   await expect(page.getByRole('dialog', { name: '饼狗想做什么' })).toHaveCount(0)
 
-  const keyboard = page.getByRole('group', { name: 'C4 到 B5 的两八度琴键' })
+  const keyboard = page.locator('.piano').filter({ hasText: '和饼狗弹一小段' })
   await expect(keyboard).toBeVisible()
+  const beforePiano = await readAudioProbe(page)
   await page.keyboard.press('z')
-  await expect.poll(async () => (await readAudioProbe(page)).oscillators).toBe(1)
+  await expect
+    .poll(async () => (await readAudioProbe(page)).oscillators)
+    .toBe(beforePiano.oscillators + 3)
 
   await page.getByRole('button', { name: '打开收藏墙' }).click()
   const album = page.getByRole('dialog', { name: '饼狗的收藏墙' })
   await expect(album).toBeVisible()
   await expect(page.locator('.game-layout--v3')).toHaveAttribute('inert', '')
   await page.keyboard.press('z')
-  expect((await readAudioProbe(page)).oscillators).toBe(1)
+  expect((await readAudioProbe(page)).oscillators).toBe(beforePiano.oscillators + 3)
   await album.getByRole('button', { name: '关闭收藏墙' }).click()
 
   await expect(keyboard).toHaveCount(0)
-  await expect.poll(async () => (await readAudioProbe(page)).closes).toBe(1)
+  await expect.poll(async () => (await readAudioProbe(page)).closes).toBe(beforePiano.closes + 1)
   await page.keyboard.press('z')
-  expect((await readAudioProbe(page)).oscillators).toBe(1)
+  expect((await readAudioProbe(page)).oscillators).toBe(beforePiano.oscillators + 3)
   await expect(page.getByRole('dialog', { name: '饼狗想做什么' })).toHaveCount(0)
 })

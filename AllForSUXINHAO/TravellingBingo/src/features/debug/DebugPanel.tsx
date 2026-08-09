@@ -13,7 +13,7 @@ const PROBABILITY_COPY: Record<ProbabilityKey, string> = {
 const DURATION_CHOICES = [
   { value: 10_000, label: '10 秒' },
   { value: 30_000, label: '30 秒' },
-  { value: 112_000, label: '112 秒' },
+  { value: 72_000, label: '1 分 12 秒' },
 ] as const
 
 interface DebugPanelProps {
@@ -23,7 +23,9 @@ interface DebugPanelProps {
 }
 
 export function DebugPanel({ game, onAction, onBackup }: DebugPanelProps) {
-  const [confirmCollectAll, setConfirmCollectAll] = useState(false)
+  const [pendingBulkAction, setPendingBulkAction] = useState<'collect-all' | 'clear-all' | null>(
+    null,
+  )
   const duration = game.gameBalance.activityDurationMs
   const probabilities = game.gameBalance.probabilities
 
@@ -36,7 +38,7 @@ export function DebugPanel({ game, onAction, onBackup }: DebugPanelProps) {
   }
 
   return (
-    <div className="context-content debug-panel">
+    <div className="context-content debug-panel debug-panel--v4">
       <span className="paper-tag paper-tag--debug">DEBUG 门牌</span>
       <h2>调试房间规则</h2>
       <p className="panel-intro">这里的设置会跟着调试存档一起保存。</p>
@@ -107,23 +109,49 @@ export function DebugPanel({ game, onAction, onBackup }: DebugPanelProps) {
         >
           立即完成活动
         </button>
-        {!confirmCollectAll ? (
-          <button type="button" onClick={() => setConfirmCollectAll(true)}>
-            一键全收集
-          </button>
-        ) : (
+        {pendingBulkAction === null ? (
+          <>
+            <button type="button" onClick={() => setPendingBulkAction('collect-all')}>
+              一键全收集
+            </button>
+            <button
+              className="debug-action--danger"
+              type="button"
+              onClick={() => setPendingBulkAction('clear-all')}
+            >
+              一键撤销全部收集
+            </button>
+          </>
+        ) : pendingBulkAction === 'collect-all' ? (
           <div className="debug-confirm" role="group" aria-label="确认一键全收集">
-            <strong>确认把全部收藏加入调试档？</strong>
+            <strong>确认把全部收藏和好朋友加入调试档？</strong>
             <button
               type="button"
               onClick={() => {
                 onAction({ type: 'debug/collect-all', now: Date.now() })
-                setConfirmCollectAll(false)
+                setPendingBulkAction(null)
               }}
             >
               确认全收集
             </button>
-            <button type="button" onClick={() => setConfirmCollectAll(false)}>
+            <button type="button" onClick={() => setPendingBulkAction(null)}>
+              取消
+            </button>
+          </div>
+        ) : (
+          <div className="debug-confirm" role="group" aria-label="确认一键撤销全部收集">
+            <strong>确认清空全部收藏和好朋友记录？</strong>
+            <button
+              className="debug-action--danger"
+              type="button"
+              onClick={() => {
+                onAction({ type: 'debug/clear-all', now: Date.now() })
+                setPendingBulkAction(null)
+              }}
+            >
+              确认撤销
+            </button>
+            <button type="button" onClick={() => setPendingBulkAction(null)}>
               取消
             </button>
           </div>

@@ -2,12 +2,13 @@ import { z } from 'zod'
 
 import { generateActivityPreferences } from '../pet/preferences'
 import { generateTaskBoard } from '../tasks/taskBoard'
-import { FRIEND_EVENT_IDS, ITEM_IDS, MAX_ITEM_STACK } from './constants'
+import { FRIEND_EVENT_IDS, LEGACY_ITEM_IDS, MAX_ITEM_STACK } from './constants'
 import { createDefaultGameBalanceV2 } from './gameBalance'
-import type { ActivityRunV2, CollectionCatalog, GameStateV1, GameStateV2, Inventory } from './types'
+import { assertValidTimestamp, MAX_DATE_TIMESTAMP_MS } from './time'
+import type { ActivityRunV2, CollectionCatalog, GameStateV1, GameStateV2 } from './types'
 
-const timestamp = z.number().int().nonnegative().safe()
-const itemId = z.enum(ITEM_IDS)
+const timestamp = z.number().int().nonnegative().max(MAX_DATE_TIMESTAMP_MS)
+const itemId = z.enum(LEGACY_ITEM_IDS)
 const activityKind = z.enum(['travel', 'stream', 'trend'])
 const collectibleCategory = z.enum(['postcard', 'million-shot', 'site-first'])
 const friendEventId = z.enum(FRIEND_EVENT_IDS)
@@ -97,29 +98,16 @@ export interface MigrateGameStateV1Options {
   catalog: CollectionCatalog
 }
 
-function refundActiveSupplies(state: GameStateV1): Inventory {
-  const inventory = { ...state.inventory }
-  const activity = state.activeActivity
-  if (activity === null) return inventory
-
-  inventory[activity.supplyId] = Math.min(MAX_ITEM_STACK, inventory[activity.supplyId] + 1)
-  if (activity.usedLuckyApple) {
-    inventory['lucky-apple'] = Math.min(MAX_ITEM_STACK, inventory['lucky-apple'] + 1)
-  }
-  return inventory
-}
-
 /**
- * v1 活动开始时已经扣过补给且计划了苹果收入。迁移会一次性返还补给，并把尚未领取的
- * 旧活动苹果清零；收藏与朋友结果保持不变。v2 状态不会再次进入本函数，避免重复返还。
+ * v1 活动开始时已经扣过补给并冻结了完整奖励计划。迁移不再运行旧保底计数逻辑，
+ * 但苹果、收藏、朋友、保底展示信息与绝对时间全部原样保留且绝不重抽；已经消耗的
+ * 补给也不会返还，否则同一次活动会同时得到退款和原计划奖励。
  */
 export function migrateGameStateV1(
   state: GameStateV1,
   options: MigrateGameStateV1Options,
 ): GameStateV2 {
-  if (!Number.isSafeInteger(options.now) || options.now < 0) {
-    throw new RangeError('迁移时间必须是非负安全整数毫秒时间戳')
-  }
+  assertValidTimestamp(options.now, '迁移时间必须是 Date 可表示的非负整数毫秒时间戳')
 
   const preferences = generateActivityPreferences(state.random.seed, 0)
   const tasks = generateTaskBoard({
@@ -136,15 +124,11 @@ export function migrateGameStateV1(
           ...structuredClone(state.activeActivity),
           rewardPlan: {
             ...structuredClone(state.activeActivity.rewardPlan),
-            baseApples: 0 as const,
-            modifierApples: 0 as const,
-            collection:
-              state.activeActivity.rewardPlan.collection !== null &&
-              state.collections[state.activeActivity.rewardPlan.collection.id] !== undefined
-                ? null
-                : structuredClone(state.activeActivity.rewardPlan.collection),
-            guaranteedByPity: false as const,
-            pityAfterClaim: null,
+            baseApples: state.activeActivity.rewardPlan.baseApples,
+            modifierApples: state.activeActivity.rewardPlan.modifierApples,
+            collection: structuredClone(state.activeActivity.rewardPlan.collection),
+            guaranteedByPity: state.activeActivity.rewardPlan.guaranteedByPity,
+            pityAfterClaim: state.activeActivity.rewardPlan.pityAfterClaim,
           },
         }
 
@@ -152,7 +136,7 @@ export function migrateGameStateV1(
     schemaVersion: 2,
     profile: structuredClone(state.profile),
     economy: structuredClone(state.economy),
-    inventory: refundActiveSupplies(state),
+    inventory: structuredClone(state.inventory),
     collections: structuredClone(state.collections),
     activeActivity,
     pet: {

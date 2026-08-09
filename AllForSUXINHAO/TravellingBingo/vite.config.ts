@@ -14,6 +14,8 @@ export default defineConfig({
     react(),
     VitePWA({
       registerType: 'prompt',
+      // Manifest 图标会由插件自动加入预缓存；这里只补充网页专用的 favicon 与触屏图标。
+      includeAssets: ['icons/favicon-32.png', 'icons/apple-touch-icon-180.png'],
       manifest: {
         id: '/AllForSUXINHAO/TravellingBingo/',
         name: '旅行饼狗',
@@ -27,10 +29,22 @@ export default defineConfig({
         theme_color: '#c9364f',
         icons: [
           {
-            src: 'icons/app-icon.svg',
-            sizes: 'any',
-            type: 'image/svg+xml',
-            purpose: 'any maskable',
+            src: 'icons/app-icon-192.png',
+            sizes: '192x192',
+            type: 'image/png',
+            purpose: 'any',
+          },
+          {
+            src: 'icons/app-icon-512.png',
+            sizes: '512x512',
+            type: 'image/png',
+            purpose: 'any',
+          },
+          {
+            src: 'icons/app-icon-maskable-512.png',
+            sizes: '512x512',
+            type: 'image/png',
+            purpose: 'maskable',
           },
         ],
       },

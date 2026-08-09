@@ -3,15 +3,17 @@ import { describe, expect, it } from 'vitest'
 import { deriveActivityTiming } from '../activities/timing'
 import { generateTaskBoard } from '../tasks/taskBoard'
 import { MAX_COMPANION_DAYS } from './constants'
-import { createDefaultGameBalanceV2, DEFAULT_GAME_BALANCE } from './gameBalance'
+import { createDefaultGameBalanceV2, DEFAULT_GAME_BALANCE_V3 } from './gameBalance'
 import {
   gameStateV2Schema,
   isStrictGameStateV2,
   migrateGameStateV2ToV3,
   migrateStoredGameStateToV3,
 } from './migrateGameStateV2'
+import { migrateGameStateV3ToV4 } from './migrateGameStateV3'
 import { reduceGame } from './reducer'
 import type { CollectionCatalog, GameStateV2, GameTransition } from './types'
+import { MAX_DATE_TIMESTAMP_MS } from './time'
 
 const catalog: CollectionCatalog = {
   postcard: ['postcard-new'],
@@ -92,6 +94,16 @@ describe('schemaVersion 2 -> 3 显式迁移', () => {
     const immediatelyCompleted = structuredClone(fixture)
     immediatelyCompleted.activeActivity!.endsAt = immediatelyCompleted.activeActivity!.startedAt
     expect(isStrictGameStateV2(immediatelyCompleted)).toBe(true)
+
+    const dateBoundary = structuredClone(fixture)
+    dateBoundary.profile.createdAt = MAX_DATE_TIMESTAMP_MS
+    expect(isStrictGameStateV2(dateBoundary)).toBe(true)
+    dateBoundary.profile.createdAt = MAX_DATE_TIMESTAMP_MS + 1
+    expect(isStrictGameStateV2(dateBoundary)).toBe(false)
+
+    const nonNativeApplePlan = structuredClone(fixture)
+    nonNativeApplePlan.activeActivity!.rewardPlan.baseApples = 1
+    expect(isStrictGameStateV2(nonNativeApplePlan)).toBe(false)
   })
 
   it('回填用户名与历史陪伴天数，并把刷播/冲热合并为电脑意愿', () => {
@@ -101,7 +113,7 @@ describe('schemaVersion 2 -> 3 显式迁移', () => {
     expect(migrated.profile).toMatchObject({ displayName: '你', companionDays: 9 })
     expect(migrated.friends).toEqual({})
     expect(migrated.pet.preferences).toEqual({ travel: true, computer: true, music: true })
-    expect(migrated.gameBalance).toEqual(DEFAULT_GAME_BALANCE)
+    expect(migrated.gameBalance).toEqual(DEFAULT_GAME_BALANCE_V3)
     expect(migrated.statistics.started).toEqual({
       travel: 4,
       stream: 5,
@@ -123,19 +135,21 @@ describe('schemaVersion 2 -> 3 显式迁移', () => {
       preferences: { travel: false, computer: false, music: false },
     })
 
-    const before = structuredClone(migrated)
+    const migratedV4 = migrateGameStateV3ToV4(migrated, { now: 20_000, catalog })
+    const before = structuredClone(migratedV4)
     const result = reduceGame(
-      migrated,
+      migratedV4,
       { type: 'activity/start', kind: 'music', now: 20_000 },
       catalog,
     )
     expect(result).toMatchObject({ ok: false, error: { code: 'ACTIVITY_REFUSED' } })
-    expect(migrated).toEqual(before)
+    expect(migratedV4).toEqual(before)
   })
 
   it('进行中活动保持绝对时间和 legacy 双结果，原 endsAt 到点即可领取', () => {
     const migrated = migrateGameStateV2ToV3(v2Fixture(), { now: 12_000, catalog })
     const activity = migrated.activeActivity!
+    const migratedV4 = migrateGameStateV3ToV4(migrated, { now: 12_000, catalog })
 
     expect(activity).toMatchObject({
       startedAt: 10_000,
@@ -152,7 +166,11 @@ describe('schemaVersion 2 -> 3 显式迁移', () => {
     expect(deriveActivityTiming(activity, 15_000).phase).toBe('ready')
 
     const claimed = successful(
-      reduceGame(migrated, { type: 'activity/claim', runId: activity.runId, now: 15_000 }, catalog),
+      reduceGame(
+        migratedV4,
+        { type: 'activity/claim', runId: activity.runId, now: 15_000 },
+        catalog,
+      ),
     )
     expect(claimed.state.collections['postcard-new']).toBeDefined()
     expect(claimed.state.friends['signal-dog']).toMatchObject({
@@ -186,7 +204,7 @@ describe('schemaVersion 2 -> 3 显式迁移', () => {
         millionShot: 0.3,
         siteFirst: 0.4,
         travelFriend: 0.7,
-        musicFriend: DEFAULT_GAME_BALANCE.probabilities.musicFriend,
+        musicFriend: DEFAULT_GAME_BALANCE_V3.probabilities.musicFriend,
       },
     })
   })

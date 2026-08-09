@@ -1,0 +1,8 @@
+.collectible-picture {
+  display: block;
+}
+
+.collectible-picture.collectible-picture--cover {
+  object-fit: cover;
+  object-position: center;
+}

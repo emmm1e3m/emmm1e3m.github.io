@@ -6,12 +6,13 @@ import {
   type ImportableGameState,
 } from '@/app/gameStateSchema'
 import { useGameController } from '@/app/useGameController'
+import { useKeepAliveAudio, type KeepAliveAudioFactory } from '@/app/useKeepAliveAudio'
 import { useModalFocus } from '@/components/useModalFocus'
 import { PwaUpdatePrompt, type InstallPwaUpdate } from '@/components/PwaUpdatePrompt'
 import { loadContentCatalog, type ContentCatalog } from '@/content'
 import {
   createInitialGameState,
-  migrateStoredGameStateToV3,
+  migrateStoredGameStateToV4,
   normalizeImportedGameBalance,
   reconcileGameStateWithCatalog,
   validateImportedGameState,
@@ -29,7 +30,7 @@ import {
   type BingoSaveSummary,
 } from '@/infrastructure/persistence'
 
-const GAME_VERSION = '0.3.0-demo.1'
+const GAME_VERSION = '0.4.0-demo.1'
 const DEBUG_PASSWORD = 'TravellingBingo'
 
 interface PendingImport {
@@ -39,6 +40,8 @@ interface PendingImport {
 }
 
 type ProtectedOperation = 'exit' | 'update'
+type UpdateCheckStatus = 'idle' | 'checking' | 'checked' | 'unsupported' | 'error'
+type AppNotificationPermission = NotificationPermission | 'unsupported'
 
 interface PendingSaveConfirmation {
   fileName: string
@@ -76,6 +79,19 @@ function activitySummary(game: GameState) {
   return `${labels[activity.kind]}还剩约 ${minutes} 分钟`
 }
 
+function nextClockDeadline(game: GameState | null): number | null {
+  if (!game) return null
+  const deadlines: number[] = []
+  for (const todo of Object.values(game.reality.todos)) {
+    if (todo.completedAt === null && todo.dueAt !== null && todo.notificationIssuedAt === null) {
+      deadlines.push(todo.dueAt)
+    }
+  }
+  const session = game.reality.pomodoro.session
+  if (session && session.notificationIssuedAt === null) deadlines.push(session.endsAt)
+  return deadlines.length > 0 ? Math.min(...deadlines) : null
+}
+
 function buildImportPreview(pending: PendingImport | null): ImportPreview | null {
   if (!pending) return null
   const { game, summary } = pending
@@ -96,11 +112,31 @@ const reloadCurrentPage: InstallPwaUpdate = async () => {
   globalThis.location.reload()
 }
 
+async function checkServiceWorkerForUpdate() {
+  if (!('serviceWorker' in globalThis.navigator)) {
+    throw new Error('当前浏览器不支持离线更新。')
+  }
+  const registration = await globalThis.navigator.serviceWorker.getRegistration()
+  if (!registration) throw new Error('离线行囊还没有准备好，请稍后再检查。')
+  await registration.update()
+}
+
+function readNotificationPermission(): AppNotificationPermission {
+  return 'Notification' in globalThis ? globalThis.Notification.permission : 'unsupported'
+}
+
 interface AppProps {
+  checkForUpdates?: () => Promise<void>
+  createAudioContext?: KeepAliveAudioFactory
   reloadPage?: InstallPwaUpdate
 }
 
-export function App({ reloadPage = reloadCurrentPage }: AppProps = {}) {
+export function App({
+  checkForUpdates: checkForUpdatesOverride,
+  createAudioContext,
+  reloadPage = reloadCurrentPage,
+}: AppProps = {}) {
+  const checkForUpdates = checkForUpdatesOverride ?? checkServiceWorkerForUpdate
   const [catalog, setCatalog] = useState<ContentCatalog | null>(null)
   const [catalogError, setCatalogError] = useState<string | null>(null)
   const [catalogAttempt, setCatalogAttempt] = useState(0)
@@ -122,6 +158,18 @@ export function App({ reloadPage = reloadCurrentPage }: AppProps = {}) {
   const [debugError, setDebugError] = useState<string | null>(null)
   const [debugUnlocked, setDebugUnlocked] = useState(false)
   const [restTransitionKey, setRestTransitionKey] = useState(0)
+  const [notificationPermission, setNotificationPermission] = useState<AppNotificationPermission>(
+    readNotificationPermission,
+  )
+  const [updateCheckStatus, setUpdateCheckStatus] = useState<UpdateCheckStatus>(() =>
+    checkForUpdatesOverride || 'serviceWorker' in globalThis.navigator ? 'idle' : 'unsupported',
+  )
+  const {
+    enabled: keepAliveAudioEnabled,
+    status: keepAliveAudioStatus,
+    activateFromJourneyGesture,
+    toggle: toggleKeepAliveAudio,
+  } = useKeepAliveAudio(createAudioContext)
   const titleActivations = useRef<number[]>([])
   const importAttempt = useRef(0)
   const lastConfirmedRevision = useRef(0)
@@ -173,7 +221,10 @@ export function App({ reloadPage = reloadCurrentPage }: AppProps = {}) {
   }, [catalogAttempt])
 
   useEffect(() => {
-    const update = () => setNow(Date.now())
+    const update = () => {
+      setNow(Date.now())
+      setNotificationPermission(readNotificationPermission())
+    }
     const timer = globalThis.setInterval(update, 1_000)
     globalThis.addEventListener('focus', update)
     document.addEventListener('visibilitychange', update)
@@ -203,6 +254,7 @@ export function App({ reloadPage = reloadCurrentPage }: AppProps = {}) {
   const startNewGame = useCallback(
     (displayName: string) => {
       if (!catalog) return
+      activateFromJourneyGesture()
       let initial: GameState
       try {
         initial = createInitialGameState({
@@ -223,8 +275,61 @@ export function App({ reloadPage = reloadCurrentPage }: AppProps = {}) {
       setScreen('home')
       setToast(debugUnlocked ? 'DEBUG 旅程已经开始。' : '欢迎回到铲铲饼屋。')
     },
-    [catalog, debugUnlocked, invalidatePendingImport, replaceGame],
+    [activateFromJourneyGesture, catalog, debugUnlocked, invalidatePendingImport, replaceGame],
   )
+
+  const issueBrowserNotification = useCallback(
+    (notificationId: string, title: string, body: string) => {
+      const permission = readNotificationPermission()
+      setNotificationPermission(permission)
+      if (permission !== 'granted' || !('Notification' in globalThis)) {
+        setToast(`${title} ${body}`)
+        return
+      }
+      try {
+        new globalThis.Notification(title, { body, tag: notificationId })
+      } catch {
+        setToast(`${title} ${body}`)
+      }
+    },
+    [],
+  )
+
+  function requestNotificationPermission() {
+    if (!('Notification' in globalThis)) {
+      setNotificationPermission('unsupported')
+      setToast('当前浏览器不支持桌面提醒。')
+      return
+    }
+    void globalThis.Notification.requestPermission()
+      .then((permission) => {
+        setNotificationPermission(permission)
+        setToast(permission === 'granted' ? '桌面提醒准备好啦。' : '桌面提醒没有打开。')
+      })
+      .catch(() => {
+        setNotificationPermission(readNotificationPermission())
+        setToast('桌面提醒没有打开。')
+      })
+  }
+
+  function requestUpdateCheck() {
+    if (updateCheckStatus === 'checking') return
+    if (!checkForUpdatesOverride && !('serviceWorker' in globalThis.navigator)) {
+      setUpdateCheckStatus('unsupported')
+      setToast('当前浏览器不支持离线更新。')
+      return
+    }
+    setUpdateCheckStatus('checking')
+    void checkForUpdates()
+      .then(() => {
+        setUpdateCheckStatus('checked')
+        setToast('已经检查过新布置啦。')
+      })
+      .catch((error: unknown) => {
+        setUpdateCheckStatus('error')
+        setToast(error instanceof Error ? error.message : '检查新布置没有成功，请稍后再试。')
+      })
+  }
 
   const applyAction = useCallback(
     (action: GameAction) => {
@@ -270,16 +375,76 @@ export function App({ reloadPage = reloadCurrentPage }: AppProps = {}) {
               : `小事完成，收好 ${effect.applesAwarded}🍎。`,
           )
         } else if (effect.type === 'debug-applied') {
-          setToast(
-            effect.changedCount
-              ? `DEBUG：新增 ${effect.changedCount} 件收藏。`
-              : 'DEBUG 操作已应用。',
+          if (effect.action === 'debug/collect-all') {
+            setToast(`DEBUG：收好 ${effect.changedCount ?? 0} 份收藏与好友记录。`)
+          } else if (effect.action === 'debug/clear-all') {
+            setToast(`DEBUG：清理 ${effect.changedCount ?? 0} 份收藏与好友记录。`)
+          } else {
+            setToast('DEBUG 操作已应用。')
+          }
+        } else if (effect.type === 'activity-accelerated') {
+          setToast('速度魔法生效啦，这次活动已经完成。')
+        } else if (effect.type === 'player-effect-activated') {
+          setToast('活力魔法生效啦，饼狗精神满满。')
+        } else if (effect.type === 'player-effect-expired') {
+          setToast('这瓶活力魔法陪我们走完七天啦。')
+        } else if (effect.type === 'reality-entered') {
+          setToast('现实里的时间开始记录啦。')
+        } else if (effect.type === 'reality-reward-pending') {
+          setToast('欢迎回来，请告诉饼狗这段现实任务完成得怎么样。')
+        } else if (effect.type === 'reality-reward-settled') {
+          setToast(`现实任务结算完成，收好 ${effect.awardedApples}🍎。`)
+        } else if (effect.type === 'todo-notification-due') {
+          issueBrowserNotification(
+            effect.notificationId,
+            effect.notificationTitle,
+            effect.notificationBody,
+          )
+        } else if (effect.type === 'pomodoro-completed') {
+          issueBrowserNotification(
+            effect.notificationId,
+            effect.notificationTitle,
+            effect.notificationBody,
           )
         }
       }
     },
-    [applyGameAction, domainCatalog],
+    [applyGameAction, domainCatalog, issueBrowserNotification],
   )
+
+  const clockDeadline = useMemo(() => nextClockDeadline(game), [game])
+
+  useEffect(() => {
+    if (clockDeadline === null) return
+    let timer: ReturnType<typeof globalThis.setTimeout> | null = null
+    let dispatched = false
+
+    const dispatchIfDue = () => {
+      const current = Date.now()
+      setNow(current)
+      if (dispatched || current < clockDeadline) return false
+      dispatched = true
+      applyAction({ type: 'clock/tick', now: current })
+      return true
+    }
+    const schedule = () => {
+      if (dispatchIfDue()) return
+      const delay = Math.min(Math.max(0, clockDeadline - Date.now()), 2_147_483_647)
+      timer = globalThis.setTimeout(schedule, delay)
+    }
+    const resume = () => {
+      if (document.visibilityState === 'visible') dispatchIfDue()
+    }
+
+    schedule()
+    globalThis.addEventListener('focus', dispatchIfDue)
+    document.addEventListener('visibilitychange', resume)
+    return () => {
+      if (timer !== null) globalThis.clearTimeout(timer)
+      globalThis.removeEventListener('focus', dispatchIfDue)
+      document.removeEventListener('visibilitychange', resume)
+    }
+  }, [applyAction, clockDeadline])
 
   async function loadFile(file: File) {
     const attempt = importAttempt.current + 1
@@ -297,13 +462,11 @@ export function App({ reloadPage = reloadCurrentPage }: AppProps = {}) {
       if (!domainCatalog) {
         throw new Error('收藏目录尚未准备好，暂时不能校验这份存档。')
       }
-      const migrated = migrateStoredGameStateToV3(result.payload, {
+      const migrated = migrateStoredGameStateToV4(result.payload, {
         now: Date.now(),
         catalog: domainCatalog,
       })
       const normalized = normalizeImportedGameBalance(migrated)
-      const semanticValidation = validateImportedGameState(normalized, domainCatalog)
-      if (!semanticValidation.ok) throw new Error(semanticValidation.message)
       const imported = reconcileGameStateWithCatalog(normalized, domainCatalog)
       const validation = validateImportedGameState(imported, domainCatalog)
       if (!validation.ok) throw new Error(validation.message)
@@ -321,6 +484,7 @@ export function App({ reloadPage = reloadCurrentPage }: AppProps = {}) {
 
   function confirmImport() {
     if (!pendingImport || !catalog || !domainCatalog) return
+    activateFromJourneyGesture()
     const imported = pendingImport.game
     const validation = validateImportedGameState(imported, domainCatalog)
     if (!validation.ok) {
@@ -485,6 +649,7 @@ export function App({ reloadPage = reloadCurrentPage }: AppProps = {}) {
           error={catalogError ?? importError}
           importPreview={preview}
           debugUnlocked={debugUnlocked}
+          updateCheckStatus={updateCheckStatus}
           onStart={startNewGame}
           onFile={(file) => void loadFile(file)}
           onConfirmImport={confirmImport}
@@ -494,6 +659,7 @@ export function App({ reloadPage = reloadCurrentPage }: AppProps = {}) {
             setCatalogAttempt((attempt) => attempt + 1)
           }}
           onTitleActivate={activateTitle}
+          onCheckForUpdates={requestUpdateCheck}
         />
       ) : (
         <GameHome
@@ -504,10 +670,17 @@ export function App({ reloadPage = reloadCurrentPage }: AppProps = {}) {
           dirty={dirty}
           restTransitionKey={restTransitionKey}
           reward={reward}
+          notificationPermission={notificationPermission}
+          updateCheckStatus={updateCheckStatus}
+          keepAliveAudioEnabled={keepAliveAudioEnabled}
+          keepAliveAudioStatus={keepAliveAudioStatus}
           onPanel={setPanel}
           onAction={applyAction}
           onExit={openExitDialog}
           onBackup={() => void exportGame()}
+          onCheckForUpdates={requestUpdateCheck}
+          onRequestNotificationPermission={requestNotificationPermission}
+          onToggleKeepAliveAudio={toggleKeepAliveAudio}
           onDismissReward={() => setReward(null)}
         />
       )}

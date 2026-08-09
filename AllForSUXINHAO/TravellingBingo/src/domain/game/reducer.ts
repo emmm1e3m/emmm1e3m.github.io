@@ -10,8 +10,16 @@ import { planActivityReward } from '../rewards/planReward'
 import { getLuckyAppleAvailability } from '../rewards/luckyApple'
 import { applyTaskEvent } from '../tasks/taskBoard'
 import {
+  ALL_ACTIVITY_PREFERENCES,
+  getVitalityMagicAvailability,
+  isVitalityActive,
+  resolveVitalityForCompanionDayAdvance,
+  vitalityExpiryDay,
+} from '../player/vitality'
+import {
   FRIEND_EVENT_IDS,
   ITEM_PRICES,
+  LEGACY_V1_DUPLICATE_APPLE_COMPENSATION,
   MAX_APPLES,
   MAX_COMPANION_DAYS,
   MAX_ITEM_STACK,
@@ -22,7 +30,11 @@ import {
   isValidActivityDuration,
   isValidProbability,
 } from './gameBalance'
+import { incrementSafeCounter, saturatingAddSafeCounter } from './counters'
 import { validateCollectionCatalog } from './validateCollectionCatalog'
+import { isMusicPlayerAction, reduceMusicPlayer } from './musicPlayer'
+import { isProductivityAction, reduceProductivity } from './productivity'
+import { isValidTimestamp } from './time'
 import type {
   ActivityKind,
   ActivityRun,
@@ -35,7 +47,7 @@ import type {
   GameError,
   GameState,
   GameTransition,
-  ItemId,
+  LegacyItemId,
 } from './types'
 
 const CATEGORIES: readonly CollectibleCategory[] = ['postcard', 'million-shot', 'site-first']
@@ -51,10 +63,6 @@ function succeed(
   return { ok: true, state, effects }
 }
 
-function isValidTimestamp(value: number): boolean {
-  return Number.isSafeInteger(value) && value >= 0
-}
-
 function categoryForActivity(kind: ActivityKind): CollectibleCategory | null {
   if (kind === 'travel') return 'postcard'
   if (kind === 'stream') return 'million-shot'
@@ -62,12 +70,12 @@ function categoryForActivity(kind: ActivityKind): CollectibleCategory | null {
   return null
 }
 
-type SupplyResolution = { ok: true; supplyId: ItemId | null } | { ok: false }
+type SupplyResolution = { ok: true; supplyId: LegacyItemId | null } | { ok: false }
 
 function resolveSupply(
   state: GameState,
   kind: ActivityKind,
-  requestedSupply: ItemId | undefined,
+  requestedSupply: LegacyItemId | undefined,
 ): SupplyResolution {
   if (kind === 'music' || kind === 'rest') {
     return requestedSupply === undefined ? { ok: true, supplyId: null } : { ok: false }
@@ -143,7 +151,11 @@ function startActivity(
     return fail(state, 'COMPANION_DAY_LIMIT_REACHED', '陪伴天数已达到存档上限')
   }
   const interest = interestForActivity(action.kind)
-  if (interest !== null && (state.pet.tired || !state.pet.preferences[interest])) {
+  if (
+    interest !== null &&
+    !isVitalityActive(state) &&
+    (state.pet.tired || !state.pet.preferences[interest])
+  ) {
     return fail(state, 'ACTIVITY_REFUSED', activityRefusalMessage(action.kind))
   }
 
@@ -173,13 +185,16 @@ function startActivity(
 
   const duration = resolveDuration(state, action.debugDurationMs)
   if (typeof duration !== 'number') return fail(state, duration.code, duration.message)
+  const advancesRewardSequence = action.kind !== 'rest'
+  if (advancesRewardSequence && state.random.sequences.reward >= Number.MAX_SAFE_INTEGER) {
+    return fail(state, 'INVALID_AMOUNT', '奖励随机序列已达到存档上限')
+  }
   const endsAt = action.now + duration
-  if (!Number.isSafeInteger(endsAt)) {
-    return fail(state, 'INVALID_DURATION', '活动结束时间超出安全整数范围')
+  if (!isValidTimestamp(endsAt)) {
+    return fail(state, 'INVALID_DURATION', '活动结束时间超出 Date 可表示范围')
   }
 
   const sequence = state.random.sequences.reward
-  const advancesRewardSequence = action.kind !== 'rest'
   const rewardSeed = advancesRewardSequence
     ? `${state.random.seed}:reward:${sequence}`
     : `${state.random.seed}:rest:${state.profile.companionDays}:${action.now}`
@@ -223,14 +238,14 @@ function startActivity(
       ...state.random,
       sequences: {
         ...state.random.sequences,
-        reward: sequence + (advancesRewardSequence ? 1 : 0),
+        reward: advancesRewardSequence ? incrementSafeCounter(sequence) : sequence,
       },
     },
     statistics: {
       ...state.statistics,
       started: {
         ...state.statistics.started,
-        [action.kind]: state.statistics.started[action.kind] + 1,
+        [action.kind]: incrementSafeCounter(state.statistics.started[action.kind]),
       },
     },
   }
@@ -262,6 +277,89 @@ function cancelActivity(
   )
 }
 
+function applySpeedMagic(
+  state: GameState,
+  action: Extract<GameAction, { type: 'magic/speed-use' }>,
+): GameTransition {
+  if (!isValidTimestamp(action.now)) return fail(state, 'INVALID_TIME', '使用魔法的时间无效')
+  const activity = state.activeActivity
+  if (activity === null) return fail(state, 'ACTIVITY_NOT_ACTIVE', '当前没有正在进行的活动')
+  if (activity.runId !== action.runId) {
+    return fail(state, 'RUN_ID_MISMATCH', '加速请求与当前活动不一致')
+  }
+  if (action.now < activity.startedAt) {
+    return fail(state, 'INVALID_TIME', '使用魔法的时间不能早于活动开始时间')
+  }
+  if (deriveActivityTiming(activity, action.now).phase !== 'running') {
+    return fail(state, 'MAGIC_NOT_NEEDED', '这次活动已经可以领取，不需要再加速')
+  }
+  if (state.inventory['bottled-speed-magic'] < 1) {
+    return fail(state, 'MISSING_REQUIRED_ITEM', '冰箱里还没有瓶装速度魔法')
+  }
+
+  return succeed(
+    {
+      ...state,
+      inventory: {
+        ...state.inventory,
+        'bottled-speed-magic': state.inventory['bottled-speed-magic'] - 1,
+      },
+      activeActivity: { ...activity, endsAt: action.now },
+    },
+    [
+      {
+        type: 'activity-accelerated',
+        runId: activity.runId,
+        usedAt: action.now,
+        previousEndsAt: activity.endsAt,
+        endsAt: action.now,
+      },
+    ],
+  )
+}
+
+function applyVitalityMagic(
+  state: GameState,
+  action: Extract<GameAction, { type: 'magic/vitality-use' }>,
+): GameTransition {
+  if (!isValidTimestamp(action.now)) return fail(state, 'INVALID_TIME', '使用魔法的时间无效')
+  const availability = getVitalityMagicAvailability(state)
+  if (!availability.canUse) {
+    if (availability.reason === 'missing-item') {
+      return fail(state, 'MISSING_REQUIRED_ITEM', availability.message)
+    }
+    if (availability.reason === 'day-limit') {
+      return fail(state, 'COMPANION_DAY_LIMIT_REACHED', availability.message)
+    }
+    if (availability.reason === 'already-active') {
+      return fail(state, 'EFFECT_ALREADY_ACTIVE', availability.message)
+    }
+    return fail(state, 'MAGIC_NOT_NEEDED', availability.message)
+  }
+
+  const vitality = {
+    activatedAt: action.now,
+    activatedOnCompanionDay: state.profile.companionDays,
+    expiresAfterCompanionDay: vitalityExpiryDay(state.profile.companionDays),
+  }
+  return succeed(
+    {
+      ...state,
+      inventory: {
+        ...state.inventory,
+        'bottled-vitality-magic': state.inventory['bottled-vitality-magic'] - 1,
+      },
+      player: { effects: { ...state.player.effects, vitality } },
+      pet: {
+        ...state.pet,
+        preferences: { ...ALL_ACTIVITY_PREFERENCES },
+        tired: false,
+      },
+    },
+    [{ type: 'player-effect-activated', effect: 'vitality', value: vitality }],
+  )
+}
+
 function claimActivity(
   state: GameState,
   action: Extract<GameAction, { type: 'activity/claim' }>,
@@ -288,22 +386,50 @@ function claimActivity(
 
   const plannedCollection = activity.rewardPlan.collection
   const existingCollection = plannedCollection ? state.collections[plannedCollection.id] : undefined
+  const isLegacyV1Duplicate =
+    activity.legacySource === 'v1' && plannedCollection !== null && existingCollection !== undefined
+  const legacyDuplicateCompensation = isLegacyV1Duplicate
+    ? LEGACY_V1_DUPLICATE_APPLE_COMPENSATION[plannedCollection.category]
+    : 0
+  const availableAppleCapacity = MAX_APPLES - state.economy.apples
+  if (
+    activity.legacySource === 'v1' &&
+    (activity.rewardPlan.baseApples > availableAppleCapacity ||
+      activity.rewardPlan.modifierApples >
+        availableAppleCapacity - activity.rewardPlan.baseApples ||
+      legacyDuplicateCompensation >
+        availableAppleCapacity -
+          activity.rewardPlan.baseApples -
+          activity.rewardPlan.modifierApples)
+  ) {
+    // V1 的领取语义是“空间不足则等待”，不能截断已经冻结的奖励快照。
+    return fail(state, 'APPLE_LIMIT_REACHED', '🍎已接近上限，请先消费后再领取')
+  }
   const nextCollections = { ...state.collections }
-  if (plannedCollection !== null && existingCollection === undefined) {
-    nextCollections[plannedCollection.id] = {
-      id: plannedCollection.id,
-      firstObtainedAt: action.now,
-      duplicateCount: 0,
+  if (plannedCollection !== null) {
+    if (existingCollection === undefined) {
+      nextCollections[plannedCollection.id] = {
+        id: plannedCollection.id,
+        firstObtainedAt: action.now,
+        duplicateCount: 0,
+      }
+    } else if (isLegacyV1Duplicate) {
+      nextCollections[plannedCollection.id] = {
+        ...existingCollection,
+        duplicateCount: incrementSafeCounter(existingCollection.duplicateCount),
+      }
     }
   }
 
-  const availableAppleCapacity = MAX_APPLES - state.economy.apples
   const baseApples = Math.min(activity.rewardPlan.baseApples, availableAppleCapacity)
   const modifierApples = Math.min(
     activity.rewardPlan.modifierApples,
     availableAppleCapacity - baseApples,
   )
-  const totalApples = baseApples + modifierApples
+  const duplicateCompensation = isLegacyV1Duplicate
+    ? Math.min(legacyDuplicateCompensation, availableAppleCapacity - baseApples - modifierApples)
+    : 0
+  const totalApples = baseApples + modifierApples + duplicateCompensation
 
   const nextInventory = { ...state.inventory }
   const plannedGiftItemId = activity.rewardPlan.giftItemId
@@ -315,21 +441,23 @@ function claimActivity(
 
   const nextFriends: FriendCollection = { ...state.friends }
   const friendId = activity.rewardPlan.friendId
+  // V1 的 modifier 是活动苹果，并不是朋友图鉴引入后的好友赠礼。
+  const giftApples = activity.legacySource === 'v1' ? 0 : modifierApples
   if (friendId !== null) {
     const previous = state.friends[friendId]
     nextFriends[friendId] = previous
       ? {
           ...previous,
           lastMetAt: action.now,
-          encounterCount: previous.encounterCount + 1,
-          totalGiftApples: previous.totalGiftApples + modifierApples,
+          encounterCount: incrementSafeCounter(previous.encounterCount),
+          totalGiftApples: Math.min(MAX_APPLES, previous.totalGiftApples + giftApples),
         }
       : {
           id: friendId,
           firstMetAt: action.now,
           lastMetAt: action.now,
           encounterCount: 1,
-          totalGiftApples: modifierApples,
+          totalGiftApples: giftApples,
         }
   }
 
@@ -339,34 +467,44 @@ function claimActivity(
     apples: {
       base: baseApples,
       modifier: modifierApples,
-      duplicateCompensation: 0,
+      duplicateCompensation,
       total: totalApples,
     },
     collection:
-      plannedCollection === null || existingCollection !== undefined
+      plannedCollection === null || (existingCollection !== undefined && !isLegacyV1Duplicate)
         ? null
-        : { ...plannedCollection, duplicate: false },
+        : { ...plannedCollection, duplicate: existingCollection !== undefined },
     friendId,
     giftItemId: awardedGiftItemId,
-    giftApples: modifierApples,
-    guaranteedByPity: false,
+    giftApples,
+    guaranteedByPity: activity.rewardPlan.guaranteedByPity,
   }
   const rested = activity.kind === 'rest'
-  const generatedPreferences = rested
-    ? generateActivityPreferences(state.random.seed, state.random.sequences.preferences)
-    : null
-  const nextPreferences = generatedPreferences
-    ? generatedPreferences.preferences
-    : exhaustActivityPreference(state.pet.preferences, activity.kind)
-  const restCount = state.pet.restCount + (rested ? 1 : 0)
+  const dayAdvance = resolveVitalityForCompanionDayAdvance(state)
+  if (!dayAdvance.ok) {
+    return fail(state, 'COMPANION_DAY_LIMIT_REACHED', '陪伴天数已达到存档上限')
+  }
+  const generatedRestPreferences =
+    rested && !dayAdvance.vitalityWasActive
+      ? generateActivityPreferences(state.random.seed, state.random.sequences.preferences)
+      : null
+  const nextPreferences =
+    dayAdvance.preferences ??
+    generatedRestPreferences?.preferences ??
+    exhaustActivityPreference(state.pet.preferences, activity.kind)
+  const restCount = rested ? incrementSafeCounter(state.pet.restCount) : state.pet.restCount
   const nextState: GameState = {
     ...state,
-    profile: { ...state.profile, companionDays: state.profile.companionDays + 1 },
+    profile: { ...state.profile, companionDays: dayAdvance.nextCompanionDay },
     economy: { apples: state.economy.apples + totalApples },
     inventory: nextInventory,
     collections: nextCollections,
     friends: nextFriends,
     activeActivity: null,
+    player:
+      dayAdvance.nextVitality === state.player.effects.vitality
+        ? state.player
+        : { effects: { ...state.player.effects, vitality: dayAdvance.nextVitality } },
     pet: {
       ...state.pet,
       location: returnLocationForActivity(activity.kind),
@@ -378,29 +516,41 @@ function claimActivity(
       ...state.statistics,
       claimed: {
         ...state.statistics.claimed,
-        [activity.kind]: state.statistics.claimed[activity.kind] + 1,
+        [activity.kind]: incrementSafeCounter(state.statistics.claimed[activity.kind]),
       },
-      applesEarned: state.statistics.applesEarned + totalApples,
-      duplicateRewards: state.statistics.duplicateRewards,
+      applesEarned: saturatingAddSafeCounter(state.statistics.applesEarned, totalApples),
+      duplicateRewards: isLegacyV1Duplicate
+        ? incrementSafeCounter(state.statistics.duplicateRewards)
+        : state.statistics.duplicateRewards,
     },
-    random: generatedPreferences
-      ? {
-          ...state.random,
-          sequences: {
-            ...state.random.sequences,
-            preferences: generatedPreferences.nextSequence,
-          },
-        }
-      : state.random,
+    random:
+      dayAdvance.nextPreferenceSequence !== state.random.sequences.preferences ||
+      generatedRestPreferences !== null
+        ? {
+            ...state.random,
+            sequences: {
+              ...state.random.sequences,
+              preferences:
+                generatedRestPreferences?.nextSequence ?? dayAdvance.nextPreferenceSequence,
+            },
+          }
+        : state.random,
   }
 
   const effects: GameEffect[] = [{ type: 'activity-claimed', summary }]
-  if (generatedPreferences !== null) {
+  if (rested) {
     effects.push({
       type: 'pet-rested',
       restCount,
-      preferences: generatedPreferences.preferences,
+      preferences: nextPreferences,
       replayKey: restCount,
+    })
+  }
+  if (dayAdvance.vitalityExpired) {
+    effects.push({
+      type: 'player-effect-expired',
+      effect: 'vitality',
+      expiredAtCompanionDay: dayAdvance.nextCompanionDay,
     })
   }
   return succeed(nextState, effects)
@@ -419,7 +569,7 @@ function purchaseItem(
   }
   const applesSpent = ITEM_PRICES[action.itemId] * quantity
   if (!Number.isSafeInteger(applesSpent) || state.economy.apples < applesSpent) {
-    return fail(state, 'INSUFFICIENT_APPLES', '苹果不足，暂时不能补充这个道具')
+    return fail(state, 'INSUFFICIENT_APPLES', '🍎不够，暂时不能补充这个道具')
   }
 
   return succeed(
@@ -485,7 +635,7 @@ function encouragePet(
     return fail(state, 'INVALID_AMOUNT', '饼狗已经很想做这件事啦')
   }
   if (state.economy.apples < PET_ENCOURAGEMENT_APPLE_COST) {
-    return fail(state, 'INSUFFICIENT_APPLES', '苹果不够，先陪饼狗完成一些小任务吧')
+    return fail(state, 'INSUFFICIENT_APPLES', '🍎不够，先陪饼狗完成一些小任务吧')
   }
   return succeed(
     {
@@ -530,11 +680,11 @@ function adjustDebugApples(
   const denied = requireDebug(state)
   if (denied !== null) return denied
   if (!Number.isSafeInteger(action.delta) || action.delta === 0) {
-    return fail(state, 'INVALID_AMOUNT', '苹果增减量必须是非零安全整数')
+    return fail(state, 'INVALID_AMOUNT', '🍎增减量必须是非零安全整数')
   }
   const apples = state.economy.apples + action.delta
   if (apples < 0 || apples > MAX_APPLES) {
-    return fail(state, 'INVALID_AMOUNT', '调试后的苹果数超出允许范围')
+    return fail(state, 'INVALID_AMOUNT', '调试后的🍎数量超出允许范围')
   }
   return succeed({ ...state, economy: { apples } }, [
     { type: 'debug-applied', action: action.type },
@@ -594,9 +744,32 @@ function setDebugCollection(
   } else {
     delete nextCollections[action.collectionId]
   }
-  return succeed({ ...state, collections: nextCollections }, [
-    { type: 'debug-applied', action: action.type },
-  ])
+  const removedSelectedPostcard =
+    !action.owned && state.reality.pomodoro.selectedPostcardId === action.collectionId
+  const removedSessionPostcard =
+    !action.owned && state.reality.pomodoro.session?.postcardId === action.collectionId
+  return succeed(
+    {
+      ...state,
+      collections: nextCollections,
+      reality:
+        removedSelectedPostcard || removedSessionPostcard
+          ? {
+              ...state.reality,
+              pomodoro: {
+                ...state.reality.pomodoro,
+                selectedPostcardId: removedSelectedPostcard
+                  ? null
+                  : state.reality.pomodoro.selectedPostcardId,
+                session: removedSessionPostcard
+                  ? { ...state.reality.pomodoro.session!, postcardId: null }
+                  : state.reality.pomodoro.session,
+              },
+            }
+          : state.reality,
+    },
+    [{ type: 'debug-applied', action: action.type }],
+  )
 }
 
 function collectAllForDebug(
@@ -611,18 +784,76 @@ function collectAllForDebug(
   if (!catalogValidation.ok) return fail(state, 'INVALID_CATALOG', catalogValidation.message)
 
   const nextCollections = { ...state.collections }
-  let changedCount = 0
+  let collectionChangedCount = 0
   for (const category of CATEGORIES) {
     for (const id of catalog[category]) {
       if (nextCollections[id] === undefined) {
         nextCollections[id] = { id, firstObtainedAt: action.now, duplicateCount: 0 }
-        changedCount += 1
+        collectionChangedCount += 1
       }
     }
   }
-  return succeed({ ...state, collections: nextCollections }, [
-    { type: 'debug-applied', action: action.type, changedCount },
+  const nextFriends: FriendCollection = { ...state.friends }
+  let friendChangedCount = 0
+  for (const friendId of FRIEND_EVENT_IDS) {
+    if (nextFriends[friendId] !== undefined) continue
+    nextFriends[friendId] = {
+      id: friendId,
+      firstMetAt: action.now,
+      lastMetAt: action.now,
+      encounterCount: 1,
+      totalGiftApples: 0,
+    }
+    friendChangedCount += 1
+  }
+  return succeed({ ...state, collections: nextCollections, friends: nextFriends }, [
+    {
+      type: 'debug-applied',
+      action: action.type,
+      changedCount: collectionChangedCount + friendChangedCount,
+      collectionChangedCount,
+      friendChangedCount,
+    },
   ])
+}
+
+function clearAllForDebug(
+  state: GameState,
+  action: Extract<GameAction, { type: 'debug/clear-all' }>,
+): GameTransition {
+  const denied = requireDebug(state)
+  if (denied !== null) return denied
+  if (!isValidTimestamp(action.now)) return fail(state, 'INVALID_TIME', '清空时间无效')
+  if (state.activeActivity !== null) {
+    return fail(state, 'PET_BUSY', '请先完成或取消当前活动，再撤销所有收集')
+  }
+  const collectionChangedCount = Object.keys(state.collections).length
+  const friendChangedCount = Object.keys(state.friends).length
+  const session = state.reality.pomodoro.session
+  return succeed(
+    {
+      ...state,
+      collections: {},
+      friends: {},
+      reality: {
+        ...state.reality,
+        pomodoro: {
+          ...state.reality.pomodoro,
+          selectedPostcardId: null,
+          session: session === null ? null : { ...session, postcardId: null },
+        },
+      },
+    },
+    [
+      {
+        type: 'debug-applied',
+        action: action.type,
+        changedCount: collectionChangedCount + friendChangedCount,
+        collectionChangedCount,
+        friendChangedCount,
+      },
+    ],
+  )
 }
 
 function completeActivityForDebug(
@@ -715,6 +946,8 @@ export function reduceGame(
   action: GameAction,
   catalog: CollectionCatalog,
 ): GameTransition {
+  if (isMusicPlayerAction(action)) return reduceMusicPlayer(state, action)
+  if (isProductivityAction(action)) return reduceProductivity(state, action, catalog)
   switch (action.type) {
     case 'activity/start':
       return startActivity(state, action, catalog)
@@ -722,6 +955,10 @@ export function reduceGame(
       return cancelActivity(state, action)
     case 'activity/claim':
       return claimActivity(state, action)
+    case 'magic/speed-use':
+      return applySpeedMagic(state, action)
+    case 'magic/vitality-use':
+      return applyVitalityMagic(state, action)
     case 'item/purchase':
       return purchaseItem(state, action)
     case 'room/interact':
@@ -740,6 +977,8 @@ export function reduceGame(
       return setDebugCollection(state, action, catalog)
     case 'debug/collect-all':
       return collectAllForDebug(state, action, catalog)
+    case 'debug/clear-all':
+      return clearAllForDebug(state, action)
     case 'debug/activity-complete':
       return completeActivityForDebug(state, action)
     case 'debug/activity-clear':
@@ -750,5 +989,7 @@ export function reduceGame(
       return setDebugProbability(state, action)
     case 'debug/tuning-reset':
       return resetDebugTuning(state)
+    default:
+      return fail(state, 'INVALID_AMOUNT', '暂不支持的领域动作')
   }
 }

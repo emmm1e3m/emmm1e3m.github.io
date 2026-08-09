@@ -17,19 +17,22 @@ export function HelpDialog({ open, onClose }: HelpDialogProps) {
     <div className="modal-backdrop help-backdrop" role="presentation" onMouseDown={onClose}>
       <article
         ref={dialogRef}
-        className="help-dialog"
+        className="help-dialog help-dialog--v4"
         role="dialog"
         aria-modal="true"
         aria-labelledby="help-title"
         tabIndex={-1}
         onMouseDown={(event) => event.stopPropagation()}
       >
-        <span className="paper-tag">铲铲饼屋小纸条</span>
+        <span className="paper-tag help-dialog__tag">
+          <span aria-hidden="true">ℹ️</span>
+          铲铲饼屋的小纸条
+        </span>
         <h2 id="help-title">怎么陪饼狗玩</h2>
         <div className="help-dialog__sections">
           <section>
             <h3>在房间里</h3>
-            <p>点设施，饼狗就会走过去。点空白处可以把信息栏收起来，再看看完整的房间。</p>
+            <p>点设施，饼狗就会走过去。点房间空白处可以查看当前任务和饼狗的兴趣。</p>
           </section>
           <section>
             <h3>做一件事</h3>

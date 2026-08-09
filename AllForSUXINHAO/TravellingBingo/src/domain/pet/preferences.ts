@@ -1,4 +1,5 @@
 import type { ActivityKind, ActivityPreferences, PetInterest } from '../game/types'
+import { incrementSafeCounter } from '../game/counters'
 import { createRandomCursor, nextRandom, randomInteger } from '../rewards/prng'
 
 const PET_INTERESTS: readonly PetInterest[] = ['travel', 'computer', 'music']
@@ -39,7 +40,7 @@ export function generateActivityPreferences(seed: string, sequence: number): Gen
       computer: !refused.has('computer'),
       music: !refused.has('music'),
     },
-    nextSequence: sequence + 1,
+    nextSequence: incrementSafeCounter(sequence),
   }
 }
 

@@ -1,10 +1,25 @@
-import { act, fireEvent, render, screen, waitFor } from '@testing-library/react'
+import { act, fireEvent, render, screen, waitFor, within } from '@testing-library/react'
 
 import { PianoKeyboard } from './PianoKeyboard'
+import { PIANO_NOTES } from './pianoNotes'
 
 interface FakeOscillator {
+  type: OscillatorType
+  frequency: { setValueAtTime: ReturnType<typeof vi.fn> }
+  connect: ReturnType<typeof vi.fn>
   start: ReturnType<typeof vi.fn>
   stop: ReturnType<typeof vi.fn>
+}
+
+interface FakeGain {
+  context: FakeAudioContext
+  gain: {
+    cancelScheduledValues: ReturnType<typeof vi.fn>
+    setTargetAtTime: ReturnType<typeof vi.fn>
+    setValueAtTime: ReturnType<typeof vi.fn>
+    exponentialRampToValueAtTime: ReturnType<typeof vi.fn>
+  }
+  connect: ReturnType<typeof vi.fn>
 }
 
 let initialState: AudioContextState
@@ -16,6 +31,7 @@ class FakeAudioContext {
   currentTime = 0
   destination = {} as AudioDestinationNode
   oscillators: FakeOscillator[] = []
+  gains: FakeGain[] = []
 
   constructor() {
     contexts.push(this)
@@ -24,22 +40,18 @@ class FakeAudioContext {
   resume = vi.fn(() => resumeAudio())
   close = vi.fn(async () => undefined)
   createOscillator = vi.fn(() => {
-    const fake = {
+    const oscillator: FakeOscillator = {
+      type: 'sine',
+      frequency: { setValueAtTime: vi.fn() },
+      connect: vi.fn(),
       start: vi.fn(),
       stop: vi.fn(),
     }
-    this.oscillators.push(fake)
-    return {
-      type: 'triangle',
-      frequency: { setValueAtTime: vi.fn() },
-      connect: vi.fn(),
-      start: fake.start,
-      stop: fake.stop,
-    } as unknown as OscillatorNode
+    this.oscillators.push(oscillator)
+    return oscillator as unknown as OscillatorNode
   })
-
-  createGain() {
-    return {
+  createGain = vi.fn(() => {
+    const gain: FakeGain = {
       context: this,
       gain: {
         cancelScheduledValues: vi.fn(),
@@ -48,8 +60,10 @@ class FakeAudioContext {
         exponentialRampToValueAtTime: vi.fn(),
       },
       connect: vi.fn(),
-    } as unknown as GainNode
-  }
+    }
+    this.gains.push(gain)
+    return gain as unknown as GainNode
+  })
 }
 
 describe('PianoKeyboard', () => {
@@ -72,23 +86,128 @@ describe('PianoKeyboard', () => {
     })
   })
 
-  it('提供 C4 到 B5 的 24 个琴键，并在真实发声后报告音符', async () => {
-    const onNote = vi.fn()
+  it('按三个完整八度渲染三排 36 键，且中排从 C5 开始', () => {
+    render(<PianoKeyboard />)
 
+    expect(screen.getAllByRole('button')).toHaveLength(36)
+    const octaveGroups = screen.getAllByRole('group')
+    expect(octaveGroups).toHaveLength(3)
+    expect(octaveGroups.map((group) => group.getAttribute('aria-label'))).toEqual([
+      'C4 到 B4 琴键',
+      'C5 到 B5 琴键',
+      'C6 到 B6 琴键',
+    ])
+    for (const group of octaveGroups) expect(within(group).getAllByRole('button')).toHaveLength(12)
+
+    const middleOctave = screen.getByRole('group', { name: 'C5 到 B5 琴键' })
+    expect(within(middleOctave).getAllByRole('button')[0]).toHaveAccessibleName('C5，键盘 A')
+    expect(screen.getByRole('button', { name: 'C4，键盘 Z' })).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: 'B6，键盘 U' })).toBeInTheDocument()
+  })
+
+  it('只给 21 个白键分配唯一电脑按键，黑键没有键盘映射', () => {
+    const onNote = vi.fn()
+    const { container } = render(<PianoKeyboard onNote={onNote} />)
+    const whiteNotes = PIANO_NOTES.filter((note) => !note.black)
+    const blackNotes = PIANO_NOTES.filter((note) => note.black)
+
+    expect(whiteNotes).toHaveLength(21)
+    expect(blackNotes).toHaveLength(15)
+    expect(whiteNotes.every((note) => note.key !== null)).toBe(true)
+    expect(new Set(whiteNotes.map((note) => note.key))).toHaveLength(21)
+    expect(blackNotes.every((note) => note.key === null)).toBe(true)
+    expect(container.querySelectorAll('.piano-key[aria-label*="键盘"]')).toHaveLength(21)
+    expect(screen.getByRole('button', { name: 'C#5' })).toBeInTheDocument()
+
+    fireEvent.keyDown(window, { key: '2' })
+    expect(contexts).toHaveLength(0)
+    expect(onNote).not.toHaveBeenCalled()
+  })
+
+  it('把每排黑键放在相邻白键的正确边界上', () => {
+    for (const octave of [4, 5, 6] as const) {
+      const boundaries = PIANO_NOTES.filter((note) => note.octave === octave && note.black).map(
+        (note) => note.boundaryIndex,
+      )
+      expect(boundaries).toEqual([1, 2, 4, 5, 6])
+    }
+  })
+
+  it('显示指定曲谱提示，且不出现以八度数量描述组件的元文案', () => {
+    render(<PianoKeyboard />)
+
+    expect(
+      screen.getByText('从 A5 G5 G5 B5 G5 E5 G5 G5 B4 C5，D5 C5 A5 A5 A5 B5 B5 B5 B5 C6 开始试试'),
+    ).toBeInTheDocument()
+    expect(screen.getByText('饼狗的小钢琴')).toBeVisible()
+    expect(screen.queryByText(/[两三]八度/u)).not.toBeInTheDocument()
+  })
+
+  it('琴体和三排琴键都裁切溢出，不产生横向或纵向滚动条', () => {
+    const { container } = render(<PianoKeyboard />)
+    const clippedElements = container.querySelectorAll(
+      '.piano, .piano__rows, .piano__row, .piano__keys',
+    )
+
+    expect(clippedElements.length).toBeGreaterThan(0)
+    for (const element of clippedElements) {
+      const style = globalThis.getComputedStyle(element)
+      expect(style.overflowX || style.overflow).toBe('hidden')
+      expect(style.overflowY || style.overflow).toBe('hidden')
+    }
+  })
+
+  it('用三组泛音和短起音衰减包络发声，并在 keyup 后停止全部音源', async () => {
+    const onNote = vi.fn()
     const { unmount } = render(<PianoKeyboard onNote={onNote} />)
-    expect(screen.getAllByRole('button')).toHaveLength(24)
-    expect(screen.getByRole('button', { name: /C4/u })).toBeInTheDocument()
-    expect(screen.getByRole('button', { name: /B5/u })).toBeInTheDocument()
 
     fireEvent.keyDown(window, { key: 'z' })
     await waitFor(() => expect(onNote).toHaveBeenCalledWith('C4'))
-    fireEvent.keyUp(window, { key: 'z' })
 
     const context = contexts[0]
-    expect(context.oscillators[0]?.stop).toHaveBeenCalledOnce()
+    const c4 = PIANO_NOTES.find((note) => note.id === 'C4')
+    expect(context.oscillators).toHaveLength(3)
+    expect(context.oscillators.map((oscillator) => oscillator.type)).toEqual([
+      'triangle',
+      'sine',
+      'sine',
+    ])
+    expect(context.oscillators[0]?.frequency.setValueAtTime).toHaveBeenCalledWith(c4?.frequency, 0)
+    expect(context.oscillators[1]?.frequency.setValueAtTime).toHaveBeenCalledWith(
+      (c4?.frequency ?? 0) * 2,
+      0,
+    )
+    expect(context.oscillators[2]?.frequency.setValueAtTime).toHaveBeenCalledWith(
+      (c4?.frequency ?? 0) * 3,
+      0,
+    )
+    expect(context.gains).toHaveLength(4)
+
+    const envelope = context.gains[0]
+    expect(envelope?.gain.setValueAtTime).toHaveBeenCalledWith(0.0001, 0)
+    expect(envelope?.gain.exponentialRampToValueAtTime).toHaveBeenNthCalledWith(1, 0.22, 0.008)
+    expect(envelope?.gain.exponentialRampToValueAtTime).toHaveBeenNthCalledWith(2, 0.075, 0.09)
+    expect(envelope?.gain.setTargetAtTime).toHaveBeenCalledWith(0.0001, 0.09, 0.32)
+    expect(
+      context.gains.slice(1).map((gain) => gain.gain.setValueAtTime.mock.calls[0]?.[0]),
+    ).toEqual([0.72, 0.2, 0.08])
+
+    fireEvent.keyUp(window, { key: 'z' })
+    for (const oscillator of context.oscillators) expect(oscillator.stop).toHaveBeenCalledOnce()
+    expect(envelope?.gain.cancelScheduledValues).toHaveBeenCalledOnce()
+    unmount()
+    expect(context.close).toHaveBeenCalledOnce()
+  })
+
+  it('卸载时停止仍在发声的全部泛音并关闭音频上下文', async () => {
+    const { unmount } = render(<PianoKeyboard />)
+    fireEvent.keyDown(window, { key: 'q' })
+    await waitFor(() => expect(contexts[0]?.oscillators).toHaveLength(3))
+
+    const context = contexts[0]
     unmount()
 
-    // 即使 keyup 已把 voice 从映射中移除，组件仍必须关闭自己创建的上下文。
+    for (const oscillator of context.oscillators) expect(oscillator.stop).toHaveBeenCalledOnce()
     expect(context.close).toHaveBeenCalledOnce()
   })
 
@@ -115,6 +234,7 @@ describe('PianoKeyboard', () => {
     })
 
     expect(context.createOscillator).not.toHaveBeenCalled()
+    expect(context.createGain).not.toHaveBeenCalled()
     expect(onNote).not.toHaveBeenCalled()
   })
 
@@ -129,15 +249,14 @@ describe('PianoKeyboard', () => {
     fireEvent.keyDown(window, { key: 'z' })
     await waitFor(() => expect(onNote).toHaveBeenCalledWith('C4'))
     const context = contexts[0]
-    const firstOscillator = context.oscillators[0]
 
     screen.getByTestId('piano-host').setAttribute('inert', '')
     fireEvent.keyDown(window, { key: 'x' })
-    expect(context.createOscillator).toHaveBeenCalledTimes(1)
+    expect(context.createOscillator).toHaveBeenCalledTimes(3)
     expect(onNote).toHaveBeenCalledTimes(1)
 
     fireEvent.keyUp(window, { key: 'z' })
-    expect(firstOscillator?.stop).toHaveBeenCalledOnce()
+    for (const oscillator of context.oscillators) expect(oscillator.stop).toHaveBeenCalledOnce()
     unmount()
   })
 

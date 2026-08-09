@@ -1,11 +1,21 @@
 import type { ActivityKind, ItemId } from '@/domain'
 
-export const ITEM_COPY: Record<ItemId, { name: string; note: string }> = {
-  'travel-basic': { name: '普通旅行便当', note: '装好一次出门需要的点心' },
-  'travel-apple': { name: '苹果旅行便当', note: '更容易在路上遇见朋友' },
-  'signal-headphones': { name: '信号耳机', note: '陪饼狗认真刷播一次' },
-  'trend-toolbox': { name: '热度工具箱', note: '陪饼狗向全站第一冲刺' },
-  'lucky-apple': { name: '幸运苹果', note: '让新收藏更愿意出现' },
+export const ITEM_COPY: Record<ItemId, { emoji: string; name: string; note: string }> = {
+  'travel-basic': { emoji: '🍱', name: '普通旅行便当', note: '装好一次出门需要的点心' },
+  'travel-apple': { emoji: '🍎', name: '苹果旅行便当', note: '更容易在路上遇见朋友' },
+  'signal-headphones': { emoji: '🎧', name: '信号耳机', note: '陪饼狗认真刷播一次' },
+  'trend-toolbox': { emoji: '🧰', name: '热度工具箱', note: '陪饼狗向全站第一冲刺' },
+  'lucky-apple': { emoji: '🍀', name: '幸运苹果', note: '让新收藏更愿意出现' },
+  'bottled-speed-magic': {
+    emoji: '⚡',
+    name: '瓶装速度魔法',
+    note: '让正在进行的活动立刻完成',
+  },
+  'bottled-vitality-magic': {
+    emoji: '✨',
+    name: '瓶装活力魔法',
+    note: '让饼狗接下来七个相伴日都充满活力',
+  },
 }
 
 export const ACTIVITY_COPY: Record<

@@ -1,0 +1,246 @@
+import { expect, test } from '@playwright/test'
+
+import {
+  buySupply,
+  expectElementWithinViewport,
+  expectNoOverlap,
+  openDebugPanel,
+  readAppleCount,
+  readCompanionDays,
+  readSupplyCount,
+  saveScreenshot,
+  startActivity,
+  startGame,
+} from './support/game'
+
+test.describe('V4 房间契约', () => {
+  test.beforeEach(({}, testInfo) => {
+    test.skip(testInfo.project.name !== 'chromium', 'V4 桌面主流程只在 Chromium 验证')
+  })
+
+  test('进入前可显式检查新布置，默认读条为 1 分 12 秒', async ({ page }) => {
+    test.setTimeout(90_000)
+    await page.goto('./')
+    await expect(page.locator('link[rel="icon"]')).toHaveAttribute('href', './icons/favicon-32.png')
+    const updateRegion = page.getByRole('region', { name: '检查游戏更新' })
+    await expect(updateRegion.getByRole('button', { name: '检查新布置' })).toBeVisible()
+    await expect(updateRegion).toContainText('进入前，可以先看看饼屋有没有新布置。')
+    await expect
+      .poll(() => page.evaluate(() => navigator.serviceWorker.getRegistration().then(Boolean)), {
+        timeout: 60_000,
+      })
+      .toBe(true)
+    await updateRegion.getByRole('button', { name: '检查新布置' }).click()
+    const terminalButton = updateRegion.getByRole('button', {
+      name: /^(?:再检查一次|重新检查新布置)$/u,
+    })
+    await expect(terminalButton).toBeVisible({ timeout: 30_000 })
+    const firstTerminalLabel = await terminalButton.textContent()
+    if (firstTerminalLabel === '重新检查新布置') {
+      await expect(updateRegion).toContainText('刚才没能看清，再试一次吧。')
+      await terminalButton.click()
+      await expect(terminalButton).toBeVisible({ timeout: 30_000 })
+    } else {
+      await expect(updateRegion).toContainText('已经检查过，现在看到的是最新布置。')
+    }
+
+    await startGame(page, { debug: true, displayName: '新布置测试', seed: 'v4-update' })
+    await openDebugPanel(page)
+    await expect(page.getByRole('button', { name: '1 分 12 秒', exact: true })).toHaveAttribute(
+      'aria-pressed',
+      'true',
+    )
+
+    const hudTitle = page.locator('.game-hud__center strong')
+    await expect(hudTitle).toHaveText('今天也要好好吃苹果')
+    await expect(hudTitle).toHaveCSS('white-space', 'nowrap')
+    await expect(page.locator('.apple-counter .numeric-copy')).toHaveText(/^\d+🍎$/u)
+    await expect(page.locator('.game-hud').getByRole('group', { name: '饼狗状态' })).toBeVisible()
+    await expect(page.locator('.game-page > .pet-status-bar')).toHaveCount(0)
+    await expect(page.getByRole('button', { name: '查看房屋玩法说明' })).toHaveText('ℹ️')
+    await expect(page.getByRole('button', { name: '切换到现实生活维度' })).toBeVisible()
+  })
+
+  test('速度魔法经二次确认消耗一瓶并立刻完成当前读条', async ({ page }) => {
+    await startGame(page, { debug: true, displayName: '速度测试', seed: 'e2e-4' })
+    await buySupply(page, '瓶装速度魔法')
+    expect(await readSupplyCount(page, '瓶装速度魔法')).toBe(1)
+
+    await startActivity(page, '房门', '出去旅行')
+    await page.locator('.game-hud__center').click()
+    const activePanel = page.locator('.context-panel--activity')
+    await expect(activePanel.getByText('这一次 Bingo', { exact: true })).toBeVisible()
+    const [tagBox, closeBox] = await Promise.all([
+      activePanel.getByText('这一次 Bingo', { exact: true }).boundingBox(),
+      activePanel.getByRole('button', { name: '收起信息栏' }).boundingBox(),
+    ])
+    expect(tagBox && closeBox).toBeTruthy()
+    expect(tagBox!.x).toBeLessThan(closeBox!.x)
+    expect(tagBox!.y).toBeLessThanOrEqual(closeBox!.y + closeBox!.height)
+
+    await activePanel.getByRole('button', { name: '使用速度魔法' }).click()
+    const confirmation = activePanel.getByRole('group', { name: '确认使用速度魔法' })
+    await expect(confirmation.getByRole('button', { name: '继续等待' })).toBeFocused()
+    await confirmation.getByRole('button', { name: '确认使用' }).click()
+    await expect(activePanel.getByRole('button', { name: '看看这次的结果' })).toBeEnabled()
+    await expect(activePanel).toContainText('现有 0 份')
+
+    const cancelButton = page.getByRole('button', { name: '取消当前活动' })
+    const helpButton = page.getByRole('button', { name: '查看房屋玩法说明' })
+    const dimensionButton = page.getByRole('button', { name: '切换到现实生活维度' })
+    for (const control of [cancelButton, helpButton, dimensionButton]) {
+      await expectElementWithinViewport(control)
+    }
+    await expectNoOverlap(cancelButton, dimensionButton, ['活动取消按钮', '维度切换按钮'])
+    await expectNoOverlap(helpButton, dimensionButton, ['玩法说明按钮', '维度切换按钮'])
+  })
+
+  test('拒绝态点击可询问使用活力魔法，使用后七天内三类兴趣都恢复', async ({ page }) => {
+    await startGame(page, { debug: true, displayName: '活力测试', seed: 'e2e-0' })
+    await buySupply(page, '瓶装活力魔法')
+    expect(await readSupplyCount(page, '瓶装活力魔法')).toBe(1)
+
+    await page.locator('[data-hotspot="房门"]').click()
+    const card = page.locator('.activity-card').filter({ hasText: '出去旅行' })
+    const confirmation = card.getByRole('group', { name: '确认使用活力魔法' })
+    await expect(confirmation.getByRole('button', { name: '先不使用' })).toBeFocused()
+    await confirmation.getByRole('button', { name: '使用活力魔法' }).click()
+
+    const petStatus = page.getByRole('group', { name: '饼狗状态' })
+    await expect(petStatus.locator('.pet-status-bar__label')).toHaveText('✨ 活力满满')
+    await expect(petStatus.locator('.pet-status-bar__effect')).toContainText('7 天')
+    await expect(card).toHaveAttribute('data-interest', 'willing')
+    await expect(card.getByRole('button', { name: '准备出去旅行' })).toBeEnabled()
+
+    await page.getByRole('button', { name: '回到房间概览' }).click()
+    const interest = page.locator('.interest-summary')
+    await expect(interest.locator('.is-willing')).toHaveCount(3)
+    await expect(interest.locator('.is-reluctant')).toHaveCount(0)
+    expect(await readSupplyCount(page, '瓶装活力魔法')).toBe(0)
+    await saveScreenshot(page, 'vitality-magic-seven-days.png', false)
+  })
+
+  test('现实维度提供数据与工作入口，待办持久且满十分钟按选择结算', async ({ page }) => {
+    const enteredAt = new Date('2026-08-09T08:00:00+08:00')
+    await page.clock.install({ time: enteredAt })
+    await startGame(page, { displayName: '现实测试', seed: 'v4-reality' })
+    const applesBefore = await readAppleCount(page)
+
+    await page.getByRole('button', { name: '切换到现实生活维度' }).click()
+    const room = page.getByRole('region', { name: '铲铲饼屋互动场景' })
+    await expect(room.locator('[data-hotspot="电脑"]')).toHaveText('数据')
+    await expect(room.locator('[data-hotspot="一楼电脑"]')).toHaveText('工作')
+
+    await room.locator('[data-hotspot="电脑"]').click()
+    const dataPanel = page.locator('.context-panel--reality-data')
+    await expect(dataPanel).toContainText('在该页面中直接开始刷播（无需但是建议加入运行组）')
+    await expect(dataPanel).toContainText(
+      '在该页面中启动冲热任务（需要加入运行组，与最新版插件配合使用）',
+    )
+    await expect(dataPanel.getByRole('link', { name: /打开运行组页面/u })).toHaveAttribute(
+      'href',
+      'https://www.weibo.com/u/7878664767',
+    )
+
+    await room.locator('[data-hotspot="一楼电脑"]').click()
+    const workPanel = page.locator('.context-panel--reality-work')
+    await expect(workPanel.getByRole('heading', { name: '苹果钟与待办' })).toBeVisible()
+    await workPanel.getByLabel('新待办').fill('完成 V4 验收')
+    await workPanel.getByRole('button', { name: '添加' }).click()
+    const todo = workPanel.getByRole('list', { name: '现实生活待办' }).getByRole('listitem')
+    await expect(todo).toContainText('完成 V4 验收')
+    await todo.getByRole('checkbox', { name: '标记为已完成：完成 V4 验收' }).check()
+    await todo.getByRole('button', { name: '编辑' }).click()
+    await todo.getByLabel('待办标题').fill('完成 V4 桌面验收')
+    await todo.getByRole('button', { name: '保存' }).click()
+
+    await room.locator('[data-hotspot="电脑"]').click()
+    await room.locator('[data-hotspot="一楼电脑"]').click()
+    await expect(page.getByRole('list', { name: '现实生活待办' })).toContainText('完成 V4 桌面验收')
+    await saveScreenshot(page, 'reality-work-todos.png', false)
+
+    await page.clock.fastForward(10 * 60_000 + 1_000)
+    await page.getByRole('button', { name: '回到旅行饼狗游戏' }).click()
+    const returnDialog = page.getByRole('dialog', { name: '现实里的事情认真完成了吗？' })
+    await expect(returnDialog).toContainText('这段时间一共攒下 1🍎')
+    await returnDialog.getByRole('button', { name: '是的🥰' }).click()
+    await expect.poll(() => readAppleCount(page)).toBe(applesBefore + 1)
+  })
+
+  test('现实苹果钟开始与 ↩️ 取消均二次确认，取消不推进陪伴天数', async ({ page }) => {
+    await startGame(page, { displayName: '苹果钟测试', seed: 'v4-pomodoro-confirm' })
+    const daysBefore = await readCompanionDays(page)
+    await page.getByRole('button', { name: '切换到现实生活维度' }).click()
+    await page.locator('[data-hotspot="一楼电脑"]').click()
+
+    const workPanel = page.locator('.context-panel--reality-work')
+    const durationChoice = workPanel
+      .getByRole('group', { name: '苹果钟时长' })
+      .getByRole('button', { name: /^5 分钟/u })
+    await durationChoice.click()
+    await expect(durationChoice).toHaveAttribute('aria-pressed', 'true')
+    await workPanel.getByRole('button', { name: '开始苹果钟' }).click()
+
+    const startDialog = page.getByRole('alertdialog', { name: '确认开始苹果钟？' })
+    await expect(startDialog).toContainText('房间左下角的 ↩️ 中途取消')
+    await expect(startDialog.getByRole('button', { name: '再想想' })).toBeFocused()
+    await expect(page.getByRole('button', { name: '取消当前苹果钟' })).toHaveCount(0)
+    await startDialog.getByRole('button', { name: '确认开始' }).click()
+
+    await expect(workPanel.getByRole('status').filter({ hasText: '专注中' })).toBeVisible()
+    await expect(workPanel.getByRole('img', { name: '正在陪你专注的饼狗' })).toBeVisible()
+    const roomCancel = page.getByRole('button', { name: '取消当前苹果钟' })
+    await expect(roomCancel).toHaveText('↩️')
+    await roomCancel.click()
+
+    const cancelDialog = page.getByRole('alertdialog', { name: '确认取消苹果钟？' })
+    await expect(cancelDialog).toContainText('不会计入相伴的下一天')
+    await expect(cancelDialog.getByRole('button', { name: '继续专注' })).toBeFocused()
+    await cancelDialog.getByRole('button', { name: '确认取消' }).click()
+
+    await expect(roomCancel).toHaveCount(0)
+    await expect(workPanel.getByRole('button', { name: '开始苹果钟' })).toBeEnabled()
+
+    await workPanel.getByRole('button', { name: '开始苹果钟' }).click()
+    await page
+      .getByRole('alertdialog', { name: '确认开始苹果钟？' })
+      .getByRole('button', { name: '确认开始' })
+      .click()
+    await workPanel.getByRole('button', { name: '取消本次计时' }).click()
+    const panelCancelDialog = page.getByRole('alertdialog', { name: '确认取消苹果钟？' })
+    await expect(panelCancelDialog.getByRole('button', { name: '继续专注' })).toBeFocused()
+    await panelCancelDialog.getByRole('button', { name: '确认取消' }).click()
+
+    await expect(workPanel.getByRole('button', { name: '开始苹果钟' })).toBeEnabled()
+    expect(await readCompanionDays(page)).toBe(daysBefore)
+  })
+
+  test('现实苹果钟到点只推进一次陪伴日并显示完成提醒', async ({ page }) => {
+    await page.clock.install({ time: new Date('2026-08-09T10:00:00+08:00') })
+    await startGame(page, { displayName: '苹果钟完成测试', seed: 'v4-pomodoro-complete' })
+    const daysBefore = await readCompanionDays(page)
+
+    await page.getByRole('button', { name: '切换到现实生活维度' }).click()
+    await page.locator('[data-hotspot="一楼电脑"]').click()
+    const workPanel = page.locator('.context-panel--reality-work')
+    await workPanel
+      .getByRole('group', { name: '苹果钟时长' })
+      .getByRole('button', { name: /^5 分钟/u })
+      .click()
+    await workPanel.getByRole('button', { name: '开始苹果钟' }).click()
+    await page
+      .getByRole('alertdialog', { name: '确认开始苹果钟？' })
+      .getByRole('button', { name: '确认开始' })
+      .click()
+
+    await page.clock.fastForward(5 * 60_000 + 1_000)
+    await expect(workPanel.getByRole('status').filter({ hasText: '本轮已完成' })).toBeVisible()
+    await expect(page.getByRole('status').filter({ hasText: '苹果钟完成啦' })).toContainText(
+      '这一轮专注时间到了',
+    )
+    await expect.poll(() => readCompanionDays(page)).toBe(daysBefore + 1)
+
+    await page.clock.fastForward(60_000)
+    expect(await readCompanionDays(page)).toBe(daysBefore + 1)
+  })
+})

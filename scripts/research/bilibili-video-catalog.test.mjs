@@ -10,12 +10,22 @@ import {
   buildPublicVideoCatalog,
   videoForMapping,
 } from './bilibili-video-catalog-core.mjs'
-import { parseArguments } from './sync-bilibili-video-catalog.mjs'
+import { buildSynchronizedPosterCatalogs, parseArguments } from './sync-bilibili-video-catalog.mjs'
 
 const workspaceRoot = resolve(fileURLToPath(new URL('../..', import.meta.url)))
 
 async function readJson(relativePath) {
   return JSON.parse(await readFile(resolve(workspaceRoot, relativePath), 'utf8'))
+}
+
+function replaceVideoTitleEverywhere(value, bvid, title) {
+  if (Array.isArray(value)) {
+    for (const item of value) replaceVideoTitleEverywhere(item, bvid, title)
+    return
+  }
+  if (!value || typeof value !== 'object') return
+  if (value.bvid === bvid && typeof value.title === 'string') value.title = title
+  for (const child of Object.values(value)) replaceVideoTitleEverywhere(child, bvid, title)
 }
 
 test('已提交的视频目录、公开目录与两类海报映射保持一致', async () => {
@@ -90,6 +100,78 @@ test('重名海报使用显式 ID 映射，不按标题猜测', async () => {
   assert.equal(mappings.get('million-shot-117'), 'BV179v1B2Emc')
   assert.equal(mappings.get('million-shot-116'), 'BV1VuvUB5EST')
   assert.equal(mappings.get('million-shot-108'), 'BV198411R74Z')
+})
+
+test('模拟 --refresh 后会同步两类公开海报元数据且不重建图片', async () => {
+  const [catalog, millionSource, siteFirstSource, millionPublic, siteFirstPublic] =
+    await Promise.all([
+      readJson('research/travelling-bingo/data/bilibili-video-catalog.source.json'),
+      readJson('research/travelling-bingo/data/million-shot-posters.source.json'),
+      readJson('research/travelling-bingo/data/site-firsts.source.json'),
+      readJson('AllForSUXINHAO/TravellingBingo/public/data/million-shot-posters.json'),
+      readJson('AllForSUXINHAO/TravellingBingo/public/data/site-firsts.json'),
+    ])
+
+  const refreshedCatalog = structuredClone(catalog)
+  const siteBvids = new Set(catalog.posterMappings.siteFirsts.map((mapping) => mapping.bvid))
+  const millionMapping = catalog.posterMappings.millionShots.find(
+    (mapping) => !siteBvids.has(mapping.bvid),
+  )
+  const siteFirstMapping = catalog.posterMappings.siteFirsts[0]
+  assert.ok(millionMapping)
+  replaceVideoTitleEverywhere(refreshedCatalog, millionMapping.bvid, '刷新后的百万直拍标题')
+  replaceVideoTitleEverywhere(refreshedCatalog, siteFirstMapping.bvid, '刷新后的全站第一标题')
+  assert.doesNotThrow(() => assertVideoCatalog(refreshedCatalog))
+
+  const millionPublicBefore = JSON.stringify(millionPublic)
+  const siteFirstPublicBefore = JSON.stringify(siteFirstPublic)
+  const synchronized = buildSynchronizedPosterCatalogs({
+    catalog: refreshedCatalog,
+    millionSource,
+    siteFirstSource,
+    millionPublic,
+    siteFirstPublic,
+  })
+  assert.equal(
+    JSON.stringify(millionPublic),
+    millionPublicBefore,
+    '同步函数不应原地改写公开百万目录',
+  )
+  assert.equal(
+    JSON.stringify(siteFirstPublic),
+    siteFirstPublicBefore,
+    '同步函数不应原地改写公开全站第一目录',
+  )
+
+  for (const [mapping, sourceItems, publicItems, expectedTitle, originalPublicItems] of [
+    [
+      millionMapping,
+      synchronized.millionSource.items,
+      synchronized.millionPublic.items,
+      '刷新后的百万直拍标题',
+      millionPublic.items,
+    ],
+    [
+      siteFirstMapping,
+      synchronized.siteFirstSource.items,
+      synchronized.siteFirstPublic.items,
+      '刷新后的全站第一标题',
+      siteFirstPublic.items,
+    ],
+  ]) {
+    const sourceItem = sourceItems.find((item) => item.id === mapping.posterId)
+    const publicItem = publicItems.find((item) => item.id === mapping.posterId)
+    const originalPublicItem = originalPublicItems.find((item) => item.id === mapping.posterId)
+    assert.ok(sourceItem)
+    assert.ok(publicItem)
+    assert.ok(originalPublicItem)
+    assert.equal(sourceItem.video.title, expectedTitle)
+    assert.deepEqual(publicItem.metadata.video, sourceItem.video)
+    assert.deepEqual(publicItem.images, originalPublicItem.images)
+    const expectedPublicItem = structuredClone(originalPublicItem)
+    expectedPublicItem.metadata.video = sourceItem.video
+    assert.deepEqual(publicItem, expectedPublicItem, `${mapping.posterId} 只能更新 metadata.video`)
+  }
 })
 
 test('唱片机固定使用百万收藏夹最新页第 1–7 项', async () => {

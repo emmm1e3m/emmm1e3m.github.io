@@ -3,6 +3,7 @@ import { generateTaskBoard } from '../tasks/taskBoard'
 import { INITIAL_APPLES, INITIAL_INVENTORY } from './constants'
 import { createDefaultGameBalance } from './gameBalance'
 import { normalizeDisplayName } from './profile'
+import { assertValidTimestamp } from './time'
 import type { GameState } from './types'
 
 export interface InitialGameOptions {
@@ -14,9 +15,7 @@ export interface InitialGameOptions {
 }
 
 export function createInitialGameState(options: InitialGameOptions): GameState {
-  if (!Number.isSafeInteger(options.now) || options.now < 0) {
-    throw new RangeError('建档时间必须是非负安全整数毫秒时间戳')
-  }
+  assertValidTimestamp(options.now, '建档时间必须是 Date 可表示的非负整数毫秒时间戳')
   if (options.seed.trim().length === 0) {
     throw new TypeError('持久随机种子不能为空')
   }
@@ -29,7 +28,7 @@ export function createInitialGameState(options: InitialGameOptions): GameState {
   })
 
   return {
-    schemaVersion: 3,
+    schemaVersion: 4,
     profile: {
       createdAt: options.now,
       debug: options.debug ?? false,
@@ -62,6 +61,29 @@ export function createInitialGameState(options: InitialGameOptions): GameState {
         tasks: generatedTasks.nextSequence,
         preferences: generatedPreferences.nextSequence,
       },
+    },
+    world: 'game',
+    player: { effects: { vitality: null } },
+    reality: {
+      nextStaySequence: 0,
+      activeStay: null,
+      pendingSettlement: null,
+      todos: {},
+      pomodoro: {
+        nextSessionSequence: 0,
+        selectedPostcardId: null,
+        session: null,
+      },
+    },
+    musicPlayer: {
+      playlists: {},
+      order: [],
+      activePlaylistId: null,
+      currentBvid: null,
+      currentIndex: 0,
+      loopMode: 'list',
+      startAtSeconds: 0,
+      autoplay: true,
     },
   }
 }

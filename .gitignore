@@ -8,8 +8,10 @@ coverage/
 playwright-report/
 test-results/
 .playwright-cli/
+.playwright-mcp/
 output/
 *.log
+*.tsbuildinfo
 *.bingo
 
 # 本地环境、编辑器与系统文件不进入仓库。

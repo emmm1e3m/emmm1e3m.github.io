@@ -1,39 +1,45 @@
 {
-  "schemaVersion": 1,
+  "schemaVersion": 2,
   "rights": "user-confirmed-authorized",
-  "generatedAt": "2026-08-08",
+  "generatedAt": "2026-08-09",
   "room": {
     "alt": "暖色晨光里的两层铲铲饼屋，包含床、电脑、衣架、电子琴、唱片机、冰箱、展示墙和出口",
-    "generation": {
-      "tool": "OpenAI built-in ImageGen",
-      "mode": "precise-object-edit",
-      "promptSummary": "以用户提供的竖版房间图为唯一构图参考，完整保留两层房间、树冠、人物与兔子装饰及全部家具位置，不再采用横向重绘。"
+    "provenance": {
+      "origin": "user-supplied-master",
+      "processingTool": "sharp",
+      "mode": "proportional-resize-only",
+      "preservation": ["full-canvas", "alpha-channel", "original-style"]
     },
     "source": {
       "width": 1098,
       "height": 1433,
-      "path": "resources/raw/travelling-bingo/generated/chan-chan-house-v2.png",
-      "byteLength": 2810197,
+      "path": "resources/raw/travelling-bingo/generated/chan-chan-house-master.png",
+      "byteLength": 2444866,
       "mime": "image/png",
-      "sha256": "32060f1a48d3812dd79159a361f69dcde96eefa3c66e98969cbe02f479c23d24",
-      "hasAlpha": false
+      "sha256": "35a62f5b8842df2926e853ca99105f0789baeb7e446717fa5a2dbbedfc0b56f2",
+      "hasAlpha": true,
+      "alphaRange": { "min": 0, "max": 255 }
     },
     "images": [
       {
         "width": 768,
         "height": 1002,
         "path": "assets/game/chan-chan-house-v2-768.webp",
-        "byteLength": 223842,
+        "byteLength": 893868,
         "mime": "image/webp",
-        "sha256": "e019d009d8fdc6ced709f2a32ebc4b66bd69fc27ff897b0973d5b879ce6b2f03"
+        "sha256": "fc204d44fa7712f7524b063db580f28276f2b0a1416956e3996c752275bec199",
+        "encoding": "lossless",
+        "preservation": "full-canvas-alpha"
       },
       {
         "width": 1098,
         "height": 1433,
         "path": "assets/game/chan-chan-house-v2-1098.webp",
-        "byteLength": 389280,
+        "byteLength": 1539644,
         "mime": "image/webp",
-        "sha256": "9bbe3214270a16d038d487ad6b2e7089de1fab909a36028bc99e0eb07e52ec9f"
+        "sha256": "22257f3c9934bce7e2eef5d86db86bc64d9cf16889edc5691da83b6482aca17e",
+        "encoding": "lossless",
+        "preservation": "full-canvas-alpha"
       }
     ]
   },
@@ -51,12 +57,10 @@
       "byteLength": 796149,
       "mime": "image/png",
       "sha256": "92fca56baf692d203210a9203ab74aefc5dfa68266fb7bd71ca167ac2ed42c96",
-      "hasAlpha": true
+      "hasAlpha": true,
+      "alphaRange": { "min": 0, "max": 255 }
     },
-    "layout": {
-      "columns": 2,
-      "rows": 2
-    },
+    "layout": { "columns": 2, "rows": 2 },
     "poses": ["idle", "travel", "stream", "celebrate"],
     "image": {
       "width": 1024,
@@ -66,6 +70,83 @@
       "mime": "image/webp",
       "sha256": "b104712abc1d36b5bc047ad06e5e6b8b2d194ee506242bf997c51d4138e088a6"
     }
+  },
+  "appIcons": {
+    "alt": "戴红色苹果头套、抱着苹果的白色小狗饼狗",
+    "provenance": {
+      "origin": "existing-mascot-sprite",
+      "processingTool": "sharp",
+      "mode": "mechanical-crop-resize-composite",
+      "background": "#fff7ed",
+      "redraw": false
+    },
+    "source": {
+      "width": 1254,
+      "height": 1254,
+      "path": "resources/raw/travelling-bingo/generated/bingo-sprites-transparent-v2.png",
+      "byteLength": 796149,
+      "mime": "image/png",
+      "sha256": "92fca56baf692d203210a9203ab74aefc5dfa68266fb7bd71ca167ac2ed42c96",
+      "hasAlpha": true,
+      "alphaRange": { "min": 0, "max": 255 }
+    },
+    "sourcePose": "idle",
+    "sourceCell": { "column": 0, "row": 0, "width": 627, "height": 627 },
+    "sourceRegion": { "left": 0, "top": 0, "width": 627, "height": 700 },
+    "visibleBounds": { "left": 127, "top": 143, "width": 436, "height": 496 },
+    "crop": { "left": 119, "top": 135, "width": 452, "height": 512 },
+    "images": [
+      {
+        "width": 32,
+        "height": 32,
+        "path": "icons/favicon-32.png",
+        "byteLength": 1671,
+        "mime": "image/png",
+        "sha256": "0a9994e80a9271acb45293c56384d7fc6ed783aabaafd1e1fe215b9a4ffde6c4",
+        "purpose": "favicon",
+        "subjectScale": 0.88
+      },
+      {
+        "width": 180,
+        "height": 180,
+        "path": "icons/apple-touch-icon-180.png",
+        "byteLength": 26843,
+        "mime": "image/png",
+        "sha256": "4ae591726e4aedd386fc573bda20181d552fc4fbcc0808924edc343dd8a68bb5",
+        "purpose": "apple-touch",
+        "subjectScale": 0.84
+      },
+      {
+        "width": 192,
+        "height": 192,
+        "path": "icons/app-icon-192.png",
+        "byteLength": 30061,
+        "mime": "image/png",
+        "sha256": "7099bc023f54337a21d533eddb696e05c0a2e5df89ff2507f97f4646e94557ba",
+        "purpose": "any",
+        "subjectScale": 0.84
+      },
+      {
+        "width": 512,
+        "height": 512,
+        "path": "icons/app-icon-512.png",
+        "byteLength": 175621,
+        "mime": "image/png",
+        "sha256": "2b3be2ff858f2cd5b84facb4ea6bb09dec72090ec2268c70ea3dff496135925a",
+        "purpose": "any",
+        "subjectScale": 0.84
+      },
+      {
+        "width": 512,
+        "height": 512,
+        "path": "icons/app-icon-maskable-512.png",
+        "byteLength": 110875,
+        "mime": "image/png",
+        "sha256": "57829a0066cecc33c3f753dac1cd2ce9002fcd352642e6ab6583519045080336",
+        "purpose": "maskable",
+        "subjectScale": 0.64
+      }
+    ]
   },
   "mascotAnimations": {
     "walk": {
@@ -82,14 +163,10 @@
         "byteLength": 553084,
         "mime": "image/png",
         "sha256": "0eeaf1eb02763cf829bcb55e9d58272e1d47616ef2c000527627467da3aee2a5",
-        "hasAlpha": true
+        "hasAlpha": true,
+        "alphaRange": { "min": 0, "max": 255 }
       },
-      "layout": {
-        "columns": 4,
-        "rows": 1,
-        "frameWidth": 512,
-        "frameHeight": 512
-      },
+      "layout": { "columns": 4, "rows": 1, "frameWidth": 512, "frameHeight": 512 },
       "frames": ["step-a", "step-b", "step-c", "step-d"],
       "image": {
         "width": 2048,
@@ -116,14 +193,10 @@
         "byteLength": 677516,
         "mime": "image/png",
         "sha256": "aab0fe3b4e5de14177b608d00086ba6f9c106bbbed4c83fe1c8a1aaaeb70d488",
-        "hasAlpha": true
+        "hasAlpha": true,
+        "alphaRange": { "min": 0, "max": 255 }
       },
-      "layout": {
-        "columns": 4,
-        "rows": 1,
-        "frameWidth": 512,
-        "frameHeight": 512
-      },
+      "layout": { "columns": 4, "rows": 1, "frameWidth": 512, "frameHeight": 512 },
       "frames": ["replenish", "sit", "ready", "sleep"],
       "image": {
         "width": 2048,
@@ -150,14 +223,10 @@
         "byteLength": 590000,
         "mime": "image/png",
         "sha256": "d0f55b178f88d5afb10ab9777380b1b6ad63f36a9b546b56e0953ef9c7cbf5ed",
-        "hasAlpha": true
+        "hasAlpha": true,
+        "alphaRange": { "min": 0, "max": 255 }
       },
-      "layout": {
-        "columns": 2,
-        "rows": 1,
-        "frameWidth": 512,
-        "frameHeight": 512
-      },
+      "layout": { "columns": 2, "rows": 1, "frameWidth": 512, "frameHeight": 512 },
       "frames": ["hesitate", "shake-head"],
       "image": {
         "width": 1024,

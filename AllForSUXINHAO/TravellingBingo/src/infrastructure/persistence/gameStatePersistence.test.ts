@@ -14,7 +14,7 @@ import {
   createInitialGameState,
   DEFAULT_GAME_BALANCE,
   deriveActivityTiming,
-  migrateStoredGameStateToV3,
+  migrateStoredGameStateToV4,
   normalizeImportedGameBalance,
   reconcileGameStateWithCatalog,
   reduceGame,
@@ -22,6 +22,7 @@ import {
   type CollectionCatalog,
   type GameBalance,
   type GameState,
+  type GameStateV3,
   type GameTransition,
 } from '@/domain'
 
@@ -54,6 +55,32 @@ function debugStateReadyToTravel(): GameState {
   }
 }
 
+function asPublishedV3(state: GameState): GameStateV3 {
+  return {
+    schemaVersion: 3,
+    profile: structuredClone(state.profile),
+    economy: structuredClone(state.economy),
+    inventory: {
+      'travel-basic': state.inventory['travel-basic'],
+      'travel-apple': state.inventory['travel-apple'],
+      'signal-headphones': state.inventory['signal-headphones'],
+      'trend-toolbox': state.inventory['trend-toolbox'],
+      'lucky-apple': state.inventory['lucky-apple'],
+    },
+    collections: structuredClone(state.collections),
+    friends: structuredClone(state.friends),
+    activeActivity: structuredClone(state.activeActivity),
+    pet: {
+      ...structuredClone(state.pet),
+      location: state.pet.location === 'work-computer' ? 'computer' : state.pet.location,
+    },
+    tasks: structuredClone(state.tasks),
+    gameBalance: structuredClone(state.gameBalance),
+    statistics: structuredClone(state.statistics),
+    random: structuredClone(state.random),
+  }
+}
+
 describe('游戏活动存档时长快照', () => {
   it('真实 .bingo 往返保留 startedAt/endsAt，并始终按原 endsAt 判断 running 与 ready', async () => {
     const startedAt = 10_000
@@ -83,7 +110,7 @@ describe('游戏活动存档时长快照', () => {
 
     const exported = await createBingoSave(
       {
-        gameVersion: '0.3.0-duration-snapshot-test',
+        gameVersion: '0.4.0-duration-snapshot-test',
         exportedAt: startedAt + 1_000,
         payload: withLongerCurrentBalance,
       },
@@ -138,7 +165,7 @@ describe('游戏活动存档时长快照', () => {
     expect(readyClaim.state.activeActivity).toBeNull()
   })
 
-  it('V3 好友聚合记录完整往返且不写目录快照', async () => {
+  it('V4 好友聚合记录完整往返且不写目录快照', async () => {
     const initial = createInitialGameState({
       now: 1_000,
       seed: 'friend-round-trip',
@@ -157,7 +184,7 @@ describe('游戏活动存档时长快照', () => {
       },
     }
     const exported = await createBingoSave(
-      { gameVersion: '0.3.0-friend-round-trip', exportedAt: 9_000, payload: state },
+      { gameVersion: '0.4.0-friend-round-trip', exportedAt: 9_000, payload: state },
       gameStateSchema,
       { subtle: webcrypto.subtle },
     )
@@ -168,6 +195,110 @@ describe('游戏活动存档时长快照', () => {
     expect(imported.payload.friends).toEqual(state.friends)
     expect(exported.text).not.toContain('friendTotal')
     expect(exported.text).not.toContain('friendCatalog')
+  })
+
+  it('V4 现实进度、魔法、番茄钟与自定义播放列表完整往返且不复制展示元数据', async () => {
+    const initial = createInitialGameState({
+      now: 1_000,
+      seed: 'v4-complete-round-trip',
+      displayName: '苹果搭档',
+    })
+    const state: GameState = {
+      ...initial,
+      profile: { ...initial.profile, companionDays: 3 },
+      inventory: {
+        ...initial.inventory,
+        'bottled-speed-magic': 2,
+        'bottled-vitality-magic': 1,
+      },
+      collections: {
+        'postcard-persistence': {
+          id: 'postcard-persistence',
+          firstObtainedAt: 1_500,
+          duplicateCount: 0,
+        },
+      },
+      world: 'reality',
+      player: {
+        effects: {
+          vitality: {
+            activatedAt: 2_000,
+            activatedOnCompanionDay: 3,
+            expiresAfterCompanionDay: 10,
+          },
+        },
+      },
+      reality: {
+        nextStaySequence: 1,
+        activeStay: { stayId: 'reality-0', enteredAt: 3_000 },
+        pendingSettlement: null,
+        todos: {
+          'todo-study': {
+            id: 'todo-study',
+            title: '认真读十分钟',
+            createdAt: 2_500,
+            updatedAt: 2_500,
+            dueAt: 63_000,
+            completedAt: null,
+            notificationIssuedAt: null,
+          },
+        },
+        pomodoro: {
+          nextSessionSequence: 1,
+          selectedPostcardId: 'postcard-persistence',
+          session: {
+            sessionId: 'pomodoro-0',
+            status: 'running',
+            startedAt: 3_000,
+            endsAt: 63_000,
+            durationMs: 60_000,
+            completedAt: null,
+            notificationIssuedAt: null,
+            todoId: 'todo-study',
+            postcardId: 'postcard-persistence',
+          },
+        },
+      },
+      musicPlayer: {
+        playlists: {
+          'morning-list': {
+            id: 'morning-list',
+            name: '清晨苹果歌单',
+            bvids: ['BV1xx411c7mD'],
+            createdAt: 2_000,
+            updatedAt: 2_000,
+          },
+        },
+        order: ['morning-list'],
+        activePlaylistId: 'morning-list',
+        currentBvid: 'BV1xx411c7mD',
+        currentIndex: 0,
+        loopMode: 'single',
+        startAtSeconds: 12,
+        autoplay: true,
+      },
+    }
+    expect(gameStateSchema.safeParse(state).success).toBe(true)
+
+    const exported = await createBingoSave(
+      { gameVersion: '0.4.0-complete-round-trip', exportedAt: 4_000, payload: state },
+      gameStateSchema,
+      { subtle: webcrypto.subtle },
+    )
+    const imported = await importBingoSave(exported.text, gameStateSchema, {
+      subtle: webcrypto.subtle,
+    })
+
+    expect(imported.payload).toEqual(state)
+    for (const forbiddenKey of [
+      'remainingMs',
+      'embedUrl',
+      'videoCatalog',
+      'catalogTotal',
+      'categoryCounts',
+    ]) {
+      expect(exported.text).not.toContain(`"${forbiddenKey}"`)
+    }
   })
 
   it('普通旧 V3 接受历史短 balance，规范化后旧活动按原 endsAt、下一次活动按未来默认', async () => {
@@ -198,13 +329,14 @@ describe('游戏活动存档时长快照', () => {
       },
     }
     const startedAt = 20_000
-    const oldStarted = successful(
+    const oldStartedV4 = successful(
       reduceGame(
         ordinaryOldBase,
         { type: 'activity/start', kind: 'travel', now: startedAt },
         catalog,
       ),
     ).state
+    const oldStarted = asPublishedV3(oldStartedV4)
     const oldActivity = oldStarted.activeActivity
     expect(oldActivity?.endsAt).toBe(startedAt + oldDurationMs)
     expect(gameStateSchema.safeParse(oldStarted).success).toBe(false)
@@ -224,7 +356,10 @@ describe('游戏活动存档时长快照', () => {
     })
     if (imported.payload.schemaVersion !== 3) throw new Error('测试存档没有保留 V3 payload')
 
-    const normalized = normalizeImportedGameBalance(imported.payload, futureDefault)
+    const normalized = normalizeImportedGameBalance(
+      migrateStoredGameStateToV4(imported.payload, { now: startedAt + 1_000, catalog }),
+      futureDefault,
+    )
     expect(normalized.gameBalance).toEqual(futureDefault)
     expect(normalized.activeActivity).toEqual(oldActivity)
     expect(
@@ -267,6 +402,57 @@ describe('游戏活动存档时长快照', () => {
       nextStartedAt + futureDefault.activityDurationMs,
     )
   })
+
+  it('普通旧 V4 可带历史默认规则导入，但只规范未来活动且不改进行中时间窗', async () => {
+    const historicalDurationMs = 112_000
+    const startedAt = 30_000
+    const base = debugStateReadyToTravel()
+    const historicalOrdinary: GameState = {
+      ...base,
+      profile: { ...base.profile, debug: false },
+      gameBalance: {
+        activityDurationMs: historicalDurationMs,
+        probabilities: {
+          postcard: 0.6,
+          millionShot: 0.35,
+          siteFirst: 0.08,
+          travelFriend: 0.15,
+          musicFriend: 0.1,
+        },
+      },
+    }
+    const started = successful(
+      reduceGame(
+        historicalOrdinary,
+        { type: 'activity/start', kind: 'travel', now: startedAt },
+        catalog,
+      ),
+    ).state
+    const persistedActivity = structuredClone(started.activeActivity)
+    expect(started.activeActivity?.endsAt).toBe(startedAt + historicalDurationMs)
+    expect(gameStateSchema.safeParse(started).success).toBe(false)
+    expect(importableGameStateSchema.safeParse(started).success).toBe(true)
+
+    const exported = await createBingoSave<ImportableGameState>(
+      {
+        gameVersion: '0.4.0-historical-default',
+        exportedAt: startedAt + 1_000,
+        payload: started,
+      },
+      importableGameStateSchema,
+      { subtle: webcrypto.subtle },
+    )
+    const imported = await importBingoSave(exported.text, importableGameStateSchema, {
+      subtle: webcrypto.subtle,
+    })
+    const normalized = normalizeImportedGameBalance(
+      migrateStoredGameStateToV4(imported.payload, { now: startedAt + 1_000, catalog }),
+    )
+
+    expect(normalized.gameBalance).toEqual(DEFAULT_GAME_BALANCE)
+    expect(normalized.activeActivity).toEqual(persistedActivity)
+    expect(normalized.activeActivity?.endsAt).toBe(startedAt + historicalDurationMs)
+  })
 })
 
 describe('冻结的已发布存档兼容性', () => {
@@ -278,10 +464,10 @@ describe('冻结的已发布存档兼容性', () => {
 
     expect(imported.summary.schemaVersion).toBe(1)
     expect(imported.payload.schemaVersion).toBe(1)
-    const migrated = migrateStoredGameStateToV3(imported.payload, { now: 900_000, catalog })
+    const migrated = migrateStoredGameStateToV4(imported.payload, { now: 900_000, catalog })
 
     expect(migrated).toMatchObject({
-      schemaVersion: 3,
+      schemaVersion: 4,
       profile: { displayName: '你', companionDays: 3 },
       friends: {},
     })
@@ -297,7 +483,7 @@ describe('冻结的已发布存档兼容性', () => {
 
     const migrated = reconcileGameStateWithCatalog(
       normalizeImportedGameBalance(
-        migrateStoredGameStateToV3(imported.payload, { now: 900_000, catalog }),
+        migrateStoredGameStateToV4(imported.payload, { now: 900_000, catalog }),
       ),
       catalog,
     )
@@ -324,7 +510,7 @@ describe('冻结的已发布存档兼容性', () => {
     expect(validateImportedGameState(migrated, catalog)).toEqual({ ok: true })
 
     const reexported = await createBingoSave(
-      { gameVersion: '0.3.0-fixture-round-trip', exportedAt: 910_000, payload: migrated },
+      { gameVersion: '0.4.0-fixture-round-trip', exportedAt: 910_000, payload: migrated },
       gameStateSchema,
       { subtle: webcrypto.subtle },
     )
@@ -339,7 +525,7 @@ describe('冻结的已发布存档兼容性', () => {
     const imported = await importBingoSave(text, importableGameStateSchema, {
       subtle: webcrypto.subtle,
     })
-    const migrated = migrateStoredGameStateToV3(imported.payload, { now: 900_000, catalog })
+    const migrated = migrateStoredGameStateToV4(imported.payload, { now: 900_000, catalog })
 
     expect(migrated.profile.debug).toBe(true)
     expect(migrated.gameBalance).toEqual({

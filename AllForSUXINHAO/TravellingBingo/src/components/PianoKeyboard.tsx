@@ -7,19 +7,29 @@ import {
 } from 'react'
 
 import './PianoKeyboard.css'
-import { PIANO_NOTES, type PianoNote } from './pianoNotes'
+import { PIANO_NOTES, PIANO_OCTAVES, type PianoNote, type PianoNoteId } from './pianoNotes'
 
 interface ActiveVoice {
-  oscillator: OscillatorNode
-  gain: GainNode
+  oscillators: OscillatorNode[]
+  envelope: GainNode
 }
 
 interface PianoKeyboardProps {
   disabled?: boolean
-  onNote?: (noteId: string) => void
+  onNote?: (noteId: PianoNoteId) => void
 }
 
 type AudioContextConstructor = new () => AudioContext
+
+const PIANO_HARMONICS = [
+  { multiplier: 1, level: 0.72, type: 'triangle' },
+  { multiplier: 2, level: 0.2, type: 'sine' },
+  { multiplier: 3, level: 0.08, type: 'sine' },
+] as const satisfies readonly {
+  multiplier: number
+  level: number
+  type: OscillatorType
+}[]
 
 function audioContextConstructor(): AudioContextConstructor | undefined {
   const audioGlobal = globalThis as typeof globalThis & {
@@ -70,10 +80,10 @@ export function PianoKeyboard({ disabled = false, onNote }: PianoKeyboardProps) 
     const voice = voicesRef.current.get(noteId)
     if (!voice) return
     voicesRef.current.delete(noteId)
-    const now = voice.gain.context.currentTime
-    voice.gain.gain.cancelScheduledValues(now)
-    voice.gain.gain.setTargetAtTime(0.0001, now, 0.025)
-    voice.oscillator.stop(now + 0.12)
+    const now = voice.envelope.context.currentTime
+    voice.envelope.gain.cancelScheduledValues(now)
+    voice.envelope.gain.setTargetAtTime(0.0001, now, 0.025)
+    for (const oscillator of voice.oscillators) oscillator.stop(now + 0.12)
     if (!mountedRef.current || disposedRef.current) return
     setPressed((current) => {
       const next = new Set(current)
@@ -121,16 +131,27 @@ export function PianoKeyboard({ disabled = false, onNote }: PianoKeyboardProps) 
           return
         }
 
-        const oscillator = context.createOscillator()
-        const gain = context.createGain()
-        oscillator.type = 'triangle'
-        oscillator.frequency.setValueAtTime(note.frequency, context.currentTime)
-        gain.gain.setValueAtTime(0.0001, context.currentTime)
-        gain.gain.exponentialRampToValueAtTime(0.19, context.currentTime + 0.018)
-        oscillator.connect(gain)
-        gain.connect(context.destination)
-        oscillator.start()
-        voicesRef.current.set(note.id, { oscillator, gain })
+        const now = context.currentTime
+        const envelope = context.createGain()
+        envelope.gain.setValueAtTime(0.0001, now)
+        envelope.gain.exponentialRampToValueAtTime(0.22, now + 0.008)
+        envelope.gain.exponentialRampToValueAtTime(0.075, now + 0.09)
+        envelope.gain.setTargetAtTime(0.0001, now + 0.09, 0.32)
+        envelope.connect(context.destination)
+
+        const oscillators = PIANO_HARMONICS.map(({ multiplier, level, type }) => {
+          const oscillator = context.createOscillator()
+          const harmonicGain = context.createGain()
+          oscillator.type = type
+          oscillator.frequency.setValueAtTime(note.frequency * multiplier, now)
+          harmonicGain.gain.setValueAtTime(level, now)
+          oscillator.connect(harmonicGain)
+          harmonicGain.connect(envelope)
+          oscillator.start(now)
+          return oscillator
+        })
+
+        voicesRef.current.set(note.id, { oscillators, envelope })
         setPressed((current) => new Set(current).add(note.id))
         setAudioError(false)
         onNote?.(note.id)
@@ -177,10 +198,12 @@ export function PianoKeyboard({ disabled = false, onNote }: PianoKeyboardProps) 
       pointers.clear()
 
       for (const voice of voices.values()) {
-        try {
-          voice.oscillator.stop()
-        } catch {
-          // 已停止的音源无需再次处理。
+        for (const oscillator of voice.oscillators) {
+          try {
+            oscillator.stop()
+          } catch {
+            // 已停止的音源无需再次处理。
+          }
         }
       }
       voices.clear()
@@ -241,56 +264,79 @@ export function PianoKeyboard({ disabled = false, onNote }: PianoKeyboardProps) 
     <section ref={rootRef} className="piano" aria-labelledby="piano-title">
       <div className="piano__heading">
         <div>
-          <span>两八度电子琴</span>
+          <span>饼狗的小钢琴</span>
           <h3 id="piano-title">和饼狗弹一小段</h3>
         </div>
-        <small>电脑键盘也可以弹</small>
+        <small>电脑键盘只对应白键</small>
       </div>
-      <div className="piano__scroll">
-        <div className="piano__keys" role="group" aria-label="C4 到 B5 的两八度琴键">
-          {PIANO_NOTES.filter((note) => !note.black).map((note) => (
-            <button
-              key={note.id}
-              type="button"
-              className={`piano-key piano-key--white ${pressed.has(note.id) ? 'is-pressed' : ''}`}
-              style={{ '--white-index': note.whiteIndex } as React.CSSProperties}
-              aria-label={`${note.id}，键盘 ${note.key.toUpperCase()}`}
-              aria-pressed={pressed.has(note.id)}
-              disabled={disabled}
-              onPointerDown={(event) => pointerDown(event, note)}
-              onPointerUp={pointerEnd}
-              onPointerCancel={pointerEnd}
-              onLostPointerCapture={pointerEnd}
-              onClick={(event) => {
-                if (event.detail === 0) pulseNote(note)
-              }}
-            >
-              <span>{note.id}</span>
-              <small>{note.key.toUpperCase()}</small>
-            </button>
-          ))}
-          {PIANO_NOTES.filter((note) => note.black).map((note) => (
-            <button
-              key={note.id}
-              type="button"
-              className={`piano-key piano-key--black ${pressed.has(note.id) ? 'is-pressed' : ''}`}
-              style={{ '--boundary-index': note.boundaryIndex } as React.CSSProperties}
-              aria-label={`${note.id}，键盘 ${note.key.toUpperCase()}`}
-              aria-pressed={pressed.has(note.id)}
-              disabled={disabled}
-              onPointerDown={(event) => pointerDown(event, note)}
-              onPointerUp={pointerEnd}
-              onPointerCancel={pointerEnd}
-              onLostPointerCapture={pointerEnd}
-              onClick={(event) => {
-                if (event.detail === 0) pulseNote(note)
-              }}
-            >
-              <span>{note.id}</span>
-              <small>{note.key.toUpperCase()}</small>
-            </button>
-          ))}
-        </div>
+      <p className="piano__hint">
+        从 A5 G5 G5 B5 G5 E5 G5 G5 B4 C5，D5 C5 A5 A5 A5 B5 B5 B5 B5 C6 开始试试
+      </p>
+      <div className="piano__rows">
+        {PIANO_OCTAVES.map((octave) => {
+          const octaveNotes = PIANO_NOTES.filter((note) => note.octave === octave)
+          return (
+            <div className="piano__row" data-octave={octave} key={octave}>
+              <div className="piano__row-label" aria-hidden="true">
+                <span>
+                  C{octave}–B{octave}
+                </span>
+                <small>{octave === 4 ? 'Z–M' : octave === 5 ? 'A–J' : 'Q–U'}</small>
+              </div>
+              <div
+                className="piano__keys"
+                role="group"
+                aria-label={`C${octave} 到 B${octave} 琴键`}
+              >
+                {octaveNotes
+                  .filter((note) => !note.black)
+                  .map((note) => (
+                    <button
+                      key={note.id}
+                      type="button"
+                      className={`piano-key piano-key--white ${pressed.has(note.id) ? 'is-pressed' : ''}`}
+                      style={{ '--white-index': note.whiteIndex } as React.CSSProperties}
+                      aria-label={`${note.id}，键盘 ${note.key?.toUpperCase()}`}
+                      aria-pressed={pressed.has(note.id)}
+                      disabled={disabled}
+                      onPointerDown={(event) => pointerDown(event, note)}
+                      onPointerUp={pointerEnd}
+                      onPointerCancel={pointerEnd}
+                      onLostPointerCapture={pointerEnd}
+                      onClick={(event) => {
+                        if (event.detail === 0) pulseNote(note)
+                      }}
+                    >
+                      <span>{note.id}</span>
+                      <small>{note.key?.toUpperCase()}</small>
+                    </button>
+                  ))}
+                {octaveNotes
+                  .filter((note) => note.black)
+                  .map((note) => (
+                    <button
+                      key={note.id}
+                      type="button"
+                      className={`piano-key piano-key--black ${pressed.has(note.id) ? 'is-pressed' : ''}`}
+                      style={{ '--boundary-index': note.boundaryIndex } as React.CSSProperties}
+                      aria-label={note.id}
+                      aria-pressed={pressed.has(note.id)}
+                      disabled={disabled}
+                      onPointerDown={(event) => pointerDown(event, note)}
+                      onPointerUp={pointerEnd}
+                      onPointerCancel={pointerEnd}
+                      onLostPointerCapture={pointerEnd}
+                      onClick={(event) => {
+                        if (event.detail === 0) pulseNote(note)
+                      }}
+                    >
+                      <span>{note.id}</span>
+                    </button>
+                  ))}
+              </div>
+            </div>
+          )
+        })}
       </div>
       {audioError && (
         <p className="piano__error" role="status">

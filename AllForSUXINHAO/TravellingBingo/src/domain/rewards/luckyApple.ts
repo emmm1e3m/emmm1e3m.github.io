@@ -9,7 +9,7 @@ import type {
   CollectibleActivityKind,
   CollectibleCategory,
   GameState,
-  ItemId,
+  LegacyItemId,
 } from '../game/types'
 
 const CATEGORY_BY_ACTIVITY: Readonly<Record<CollectibleActivityKind, CollectibleCategory>> = {
@@ -42,7 +42,7 @@ export function getLuckyAppleAvailability(
   state: Pick<GameState, 'gameBalance' | 'collections'>,
   kind: ActivityKind,
   catalog: CollectionCatalog,
-  supplyId?: ItemId | null,
+  supplyId?: LegacyItemId | null,
 ): LuckyAppleAvailability {
   if (kind === 'music' || kind === 'rest') {
     return {
@@ -90,7 +90,7 @@ export function canUseLuckyApple(
   state: Pick<GameState, 'gameBalance' | 'collections'>,
   kind: ActivityKind,
   catalog: CollectionCatalog,
-  supplyId?: ItemId | null,
+  supplyId?: LegacyItemId | null,
 ): boolean {
   return getLuckyAppleAvailability(state, kind, catalog, supplyId).canUse
 }

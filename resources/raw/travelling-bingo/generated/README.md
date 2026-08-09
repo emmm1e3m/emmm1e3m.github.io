@@ -2,10 +2,10 @@
 
 本目录保存“旅行饼狗”的房屋与角色透明母版；明信片、百万直拍和全站第一收藏均来自已记录的真实来源，不使用图像生成。
 
-## 生成方式
+## 来源与生成方式
 
-- 模式：OpenAI 内置 ImageGen。
-- `chan-chan-house-v2.png`：以用户提供的参考房间图为唯一构图依据，完整保留竖版两层房间、树冠、人物、兔子装饰及家具位置，不再使用横向重绘。这是当前唯一房间母版。
+- `chan-chan-house-master.png`：用户提供的 1098×1433 RGBA 房间原图，是当前唯一房屋母版。网页派生只做等比缩放和无损 WebP 编码，完整保留画布、透明通道与原画风，不做裁切或重绘。
+- 其余角色素材使用 OpenAI 内置 ImageGen，并按下列方式保存透明母版。
 - `bingo-sprites-transparent-v2.png`：在四姿态饼狗参考图上编辑。提示词要点为“保留四种姿态、苹果头套、身份特征、顺序与画风；身体缩短约三分之一，头部略放大，四肢短圆，整体约 1.5 头高的团子比例”。生成时先使用纯色抠图背景，再移除背景得到当前透明母版。
 - `bingo-walk-v2.png`：锁定苹果头套和白色垂耳身份，提示词要求“身体更小更短、四肢更细且必须完整、四肢交替、小芽轻微弹动”的四帧横向走路透明母版。
 - `bingo-actions-v2.png`：锁定同一身份和头大身小比例，生成抱苹果篮、坐下、围围巾和蜷缩睡觉四种状态的横向透明母版。
@@ -30,9 +30,13 @@ npm run assets:build:demo
 - `public/assets/game/bingo-walk-v2.webp`（精确无损 WebP，4×1，每格 512×512）
 - `public/assets/game/bingo-actions-v2.webp`（精确无损 WebP，4×1，每格 512×512）
 - `public/assets/game/bingo-refuse-v2.webp`（精确无损 WebP，2×1，每格 512×512）
+- `public/icons/favicon-32.png`
+- `public/icons/apple-touch-icon-180.png`
+- `public/icons/app-icon-{192,512}.png`
+- `public/icons/app-icon-maskable-512.png`
 - `public/data/demo-visuals.json`
 
-动画图集在编码前会把完全透明像素的隐藏 RGB 清零，并启用 WebP `exact`，避免浏览器或查看器露出彩色条带。`demo-visuals.json` 同时锁定每张 ImageGen PNG 母版与 WebP 派生图的尺寸、字节数和 SHA-256，并保存对应的生成模式及提示词摘要。
+房屋图以无损 WebP 保留透明通道和完整画布；动画图集在编码前会把完全透明像素的隐藏 RGB 清零，并启用 WebP `exact`，避免浏览器或查看器露出彩色条带。应用图标只从既有四态饼狗的 `idle` 帧机械裁切、缩放并铺到统一浅色底，不重新绘制角色。`demo-visuals.json` 同时锁定 PNG 母版、公开派生图与图标的尺寸、字节数、SHA-256 及处理方式。
 
 好友图鉴执行 `npm run assets:build:friends`，生成 `public/assets/friends/*.webp` 与 `public/data/friends.json`。公开目录只保留适合奖励弹窗和收藏墙的 360×560 WebP，ImageGen 母版及提示词摘要留在受控资源目录中。
 

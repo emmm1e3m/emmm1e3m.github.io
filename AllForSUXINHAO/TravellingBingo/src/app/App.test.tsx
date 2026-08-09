@@ -12,10 +12,12 @@ import {
   createInitialGameState,
   DEFAULT_GAME_BALANCE,
   migrateGameStateV1,
+  migrateGameStateV2ToV3,
   type GameAction,
   type GameState,
   type GameStateV1,
   type GameStateV2,
+  type GameStateV3,
 } from '@/domain'
 import {
   createBingoSave,
@@ -67,6 +69,8 @@ vi.mock('@/features/title/TitleScreen', () => {
     onConfirmImport: () => void
     onCancelImport: () => void
     onTitleActivate: () => void
+    updateCheckStatus: 'idle' | 'checking' | 'checked' | 'unsupported' | 'error'
+    onCheckForUpdates: () => void
   }
 
   return {
@@ -79,6 +83,8 @@ vi.mock('@/features/title/TitleScreen', () => {
       onConfirmImport,
       onCancelImport,
       onTitleActivate,
+      updateCheckStatus,
+      onCheckForUpdates,
     }: Props) => (
       <main>
         <h1>旅行饼狗</h1>
@@ -87,6 +93,10 @@ vi.mock('@/features/title/TitleScreen', () => {
         </button>
         <button type="button" aria-label="连续激活五次可打开隐藏门牌" onClick={onTitleActivate}>
           标题
+        </button>
+        <output data-testid="title-update-status">{updateCheckStatus}</output>
+        <button type="button" onClick={onCheckForUpdates}>
+          检查新布置
         </button>
         <label>
           读取 .bingo 存档
@@ -104,7 +114,7 @@ vi.mock('@/features/title/TitleScreen', () => {
           <section aria-label="存档摘要">
             <span>{importPreview.fileName}</span>
             <span>{importPreview.gameVersion}</span>
-            <span>{importPreview.apples} 个</span>
+            <span>{importPreview.apples}🍎</span>
             <span>{importPreview.collectionCount} 件</span>
             <span>{importPreview.activityLabel}</span>
             <span>{importPreview.displayName}</span>
@@ -131,10 +141,31 @@ vi.mock('@/features/game/GameHome', () => {
     onAction: (action: GameAction) => void
     onExit: () => void
     onBackup: () => void
+    notificationPermission: NotificationPermission | 'unsupported'
+    onRequestNotificationPermission: () => void
+    updateCheckStatus: 'idle' | 'checking' | 'checked' | 'unsupported' | 'error'
+    onCheckForUpdates: () => void
+    keepAliveAudioEnabled: boolean
+    keepAliveAudioStatus: 'idle' | 'starting' | 'running' | 'suspended' | 'unavailable' | 'error'
+    onToggleKeepAliveAudio: () => void
   }
 
   return {
-    GameHome: ({ game, dirty, restTransitionKey, onAction, onExit, onBackup }: Props) => (
+    GameHome: ({
+      game,
+      dirty,
+      restTransitionKey,
+      onAction,
+      onExit,
+      onBackup,
+      notificationPermission,
+      onRequestNotificationPermission,
+      updateCheckStatus,
+      onCheckForUpdates,
+      keepAliveAudioEnabled,
+      keepAliveAudioStatus,
+      onToggleKeepAliveAudio,
+    }: Props) => (
       <main>
         <output data-testid="schema-version">{game.schemaVersion}</output>
         <output data-testid="display-name">{game.profile.displayName}</output>
@@ -148,6 +179,14 @@ vi.mock('@/features/game/GameHome', () => {
         <output data-testid="dirty-state">{dirty.toString()}</output>
         <output data-testid="active-started-at">{game.activeActivity?.startedAt ?? 'none'}</output>
         <output data-testid="active-ends-at">{game.activeActivity?.endsAt ?? 'none'}</output>
+        <output data-testid="world">{game.world}</output>
+        <output data-testid="pending-reality-reward">
+          {game.reality.pendingSettlement?.fullRewardApples ?? 'none'}
+        </output>
+        <output data-testid="notification-permission">{notificationPermission}</output>
+        <output data-testid="home-update-status">{updateCheckStatus}</output>
+        <output data-testid="keep-alive-enabled">{keepAliveAudioEnabled.toString()}</output>
+        <output data-testid="keep-alive-status">{keepAliveAudioStatus}</output>
         {game.profile.debug && <button type="button">DEBUG</button>}
         <button
           type="button"
@@ -200,10 +239,77 @@ vi.mock('@/features/game/GameHome', () => {
         </button>
         <button
           type="button"
+          onClick={() => onAction({ type: 'debug/clear-all', now: Date.now() })}
+        >
+          DEBUG 一键撤销所有收集
+        </button>
+        <button
+          type="button"
           onClick={() => onAction({ type: 'item/purchase', itemId: 'travel-basic' })}
         >
           补充普通便当
         </button>
+        <button type="button" onClick={onRequestNotificationPermission}>
+          打开桌面提醒
+        </button>
+        <button type="button" onClick={onCheckForUpdates}>
+          房间检查新布置
+        </button>
+        <button type="button" onClick={onToggleKeepAliveAudio}>
+          切换守候音频
+        </button>
+        <button
+          type="button"
+          onClick={() => {
+            const dueAt = Date.now()
+            onAction({
+              type: 'todo/create',
+              todoId: 'todo-reminder',
+              title: '回来吃苹果',
+              dueAt,
+              now: dueAt,
+            })
+            onAction({ type: 'clock/tick', now: dueAt })
+          }}
+        >
+          签发到期提醒
+        </button>
+        {game.world === 'game' && !game.reality.pendingSettlement && (
+          <button
+            type="button"
+            onClick={() => onAction({ type: 'reality/enter', now: Date.now() })}
+          >
+            进入现实
+          </button>
+        )}
+        {game.world === 'reality' && game.reality.activeStay && (
+          <button
+            type="button"
+            onClick={() =>
+              onAction({
+                type: 'reality/leave',
+                now: game.reality.activeStay!.enteredAt + 20 * 60_000,
+              })
+            }
+          >
+            返回游戏
+          </button>
+        )}
+        {game.reality.pendingSettlement && (
+          <button
+            type="button"
+            onClick={() =>
+              onAction({
+                type: 'reality/settle',
+                stayId: game.reality.pendingSettlement!.stayId,
+                decision: 'not-serious',
+                now: game.reality.pendingSettlement!.leftAt,
+              })
+            }
+          >
+            结算一半
+          </button>
+        )}
         <button type="button" onClick={onBackup}>
           备份
         </button>
@@ -380,6 +486,10 @@ function importedV2Game(): GameStateV2 {
   }
 }
 
+function importedV3Game(): GameStateV3 {
+  return migrateGameStateV2ToV3(importedV2Game(), { now: 2_500, catalog: domainCatalog })
+}
+
 function readyActivityGame(kind: 'travel' | 'rest', companionDays = 4): GameState {
   const initial = createInitialGameState({
     now: 1_000,
@@ -464,7 +574,9 @@ function importResult<TPayload extends ImportableGameState>(
           ? '0.1.0-demo.1'
           : payload.schemaVersion === 2
             ? '0.2.0-demo.1'
-            : '0.3.0-demo.1',
+            : payload.schemaVersion === 3
+              ? '0.3.0-demo.1'
+              : '0.4.0-demo.1',
       exportedAt: 3_000,
       exportedAtIso: new Date(3_000).toISOString(),
       byteLength: 800,
@@ -481,6 +593,76 @@ function deferred<T>() {
     reject = rejectPromise
   })
   return { promise, resolve, reject }
+}
+
+function createAudioHarness() {
+  const frequency = {
+    value: 0,
+    setValueAtTime: vi.fn((value: number) => {
+      frequency.value = value
+    }),
+  }
+  const oscillator = {
+    frequency,
+    connect: vi.fn(),
+    disconnect: vi.fn(),
+    start: vi.fn(),
+    stop: vi.fn(),
+  }
+  const gainParam = {
+    value: 0,
+    setValueAtTime: vi.fn((value: number) => {
+      gainParam.value = value
+    }),
+  }
+  const gain = {
+    gain: gainParam,
+    connect: vi.fn(),
+    disconnect: vi.fn(),
+  }
+  const context = {
+    state: 'suspended' as AudioContextState,
+    currentTime: 0,
+    destination: {},
+    onstatechange: null as (() => void) | null,
+    createOscillator: vi.fn(() => oscillator),
+    createGain: vi.fn(() => gain),
+    resume: vi.fn(async () => {
+      context.state = 'running'
+      context.onstatechange?.()
+    }),
+    suspend: vi.fn(async () => {
+      context.state = 'suspended'
+      context.onstatechange?.()
+    }),
+    close: vi.fn(async () => {
+      context.state = 'closed'
+    }),
+  }
+  const factory = vi.fn(() => context as unknown as AudioContext)
+  return { context, factory, gain, oscillator }
+}
+
+function installNotificationHarness(initialPermission: NotificationPermission = 'default') {
+  let permission = initialPermission
+  const notifications: Array<{ title: string; options?: NotificationOptions }> = []
+  const MockNotification = vi.fn(function (
+    this: Notification,
+    title: string,
+    options?: NotificationOptions,
+  ) {
+    notifications.push({ title, options })
+  }) as unknown as typeof Notification
+  Object.defineProperty(MockNotification, 'permission', {
+    configurable: true,
+    get: () => permission,
+  })
+  MockNotification.requestPermission = vi.fn(async () => {
+    permission = 'granted'
+    return permission
+  })
+  vi.stubGlobal('Notification', MockNotification)
+  return { MockNotification, notifications }
 }
 
 async function startNewJourney() {
@@ -518,35 +700,213 @@ describe('旅行饼狗应用控制器', () => {
     vi.unstubAllGlobals()
   })
 
-  it('加载目录后用玩家称呼创建 DEBUG V3 新游戏', async () => {
+  it('加载目录后用玩家称呼创建 DEBUG V4 新游戏', async () => {
     render(<App />)
 
     expect(screen.getByRole('heading', { name: '旅行饼狗' })).toBeInTheDocument()
     await screen.findByRole('button', { name: '开始新旅程' })
     await unlockDebugAndStart()
 
-    expect(screen.getByTestId('schema-version')).toHaveTextContent('3')
+    expect(screen.getByTestId('schema-version')).toHaveTextContent('4')
     expect(screen.getByTestId('display-name')).toHaveTextContent('小饼干')
     expect(screen.getByTestId('companion-days')).toHaveTextContent('0')
     expect(screen.getByTestId('apple-count')).toHaveTextContent('18')
     expect(screen.getByRole('button', { name: 'DEBUG' })).toBeVisible()
   })
 
-  it('v1、v2 与 v3 载荷都会严格拒绝未知字段', () => {
+  it('v1、v2、v3 与 v4 载荷都会严格拒绝未知字段', () => {
     expect(
       importableGameStateSchema.safeParse({ ...legacyGame(), strayUiState: true }).success,
     ).toBe(false)
     expect(
       importableGameStateSchema.safeParse({ ...importedV2Game(), strayUiState: true }).success,
     ).toBe(false)
+    expect(
+      importableGameStateSchema.safeParse({ ...importedV3Game(), strayUiState: true }).success,
+    ).toBe(false)
     expect(gameStateSchema.safeParse({ ...importedGame(), strayUiState: true }).success).toBe(false)
   })
 
-  it('V3 严格拒绝结束时间早于开始时间的活动快照', () => {
+  it('V4 严格拒绝结束时间早于开始时间的活动快照', () => {
     const payload = readyActivityGame('travel')
     payload.activeActivity = { ...payload.activeActivity!, endsAt: 999 }
 
     expect(importableGameStateSchema.safeParse(payload).success).toBe(false)
+  })
+
+  it('V3 活动迁移到 V4 时保留当次 startedAt 与 endsAt，不按当前默认重算', async () => {
+    const payload = importedV3Game()
+    payload.profile = { ...payload.profile, debug: false }
+    payload.pet = { ...payload.pet, location: 'outside' }
+    payload.activeActivity = {
+      runId: 'v3-active-run',
+      kind: 'travel',
+      startedAt: 50_000,
+      endsAt: 162_000,
+      rewardSeed: 'v3-active-reward',
+      rewardPlan: {
+        baseApples: 0,
+        modifierApples: 0,
+        collection: { id: 'postcard-2025-01-0001', category: 'postcard' },
+        friendId: null,
+        giftItemId: null,
+        guaranteedByPity: false,
+        pityAfterClaim: null,
+      },
+      supplyId: 'travel-basic',
+      usedLuckyApple: false,
+    }
+    payload.statistics = {
+      ...payload.statistics,
+      started: {
+        ...payload.statistics.started,
+        travel: payload.statistics.claimed.travel + 1,
+      },
+    }
+    vi.mocked(importBingoSave).mockResolvedValue(importResult(payload))
+
+    render(<App />)
+    await screen.findByRole('button', { name: '开始新旅程' })
+    fireEvent.change(screen.getByLabelText('读取 .bingo 存档'), {
+      target: { files: [new File(['v3-active'], 'v3-active.bingo')] },
+    })
+    fireEvent.click(await screen.findByRole('button', { name: '进入这次旅程' }))
+
+    expect(screen.getByTestId('schema-version')).toHaveTextContent('4')
+    expect(screen.getByTestId('activity-duration')).toHaveTextContent(
+      DEFAULT_GAME_BALANCE.activityDurationMs.toString(),
+    )
+    expect(screen.getByTestId('active-started-at')).toHaveTextContent('50000')
+    expect(screen.getByTestId('active-ends-at')).toHaveTextContent('162000')
+  })
+
+  it('开始旅程的明确手势才创建并启动守候音频，房间开关复用同一实例', async () => {
+    const audio = createAudioHarness()
+    render(<App createAudioContext={audio.factory} />)
+
+    await screen.findByRole('button', { name: '开始新旅程' })
+    expect(audio.factory).not.toHaveBeenCalled()
+    await startNewJourney()
+
+    await waitFor(() =>
+      expect(screen.getByTestId('keep-alive-status')).toHaveTextContent('running'),
+    )
+    expect(audio.factory).toHaveBeenCalledOnce()
+    expect(audio.oscillator.frequency.value).toBe(10)
+    expect(audio.gain.gain.value).toBe(0.01)
+
+    fireEvent.click(screen.getByRole('button', { name: '切换守候音频' }))
+    await waitFor(() =>
+      expect(screen.getByTestId('keep-alive-status')).toHaveTextContent('suspended'),
+    )
+    expect(audio.factory).toHaveBeenCalledOnce()
+    expect(audio.context.suspend).toHaveBeenCalledOnce()
+  })
+
+  it('导入预览不会提前创建音频，确认导入的同一手势才启动守候音频', async () => {
+    const audio = createAudioHarness()
+    vi.mocked(importBingoSave).mockResolvedValue(importResult(importedGame()))
+    render(<App createAudioContext={audio.factory} />)
+
+    await screen.findByRole('button', { name: '开始新旅程' })
+    fireEvent.change(screen.getByLabelText('读取 .bingo 存档'), {
+      target: { files: [new File(['import-audio'], 'import-audio.bingo')] },
+    })
+    const confirm = await screen.findByRole('button', { name: '进入这次旅程' })
+    expect(audio.factory).not.toHaveBeenCalled()
+
+    fireEvent.click(confirm)
+
+    await waitFor(() =>
+      expect(screen.getByTestId('keep-alive-status')).toHaveTextContent('running'),
+    )
+    expect(audio.factory).toHaveBeenCalledOnce()
+    expect(audio.context.resume).toHaveBeenCalledOnce()
+  })
+
+  it('标题页与房间的“检查新布置”只调用显式检查入口', async () => {
+    const checkForUpdates = vi.fn().mockResolvedValue(undefined)
+    render(<App checkForUpdates={checkForUpdates} />)
+
+    await screen.findByRole('button', { name: '开始新旅程' })
+    fireEvent.click(screen.getByRole('button', { name: '检查新布置' }))
+    await waitFor(() =>
+      expect(screen.getByTestId('title-update-status')).toHaveTextContent('checked'),
+    )
+    expect(checkForUpdates).toHaveBeenCalledOnce()
+    expect(appServiceWorker.updateServiceWorker).not.toHaveBeenCalled()
+
+    await startNewJourney()
+    fireEvent.click(screen.getByRole('button', { name: '房间检查新布置' }))
+    await waitFor(() => expect(checkForUpdates).toHaveBeenCalledTimes(2))
+    expect(screen.getByTestId('home-update-status')).toHaveTextContent('checked')
+    expect(appServiceWorker.updateServiceWorker).not.toHaveBeenCalled()
+  })
+
+  it('通知权限只由玩家按钮申请，稳定 notificationId 的到期 effect 只展示一次', async () => {
+    const notification = installNotificationHarness()
+    render(<App />)
+    await startNewJourney()
+
+    expect(Notification.requestPermission).not.toHaveBeenCalled()
+    expect(screen.getByTestId('notification-permission')).toHaveTextContent('default')
+    fireEvent.click(screen.getByRole('button', { name: '打开桌面提醒' }))
+    await waitFor(() =>
+      expect(screen.getByTestId('notification-permission')).toHaveTextContent('granted'),
+    )
+
+    fireEvent.click(screen.getByRole('button', { name: '签发到期提醒' }))
+    await waitFor(() => expect(notification.notifications).toHaveLength(1))
+    expect(notification.notifications[0]).toMatchObject({
+      options: { tag: expect.stringMatching(/^todo:todo-reminder:/u) },
+    })
+
+    fireEvent.click(screen.getByRole('button', { name: '签发到期提醒' }))
+    expect(notification.notifications).toHaveLength(1)
+  })
+
+  it('只在最近到期时间签发 clock/tick，恢复焦点也不会重复通知', async () => {
+    const notification = installNotificationHarness('granted')
+    const payload = importedGame()
+    const dueAt = Date.now() + 30
+    payload.reality.todos['scheduled-reminder'] = {
+      id: 'scheduled-reminder',
+      title: '检查苹果钟',
+      createdAt: dueAt - 1_000,
+      updatedAt: dueAt - 1_000,
+      dueAt,
+      completedAt: null,
+      notificationIssuedAt: null,
+    }
+    vi.mocked(importBingoSave).mockResolvedValue(importResult(payload))
+    render(<App />)
+
+    await screen.findByRole('button', { name: '开始新旅程' })
+    fireEvent.change(screen.getByLabelText('读取 .bingo 存档'), {
+      target: { files: [new File(['scheduled'], 'scheduled.bingo')] },
+    })
+    fireEvent.click(await screen.findByRole('button', { name: '进入这次旅程' }))
+
+    await waitFor(() => expect(notification.notifications).toHaveLength(1))
+    expect(notification.notifications[0]?.options?.tag).toBe(`todo:scheduled-reminder:${dueAt}`)
+    act(() => globalThis.dispatchEvent(new Event('focus')))
+    expect(notification.notifications).toHaveLength(1)
+  })
+
+  it('现实维度返回后由领域计算待结算奖励，玩家确认后 App 只展示结果', async () => {
+    render(<App />)
+    await startNewJourney()
+
+    fireEvent.click(screen.getByRole('button', { name: '进入现实' }))
+    expect(screen.getByTestId('world')).toHaveTextContent('reality')
+    fireEvent.click(screen.getByRole('button', { name: '返回游戏' }))
+    expect(screen.getByTestId('world')).toHaveTextContent('game')
+    expect(screen.getByTestId('pending-reality-reward')).toHaveTextContent('2')
+
+    fireEvent.click(screen.getByRole('button', { name: '结算一半' }))
+    expect(screen.getByTestId('apple-count')).toHaveTextContent('19')
+    expect(screen.getByTestId('pending-reality-reward')).toHaveTextContent('none')
+    expect(screen.getByText('现实任务结算完成，收好 1🍎。')).toBeVisible()
   })
 
   it('同一帧连续动作会严格基于刚更新的状态依次归约', async () => {
@@ -577,7 +937,14 @@ describe('旅行饼狗应用控制器', () => {
     fireEvent.click(screen.getByRole('button', { name: 'DEBUG 一键全收集' }))
 
     expect(screen.getByTestId('collection-count')).toHaveTextContent('3')
-    expect(screen.getByText('DEBUG：新增 3 件收藏。')).toBeVisible()
+    expect(screen.getByTestId('friend-count')).toHaveTextContent('5')
+    expect(screen.getByText('DEBUG：收好 8 份收藏与好友记录。')).toBeVisible()
+
+    fireEvent.click(screen.getByRole('button', { name: 'DEBUG 一键撤销所有收集' }))
+
+    expect(screen.getByTestId('collection-count')).toHaveTextContent('0')
+    expect(screen.getByTestId('friend-count')).toHaveTextContent('0')
+    expect(screen.getByText('DEBUG：清理 8 份收藏与好友记录。')).toBeVisible()
   })
 
   it('休息 effect 会把新的日夜过场 key 传给房间 UI', async () => {
@@ -609,7 +976,7 @@ describe('旅行饼狗应用控制器', () => {
     expect(screen.getByText('冰箱里补充了 1 份补给，花掉 3🍎。')).toBeVisible()
   })
 
-  it('先预览迁移后的 V3 称呼与陪伴天数，再采用导入进度', async () => {
+  it('先预览迁移后的 V4 称呼与陪伴天数，再采用导入进度', async () => {
     vi.mocked(importBingoSave).mockResolvedValue(importResult(legacyGame()))
 
     render(<App />)
@@ -621,7 +988,7 @@ describe('旅行饼狗应用控制器', () => {
 
     const summary = await screen.findByRole('region', { name: '存档摘要' })
     expect(summary).toHaveTextContent('legacy-trip.bingo')
-    expect(summary).toHaveTextContent('9 个')
+    expect(summary).toHaveTextContent('9🍎')
     expect(summary).toHaveTextContent('1 件')
     expect(summary).toHaveTextContent('你')
     expect(summary).toHaveTextContent('1 天')
@@ -629,14 +996,14 @@ describe('旅行饼狗应用控制器', () => {
 
     fireEvent.click(screen.getByRole('button', { name: '进入这次旅程' }))
 
-    expect(screen.getByTestId('schema-version')).toHaveTextContent('3')
+    expect(screen.getByTestId('schema-version')).toHaveTextContent('4')
     expect(screen.getByTestId('display-name')).toHaveTextContent('你')
     expect(screen.getByTestId('companion-days')).toHaveTextContent('1')
     expect(screen.getByTestId('apple-count')).toHaveTextContent('9')
     expect(screen.getByTestId('collection-count')).toHaveTextContent('1')
   })
 
-  it('v1 导入后再次导出时只写 V3 载荷与新版游戏版本', async () => {
+  it('v1 导入后再次导出时只写 V4 载荷与新版游戏版本', async () => {
     vi.mocked(importBingoSave).mockResolvedValue(importResult(legacyGame()))
     vi.mocked(createBingoSave).mockResolvedValue({
       fileName: 'migrated.bingo',
@@ -654,9 +1021,9 @@ describe('旅行饼狗应用控制器', () => {
     await waitFor(() => expect(createBingoSave).toHaveBeenCalledOnce())
     expect(createBingoSave).toHaveBeenCalledWith(
       {
-        gameVersion: '0.3.0-demo.1',
+        gameVersion: '0.4.0-demo.1',
         payload: expect.objectContaining({
-          schemaVersion: 3,
+          schemaVersion: 4,
           profile: expect.objectContaining({ displayName: '你', companionDays: 1 }),
           friends: {},
         }),
@@ -1042,7 +1409,8 @@ describe('旅行饼狗应用控制器', () => {
     fireEvent.click(screen.getByRole('button', { name: '备份' }))
 
     await waitFor(() => expect(createBingoSave).toHaveBeenCalledOnce())
-    const [{ payload }] = vi.mocked(createBingoSave).mock.calls[0]
+    const exportedInput = vi.mocked(createBingoSave).mock.calls[0][0] as { payload: GameState }
+    const { payload } = exportedInput
     const persistedKeys = recursivelyCollectedKeys(payload)
 
     expect(persistedKeys).not.toContain('collectionTotal')
@@ -1051,10 +1419,27 @@ describe('旅行饼狗应用控制器', () => {
     expect(persistedKeys).not.toContain('siteFirstCursor')
     expect(persistedKeys).not.toContain('videosByBvid')
     expect(persistedKeys).not.toContain('recordPlayerVideos')
-    expect(payload).toMatchObject({ schemaVersion: 3, collections: {}, friends: {} })
+    expect(payload).toMatchObject({
+      schemaVersion: 4,
+      collections: {},
+      friends: {},
+      world: 'game',
+      player: { effects: { vitality: null } },
+      reality: {
+        activeStay: null,
+        pendingSettlement: null,
+        todos: {},
+        pomodoro: { selectedPostcardId: null, session: null },
+      },
+      musicPlayer: { playlists: {}, order: [], activePlaylistId: null },
+    })
+    expect(payload.inventory).toMatchObject({
+      'bottled-speed-magic': 0,
+      'bottled-vitality-magic': 0,
+    })
   })
 
-  it('V3 好友图鉴按稳定 ID 往返，不写入好友目录总数或展示元数据', async () => {
+  it('V4 好友图鉴按稳定 ID 往返，不写入好友目录总数或展示元数据', async () => {
     const payload = importedGame()
     payload.friends['signal-dog'] = {
       id: 'signal-dog',
@@ -1149,7 +1534,7 @@ describe('旅行饼狗应用控制器', () => {
     await waitFor(() => expect(createBingoSave).toHaveBeenCalledOnce())
     expect(createBingoSave).toHaveBeenCalledWith(
       {
-        gameVersion: '0.3.0-demo.1',
+        gameVersion: '0.4.0-demo.1',
         payload: expect.objectContaining({
           activeActivity: expect.objectContaining({
             rewardPlan: expect.objectContaining({ collection: null }),
@@ -1160,7 +1545,30 @@ describe('旅行饼狗应用控制器', () => {
     )
   })
 
-  it('在清除已拥有奖励前拒绝活动种类与奖励类别不匹配的存档', async () => {
+  it('导入 V4 时清除已失效的苹果钟背景，再用修复后的状态完成校验', async () => {
+    const payload = importedGame()
+    payload.reality.pomodoro.selectedPostcardId = 'postcard-no-longer-owned'
+    vi.mocked(importBingoSave).mockResolvedValue(importResult(payload))
+    vi.mocked(createBingoSave).mockResolvedValue({
+      fileName: 'reconciled-pomodoro.bingo',
+      text: '{}',
+    } as Awaited<ReturnType<typeof createBingoSave>>)
+
+    render(<App />)
+    await screen.findByRole('button', { name: '开始新旅程' })
+    fireEvent.change(screen.getByLabelText('读取 .bingo 存档'), {
+      target: { files: [new File(['stale-pomodoro'], 'stale-pomodoro.bingo')] },
+    })
+
+    expect(await screen.findByRole('region', { name: '存档摘要' })).toBeVisible()
+    fireEvent.click(screen.getByRole('button', { name: '进入这次旅程' }))
+    fireEvent.click(screen.getByRole('button', { name: '备份' }))
+    await waitFor(() => expect(createBingoSave).toHaveBeenCalledOnce())
+    const exportedInput = vi.mocked(createBingoSave).mock.calls[0][0] as { payload: GameState }
+    expect(exportedInput.payload.reality.pomodoro.selectedPostcardId).toBeNull()
+  })
+
+  it('reconcile 不掩盖活动种类与奖励类别不匹配的非法存档', async () => {
     const payload = importedGame()
     payload.collections['postcard-2025-01-0001'] = {
       id: 'postcard-2025-01-0001',
@@ -1241,7 +1649,7 @@ describe('旅行饼狗应用控制器', () => {
       await second.promise
     })
     expect(await screen.findByRole('region', { name: '存档摘要' })).toHaveTextContent('B.bingo')
-    expect(screen.getByRole('region', { name: '存档摘要' })).toHaveTextContent('12 个')
+    expect(screen.getByRole('region', { name: '存档摘要' })).toHaveTextContent('12🍎')
 
     const olderGame = importedGame()
     olderGame.economy.apples = 3
@@ -1250,7 +1658,7 @@ describe('旅行饼狗应用控制器', () => {
       await first.promise
     })
     expect(screen.getByRole('region', { name: '存档摘要' })).toHaveTextContent('B.bingo')
-    expect(screen.getByRole('region', { name: '存档摘要' })).toHaveTextContent('12 个')
+    expect(screen.getByRole('region', { name: '存档摘要' })).toHaveTextContent('12🍎')
   })
 
   it('开始新游戏会使尚未完成的旧导入失效', async () => {
@@ -1284,7 +1692,7 @@ describe('旅行饼狗应用控制器', () => {
 
     const exported = await actualPersistence.createBingoSave(
       {
-        gameVersion: '0.3.0-demo.1',
+        gameVersion: '0.4.0-demo.1',
         payload: importedGame(),
         exportedAt: 4_000,
       },

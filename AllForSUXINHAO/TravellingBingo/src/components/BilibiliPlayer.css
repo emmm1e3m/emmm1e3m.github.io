@@ -1,57 +1,23 @@
 .bilibili-player,
-.bilibili-player-trigger {
+.bilibili-player-shared {
   display: grid;
   gap: 0.55rem;
 }
 
-.bilibili-player-trigger {
-  grid-template-columns: minmax(0, 1fr) auto;
-  align-items: center;
-}
-
-.bilibili-player-trigger > p {
-  grid-column: 1 / -1;
-  display: grid;
-  gap: 0.12rem;
-  margin: 0;
-}
-
-.bilibili-player-trigger > p strong {
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-}
-
-.bilibili-player-trigger > p small {
-  color: #7b5d50;
-  font-family: 'TravellingBingo UI', 'Microsoft YaHei UI', sans-serif;
-  font-size: 0.72rem;
-}
-
-.bilibili-player button,
-.bilibili-player-trigger button {
-  min-height: 44px;
-  padding: 0.58rem 0.78rem;
-  border: 1px solid #b98c76;
-  border-radius: 12px;
-  color: #583c35;
-  background: #fff8ef;
-  cursor: pointer;
-}
-
 .bilibili-player a,
-.bilibili-player-trigger a {
+.bilibili-player-shared a {
   color: #842d38;
   font-size: 0.7rem;
 }
 
-.bilibili-player__heading {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 0.6rem;
+.bilibili-player-shared {
+  padding: 0.8rem;
+  border: 1px solid #d6b29b;
+  border-radius: 14px;
+  background: #fff8ef;
 }
 
+.bilibili-player-shared > p,
 .bilibili-player__heading > p {
   min-width: 0;
   display: grid;
@@ -59,20 +25,30 @@
   margin: 0;
 }
 
+.bilibili-player-shared strong,
 .bilibili-player__heading strong {
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
 }
 
+.bilibili-player-shared small,
 .bilibili-player__heading small {
   color: #7b5d50;
   font-family: 'TravellingBingo UI', 'Microsoft YaHei UI', sans-serif;
   font-size: 0.72rem;
 }
 
-.bilibili-player__heading button {
-  flex: 0 0 auto;
+.bilibili-player-shared__status,
+.bilibili-player__heading > [role='status'] {
+  color: #7b5d50;
+  font-family: 'TravellingBingo UI', 'Microsoft YaHei UI', sans-serif;
+  font-size: 0.72rem;
+}
+
+.bilibili-player__heading {
+  display: grid;
+  gap: 0.3rem;
 }
 
 .bilibili-player__frame {
@@ -92,16 +68,12 @@
   border: 0;
 }
 
-.bilibili-player__source {
+.bilibili-player__source,
+.bilibili-player-shared > a {
   justify-self: start;
 }
 
-.bilibili-player.is-compact .bilibili-player__heading strong {
+.bilibili-player.is-compact .bilibili-player__heading strong,
+.bilibili-player-shared.is-compact strong {
   font-size: 0.72rem;
-}
-
-@media (max-width: 480px) {
-  .bilibili-player-trigger {
-    grid-template-columns: 1fr;
-  }
 }

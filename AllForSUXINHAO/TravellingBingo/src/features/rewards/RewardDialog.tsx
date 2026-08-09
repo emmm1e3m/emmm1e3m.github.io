@@ -1,3 +1,5 @@
+import { useRef } from 'react'
+
 import { publicAsset } from '@/app/assets'
 import { MascotSprite } from '@/components/MascotSprite'
 import { useModalFocus } from '@/components/useModalFocus'
@@ -6,6 +8,8 @@ import type { ClaimSummary } from '@/domain'
 import { categoryLabel } from '@/features/album/categoryLabel'
 import { CollectiblePicture } from '@/features/album/CollectiblePicture'
 import { ITEM_COPY } from '@/features/game/gameCopy'
+
+import './RewardDialog.css'
 
 function rewardHeading(reward: ClaimSummary, category?: string, friendName?: string) {
   if (reward.kind === 'trend') {
@@ -31,13 +35,16 @@ interface RewardDialogProps {
 export function RewardDialog({ reward, catalog, onDismiss }: RewardDialogProps) {
   const rewardItem = reward.collection ? catalog.byId[reward.collection.id] : undefined
   const friend = reward.friendId ? catalog.friendById[reward.friendId] : undefined
-  const dialogRef = useModalFocus<HTMLElement>(true, onDismiss)
+  const dismissButtonRef = useRef<HTMLButtonElement>(null)
+  const dialogRef = useModalFocus<HTMLElement>(true, onDismiss, {
+    initialFocus: dismissButtonRef,
+  })
 
   return (
-    <div className="modal-backdrop reward-backdrop" role="presentation">
+    <div className="modal-backdrop reward-backdrop reward-backdrop--v4" role="presentation">
       <article
         ref={dialogRef}
-        className="reward-card reward-card--v2 reward-card--v3"
+        className="reward-card reward-card--v2 reward-card--v3 reward-card--v4"
         role="dialog"
         aria-modal="true"
         aria-labelledby="reward-title"
@@ -49,7 +56,11 @@ export function RewardDialog({ reward, catalog, onDismiss }: RewardDialogProps) 
 
         {rewardItem && (
           <div className="reward-collectible">
-            <CollectiblePicture item={rewardItem} />
+            <div
+              className={`reward-collectible__media reward-collectible__media--${rewardItem.category}`}
+            >
+              <CollectiblePicture item={rewardItem} />
+            </div>
             <div>
               <strong>{rewardItem.title}</strong>
               <span>
@@ -62,12 +73,14 @@ export function RewardDialog({ reward, catalog, onDismiss }: RewardDialogProps) 
 
         {friend && (
           <div className="reward-friend">
-            <img
-              src={publicAsset(friend.image.path)}
-              alt={friend.alt}
-              width={friend.image.width}
-              height={friend.image.height}
-            />
+            <div className="reward-friend__media">
+              <img
+                src={publicAsset(friend.image.path)}
+                alt={friend.alt}
+                width={friend.image.width}
+                height={friend.image.height}
+              />
+            </div>
             <div>
               <strong>{friend.name}</strong>
               <span>{friend.description}</span>
@@ -86,15 +99,17 @@ export function RewardDialog({ reward, catalog, onDismiss }: RewardDialogProps) 
           <p className="reward-empty">认真度过的时间，也被饼狗记住了。</p>
         )}
         {!friend && reward.apples.total > 0 && (
-          <p
-            className="reward-apples numeric-copy"
-            aria-label={`得到 ${reward.apples.total} 个苹果`}
-          >
+          <p className="reward-apples numeric-copy" aria-label={`得到 ${reward.apples.total}🍎`}>
             {reward.apples.total}🍎
           </p>
         )}
 
-        <button className="paper-button paper-button--primary" type="button" onClick={onDismiss}>
+        <button
+          ref={dismissButtonRef}
+          className="paper-button paper-button--primary"
+          type="button"
+          onClick={onDismiss}
+        >
           {rewardItem ? '收好这份回忆' : '回到房间'}
         </button>
       </article>

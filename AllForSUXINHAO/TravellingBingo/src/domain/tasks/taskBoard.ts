@@ -1,4 +1,5 @@
-import { MAX_APPLES } from '../game/constants'
+import { BILIBILI_BVID_PATTERN, MAX_APPLES, PIANO_NOTE_IDS } from '../game/constants'
+import { incrementSafeCounter, saturatingAddSafeCounter } from '../game/counters'
 import type {
   CollectionCatalog,
   CollectibleCategory,
@@ -29,8 +30,8 @@ export const TASK_LIBRARY: Readonly<Record<TaskId, TaskTemplate>> = {
   'greet-bingo': {
     id: 'greet-bingo',
     triggerGroup: 'pet',
-    title: '和饼狗打个招呼',
-    description: '点一点饼狗',
+    title: '看看饼狗的小背包',
+    description: '打开一次饼狗菜单',
     target: 1,
     rewardApples: 1,
   },
@@ -134,6 +135,23 @@ export const TASK_LIBRARY: Readonly<Record<TaskId, TaskTemplate>> = {
 }
 
 const TASK_IDS = Object.keys(TASK_LIBRARY) as TaskId[]
+const RETIRED_TASK_IDS: ReadonlySet<TaskId> = new Set(['greet-bingo'])
+const ROOM_AREA_KEYS: ReadonlySet<RoomArea> = new Set([
+  'bed',
+  'computer',
+  'wardrobe',
+  'piano',
+  'record-player',
+  'fridge',
+  'collection-wall',
+  'door',
+  'work-computer',
+])
+const PIANO_PROGRESS_KEYS: ReadonlySet<string> = new Set([
+  'piano',
+  ...PIANO_NOTE_IDS.map((noteId) => `piano:${noteId}`),
+])
+const LEGACY_RECORD_PLAYER_PROGRESS_KEY = 'record-player'
 
 const EMPTY_CATALOG: CollectionCatalog = {
   postcard: [],
@@ -158,6 +176,97 @@ export interface GeneratedTaskBoard {
   nextSequence: number
 }
 
+export interface ReplaceRetiredTaskBoardInput {
+  board: TaskBoard
+  seed: string
+  sequence: number
+  now: number
+  catalog?: CollectionCatalog
+  collections?: Readonly<Record<string, unknown>>
+}
+
+export type TaskReachabilityValidation = { ok: true } | { ok: false; message: string }
+
+function unreachable(message: string): TaskReachabilityValidation {
+  return { ok: false, message }
+}
+
+function validateFiniteKeySpace(
+  task: TaskInstance,
+  allowedKeys: ReadonlySet<string>,
+): TaskReachabilityValidation {
+  if (task.target > allowedKeys.size) {
+    return unreachable(`任务“${task.taskId}”的历史目标超过可产生的独立事件数量。`)
+  }
+  return task.seenKeys.every((key) => allowedKeys.has(key))
+    ? { ok: true }
+    : unreachable(`任务“${task.taskId}”包含无法由该任务产生的进度事件。`)
+}
+
+function isVideoProgressKey(key: string): boolean {
+  return key.startsWith('video:') && BILIBILI_BVID_PATTERN.test(key.slice('video:'.length))
+}
+
+/**
+ * 校验历史 target 快照是否仍有足够多的不同领域事件可达，并约束已记录 key 的命名空间。
+ * rewardApples 是已经签发的历史奖励快照，故本函数刻意不与当前模板奖励强等。
+ */
+export function validateTaskInstanceReachability(
+  task: TaskInstance,
+  catalog: CollectionCatalog,
+): TaskReachabilityValidation {
+  switch (task.taskId) {
+    case 'greet-bingo':
+      return unreachable('打招呼任务已经退役，无法继续完成。')
+    case 'open-backpack':
+      return validateFiniteKeySpace(task, new Set(['opened']))
+    case 'room-stroll':
+      return validateFiniteKeySpace(task, ROOM_AREA_KEYS)
+    case 'piano-time': {
+      const keyValidation = validateFiniteKeySpace(task, PIANO_PROGRESS_KEYS)
+      if (!keyValidation.ok) return keyValidation
+      // 旧版的 `piano` 只能作为已经写入的历史 key 保留，当前版本无法再次产生它。
+      // 因此只有历史进度中已经包含该 key 时，可达上限才会从 36 增至 37。
+      const reachableKeyCount = PIANO_NOTE_IDS.length + (task.seenKeys.includes('piano') ? 1 : 0)
+      return task.target <= reachableKeyCount
+        ? { ok: true }
+        : unreachable(`任务“${task.taskId}”的历史目标超过可产生的独立事件数量。`)
+    }
+    case 'record-time':
+      return task.seenKeys.every(
+        (key) => key === LEGACY_RECORD_PLAYER_PROGRESS_KEY || isVideoProgressKey(key),
+      )
+        ? { ok: true }
+        : unreachable('唱片机任务包含无效的视频进度 key。')
+    case 'two-melodies':
+      return task.seenKeys.every(
+        (key) =>
+          PIANO_PROGRESS_KEYS.has(key) ||
+          key === LEGACY_RECORD_PLAYER_PROGRESS_KEY ||
+          isVideoProgressKey(key),
+      )
+        ? { ok: true }
+        : unreachable('音乐任务包含无效的琴键或视频进度 key。')
+    case 'wardrobe-choice':
+      return validateFiniteKeySpace(task, new Set(['wardrobe']))
+    case 'open-memories':
+      return validateFiniteKeySpace(task, new Set(['wall']))
+    case 'revisit-two':
+      return validateFiniteKeySpace(
+        task,
+        new Set([...catalog.postcard, ...catalog['million-shot'], ...catalog['site-first']]),
+      )
+    case 'remember-postcard':
+      return validateFiniteKeySpace(task, new Set(catalog.postcard))
+    case 'remember-million':
+      return validateFiniteKeySpace(task, new Set(catalog['million-shot']))
+    case 'remember-first':
+      return validateFiniteKeySpace(task, new Set(catalog['site-first']))
+    case 'stage-test':
+      return validateFiniteKeySpace(task, new Set(['opened']))
+  }
+}
+
 function categoryHasCollection(
   category: CollectibleCategory,
   catalog: CollectionCatalog,
@@ -173,6 +282,7 @@ function eligibleTaskIds(input: TaskGenerationInput): TaskId[] {
   const hasAnyCollection = owned.size > 0
 
   return TASK_IDS.filter((taskId) => {
+    if (RETIRED_TASK_IDS.has(taskId)) return false
     if (TASK_LIBRARY[taskId].oneOff && completedOneOff.has(taskId)) return false
     if (taskId === 'open-memories') return hasAnyCollection
     if (taskId === 'revisit-two') return owned.size >= 2
@@ -230,20 +340,30 @@ function chooseTemplates(input: TaskGenerationInput): TaskId[] {
   throw new Error('当前任务库无法生成三个触发组互不重复的任务')
 }
 
+function createTaskInstance(
+  taskId: TaskId,
+  seed: string,
+  sequence: number,
+  slotIndex: number,
+  now: number,
+): TaskInstance {
+  const template = TASK_LIBRARY[taskId]
+  return {
+    instanceId: `task-${sequence.toString(36)}-${slotIndex}-${hashSeed(`${seed}:${taskId}:${sequence}`).toString(36)}`,
+    taskId,
+    assignedAt: now,
+    progress: 0,
+    target: template.target,
+    rewardApples: template.rewardApples,
+    seenKeys: [],
+  }
+}
+
 export function generateTaskBoard(input: TaskGenerationInput): GeneratedTaskBoard {
   const selected = chooseTemplates(input)
-  const active = selected.map((taskId, index): TaskInstance => {
-    const template = TASK_LIBRARY[taskId]
-    return {
-      instanceId: `task-${input.sequence.toString(36)}-${index}-${hashSeed(`${input.seed}:${taskId}:${input.sequence}`).toString(36)}`,
-      taskId,
-      assignedAt: input.now,
-      progress: 0,
-      target: template.target,
-      rewardApples: template.rewardApples,
-      seenKeys: [],
-    }
-  }) as [TaskInstance, TaskInstance, TaskInstance]
+  const active = selected.map((taskId, index) =>
+    createTaskInstance(taskId, input.seed, input.sequence, index, input.now),
+  ) as [TaskInstance, TaskInstance, TaskInstance]
 
   return {
     board: {
@@ -252,7 +372,86 @@ export function generateTaskBoard(input: TaskGenerationInput): GeneratedTaskBoar
       recentTemplateIds: [...(input.recentTemplateIds ?? []), ...selected].slice(-6),
       oneOffCompleted: [...(input.oneOffCompleted ?? [])],
     },
-    nextSequence: input.sequence + 1,
+    nextSequence: incrementSafeCounter(input.sequence),
+  }
+}
+
+/** 旧存档仍可读取退役模板，但 V4 新任务板不再签发它。 */
+export function hasRetiredTask(board: Pick<TaskBoard, 'active'>): boolean {
+  return board.active.some((entry) => RETIRED_TASK_IDS.has(entry.taskId))
+}
+
+/**
+ * 只替换旧板中的退役槽位，保留其他任务的进度与快照。
+ * 调用方传入 random.sequences.tasks，并仅用 nextSequence 回写该序列。
+ */
+export function replaceRetiredTaskBoard(input: ReplaceRetiredTaskBoardInput): GeneratedTaskBoard {
+  if (!hasRetiredTask(input.board)) {
+    return { board: input.board, nextSequence: input.sequence }
+  }
+
+  const retiredSlots = input.board.active
+    .map((entry, index) => (RETIRED_TASK_IDS.has(entry.taskId) ? index : -1))
+    .filter((index) => index >= 0)
+  const retained = input.board.active.filter((entry) => !RETIRED_TASK_IDS.has(entry.taskId))
+  const generationInput: TaskGenerationInput = {
+    seed: input.seed,
+    sequence: input.sequence,
+    now: input.now,
+    catalog: input.catalog,
+    collections: input.collections,
+    recentTemplateIds: input.board.recentTemplateIds,
+    oneOffCompleted: input.board.oneOffCompleted,
+    completedCount: input.board.completedCount,
+  }
+  const eligible = eligibleTaskIds(generationInput)
+  const recent = new Set(input.board.recentTemplateIds)
+  const retainedIds = new Set(retained.map((entry) => entry.taskId))
+  const usedGroups = new Set(retained.map((entry) => TASK_LIBRARY[entry.taskId].triggerGroup))
+  let cursor = createRandomCursor(`${input.seed}:tasks:${input.sequence}`)
+  const preferred = shuffleTaskIds(
+    eligible.filter((taskId) => !recent.has(taskId)),
+    cursor,
+  )
+  cursor = preferred.cursor
+  const fallback = shuffleTaskIds(eligible, cursor)
+  const replacements: TaskId[] = []
+
+  for (const candidates of [preferred.ids, fallback.ids]) {
+    for (const taskId of candidates) {
+      const group = TASK_LIBRARY[taskId].triggerGroup
+      if (retainedIds.has(taskId) || replacements.includes(taskId) || usedGroups.has(group)) {
+        continue
+      }
+      replacements.push(taskId)
+      usedGroups.add(group)
+      if (replacements.length === retiredSlots.length) break
+    }
+    if (replacements.length === retiredSlots.length) break
+  }
+
+  if (replacements.length !== retiredSlots.length) {
+    throw new Error('当前任务库无法替换退役任务')
+  }
+
+  const active = [...input.board.active] as [TaskInstance, TaskInstance, TaskInstance]
+  retiredSlots.forEach((slotIndex, replacementIndex) => {
+    active[slotIndex] = createTaskInstance(
+      replacements[replacementIndex],
+      input.seed,
+      input.sequence,
+      slotIndex,
+      input.now,
+    )
+  })
+
+  return {
+    board: {
+      ...input.board,
+      active,
+      recentTemplateIds: [...input.board.recentTemplateIds, ...replacements].slice(-6),
+    },
+    nextSequence: incrementSafeCounter(input.sequence),
   }
 }
 
@@ -353,7 +552,9 @@ export function applyTaskEvent(
     : 0
   const active = [...state.tasks.active] as [TaskInstance, TaskInstance, TaskInstance]
   active[taskIndex] = nextTask
-  const completedCount = state.tasks.completedCount + (completed ? 1 : 0)
+  const completedCount = completed
+    ? incrementSafeCounter(state.tasks.completedCount)
+    : state.tasks.completedCount
   let oneOffCompleted = state.tasks.oneOffCompleted
   if (completed && TASK_LIBRARY[nextTask.taskId].oneOff) {
     oneOffCompleted = [...new Set([...oneOffCompleted, nextTask.taskId])]
@@ -389,7 +590,7 @@ export function applyTaskEvent(
       tasks: nextTasks,
       statistics: {
         ...state.statistics,
-        applesEarned: state.statistics.applesEarned + applesAwarded,
+        applesEarned: saturatingAddSafeCounter(state.statistics.applesEarned, applesAwarded),
       },
       random: {
         ...state.random,
