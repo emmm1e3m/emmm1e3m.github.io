@@ -12,6 +12,7 @@ import { categoryLabel } from './categoryLabel'
 import { CollectiblePicture } from './CollectiblePicture'
 
 const CATEGORY_ORDER: readonly CollectibleCategory[] = ['postcard', 'million-shot', 'site-first']
+const PLAYER_FOCUS_PEER = '[data-modal-focus-peer="persistent-player"]'
 type AlbumTab = CollectibleCategory | 'friends'
 
 interface AlbumViewProps {
@@ -135,13 +136,15 @@ export function AlbumView({ catalog, game, onClose, onInspect, onPlayerOpened }:
   const detailImageRef = useRef<HTMLButtonElement>(null)
   const albumDialogRef = useModalFocus<HTMLElement>(true, onClose, {
     initialFocus: albumCloseRef,
+    focusPeers: [PLAYER_FOCUS_PEER],
   })
   const closeDetail = () => {
     setImageFullscreen(false)
     setSelected(null)
   }
-  const detailDialogRef = useModalFocus<HTMLElement>(Boolean(selected), closeDetail, {
+  const detailDialogRef = useModalFocus<HTMLDivElement>(Boolean(selected), closeDetail, {
     initialFocus: detailCloseRef,
+    focusPeers: [PLAYER_FOCUS_PEER],
   })
   const tabRefs = useRef<Array<HTMLButtonElement | null>>([])
   const allCollected = catalog.items.length > 0 && ownedItems.length === catalog.items.length
@@ -288,19 +291,18 @@ export function AlbumView({ catalog, game, onClose, onInspect, onPlayerOpened }:
 
       {selected && (
         <div
+          ref={detailDialogRef}
           className="modal-backdrop collectible-detail-backdrop"
           data-modal-backdrop
-          role="presentation"
+          role="dialog"
+          aria-modal="true"
+          aria-labelledby="collectible-title"
+          tabIndex={-1}
           onMouseDown={closeDetail}
         >
           <article
-            ref={detailDialogRef}
             className="collectible-detail collectible-detail--v3 collectible-detail--v4"
             data-media-kind={selectedVideo ? 'video' : 'image'}
-            role="dialog"
-            aria-modal="true"
-            aria-labelledby="collectible-title"
-            tabIndex={-1}
             onMouseDown={(event) => event.stopPropagation()}
           >
             <button
@@ -330,7 +332,6 @@ export function AlbumView({ catalog, game, onClose, onInspect, onPlayerOpened }:
               {selectedVideo && (
                 <BilibiliPlayer
                   video={selectedVideo}
-                  compact
                   origin={{ kind: 'collection', collectionId: selected.id }}
                   onOpened={(bvid) => onPlayerOpened?.(selected.id, bvid)}
                 />

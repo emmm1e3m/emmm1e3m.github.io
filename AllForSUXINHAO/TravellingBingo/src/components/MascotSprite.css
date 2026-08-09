@@ -25,3 +25,40 @@
 .reward-mascot > .mascot-sprite--celebrate {
   background-size: 205% 205%;
 }
+
+/* 动作图集也会用于 body portal；帧定位必须属于组件本身，不能依赖游戏页祖先。 */
+.mascot-sprite--walk,
+.mascot-sprite--fridge,
+.mascot-sprite--warm,
+.mascot-sprite--sit,
+.mascot-sprite--ready,
+.mascot-sprite--sleep {
+  background-size: 400% 100%;
+}
+
+.mascot-sprite--walk {
+  animation: bingo-walk-frames 560ms step-end infinite;
+}
+
+.mascot-sprite--fridge {
+  background-position: 0 0;
+}
+
+.mascot-sprite--sit {
+  background-position: 33.333% 0;
+}
+
+.mascot-sprite--warm,
+.mascot-sprite--ready {
+  background-position: 66.666% 0;
+}
+
+.mascot-sprite--sleep {
+  background-position: 100% 0;
+  animation: sleeping-breathe 1.8s ease-in-out infinite;
+}
+
+.mascot-sprite--refuse {
+  background-size: 200% 100%;
+  animation: bingo-refuse-frames 920ms step-end infinite;
+}

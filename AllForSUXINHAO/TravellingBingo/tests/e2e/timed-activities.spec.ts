@@ -190,7 +190,7 @@ test('睡觉读条时饼狗在床上且房间变暗，领取后增加 1 天和 1
   await reward.getByRole('button', { name: '回到房间' }).click()
 })
 
-test('弹琴活动读条期间仍可弹三排 36 键，并只给白键映射电脑键盘', async ({ page }, testInfo) => {
+test('弹琴活动读条期间仍可弹四排 48 键，并只给白键映射电脑键盘', async ({ page }, testInfo) => {
   test.skip(testInfo.project.name !== 'chromium', 'WebAudio 琴键只在桌面 Chromium 验证')
   await startGame(page, { debug: true, seed: 'music-e2e', displayName: '琴键测试' })
   await setDebugDuration(page, '10 秒')
@@ -198,17 +198,19 @@ test('弹琴活动读条期间仍可弹三排 36 键，并只给白键映射电�
 
   const keyboard = page.locator('.piano').filter({ hasText: '和饼狗弹一小段' })
   await expect(keyboard).toBeVisible()
-  await expect(keyboard.locator('.piano__row')).toHaveCount(3)
-  await expect(keyboard.getByRole('group')).toHaveCount(3)
-  await expect(keyboard.getByRole('button')).toHaveCount(36)
+  await expect(keyboard.locator('.piano__row')).toHaveCount(4)
+  await expect(keyboard.getByRole('group')).toHaveCount(4)
+  await expect(keyboard.getByRole('button')).toHaveCount(48)
   await expect(keyboard).toContainText(
-    '从 A5 G5 G5 B5 G5 E5 G5 G5 B4 C5，D5 C5 A5 A5 A5 B5 B5 B5 B5 C6 开始试试',
+    'C6 B5 G5 E5 G5 C6 B5 G5 E5 G5 E5，C6 B5 G5 E5 G5 C6 D6 C6 D6 E6 E6',
   )
-  const c4 = keyboard.getByRole('button', { name: 'C4，键盘 Z' })
-  const c5 = keyboard.getByRole('button', { name: 'C5，键盘 A' })
+  const c3 = keyboard.getByRole('button', { name: 'C3，键盘 Z' })
+  const c4 = keyboard.getByRole('button', { name: 'C4，键盘 A' })
+  const c6 = keyboard.getByRole('button', { name: 'C6，键盘 1' })
   const cSharp5 = keyboard.getByRole('button', { name: 'C#5', exact: true })
+  await expect(c3).toBeEnabled()
   await expect(c4).toBeEnabled()
-  await expect(c5).toBeEnabled()
+  await expect(c6).toBeEnabled()
   await expect(cSharp5).not.toHaveAccessibleName(/键盘/u)
   const overflow = await keyboard.evaluate((element) => ({
     horizontal: element.scrollWidth - element.clientWidth,
@@ -217,9 +219,9 @@ test('弹琴活动读条期间仍可弹三排 36 键，并只给白键映射电�
   expect(overflow.horizontal).toBeLessThanOrEqual(1)
   expect(overflow.vertical).toBeLessThanOrEqual(1)
   await page.keyboard.down('z')
-  await expect(c4).toHaveAttribute('aria-pressed', 'true')
+  await expect(c3).toHaveAttribute('aria-pressed', 'true')
   await page.keyboard.up('z')
-  await expect(c4).toHaveAttribute('aria-pressed', 'false')
+  await expect(c3).toHaveAttribute('aria-pressed', 'false')
   await cancelActivity(page)
 })
 

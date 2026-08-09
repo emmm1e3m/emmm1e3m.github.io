@@ -46,6 +46,14 @@ const friends = [
   },
 ]
 
+const CARD_CROP_INSETS = [
+  { left: 24, right: 24 },
+  { left: 24, right: 24 },
+  { left: 24, right: 24 },
+  { left: 10, right: 20 },
+  { left: 2, right: 24 },
+]
+
 function sha256(bytes) {
   return createHash('sha256').update(bytes).digest('hex')
 }
@@ -67,15 +75,17 @@ const items = []
 for (const [index, friend] of friends.entries()) {
   const cellLeft = Math.floor((sourceMetadata.width * index) / friends.length)
   const cellRight = Math.floor((sourceMetadata.width * (index + 1)) / friends.length)
+  const cellWidth = cellRight - cellLeft
+  const cropInsets = CARD_CROP_INSETS[index]
   const filename = `${friend.id}.webp`
   const outputPath = resolve(outputRoot, filename)
 
-  // ImageGen 母版已经把五位好友排成等宽纸卡；定点裁去卡框外沿与上下留白。
+  // 前三格统一内缩 24px；后两格按主体安全边界放宽，既去掉纸卡竖线，也完整保留耳朵和头发。
   const result = await sharp(sourceBytes)
     .extract({
-      left: cellLeft + 14,
+      left: cellLeft + cropInsets.left,
       top: 148,
-      width: cellRight - cellLeft - 28,
+      width: cellWidth - cropInsets.left - cropInsets.right,
       height: 550,
     })
     .resize({ width: 360, height: 560, fit: 'cover', position: 'centre' })

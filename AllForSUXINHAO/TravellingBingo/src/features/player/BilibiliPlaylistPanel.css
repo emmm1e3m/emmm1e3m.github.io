@@ -127,10 +127,3 @@
   text-overflow: ellipsis;
   white-space: nowrap;
 }
-
-.bilibili-playlist-panel__limits {
-  color: #7b5d50;
-  font-family: 'TravellingBingo UI', 'Microsoft YaHei UI', sans-serif;
-  font-size: 0.76rem;
-  line-height: 1.55;
-}

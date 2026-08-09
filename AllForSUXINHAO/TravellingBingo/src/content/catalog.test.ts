@@ -184,6 +184,14 @@ describe('目录合并与收藏进度', () => {
     expect(getCollectibleById(catalog, 'missing')).toBeUndefined()
     expect(getFriendById(catalog, 'signal-dog')?.name).toBe('信号狗')
     expect(catalog.recordPlayerVideos).toHaveLength(videoCatalog.recordPlayer.items.length)
+    expect(catalog.videosByBvid.BV13FdBBAEUF).toMatchObject({
+      title: '苏苏跳手势舞0417',
+      durationSeconds: 21,
+    })
+    expect(catalog.videosByBvid.BV16VDdBUEfC).toMatchObject({
+      title: '苏苏跳手势舞0413',
+      durationSeconds: 21,
+    })
   })
 
   it('拒绝海报内嵌视频与集中视频目录发生漂移', () => {

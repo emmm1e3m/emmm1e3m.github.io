@@ -11,6 +11,7 @@ import {
   migrateStoredGameStateToV3,
 } from './migrateGameStateV2'
 import { migrateGameStateV3ToV4 } from './migrateGameStateV3'
+import { migrateGameStateV4ToV5 } from './migrateGameStateV4'
 import { reduceGame } from './reducer'
 import type { CollectionCatalog, GameStateV2, GameTransition } from './types'
 import { MAX_DATE_TIMESTAMP_MS } from './time'
@@ -135,21 +136,25 @@ describe('schemaVersion 2 -> 3 显式迁移', () => {
       preferences: { travel: false, computer: false, music: false },
     })
 
-    const migratedV4 = migrateGameStateV3ToV4(migrated, { now: 20_000, catalog })
-    const before = structuredClone(migratedV4)
+    const migratedV5 = migrateGameStateV4ToV5(
+      migrateGameStateV3ToV4(migrated, { now: 20_000, catalog }),
+    )
+    const before = structuredClone(migratedV5)
     const result = reduceGame(
-      migratedV4,
+      migratedV5,
       { type: 'activity/start', kind: 'music', now: 20_000 },
       catalog,
     )
     expect(result).toMatchObject({ ok: false, error: { code: 'ACTIVITY_REFUSED' } })
-    expect(migratedV4).toEqual(before)
+    expect(migratedV5).toEqual(before)
   })
 
   it('进行中活动保持绝对时间和 legacy 双结果，原 endsAt 到点即可领取', () => {
     const migrated = migrateGameStateV2ToV3(v2Fixture(), { now: 12_000, catalog })
     const activity = migrated.activeActivity!
-    const migratedV4 = migrateGameStateV3ToV4(migrated, { now: 12_000, catalog })
+    const migratedV5 = migrateGameStateV4ToV5(
+      migrateGameStateV3ToV4(migrated, { now: 12_000, catalog }),
+    )
 
     expect(activity).toMatchObject({
       startedAt: 10_000,
@@ -167,7 +172,7 @@ describe('schemaVersion 2 -> 3 显式迁移', () => {
 
     const claimed = successful(
       reduceGame(
-        migratedV4,
+        migratedV5,
         { type: 'activity/claim', runId: activity.runId, now: 15_000 },
         catalog,
       ),

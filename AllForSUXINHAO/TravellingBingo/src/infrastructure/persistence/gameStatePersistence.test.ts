@@ -14,7 +14,7 @@ import {
   createInitialGameState,
   DEFAULT_GAME_BALANCE,
   deriveActivityTiming,
-  migrateStoredGameStateToV4,
+  migrateStoredGameStateToV5,
   normalizeImportedGameBalance,
   reconcileGameStateWithCatalog,
   reduceGame,
@@ -74,7 +74,12 @@ function asPublishedV3(state: GameState): GameStateV3 {
       ...structuredClone(state.pet),
       location: state.pet.location === 'work-computer' ? 'computer' : state.pet.location,
     },
-    tasks: structuredClone(state.tasks),
+    tasks: {
+      active: structuredClone(state.tasks.active),
+      completedCount: state.tasks.completedCount,
+      recentTemplateIds: structuredClone(state.tasks.recentTemplateIds),
+      oneOffCompleted: structuredClone(state.tasks.oneOffCompleted),
+    },
     gameBalance: structuredClone(state.gameBalance),
     statistics: structuredClone(state.statistics),
     random: structuredClone(state.random),
@@ -248,12 +253,15 @@ describe('游戏活动存档时长快照', () => {
           selectedPostcardId: 'postcard-persistence',
           session: {
             sessionId: 'pomodoro-0',
-            status: 'running',
+            status: 'focus',
             startedAt: 3_000,
-            endsAt: 63_000,
-            durationMs: 60_000,
+            focusEndsAt: 63_000,
+            cycleEndsAt: 63_000,
+            focusDurationMs: 60_000,
+            breakDurationMs: 0,
             completedAt: null,
-            notificationIssuedAt: null,
+            focusNotificationIssuedAt: null,
+            completionNotificationIssuedAt: null,
             todoId: 'todo-study',
             postcardId: 'postcard-persistence',
           },
@@ -274,8 +282,6 @@ describe('游戏活动存档时长快照', () => {
         currentBvid: 'BV1xx411c7mD',
         currentIndex: 0,
         loopMode: 'single',
-        startAtSeconds: 12,
-        autoplay: true,
       },
     }
     expect(gameStateSchema.safeParse(state).success).toBe(true)
@@ -296,6 +302,8 @@ describe('游戏活动存档时长快照', () => {
       'videoCatalog',
       'catalogTotal',
       'categoryCounts',
+      'startAtSeconds',
+      'autoplay',
     ]) {
       expect(exported.text).not.toContain(`"${forbiddenKey}"`)
     }
@@ -357,7 +365,7 @@ describe('游戏活动存档时长快照', () => {
     if (imported.payload.schemaVersion !== 3) throw new Error('测试存档没有保留 V3 payload')
 
     const normalized = normalizeImportedGameBalance(
-      migrateStoredGameStateToV4(imported.payload, { now: startedAt + 1_000, catalog }),
+      migrateStoredGameStateToV5(imported.payload, { now: startedAt + 1_000, catalog }),
       futureDefault,
     )
     expect(normalized.gameBalance).toEqual(futureDefault)
@@ -446,7 +454,7 @@ describe('游戏活动存档时长快照', () => {
       subtle: webcrypto.subtle,
     })
     const normalized = normalizeImportedGameBalance(
-      migrateStoredGameStateToV4(imported.payload, { now: startedAt + 1_000, catalog }),
+      migrateStoredGameStateToV5(imported.payload, { now: startedAt + 1_000, catalog }),
     )
 
     expect(normalized.gameBalance).toEqual(DEFAULT_GAME_BALANCE)
@@ -464,10 +472,10 @@ describe('冻结的已发布存档兼容性', () => {
 
     expect(imported.summary.schemaVersion).toBe(1)
     expect(imported.payload.schemaVersion).toBe(1)
-    const migrated = migrateStoredGameStateToV4(imported.payload, { now: 900_000, catalog })
+    const migrated = migrateStoredGameStateToV5(imported.payload, { now: 900_000, catalog })
 
     expect(migrated).toMatchObject({
-      schemaVersion: 4,
+      schemaVersion: 5,
       profile: { displayName: '你', companionDays: 3 },
       friends: {},
     })
@@ -483,7 +491,7 @@ describe('冻结的已发布存档兼容性', () => {
 
     const migrated = reconcileGameStateWithCatalog(
       normalizeImportedGameBalance(
-        migrateStoredGameStateToV4(imported.payload, { now: 900_000, catalog }),
+        migrateStoredGameStateToV5(imported.payload, { now: 900_000, catalog }),
       ),
       catalog,
     )
@@ -525,7 +533,7 @@ describe('冻结的已发布存档兼容性', () => {
     const imported = await importBingoSave(text, importableGameStateSchema, {
       subtle: webcrypto.subtle,
     })
-    const migrated = migrateStoredGameStateToV4(imported.payload, { now: 900_000, catalog })
+    const migrated = migrateStoredGameStateToV5(imported.payload, { now: 900_000, catalog })
 
     expect(migrated.profile.debug).toBe(true)
     expect(migrated.gameBalance).toEqual({

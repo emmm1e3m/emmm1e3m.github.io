@@ -5,7 +5,7 @@ import { createInitialGameState } from '@/domain'
 import { DebugPanel } from './DebugPanel'
 
 describe('DebugPanel', () => {
-  it('把 V4 默认活动时长显示为沉浸式的一分十二秒', () => {
+  it('把 V4 默认活动时长显示为十秒', () => {
     const onAction = vi.fn()
 
     render(
@@ -16,12 +16,12 @@ describe('DebugPanel', () => {
       />,
     )
 
-    const defaultDuration = screen.getByRole('button', { name: '1 分 12 秒' })
+    const defaultDuration = screen.getByRole('button', { name: '10 秒' })
     expect(defaultDuration).toHaveAttribute('aria-pressed', 'true')
     expect(screen.queryByRole('button', { name: '112 秒' })).not.toBeInTheDocument()
 
     fireEvent.click(defaultDuration)
-    expect(onAction).toHaveBeenCalledWith({ type: 'debug/duration-set', durationMs: 72_000 })
+    expect(onAction).toHaveBeenCalledWith({ type: 'debug/duration-set', durationMs: 10_000 })
   })
 
   it('通过两步文字按钮只派发领域全收集动作', () => {
@@ -49,7 +49,7 @@ describe('DebugPanel', () => {
     })
   })
 
-  it('通过二次确认只派发领域撤销全部收集动作', () => {
+  it('通过二次确认只派发领域清空收集动作', () => {
     const onAction = vi.fn()
 
     render(
@@ -60,12 +60,12 @@ describe('DebugPanel', () => {
       />,
     )
 
-    fireEvent.click(screen.getByRole('button', { name: '一键撤销全部收集' }))
+    fireEvent.click(screen.getByRole('button', { name: '清空收集' }))
     expect(onAction).not.toHaveBeenCalled()
 
-    const confirmation = screen.getByRole('group', { name: '确认一键撤销全部收集' })
+    const confirmation = screen.getByRole('group', { name: '确认清空收集' })
     expect(within(confirmation).getByText('确认清空全部收藏和好朋友记录？')).toBeVisible()
-    fireEvent.click(within(confirmation).getByRole('button', { name: '确认撤销' }))
+    fireEvent.click(within(confirmation).getByRole('button', { name: '确认清空' }))
 
     expect(onAction).toHaveBeenCalledTimes(1)
     expect(onAction).toHaveBeenCalledWith({

@@ -2,21 +2,24 @@ import { describe, expect, it } from 'vitest'
 
 import { MAX_APPLES } from '../game/constants'
 import { createInitialGameState } from '../game/createGameState'
-import { gameStateV4Schema } from '../game/migrateGameStateV3'
+import { gameStateV5Schema } from '../game/migrateGameStateV4'
 import { reduceGame } from '../game/reducer'
 import type {
   CollectionCatalog,
   GameState,
   GameTransition,
+  TaskEvent,
   TaskId,
   TaskInstance,
 } from '../game/types'
 import {
   generateTaskBoard,
+  getTaskBoardRefreshDeadline,
   getTaskPresentation,
   getTaskProgressLabel,
   hasRetiredTask,
   isTaskCompleted,
+  refreshTaskBoardForNewDay,
   replaceRetiredTaskBoard,
   TASK_LIBRARY,
   validateTaskInstanceReachability,
@@ -57,7 +60,36 @@ function withTasks(
   }
 }
 
-describe('三任务自动刷新板', () => {
+function eventForTask(taskId: TaskId): TaskEvent {
+  switch (taskId) {
+    case 'greet-bingo':
+      return { type: 'pet-greeted' }
+    case 'open-backpack':
+      return { type: 'pet-menu-opened' }
+    case 'room-stroll':
+      return { type: 'room-visited', area: 'bed' }
+    case 'piano-time':
+    case 'two-melodies':
+      return { type: 'piano-note-played', noteId: 'C4' }
+    case 'record-time':
+      return { type: 'record-player-opened', bvid: 'BV1xx411c7mD' }
+    case 'wardrobe-choice':
+      return { type: 'room-visited', area: 'wardrobe' }
+    case 'open-memories':
+      return { type: 'collection-wall-opened' }
+    case 'revisit-two':
+    case 'remember-postcard':
+      return { type: 'collection-viewed', collectionId: 'postcard-1', category: 'postcard' }
+    case 'remember-million':
+      return { type: 'collection-viewed', collectionId: 'million-1', category: 'million-shot' }
+    case 'remember-first':
+      return { type: 'collection-viewed', collectionId: 'first-1', category: 'site-first' }
+    case 'stage-test':
+      return { type: 'stage-test-opened' }
+  }
+}
+
+describe('今日 Bingo 任务板', () => {
   it('每板恰好三条，模板与触发组均不重复', () => {
     for (let sequence = 0; sequence < 40; sequence += 1) {
       const generated = generateTaskBoard({ seed: 'board-shape', sequence, now: 100 })
@@ -90,7 +122,11 @@ describe('三任务自动刷新板', () => {
           sequences: { ...base.random.sequences, tasks: Number.MAX_SAFE_INTEGER },
         },
       },
-      [task('open-backpack', 1), task('wardrobe-choice', 1), task('stage-test')],
+      [
+        { ...task('open-backpack', 1), seenKeys: ['opened'] },
+        { ...task('wardrobe-choice', 1), seenKeys: ['wardrobe'] },
+        task('stage-test'),
+      ],
     )
     const completed = successful(
       reduceGame(
@@ -103,8 +139,10 @@ describe('三任务自动刷新板', () => {
     expect(completed.state.tasks.completedCount).toBe(Number.MAX_SAFE_INTEGER)
     expect(completed.state.statistics.applesEarned).toBe(Number.MAX_SAFE_INTEGER)
     expect(completed.state.random.sequences.tasks).toBe(Number.MAX_SAFE_INTEGER)
-    expect(completed.effects[0]).toMatchObject({ completed: true, boardRefreshed: true })
-    expect(gameStateV4Schema.safeParse(completed.state).success).toBe(true)
+    expect(completed.state.tasks.completedAt).toBe(1_000)
+    expect(completed.state.tasks.active.every(isTaskCompleted)).toBe(true)
+    expect(completed.effects[0]).toMatchObject({ completed: true })
+    expect(gameStateV5Schema.safeParse(completed.state).success).toBe(true)
   })
 
   it('最近六项会优先避开，直到候选触发组不足', () => {
@@ -239,8 +277,8 @@ describe('三任务自动刷新板', () => {
     const invalidTasks: TaskInstance[] = [
       { ...task('room-stroll'), target: 10 },
       { ...task('room-stroll', 1), seenKeys: ['not-a-room'] },
-      { ...task('piano-time'), target: 37 },
-      { ...task('piano-time', 1), seenKeys: ['piano:C3'] },
+      { ...task('piano-time'), target: 49 },
+      { ...task('piano-time', 1), seenKeys: ['piano:C2'] },
       { ...task('record-time', 1), seenKeys: ['video:not-a-bvid'] },
       { ...task('two-melodies', 1), seenKeys: ['audio:C4'] },
       { ...task('revisit-two', 1), seenKeys: ['removed-collection'] },
@@ -427,19 +465,24 @@ describe('三任务自动刷新板', () => {
     expect(state.tasks.active[0].seenKeys).toEqual(['piano:C4', 'piano:D4'])
   })
 
-  it('每条完成即时奖励苹果，第三条完成后原子刷新全新三条', () => {
-    const base = createInitialGameState({ now: 0, seed: 'refresh-board' })
+  it('第三条完成后保留全完成板，同一自然日不刷新，跨日后才生成新板', () => {
+    const assignedAt = new Date(2026, 7, 1, 12).getTime()
+    const completedAt = new Date(2026, 7, 9, 23, 58).getTime()
+    const sameDay = new Date(2026, 7, 9, 23, 59).getTime()
+    const nextDay = new Date(2026, 7, 10).getTime()
+    const base = createInitialGameState({ now: assignedAt, seed: 'refresh-board' })
     const state = withTasks(base, [
-      task('greet-bingo', 1),
-      task('wardrobe-choice', 1),
-      task('stage-test'),
+      { ...task('open-backpack', 1), assignedAt, seenKeys: ['opened'] },
+      { ...task('wardrobe-choice', 1), assignedAt, seenKeys: ['wardrobe'] },
+      { ...task('stage-test'), assignedAt },
     ])
+    const instanceIdsBefore = state.tasks.active.map((entry) => entry.instanceId)
     const sequenceBefore = state.random.sequences.tasks
     const applesBefore = state.economy.apples
     const result = successful(
       reduceGame(
         state,
-        { type: 'task/event', event: { type: 'stage-test-opened' }, now: 1_000 },
+        { type: 'task/event', event: { type: 'stage-test-opened' }, now: completedAt },
         catalog,
       ),
     )
@@ -448,17 +491,78 @@ describe('三任务自动刷新板', () => {
     expect(result.state.statistics.applesEarned).toBe(3)
     expect(result.state.tasks.completedCount).toBe(state.tasks.completedCount + 1)
     expect(result.state.tasks.oneOffCompleted).toContain('stage-test')
-    expect(result.state.tasks.active.every((entry) => entry.progress === 0)).toBe(true)
-    expect(result.state.tasks.active.some((entry) => entry.taskId === 'stage-test')).toBe(false)
-    expect(result.state.tasks.active.some((entry) => entry.taskId === 'greet-bingo')).toBe(false)
-    expect(result.state.random.sequences.tasks).toBe(sequenceBefore + 1)
+    expect(result.state.tasks.active.every(isTaskCompleted)).toBe(true)
+    expect(result.state.tasks.active.map((entry) => entry.instanceId)).toEqual(instanceIdsBefore)
+    expect(result.state.tasks.completedAt).toBe(completedAt)
+    expect(getTaskBoardRefreshDeadline(result.state.tasks)).toBe(nextDay)
+    expect(result.state.random.sequences.tasks).toBe(sequenceBefore)
     expect(result.effects).toMatchObject([
       {
         type: 'task-progressed',
         taskId: 'stage-test',
         completed: true,
         applesAwarded: 3,
-        boardRefreshed: true,
+      },
+    ])
+
+    const beforeMidnight = successful(
+      reduceGame(result.state, { type: 'clock/tick', now: sameDay }, catalog),
+    )
+    expect(beforeMidnight.state.tasks).toEqual(result.state.tasks)
+    expect(beforeMidnight.state.random.sequences.tasks).toBe(sequenceBefore)
+
+    const afterMidnight = successful(
+      reduceGame(beforeMidnight.state, { type: 'clock/tick', now: nextDay }, catalog),
+    )
+    expect(afterMidnight.state.tasks.active.map((entry) => entry.instanceId)).not.toEqual(
+      instanceIdsBefore,
+    )
+    expect(afterMidnight.state.tasks.active.every((entry) => entry.progress === 0)).toBe(true)
+    expect(afterMidnight.state.tasks.active.every((entry) => entry.assignedAt === nextDay)).toBe(
+      true,
+    )
+    expect(afterMidnight.state.tasks.completedAt).toBeNull()
+    expect(getTaskBoardRefreshDeadline(afterMidnight.state.tasks)).toBeNull()
+    expect(afterMidnight.state.random.sequences).toEqual({
+      ...beforeMidnight.state.random.sequences,
+      tasks: sequenceBefore + 1,
+    })
+  })
+
+  it('跨日后的任务事件先刷新任务板，再命中当天的新任务', () => {
+    const assignedAt = new Date(2026, 7, 8, 10).getTime()
+    const completedAt = new Date(2026, 7, 8, 18).getTime()
+    const nextDay = new Date(2026, 7, 9, 9).getTime()
+    const base = createInitialGameState({ now: assignedAt, seed: 'event-after-midnight' })
+    const withCompletedTasks = withTasks(base, [
+      { ...task('open-backpack', 1), assignedAt, seenKeys: ['opened'] },
+      { ...task('room-stroll', 2), assignedAt, seenKeys: ['bed', 'computer'] },
+      { ...task('piano-time', 1), assignedAt, seenKeys: ['piano:C4'] },
+    ])
+    const stale: GameState = {
+      ...withCompletedTasks,
+      tasks: { ...withCompletedTasks.tasks, completedAt },
+    }
+    const refreshed = refreshTaskBoardForNewDay(stale, nextDay, catalog)
+    const firstNewTask = refreshed.tasks.active[0]
+    const result = successful(
+      reduceGame(
+        stale,
+        { type: 'task/event', event: eventForTask(firstNewTask.taskId), now: nextDay },
+        catalog,
+      ),
+    )
+
+    expect(result.state.tasks.active[0]).toMatchObject({
+      instanceId: firstNewTask.instanceId,
+      progress: 1,
+    })
+    expect(result.state.random.sequences.tasks).toBe(stale.random.sequences.tasks + 1)
+    expect(result.effects).toMatchObject([
+      {
+        type: 'task-progressed',
+        instanceId: firstNewTask.instanceId,
+        taskId: firstNewTask.taskId,
       },
     ])
   })
@@ -475,7 +579,7 @@ describe('三任务自动刷新板', () => {
     expect(first.state.tasks.active[0].taskId).toBe('greet-bingo')
     expect(isTaskCompleted(first.state.tasks.active[0])).toBe(true)
     expect(first.effects).toMatchObject([
-      { type: 'task-progressed', completed: true, applesAwarded: 1, boardRefreshed: false },
+      { type: 'task-progressed', completed: true, applesAwarded: 1 },
     ])
 
     const repeated = successful(

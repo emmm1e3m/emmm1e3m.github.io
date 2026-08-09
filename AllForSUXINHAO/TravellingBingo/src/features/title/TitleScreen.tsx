@@ -18,6 +18,17 @@ export interface ImportPreview {
   companionDays: number
 }
 
+export interface CachedSavePreview {
+  updatedAt: number
+  gameVersion: string
+  apples: number
+  collectionCount: number
+  activityLabel: string
+  debug: boolean
+  displayName: string
+  companionDays: number
+}
+
 export type UpdateCheckStatus = 'idle' | 'checking' | 'checked' | 'unsupported' | 'error'
 
 export interface TitleScreenProps {
@@ -25,8 +36,10 @@ export interface TitleScreenProps {
   available: boolean
   error: string | null
   importPreview: ImportPreview | null
+  cachedPreview: CachedSavePreview | null
   debugUnlocked: boolean
   onStart: (displayName: string) => void
+  onContinueCached: () => void
   onFile: (file: File) => void
   onConfirmImport: () => void
   onCancelImport: () => void
@@ -34,17 +47,6 @@ export interface TitleScreenProps {
   onTitleActivate: () => void
   updateCheckStatus: UpdateCheckStatus
   onCheckForUpdates: () => void
-}
-
-const UPDATE_CHECK_COPY: Readonly<Record<UpdateCheckStatus, { button: string; status: string }>> = {
-  idle: { button: '检查新布置', status: '进入前，可以先看看饼屋有没有新布置。' },
-  checking: { button: '正在检查新布置…', status: '正在向门外张望，请稍等。' },
-  checked: { button: '再检查一次', status: '已经检查过，现在看到的是最新布置。' },
-  unsupported: {
-    button: '检查新布置',
-    status: '这里暂时不能自动检查；刷新页面也可以重新查看布置。',
-  },
-  error: { button: '重新检查新布置', status: '刚才没能看清，再试一次吧。' },
 }
 
 function formatExportTime(value: number) {
@@ -63,8 +65,10 @@ export function TitleScreen({
   available,
   error,
   importPreview,
+  cachedPreview,
   debugUnlocked,
   onStart,
+  onContinueCached,
   onFile,
   onConfirmImport,
   onCancelImport,
@@ -118,7 +122,36 @@ export function TitleScreen({
 
           <p className="landing-intro">和饼狗一起，从铲铲饼屋出发</p>
 
-          {importPreview ? (
+          <nav className="landing-social-links" aria-label="微博主页">
+            <a
+              href="https://www.weibo.com/u/7878664767"
+              target="_blank"
+              rel="noreferrer noopener"
+              aria-label="打开微博主页 7878664767"
+            >
+              <img
+                src={publicAsset('assets/links/weibo-7878664767.jpg')}
+                alt="微博用户 7878664767 的头像"
+                width="180"
+                height="180"
+              />
+            </a>
+            <a
+              href="https://weibo.com/7760819929"
+              target="_blank"
+              rel="noreferrer noopener"
+              aria-label="打开微博主页 7760819929"
+            >
+              <img
+                src={publicAsset('assets/links/weibo-7760819929.jpg')}
+                alt="微博用户 7760819929 的头像"
+                width="180"
+                height="180"
+              />
+            </a>
+          </nav>
+
+          {importPreview && (
             <section className="landing-import" aria-label="存档摘要">
               <div className="landing-import__topline">
                 <span className="landing-tag">找到回家的路</span>
@@ -127,7 +160,7 @@ export function TitleScreen({
               <strong className="landing-import__filename">{importPreview.fileName}</strong>
               <dl>
                 <div>
-                  <dt>饼狗的称呼</dt>
+                  <dt>你的称呼</dt>
                   <dd>{importPreview.displayName}</dd>
                 </div>
                 <div>
@@ -159,6 +192,7 @@ export function TitleScreen({
                 <button
                   className="landing-button landing-button--primary"
                   type="button"
+                  disabled={loading}
                   onClick={onConfirmImport}
                 >
                   进入这次旅程
@@ -166,75 +200,102 @@ export function TitleScreen({
                 <button
                   className="landing-button landing-button--quiet"
                   type="button"
+                  disabled={loading}
                   onClick={onCancelImport}
                 >
                   换一个文件
                 </button>
               </div>
             </section>
-          ) : (
-            <form className="landing-new-game" onSubmit={startJourney} noValidate>
-              <label className="landing-name-field">
-                <span>想让饼狗怎么称呼你？</span>
+          )}
+
+          <section className="landing-cache" aria-label="缓存存档摘要">
+            {cachedPreview ? (
+              <>
+                <div>
+                  <strong>{cachedPreview.displayName}</strong>
+                  <span>
+                    {cachedPreview.companionDays === 0
+                      ? '今天刚见面'
+                      : `一起走过 ${cachedPreview.companionDays} 天`}
+                  </span>
+                </div>
+                <span className="numeric-copy">
+                  {cachedPreview.apples}🍎 · {cachedPreview.collectionCount} 件收藏 ·{' '}
+                  {formatExportTime(cachedPreview.updatedAt)}
+                </span>
+              </>
+            ) : (
+              <span>这个浏览器里还没有缓存存档</span>
+            )}
+          </section>
+
+          <form className="landing-new-game" onSubmit={startJourney} noValidate>
+            <label className="landing-name-field">
+              <span>想让饼狗怎么称呼你？</span>
+              <input
+                type="text"
+                value={displayName}
+                autoComplete="nickname"
+                placeholder="输入你的称呼"
+                aria-describedby="display-name-hint"
+                aria-invalid={nameTouched && !validName}
+                onChange={(event) => {
+                  setDisplayName(event.currentTarget.value)
+                  setNameTouched(true)
+                }}
+              />
+            </label>
+            <p
+              className={`landing-name-hint ${nameTouched && !validName ? 'is-error' : ''}`}
+              id="display-name-hint"
+            >
+              {nameTouched && !validName
+                ? `请输入 1 到 ${MAX_DISPLAY_NAME_LENGTH} 个字符的称呼`
+                : `最多 ${MAX_DISPLAY_NAME_LENGTH} 个字符，之后也会写进存档`}
+            </p>
+            <div className="landing-actions landing-actions--entries">
+              <button
+                className="landing-button landing-button--primary"
+                type="submit"
+                disabled={loading || !available}
+              >
+                {loading ? '正在准备饼屋…' : available ? '新存档' : '收藏目录暂不可用'}
+              </button>
+              <button
+                className="landing-button landing-button--quiet"
+                type="button"
+                disabled={loading || !available || !cachedPreview}
+                onClick={onContinueCached}
+              >
+                从缓存存档继续
+              </button>
+              <label
+                className="landing-button landing-button--quiet"
+                aria-disabled={loading || !available}
+              >
+                加载本地存档
                 <input
-                  type="text"
-                  value={displayName}
-                  autoComplete="nickname"
-                  placeholder="输入你的称呼"
-                  aria-describedby="display-name-hint"
-                  aria-invalid={nameTouched && !validName}
-                  onChange={(event) => {
-                    setDisplayName(event.currentTarget.value)
-                    setNameTouched(true)
-                  }}
+                  className="visually-hidden"
+                  aria-label="加载本地存档"
+                  type="file"
+                  accept=".bingo,application/octet-stream,application/json"
+                  disabled={loading || !available}
+                  onChange={handleFile}
                 />
               </label>
-              <p
-                className={`landing-name-hint ${nameTouched && !validName ? 'is-error' : ''}`}
-                id="display-name-hint"
-              >
-                {nameTouched && !validName
-                  ? `请输入 1 到 ${MAX_DISPLAY_NAME_LENGTH} 个字符的称呼`
-                  : `最多 ${MAX_DISPLAY_NAME_LENGTH} 个字符，之后也会写进存档`}
-              </p>
-              <div className="landing-actions">
-                <button
-                  className="landing-button landing-button--primary"
-                  type="submit"
-                  disabled={loading || !available}
-                >
-                  {loading ? '正在准备饼屋…' : available ? '开始新旅程' : '收藏目录暂不可用'}
-                </button>
-                <label
-                  className="landing-button landing-button--quiet"
-                  aria-disabled={loading || !available}
-                >
-                  读取 .bingo 存档
-                  <input
-                    className="visually-hidden"
-                    type="file"
-                    accept=".bingo,application/octet-stream,application/json"
-                    disabled={loading || !available}
-                    onChange={handleFile}
-                  />
-                </label>
-              </div>
-            </form>
-          )}
+            </div>
+          </form>
 
           <section className="landing-update" aria-label="检查游戏更新">
             <button
-              className="landing-update__button"
+              className="landing-button landing-button--quiet landing-update__button"
               type="button"
               disabled={updateCheckStatus === 'checking'}
               onClick={onCheckForUpdates}
             >
-              <span aria-hidden="true">🏠</span>
-              {UPDATE_CHECK_COPY[updateCheckStatus].button}
+              {updateCheckStatus === 'checking' ? '正在检查新布置…' : '检查新布置'}
             </button>
-            <p role="status" aria-live="polite">
-              {UPDATE_CHECK_COPY[updateCheckStatus].status}
-            </p>
           </section>
 
           {error && (

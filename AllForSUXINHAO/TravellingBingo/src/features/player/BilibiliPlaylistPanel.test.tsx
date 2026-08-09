@@ -1,25 +1,84 @@
 import { fireEvent, render, screen, within } from '@testing-library/react'
+import { type PropsWithChildren, useState } from 'react'
 
-import { BilibiliPlayerProvider } from './BilibiliPlayerProvider'
+import type { GameAction, MusicPlayerState } from '@/domain/game/types'
+
+import { BilibiliPlayerProvider, PersistentPlayerDock } from './BilibiliPlayerProvider'
 import { BilibiliPlaylistPanel } from './BilibiliPlaylistPanel'
 import { parseBilibiliTrackReference, type BilibiliPlayerTrack } from './playerModel'
+
+type MusicPlayerAction = Extract<GameAction, { type: `music/${string}` }>
 
 const resolvedTrack: BilibiliPlayerTrack = {
   ...parseBilibiliTrackReference('BV1xx411c7mD')!,
   title: '视频一',
   authorName: '测试作者',
+  durationSeconds: 21,
+}
+
+function PanelHarness({ children }: PropsWithChildren) {
+  const [state, setState] = useState<MusicPlayerState>({
+    playlists: {},
+    order: [],
+    activePlaylistId: null,
+    currentBvid: null,
+    currentIndex: 0,
+    loopMode: 'list',
+  })
+
+  function onAction(action: MusicPlayerAction) {
+    setState((current) => {
+      switch (action.type) {
+        case 'music/playlist-create':
+          return {
+            ...current,
+            playlists: {
+              ...current.playlists,
+              [action.playlistId]: {
+                id: action.playlistId,
+                name: action.name,
+                bvids: [...(action.bvids ?? [])],
+                createdAt: action.now,
+                updatedAt: action.now,
+              },
+            },
+            order: [...current.order, action.playlistId],
+          }
+        case 'music/playlist-select':
+          return { ...current, activePlaylistId: action.playlistId }
+        case 'music/track-select':
+          return { ...current, currentBvid: action.bvid, currentIndex: action.index }
+        case 'music/loop-set':
+          return { ...current, loopMode: action.loopMode }
+        default:
+          return current
+      }
+    })
+  }
+
+  return (
+    <BilibiliPlayerProvider
+      state={state}
+      onAction={onAction}
+      resolveTrack={(bvid) => (bvid === resolvedTrack.bvid ? resolvedTrack : undefined)}
+      now={() => 1234}
+    >
+      {children}
+      <PersistentPlayerDock />
+    </BilibiliPlayerProvider>
+  )
 }
 
 describe('BilibiliPlaylistPanel', () => {
-  it('可访问地命名、逐行解析、去重并以自动播放和指定起点选曲', () => {
+  it('可访问地命名、逐行解析、去重并立即选中第一首', () => {
     const onPlaylistLoaded = vi.fn()
     render(
-      <BilibiliPlayerProvider>
+      <PanelHarness>
         <BilibiliPlaylistPanel
           resolveTrack={(bvid) => (bvid === resolvedTrack.bvid ? resolvedTrack : undefined)}
           onPlaylistLoaded={onPlaylistLoaded}
         />
-      </BilibiliPlayerProvider>,
+      </PanelHarness>,
     )
 
     fireEvent.change(screen.getByLabelText('播放列表名称'), {
@@ -47,26 +106,19 @@ describe('BilibiliPlaylistPanel', () => {
     expect(onPlaylistLoaded).toHaveBeenCalledWith('舞台 收藏', ['BV1xx411c7mD', 'BV1B7411m7LV'])
     expect(screen.getByTitle('Bilibili 外链播放器：视频一')).toBeInTheDocument()
 
-    fireEvent.change(screen.getByLabelText('起播位置（秒）'), {
-      target: { value: '12' },
-    })
-    fireEvent.click(within(trackList).getByRole('button', { name: /视频一/u }))
-
-    const iframe = screen.getByTitle<HTMLIFrameElement>('Bilibili 外链播放器：视频一')
-    const url = new URL(iframe.src)
-    expect(url.searchParams.get('autoplay')).toBe('1')
-    expect(url.searchParams.get('t')).toBe('12')
+    expect(screen.queryByLabelText('起播位置（秒）')).not.toBeInTheDocument()
+    expect(screen.queryByText('从这里重新打开')).not.toBeInTheDocument()
+    expect(screen.queryByText(/外链播放器不会/u)).not.toBeInTheDocument()
 
     fireEvent.click(screen.getByRole('button', { name: '随机' }))
     expect(screen.getByRole('button', { name: '随机' })).toHaveAttribute('aria-pressed', 'true')
-    expect(screen.getByText(/不会假装自动续播/u)).toBeInTheDocument()
   })
 
   it('空输入和空名称使用明确错误，不替换现有列表', () => {
     render(
-      <BilibiliPlayerProvider>
+      <PanelHarness>
         <BilibiliPlaylistPanel initialName="" />
-      </BilibiliPlayerProvider>,
+      </PanelHarness>,
     )
 
     fireEvent.click(screen.getByRole('button', { name: '载入这个列表' }))

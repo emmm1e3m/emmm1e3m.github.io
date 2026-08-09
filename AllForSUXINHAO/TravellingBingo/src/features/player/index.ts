@@ -1,4 +1,9 @@
-export { BilibiliPlayerProvider } from './BilibiliPlayerProvider'
+export {
+  BilibiliPlayerProvider,
+  PersistentPlayerDock,
+  type BilibiliPlayerProviderProps,
+  type PersistentPlayerDockProps,
+} from './BilibiliPlayerProvider'
 export { BilibiliPlaylistPanel } from './BilibiliPlaylistPanel'
 export {
   BilibiliPlayerContext,
@@ -6,13 +11,13 @@ export {
   useOptionalBilibiliPlayerController,
 } from './playerContext'
 export {
-  BILIBILI_PLAYER_CAPABILITIES,
   bilibiliPlayerRequestIdentity,
-  createInitialBilibiliPlayerState,
-  reduceBilibiliPlayerState,
+  createInitialBilibiliPlayerRuntimeState,
+  reduceBilibiliPlayerRuntimeState,
   type BilibiliPlayerController,
   type BilibiliPlayerRequest,
   type BilibiliPlayerRequestOrigin,
+  type BilibiliPlayerRuntimeState,
   type BilibiliPlayerState,
   type RequestBilibiliTrackOptions,
 } from './playerController'
@@ -23,9 +28,9 @@ export {
   canonicalBilibiliVideoUrl,
   createNamedBilibiliPlaylist,
   deduplicateTracks,
+  endedTrackIndex,
   isBilibiliBvid,
   normalizePlaylistName,
-  normalizeStartAtSeconds,
   parseBilibiliPlaylistInput,
   parseBilibiliTrackReference,
   PLAYLIST_NAME_MAX_LENGTH,

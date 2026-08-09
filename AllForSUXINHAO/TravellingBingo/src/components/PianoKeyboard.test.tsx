@@ -86,46 +86,48 @@ describe('PianoKeyboard', () => {
     })
   })
 
-  it('按三个完整八度渲染三排 36 键，且中排从 C5 开始', () => {
+  it('从高到低渲染四个完整八度和 48 个琴键', () => {
     render(<PianoKeyboard />)
 
-    expect(screen.getAllByRole('button')).toHaveLength(36)
+    expect(screen.getAllByRole('button')).toHaveLength(48)
     const octaveGroups = screen.getAllByRole('group')
-    expect(octaveGroups).toHaveLength(3)
+    expect(octaveGroups).toHaveLength(4)
     expect(octaveGroups.map((group) => group.getAttribute('aria-label'))).toEqual([
-      'C4 到 B4 琴键',
-      'C5 到 B5 琴键',
       'C6 到 B6 琴键',
+      'C5 到 B5 琴键',
+      'C4 到 B4 琴键',
+      'C3 到 B3 琴键',
     ])
     for (const group of octaveGroups) expect(within(group).getAllByRole('button')).toHaveLength(12)
 
-    const middleOctave = screen.getByRole('group', { name: 'C5 到 B5 琴键' })
-    expect(within(middleOctave).getAllByRole('button')[0]).toHaveAccessibleName('C5，键盘 A')
-    expect(screen.getByRole('button', { name: 'C4，键盘 Z' })).toBeInTheDocument()
-    expect(screen.getByRole('button', { name: 'B6，键盘 U' })).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: 'C6，键盘 1' })).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: 'B6，键盘 7' })).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: 'C5，键盘 Q' })).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: 'C4，键盘 A' })).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: 'C3，键盘 Z' })).toBeInTheDocument()
   })
 
-  it('只给 21 个白键分配唯一电脑按键，黑键没有键盘映射', () => {
+  it('只给 28 个白键分配唯一电脑按键，黑键没有键盘映射', () => {
     const onNote = vi.fn()
     const { container } = render(<PianoKeyboard onNote={onNote} />)
     const whiteNotes = PIANO_NOTES.filter((note) => !note.black)
     const blackNotes = PIANO_NOTES.filter((note) => note.black)
 
-    expect(whiteNotes).toHaveLength(21)
-    expect(blackNotes).toHaveLength(15)
+    expect(whiteNotes).toHaveLength(28)
+    expect(blackNotes).toHaveLength(20)
     expect(whiteNotes.every((note) => note.key !== null)).toBe(true)
-    expect(new Set(whiteNotes.map((note) => note.key))).toHaveLength(21)
+    expect(new Set(whiteNotes.map((note) => note.key))).toHaveLength(28)
     expect(blackNotes.every((note) => note.key === null)).toBe(true)
-    expect(container.querySelectorAll('.piano-key[aria-label*="键盘"]')).toHaveLength(21)
+    expect(container.querySelectorAll('.piano-key[aria-label*="键盘"]')).toHaveLength(28)
     expect(screen.getByRole('button', { name: 'C#5' })).toBeInTheDocument()
 
-    fireEvent.keyDown(window, { key: '2' })
+    fireEvent.keyDown(window, { key: '8' })
     expect(contexts).toHaveLength(0)
     expect(onNote).not.toHaveBeenCalled()
   })
 
   it('把每排黑键放在相邻白键的正确边界上', () => {
-    for (const octave of [4, 5, 6] as const) {
+    for (const octave of [3, 4, 5, 6] as const) {
       const boundaries = PIANO_NOTES.filter((note) => note.octave === octave && note.black).map(
         (note) => note.boundaryIndex,
       )
@@ -137,13 +139,13 @@ describe('PianoKeyboard', () => {
     render(<PianoKeyboard />)
 
     expect(
-      screen.getByText('从 A5 G5 G5 B5 G5 E5 G5 G5 B4 C5，D5 C5 A5 A5 A5 B5 B5 B5 B5 C6 开始试试'),
+      screen.getByText('C6 B5 G5 E5 G5 C6 B5 G5 E5 G5 E5，C6 B5 G5 E5 G5 C6 D6 C6 D6 E6 E6'),
     ).toBeInTheDocument()
-    expect(screen.getByText('饼狗的小钢琴')).toBeVisible()
-    expect(screen.queryByText(/[两三]八度/u)).not.toBeInTheDocument()
+    expect(screen.queryByText('饼狗的小钢琴')).not.toBeInTheDocument()
+    expect(screen.queryByText(/[两三四]八度/u)).not.toBeInTheDocument()
   })
 
-  it('琴体和三排琴键都裁切溢出，不产生横向或纵向滚动条', () => {
+  it('琴体和四排琴键都裁切溢出，不产生横向或纵向滚动条', () => {
     const { container } = render(<PianoKeyboard />)
     const clippedElements = container.querySelectorAll(
       '.piano, .piano__rows, .piano__row, .piano__keys',
@@ -162,31 +164,31 @@ describe('PianoKeyboard', () => {
     const { unmount } = render(<PianoKeyboard onNote={onNote} />)
 
     fireEvent.keyDown(window, { key: 'z' })
-    await waitFor(() => expect(onNote).toHaveBeenCalledWith('C4'))
+    await waitFor(() => expect(onNote).toHaveBeenCalledWith('C3'))
 
     const context = contexts[0]
-    const c4 = PIANO_NOTES.find((note) => note.id === 'C4')
+    const c3 = PIANO_NOTES.find((note) => note.id === 'C3')
     expect(context.oscillators).toHaveLength(3)
     expect(context.oscillators.map((oscillator) => oscillator.type)).toEqual([
       'triangle',
       'sine',
       'sine',
     ])
-    expect(context.oscillators[0]?.frequency.setValueAtTime).toHaveBeenCalledWith(c4?.frequency, 0)
+    expect(context.oscillators[0]?.frequency.setValueAtTime).toHaveBeenCalledWith(c3?.frequency, 0)
     expect(context.oscillators[1]?.frequency.setValueAtTime).toHaveBeenCalledWith(
-      (c4?.frequency ?? 0) * 2,
+      (c3?.frequency ?? 0) * 2,
       0,
     )
     expect(context.oscillators[2]?.frequency.setValueAtTime).toHaveBeenCalledWith(
-      (c4?.frequency ?? 0) * 3,
+      (c3?.frequency ?? 0) * 3,
       0,
     )
     expect(context.gains).toHaveLength(4)
 
     const envelope = context.gains[0]
     expect(envelope?.gain.setValueAtTime).toHaveBeenCalledWith(0.0001, 0)
-    expect(envelope?.gain.exponentialRampToValueAtTime).toHaveBeenNthCalledWith(1, 0.22, 0.008)
-    expect(envelope?.gain.exponentialRampToValueAtTime).toHaveBeenNthCalledWith(2, 0.075, 0.09)
+    expect(envelope?.gain.exponentialRampToValueAtTime).toHaveBeenNthCalledWith(1, 0.33, 0.008)
+    expect(envelope?.gain.exponentialRampToValueAtTime).toHaveBeenNthCalledWith(2, 0.1125, 0.09)
     expect(envelope?.gain.setTargetAtTime).toHaveBeenCalledWith(0.0001, 0.09, 0.32)
     expect(
       context.gains.slice(1).map((gain) => gain.gain.setValueAtTime.mock.calls[0]?.[0]),
@@ -247,7 +249,7 @@ describe('PianoKeyboard', () => {
     )
 
     fireEvent.keyDown(window, { key: 'z' })
-    await waitFor(() => expect(onNote).toHaveBeenCalledWith('C4'))
+    await waitFor(() => expect(onNote).toHaveBeenCalledWith('C3'))
     const context = contexts[0]
 
     screen.getByTestId('piano-host').setAttribute('inert', '')

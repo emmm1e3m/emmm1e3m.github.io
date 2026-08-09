@@ -112,6 +112,7 @@ const fixedAssetEntries = precacheEntries.filter(
     entry.url.startsWith('assets/game/') ||
     entry.url.startsWith('assets/fonts/') ||
     entry.url.startsWith('assets/friends/') ||
+    entry.url.startsWith('assets/links/') ||
     entry.url.startsWith('icons/') ||
     entry.url === 'data/friends.json' ||
     entry.url === 'data/video-catalog.json' ||
@@ -171,6 +172,7 @@ function isAllowedGameFile(relativePath) {
     /^assets\/game\/[a-z0-9][a-z0-9-]*\.webp$/u.test(relativePath) ||
     /^assets\/fonts\/[A-Za-z0-9][A-Za-z0-9._-]*\.woff2$/u.test(relativePath) ||
     /^assets\/friends\/[a-z0-9][a-z0-9-]*\.webp$/u.test(relativePath) ||
+    /^assets\/links\/weibo-[0-9]+\.jpg$/u.test(relativePath) ||
     /^assets\/collectibles\/(?:million-shots|postcards|site-firsts)\/[a-z0-9][a-z0-9-]*\.webp$/u.test(
       relativePath,
     ) ||
@@ -188,6 +190,7 @@ const allowedGameDirectories = new Set([
   'assets/fonts',
   'assets/friends',
   'assets/game',
+  'assets/links',
   'data',
   'icons',
 ])
@@ -220,6 +223,7 @@ for (const relativePath of publishedGameFiles.filter(
     entry.startsWith('assets/game/') ||
     entry.startsWith('assets/fonts/') ||
     entry.startsWith('assets/friends/') ||
+    entry.startsWith('assets/links/') ||
     entry.startsWith('icons/') ||
     entry === 'data/friends.json' ||
     entry === 'data/video-catalog.json' ||
@@ -248,6 +252,14 @@ const publishedFriendFiles = publishedGameFiles
   .sort()
 if (JSON.stringify(publishedFriendFiles) !== JSON.stringify(expectedFriendFiles)) {
   throw new Error(`发布包好友图鉴目录不精确：实际 ${publishedFriendFiles.join(', ') || '为空'}`)
+}
+
+const expectedLinkFiles = ['assets/links/weibo-7760819929.jpg', 'assets/links/weibo-7878664767.jpg']
+const publishedLinkFiles = publishedGameFiles
+  .filter((entry) => entry.startsWith('assets/links/'))
+  .sort()
+if (JSON.stringify(publishedLinkFiles) !== JSON.stringify(expectedLinkFiles)) {
+  throw new Error(`发布包微博头像目录不精确：实际 ${publishedLinkFiles.join(', ') || '为空'}`)
 }
 for (const dataFile of ['data/friends.json', 'data/video-catalog.json']) {
   if (!publishedGameFiles.includes(dataFile)) {

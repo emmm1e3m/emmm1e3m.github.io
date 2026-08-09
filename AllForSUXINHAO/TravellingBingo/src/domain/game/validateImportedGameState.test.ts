@@ -1,5 +1,5 @@
 import { createInitialGameState } from './createGameState'
-import { gameStateV4Schema } from './migrateGameStateV3'
+import { gameStateV5Schema } from './migrateGameStateV4'
 import type { ActivityRun, CollectionCatalog, GameState } from './types'
 import { validateImportedGameState } from './validateImportedGameState'
 
@@ -141,8 +141,8 @@ describe('导入存档与当前收藏目录的一致性', () => {
     })
   })
 
-  it('拒绝三条任务都已完成却没有自动刷新的停滞任务板', () => {
-    const state = createInitialGameState({ now: 1_000, seed: 'stalled-task-board' })
+  it('接受同日保留并记录完成时间的全完成任务板', () => {
+    const state = createInitialGameState({ now: 1_000, seed: 'completed-task-board' })
     state.tasks.active = [
       {
         instanceId: 'completed-backpack',
@@ -163,19 +163,32 @@ describe('导入存档与当前收藏目录的一致性', () => {
         seenKeys: ['bed', 'computer', 'wardrobe'],
       },
       {
-        instanceId: 'completed-piano',
-        taskId: 'piano-time',
+        instanceId: 'completed-stage-test',
+        taskId: 'stage-test',
         assignedAt: 1_000,
         progress: 1,
         target: 1,
-        rewardApples: 1,
-        seenKeys: ['piano:C4'],
+        rewardApples: 3,
+        seenKeys: ['opened'],
       },
     ]
+    state.tasks.completedAt = 2_000
+    state.tasks.oneOffCompleted = ['stage-test']
 
-    expect(validateImportedGameState(state, catalog)).toMatchObject({
+    expect(validateImportedGameState(state, catalog)).toEqual({ ok: true })
+
+    const missingCompletionTime = structuredClone(state)
+    missingCompletionTime.tasks.completedAt = null
+    expect(validateImportedGameState(missingCompletionTime, catalog)).toMatchObject({
       ok: false,
-      code: 'TASK_BOARD_STALLED',
+      code: 'TASK_BOARD_INVALID',
+    })
+
+    const earlyCompletionTime = structuredClone(state)
+    earlyCompletionTime.tasks.completedAt = 999
+    expect(validateImportedGameState(earlyCompletionTime, catalog)).toMatchObject({
+      ok: false,
+      code: 'TASK_BOARD_INVALID',
     })
   })
 
@@ -186,7 +199,7 @@ describe('导入存档与当前收藏目录的一致性', () => {
     task.progress = 0
     task.seenKeys = ['opened']
 
-    expect(gameStateV4Schema.safeParse(state).success).toBe(true)
+    expect(gameStateV5Schema.safeParse(state).success).toBe(true)
     expect(validateImportedGameState(state, catalog)).toMatchObject({
       ok: false,
       code: 'TASK_BOARD_INVALID',
@@ -225,7 +238,7 @@ describe('导入存档与当前收藏目录的一致性', () => {
       },
     ]
 
-    expect(gameStateV4Schema.safeParse(state).success).toBe(true)
+    expect(gameStateV5Schema.safeParse(state).success).toBe(true)
     expect(validateImportedGameState(state, catalog)).toMatchObject({
       ok: false,
       code: 'TASK_BOARD_INVALID',

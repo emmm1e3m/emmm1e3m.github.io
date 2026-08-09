@@ -2,7 +2,7 @@
 export const LEGACY_ACTIVITY_DURATION_MS = 112_000
 
 /** V4 起的默认读条时长。进行中活动仍以自身 startedAt/endsAt 为准。 */
-export const BASE_ACTIVITY_DURATION_MS = 72_000
+export const BASE_ACTIVITY_DURATION_MS = 10_000
 export const BASE_ACTIVITY_DURATION_MINUTES = BASE_ACTIVITY_DURATION_MS / 60_000
 
 export const INITIAL_APPLES = 18
@@ -27,7 +27,7 @@ export const ITEM_PRICES = {
   'signal-headphones': 4,
   'trend-toolbox': 7,
   'lucky-apple': 6,
-  'bottled-speed-magic': 8,
+  'bottled-speed-magic': 3,
   'bottled-vitality-magic': 12,
 } as const
 
@@ -41,45 +41,30 @@ export const INITIAL_INVENTORY = {
   'bottled-vitality-magic': 0,
 } as const
 
-/** 三排琴键固定为 C4–B6；中排 C 为 C5。 */
-export const PIANO_NOTE_IDS = [
-  'C4',
-  'C#4',
-  'D4',
-  'D#4',
-  'E4',
-  'F4',
-  'F#4',
-  'G4',
-  'G#4',
-  'A4',
-  'A#4',
-  'B4',
-  'C5',
-  'C#5',
-  'D5',
-  'D#5',
-  'E5',
-  'F5',
-  'F#5',
-  'G5',
-  'G#5',
-  'A5',
-  'A#5',
-  'B5',
-  'C6',
-  'C#6',
-  'D6',
-  'D#6',
-  'E6',
-  'F6',
-  'F#6',
-  'G6',
-  'G#6',
-  'A6',
-  'A#6',
-  'B6',
+export const PIANO_NOTE_NAMES = [
+  'C',
+  'C#',
+  'D',
+  'D#',
+  'E',
+  'F',
+  'F#',
+  'G',
+  'G#',
+  'A',
+  'A#',
+  'B',
 ] as const
+export const PIANO_OCTAVES = [3, 4, 5, 6] as const
+
+export type PianoNoteName = (typeof PIANO_NOTE_NAMES)[number]
+export type PianoOctave = (typeof PIANO_OCTAVES)[number]
+export type PianoNoteId = `${PianoNoteName}${PianoOctave}`
+
+/** C3–B6 四个完整八度的唯一琴键 ID 来源；界面按相反顺序从高到低展示。 */
+export const PIANO_NOTE_IDS: readonly PianoNoteId[] = PIANO_OCTAVES.flatMap((octave) =>
+  PIANO_NOTE_NAMES.map((name) => `${name}${octave}` as PianoNoteId),
+)
 
 /** 三类收藏活动不直接奖励苹果；睡觉与音乐好友奖励由各自计划单独定义。 */
 export const ACTIVITY_APPLE_REWARDS = {
@@ -127,6 +112,32 @@ export const PET_ENCOURAGEMENT_APPLE_COST = 2
 export const VITALITY_MAGIC_COMPANION_DAYS = 7
 export const REALITY_REWARD_INTERVAL_MS = 10 * 60 * 1_000
 export const DEFAULT_POMODORO_DURATION_MS = 25 * 60 * 1_000
+export const POMODORO_PRESETS = [
+  {
+    id: 'classic',
+    focusDurationMs: 25 * 60 * 1_000,
+    breakDurationMs: 5 * 60 * 1_000,
+    label: '25 分钟',
+    description: '专注 25 分钟，休息 5 分钟',
+  },
+  {
+    id: 'deep',
+    focusDurationMs: 50 * 60 * 1_000,
+    breakDurationMs: 10 * 60 * 1_000,
+    label: '50 分钟',
+    description: '专注 50 分钟，休息 10 分钟',
+  },
+  {
+    id: 'long',
+    focusDurationMs: 90 * 60 * 1_000,
+    breakDurationMs: 15 * 60 * 1_000,
+    label: '90 分钟',
+    description: '专注 90 分钟，休息 15 分钟',
+  },
+] as const
+export type PomodoroPreset = (typeof POMODORO_PRESETS)[number]
+export const DEFAULT_POMODORO_BREAK_DURATION_MS = POMODORO_PRESETS[0].breakDurationMs
+/** V4 严格导入仍需接受历史任意时长；V5 新会话只接受 POMODORO_PRESETS。 */
 export const MIN_POMODORO_DURATION_MS = 1_000
 export const MAX_POMODORO_DURATION_MS = 24 * 60 * 60 * 1_000
 export const MAX_TODOS = 200

@@ -119,7 +119,7 @@ export function DebugPanel({ game, onAction, onBackup }: DebugPanelProps) {
               type="button"
               onClick={() => setPendingBulkAction('clear-all')}
             >
-              一键撤销全部收集
+              清空收集
             </button>
           </>
         ) : pendingBulkAction === 'collect-all' ? (
@@ -139,7 +139,7 @@ export function DebugPanel({ game, onAction, onBackup }: DebugPanelProps) {
             </button>
           </div>
         ) : (
-          <div className="debug-confirm" role="group" aria-label="确认一键撤销全部收集">
+          <div className="debug-confirm" role="group" aria-label="确认清空收集">
             <strong>确认清空全部收藏和好朋友记录？</strong>
             <button
               className="debug-action--danger"
@@ -149,7 +149,7 @@ export function DebugPanel({ game, onAction, onBackup }: DebugPanelProps) {
                 setPendingBulkAction(null)
               }}
             >
-              确认撤销
+              确认清空
             </button>
             <button type="button" onClick={() => setPendingBulkAction(null)}>
               取消

@@ -9,14 +9,38 @@ import {
 } from './constants'
 import { createInitialGameState } from './createGameState'
 import { gameStateV4Schema, isStrictGameStateV4 } from './migrateGameStateV3'
-import type { GameState, MusicPlaylist, PomodoroSession, TodoItem } from './types'
+import type { GameStateV4, MusicPlaylist, PomodoroSessionV4, TodoItem } from './types'
 import { MAX_DATE_TIMESTAMP_MS } from './time'
 
 const FIRST_BVID = 'BV1234567890'
 const SECOND_BVID = 'BVabcdefghij'
 
-function initialState(): GameState {
-  return createInitialGameState({ now: 1_000, seed: 'v4-schema', displayName: '测试玩家' })
+function initialState(): GameStateV4 {
+  const current = createInitialGameState({
+    now: 1_000,
+    seed: 'v4-schema',
+    displayName: '测试玩家',
+  })
+  const tasks = {
+    active: current.tasks.active,
+    completedCount: current.tasks.completedCount,
+    recentTemplateIds: current.tasks.recentTemplateIds,
+    oneOffCompleted: current.tasks.oneOffCompleted,
+  }
+  return {
+    ...current,
+    schemaVersion: 4,
+    tasks,
+    reality: {
+      ...current.reality,
+      pomodoro: { ...current.reality.pomodoro, session: null },
+    },
+    musicPlayer: {
+      ...current.musicPlayer,
+      startAtSeconds: 0,
+      autoplay: true,
+    },
+  }
 }
 
 function todo(id = 'todo-1'): TodoItem {
@@ -34,7 +58,7 @@ function todo(id = 'todo-1'): TodoItem {
 function runningPomodoro(
   durationMs = MIN_POMODORO_DURATION_MS,
   todoId: string | null = 'todo-1',
-): PomodoroSession {
+): PomodoroSessionV4 {
   const startedAt = 3_000
   return {
     sessionId: 'pomodoro-1',
@@ -49,7 +73,7 @@ function runningPomodoro(
   }
 }
 
-function completedPomodoro(): PomodoroSession {
+function completedPomodoro(): PomodoroSessionV4 {
   const session = runningPomodoro()
   return {
     ...session,
@@ -76,7 +100,7 @@ describe('GameState V4 严格 schema', () => {
       ...state.reality.pomodoro.session,
       phase: 'running',
     }
-    state.reality.pomodoro.session = sessionWithDerivedPhase as PomodoroSession
+    state.reality.pomodoro.session = sessionWithDerivedPhase as PomodoroSessionV4
     expect(isStrictGameStateV4(state)).toBe(false)
   })
 
@@ -254,7 +278,7 @@ describe('现实待办与苹果钟不变量', () => {
 })
 
 describe('用户播放列表不变量', () => {
-  function stateWithPlaylists(): GameState {
+  function stateWithPlaylists(): GameStateV4 {
     const state = initialState()
     state.musicPlayer.playlists = {
       calm: playlist('calm', '安静听歌', [FIRST_BVID, SECOND_BVID]),

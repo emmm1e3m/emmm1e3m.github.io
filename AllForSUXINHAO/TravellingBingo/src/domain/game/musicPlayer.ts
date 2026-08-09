@@ -111,7 +111,6 @@ export function reduceMusicPlayer(state: GameState, action: MusicPlayerAction): 
                 : (updated.bvids[0] ?? null)
               : player.currentBvid,
             currentIndex: isActive ? (selectedIndex >= 0 ? selectedIndex : 0) : player.currentIndex,
-            startAtSeconds: player.startAtSeconds,
           },
         },
         action,
@@ -141,7 +140,6 @@ export function reduceMusicPlayer(state: GameState, action: MusicPlayerAction): 
             activePlaylistId: wasActive ? null : player.activePlaylistId,
             currentBvid: wasActive ? null : player.currentBvid,
             currentIndex: wasActive ? 0 : player.currentIndex,
-            startAtSeconds: player.startAtSeconds,
           },
         },
         action,
@@ -162,7 +160,6 @@ export function reduceMusicPlayer(state: GameState, action: MusicPlayerAction): 
             activePlaylistId: action.playlistId,
             currentBvid: selected?.bvids[0] ?? null,
             currentIndex: 0,
-            startAtSeconds: player.startAtSeconds,
           },
         },
         action,
@@ -190,7 +187,6 @@ export function reduceMusicPlayer(state: GameState, action: MusicPlayerAction): 
             ...player,
             currentBvid: action.bvid,
             currentIndex: action.index,
-            startAtSeconds: player.startAtSeconds,
           },
         },
         action,
@@ -198,27 +194,11 @@ export function reduceMusicPlayer(state: GameState, action: MusicPlayerAction): 
         { bvid: action.bvid, playlistId: player.activePlaylistId },
       )
     }
-    case 'music/seek-set': {
-      if (!Number.isSafeInteger(action.startAtSeconds) || action.startAtSeconds < 0) {
-        return fail(state, 'INVALID_AMOUNT', '播放起点必须是非负整数秒')
-      }
-      return succeed(
-        { ...state, musicPlayer: { ...player, startAtSeconds: action.startAtSeconds } },
-        action,
-        'seek-set',
-      )
-    }
     case 'music/loop-set':
       return succeed(
         { ...state, musicPlayer: { ...player, loopMode: action.loopMode } },
         action,
         'loop-set',
-      )
-    case 'music/autoplay-set':
-      return succeed(
-        { ...state, musicPlayer: { ...player, autoplay: true } },
-        action,
-        'autoplay-set',
       )
   }
 }

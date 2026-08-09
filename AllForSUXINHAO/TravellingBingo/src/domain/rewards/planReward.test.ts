@@ -164,7 +164,7 @@ describe('收藏奖励无重复规则', () => {
     ).toBe('first-new')
   })
 
-  it('幸运苹果把 0% 收藏概率提高 20 个百分点，未使用时仍为 0%', () => {
+  it('幸运苹果把 0% 收藏概率提高 10 个百分点，未使用时仍为 0%', () => {
     const rewardSeed = seedWhoseRollIsBelow(LUCKY_APPLE_COLLECTION_DROP_BONUS, 0)
     const input = {
       kind: 'stream' as const,
@@ -317,10 +317,11 @@ describe('收藏奖励无重复规则', () => {
 
   it('单次概率加成在边界精确相加，并统一封顶为 100%', () => {
     expect(addProbabilityBonus(0, 0)).toBe(0)
-    expect(addProbabilityBonus(0, LUCKY_APPLE_COLLECTION_DROP_BONUS)).toBe(0.2)
+    expect(addProbabilityBonus(0, LUCKY_APPLE_COLLECTION_DROP_BONUS)).toBe(0.1)
     expect(addProbabilityBonus(0, APPLE_LUNCHBOX_FRIEND_BONUS)).toBe(0.15)
-    expect(addProbabilityBonus(0.8, LUCKY_APPLE_COLLECTION_DROP_BONUS)).toBe(1)
+    expect(addProbabilityBonus(0.8, LUCKY_APPLE_COLLECTION_DROP_BONUS)).toBeCloseTo(0.9)
     expect(addProbabilityBonus(0.9, LUCKY_APPLE_COLLECTION_DROP_BONUS)).toBe(1)
+    expect(addProbabilityBonus(0.95, LUCKY_APPLE_COLLECTION_DROP_BONUS)).toBe(1)
     expect(addProbabilityBonus(0.85, APPLE_LUNCHBOX_FRIEND_BONUS)).toBe(1)
     expect(addProbabilityBonus(0.95, APPLE_LUNCHBOX_FRIEND_BONUS)).toBe(1)
   })

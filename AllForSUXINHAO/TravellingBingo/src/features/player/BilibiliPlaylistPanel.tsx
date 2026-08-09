@@ -46,7 +46,6 @@ export function BilibiliPlaylistPanel({
   const controller = useBilibiliPlayerController()
   const nameId = useId()
   const inputId = useId()
-  const startId = useId()
   const [name, setName] = useState(initialName)
   const [input, setInput] = useState(initialInput)
   const [feedback, setFeedback] = useState<ImportFeedback | null>(null)
@@ -150,27 +149,6 @@ export function BilibiliPlaylistPanel({
             </button>
           ))}
         </div>
-        <label htmlFor={startId}>起播位置（秒）</label>
-        <input
-          id={startId}
-          className="numeric-copy"
-          type="number"
-          min={0}
-          step={1}
-          value={controller.state.defaultStartAtSeconds}
-          onChange={(event) =>
-            controller.setDefaultStartAtSeconds(event.currentTarget.valueAsNumber)
-          }
-        />
-        <button
-          type="button"
-          disabled={!controller.state.activeRequest}
-          onClick={() =>
-            reportRequest(controller.restartAt(controller.state.defaultStartAtSeconds))
-          }
-        >
-          从这里重新打开
-        </button>
         <button
           type="button"
           disabled={controller.state.playlist.tracks.length === 0}
@@ -210,17 +188,13 @@ export function BilibiliPlaylistPanel({
                   }
                 >
                   <strong>{track.title}</strong>
-                  <span className="numeric-copy">{track.bvid}</span>
+                  {track.title !== track.bvid && <span className="numeric-copy">{track.bvid}</span>}
                 </button>
               </li>
             ))}
           </ol>
         )}
       </div>
-
-      <p className="bilibili-playlist-panel__limits">
-        列表、单曲和随机模式只决定你主动切歌时选哪一首。外链播放器不会向房间可靠报告暂停、结束或真实进度，因此这里不会假装自动续播；自动播放也可能被浏览器拦住。
-      </p>
     </section>
   )
 }

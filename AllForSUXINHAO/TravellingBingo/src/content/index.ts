@@ -17,6 +17,7 @@ export {
 export {
   collectibleImageSchema,
   bilibiliVideoCatalogSchema,
+  bilibiliVideoMetadataSchema,
   bilibiliVideoSchema,
   bvidSchema,
   collectibleItemSchema,
@@ -34,6 +35,7 @@ export {
   friendItemSchema,
   type CollectibleCategory,
   type BilibiliVideo,
+  type BilibiliVideoMetadata,
   type BilibiliVideoCatalogSource,
   type CollectibleImage,
   type CollectibleItem,

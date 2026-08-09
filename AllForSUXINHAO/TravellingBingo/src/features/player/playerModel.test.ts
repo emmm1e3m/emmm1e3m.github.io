@@ -2,6 +2,7 @@ import {
   adjacentTrackIndex,
   buildBilibiliPlayerUrl,
   createNamedBilibiliPlaylist,
+  endedTrackIndex,
   parseBilibiliPlaylistInput,
   parseBilibiliTrackReference,
 } from './playerModel'
@@ -66,11 +67,10 @@ describe('Bilibili 播放列表输入', () => {
 })
 
 describe('Bilibili 外链播放器请求', () => {
-  it('只生成官方 iframe URL，并表达自动播放、分 P、弹幕与起播秒数请求', () => {
+  it('只生成官方 iframe URL，并表达自动播放、分 P 与弹幕请求', () => {
     const url = new URL(
       buildBilibiliPlayerUrl({
         bvid: 'BV1xx411c7mD',
-        startAtSeconds: 42.9,
         page: 2,
       }),
     )
@@ -82,19 +82,27 @@ describe('Bilibili 外链播放器请求', () => {
       p: '2',
       autoplay: '1',
       danmaku: '0',
-      t: '42',
     })
     expect(() => buildBilibiliPlayerUrl({ bvid: 'BV-invalid' })).toThrow('无效 BV')
   })
 
-  it('列表、单曲与随机只计算显式上一首或下一首目标', () => {
+  it('用户主动切歌时，单曲模式也会切到相邻曲目', () => {
     expect(adjacentTrackIndex('list', 2, 3, 1)).toBe(0)
     expect(adjacentTrackIndex('list', 0, 3, -1)).toBe(2)
-    expect(adjacentTrackIndex('single', 1, 3, 1)).toBe(1)
+    expect(adjacentTrackIndex('single', 1, 3, 1)).toBe(2)
     expect(adjacentTrackIndex('shuffle', 1, 4, 1, 0)).toBe(2)
     expect(adjacentTrackIndex('shuffle', 1, 4, 1, 0.999)).toBe(0)
     expect(adjacentTrackIndex('shuffle', 1, 4, 1, 0.5)).not.toBe(1)
     expect(adjacentTrackIndex('list', null, 3, 1)).toBe(0)
     expect(adjacentTrackIndex('list', null, 0, 1)).toBeNull()
+  })
+
+  it('自然播完时，单曲重播、列表下一首、随机避开当前曲目', () => {
+    expect(endedTrackIndex('single', 1, 3)).toBe(1)
+    expect(endedTrackIndex('list', 2, 3)).toBe(0)
+    expect(endedTrackIndex('shuffle', 1, 4, 0)).toBe(2)
+    expect(endedTrackIndex('shuffle', 1, 4, 0.999)).toBe(0)
+    expect(endedTrackIndex('list', null, 3)).toBe(0)
+    expect(endedTrackIndex('list', null, 0)).toBeNull()
   })
 })

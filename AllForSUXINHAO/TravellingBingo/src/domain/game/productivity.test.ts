@@ -3,13 +3,12 @@ import { describe, expect, it } from 'vitest'
 import {
   MAX_APPLES,
   MAX_COMPANION_DAYS,
-  MAX_POMODORO_DURATION_MS,
   MAX_TODOS,
-  MIN_POMODORO_DURATION_MS,
+  POMODORO_PRESETS,
   REALITY_REWARD_INTERVAL_MS,
 } from './constants'
 import { createInitialGameState } from './createGameState'
-import { gameStateV4Schema } from './migrateGameStateV3'
+import { gameStateV5Schema } from './migrateGameStateV4'
 import { isProductivityAction, reduceProductivity, type ProductivityAction } from './productivity'
 import { MAX_DATE_TIMESTAMP_MS } from './time'
 import type { CollectionCatalog, GameAction, GameState, GameTransition, TodoItem } from './types'
@@ -21,6 +20,11 @@ const catalog: CollectionCatalog = {
   'site-first': ['first-1'],
   siteFirstChronology: ['first-1'],
 }
+
+const CLASSIC_POMODORO = POMODORO_PRESETS[0]
+const FOCUS_MS = CLASSIC_POMODORO.focusDurationMs
+const BREAK_MS = CLASSIC_POMODORO.breakDurationMs
+const CYCLE_MS = FOCUS_MS + BREAK_MS
 
 function initialState(): GameState {
   return createInitialGameState({ now: 0, seed: 'productivity-tests' })
@@ -309,7 +313,7 @@ describe('待办', () => {
       reduce(withTodo, {
         type: 'pomodoro/start',
         now: 200,
-        durationMs: MIN_POMODORO_DURATION_MS,
+        durationMs: FOCUS_MS,
         todoId: 'todo-1',
       }),
     ).state
@@ -331,7 +335,7 @@ describe('苹果钟与通知', () => {
     const sequenceResult = reduce(sequenceCapped, {
       type: 'pomodoro/start',
       now: 0,
-      durationMs: MIN_POMODORO_DURATION_MS,
+      durationMs: FOCUS_MS,
     })
     expect(sequenceResult).toMatchObject({ ok: false, error: { code: 'INVALID_AMOUNT' } })
     expect(sequenceResult.state).toBe(sequenceCapped)
@@ -341,8 +345,8 @@ describe('苹果钟与通知', () => {
     const dateBefore = structuredClone(dateCapped)
     const dateResult = reduce(dateCapped, {
       type: 'pomodoro/start',
-      now: MAX_DATE_TIMESTAMP_MS - MIN_POMODORO_DURATION_MS + 1,
-      durationMs: MIN_POMODORO_DURATION_MS,
+      now: MAX_DATE_TIMESTAMP_MS - CYCLE_MS + 1,
+      durationMs: FOCUS_MS,
     })
     expect(dateResult).toMatchObject({ ok: false, error: { code: 'INVALID_TIME' } })
     expect(dateResult.state).toBe(dateCapped)
@@ -369,13 +373,17 @@ describe('苹果钟与通知', () => {
       reduce(selected, {
         type: 'pomodoro/start',
         now: 10,
-        durationMs: MIN_POMODORO_DURATION_MS,
+        durationMs: FOCUS_MS,
       }),
     ).state
     expect(started.reality.pomodoro.session).toMatchObject({
       sessionId: 'pomodoro-1',
       postcardId: 'postcard-1',
-      endsAt: 10 + MIN_POMODORO_DURATION_MS,
+      status: 'focus',
+      focusEndsAt: 10 + FOCUS_MS,
+      cycleEndsAt: 10 + CYCLE_MS,
+      focusDurationMs: FOCUS_MS,
+      breakDurationMs: BREAK_MS,
     })
 
     const changed = successful(
@@ -385,15 +393,39 @@ describe('苹果钟与通知', () => {
     expect(changed.reality.pomodoro.session?.postcardId).toBe('postcard-1')
   })
 
-  it.each([MIN_POMODORO_DURATION_MS - 1, MAX_POMODORO_DURATION_MS + 1])(
-    '拒绝越界时长 %i',
-    (durationMs) => {
-      const state = initialState()
-      const result = reduce(state, { type: 'pomodoro/start', now: 0, durationMs })
-      expect(result).toMatchObject({ ok: false, error: { code: 'INVALID_DURATION' } })
-      expect(result.state).toBe(state)
-    },
-  )
+  it.each([5 * 60_000, 24 * 60 * 60_000])('拒绝固定档位以外的时长 %i', (durationMs) => {
+    const state = initialState()
+    const result = reduce(state, { type: 'pomodoro/start', now: 0, durationMs })
+    expect(result).toMatchObject({ ok: false, error: { code: 'INVALID_DURATION' } })
+    expect(result.state).toBe(state)
+  })
+
+  it('专注到点进入休息且不推进伴随日，休息结束才完成整轮', () => {
+    const started = successful(
+      reduce(initialState(), { type: 'pomodoro/start', now: 100, durationMs: FOCUS_MS }),
+    ).state
+    const resting = successful(reduce(started, { type: 'clock/tick', now: 100 + FOCUS_MS }))
+
+    expect(resting.state.reality.pomodoro.session).toMatchObject({
+      status: 'break',
+      focusNotificationIssuedAt: 100 + FOCUS_MS,
+      completionNotificationIssuedAt: null,
+    })
+    expect(resting.state.profile.companionDays).toBe(0)
+    expect(resting.effects).toHaveLength(1)
+    expect(resting.effects[0]).toMatchObject({
+      type: 'pomodoro-break-started',
+      notificationId: `pomodoro:pomodoro-1:focus:${100 + FOCUS_MS}`,
+    })
+
+    const completed = successful(reduce(resting.state, { type: 'clock/tick', now: 100 + CYCLE_MS }))
+    expect(completed.state.reality.pomodoro.session).toMatchObject({
+      status: 'completed',
+      completedAt: 100 + CYCLE_MS,
+    })
+    expect(completed.state.profile.companionDays).toBe(1)
+    expect(completed.effects[0]).toMatchObject({ type: 'pomodoro-completed' })
+  })
 
   it('截止 tick 同时签发待办和苹果钟通知，后续 tick 不会重复', () => {
     const withTodo = createdTodo(initialState(), { dueAt: 500 })
@@ -401,11 +433,11 @@ describe('苹果钟与通知', () => {
       reduce(withTodo, {
         type: 'pomodoro/start',
         now: 0,
-        durationMs: MIN_POMODORO_DURATION_MS,
+        durationMs: FOCUS_MS,
         todoId: 'todo-1',
       }),
     ).state
-    const ticked = successful(reduce(started, { type: 'clock/tick', now: 1_500 }))
+    const ticked = successful(reduce(started, { type: 'clock/tick', now: CYCLE_MS }))
 
     expect(started.profile.companionDays).toBe(0)
     expect(ticked.state.profile.companionDays).toBe(1)
@@ -416,30 +448,33 @@ describe('苹果钟与通知', () => {
         notificationId: 'todo:todo-1:500',
         todoId: 'todo-1',
         dueAt: 500,
-        issuedAt: 1_500,
+        issuedAt: CYCLE_MS,
         notificationTitle: '待办时间到啦',
         notificationBody: '吃苹果',
       },
       {
         type: 'pomodoro-completed',
-        notificationId: 'pomodoro:pomodoro-1:1000',
+        notificationId: `pomodoro:pomodoro-1:complete:${CYCLE_MS}`,
         session: {
           sessionId: 'pomodoro-1',
           status: 'completed',
           startedAt: 0,
-          endsAt: 1_000,
-          durationMs: 1_000,
-          completedAt: 1_000,
-          notificationIssuedAt: 1_500,
+          focusEndsAt: FOCUS_MS,
+          cycleEndsAt: CYCLE_MS,
+          focusDurationMs: FOCUS_MS,
+          breakDurationMs: BREAK_MS,
+          completedAt: CYCLE_MS,
+          focusNotificationIssuedAt: CYCLE_MS,
+          completionNotificationIssuedAt: CYCLE_MS,
           todoId: 'todo-1',
           postcardId: null,
         },
         notificationTitle: '苹果钟完成啦',
-        notificationBody: '“吃苹果”的专注时间到了',
+        notificationBody: '“吃苹果”的专注和休息都完成啦',
       },
     ])
 
-    const repeated = successful(reduce(ticked.state, { type: 'clock/tick', now: 2_000 }))
+    const repeated = successful(reduce(ticked.state, { type: 'clock/tick', now: CYCLE_MS + 1 }))
     expect(repeated.state).toBe(ticked.state)
     expect(repeated.state.profile.companionDays).toBe(1)
     expect(repeated.effects).toEqual([])
@@ -457,7 +492,7 @@ describe('苹果钟与通知', () => {
       reduce(initialState(), {
         type: 'pomodoro/start',
         now: 100,
-        durationMs: MIN_POMODORO_DURATION_MS,
+        durationMs: FOCUS_MS,
       }),
     ).state
     const cancelled = successful(
@@ -471,15 +506,39 @@ describe('苹果钟与通知', () => {
       reduce(cancelled.state, {
         type: 'pomodoro/start',
         now: 300,
-        durationMs: MIN_POMODORO_DURATION_MS,
+        durationMs: FOCUS_MS,
       }),
     ).state
     const afterDeadline = successful(
-      reduce(restarted, { type: 'pomodoro/cancel', sessionId: 'pomodoro-2', now: 1_300 }),
+      reduce(restarted, {
+        type: 'pomodoro/cancel',
+        sessionId: 'pomodoro-2',
+        now: 300 + CYCLE_MS,
+      }),
     )
     expect(afterDeadline.state.reality.pomodoro.session?.status).toBe('completed')
     expect(afterDeadline.state.profile.companionDays).toBe(1)
     expect(afterDeadline.effects[0]).toMatchObject({ type: 'pomodoro-completed' })
+  })
+
+  it('取消前先按时间推进到休息阶段，再清除会话', () => {
+    const started = successful(
+      reduce(initialState(), { type: 'pomodoro/start', now: 0, durationMs: FOCUS_MS }),
+    ).state
+    const cancelled = successful(
+      reduce(started, {
+        type: 'pomodoro/cancel',
+        sessionId: 'pomodoro-1',
+        now: FOCUS_MS,
+      }),
+    )
+
+    expect(cancelled.state.reality.pomodoro.session).toBeNull()
+    expect(cancelled.state.profile.companionDays).toBe(0)
+    expect(cancelled.effects.map((effect) => effect.type)).toEqual([
+      'pomodoro-break-started',
+      'pomodoro-cancelled',
+    ])
   })
 
   it('未到点的 tick、现实停留结算和待办操作都不推进伴随日', () => {
@@ -502,12 +561,10 @@ describe('苹果钟与通知', () => {
       reduce(withTodo, {
         type: 'pomodoro/start',
         now: 10,
-        durationMs: MIN_POMODORO_DURATION_MS,
+        durationMs: FOCUS_MS,
       }),
     ).state
-    const earlyTick = successful(
-      reduce(started, { type: 'clock/tick', now: 10 + MIN_POMODORO_DURATION_MS - 1 }),
-    )
+    const earlyTick = successful(reduce(started, { type: 'clock/tick', now: 10 + FOCUS_MS - 1 }))
 
     expect(entered.profile.companionDays).toBe(0)
     expect(left.profile.companionDays).toBe(0)
@@ -543,11 +600,9 @@ describe('苹果钟与通知', () => {
     }
 
     state = successful(
-      reduce(state, { type: 'pomodoro/start', now: 0, durationMs: MIN_POMODORO_DURATION_MS }),
+      reduce(state, { type: 'pomodoro/start', now: 0, durationMs: FOCUS_MS }),
     ).state
-    const sixthDay = successful(
-      reduce(state, { type: 'clock/tick', now: MIN_POMODORO_DURATION_MS }),
-    )
+    const sixthDay = successful(reduce(state, { type: 'clock/tick', now: CYCLE_MS }))
     expect(sixthDay.state.profile.companionDays).toBe(6)
     expect(sixthDay.state.player.effects.vitality).not.toBeNull()
     expect(sixthDay.state.pet.preferences).toEqual({ travel: true, computer: true, music: true })
@@ -556,11 +611,11 @@ describe('苹果钟与通知', () => {
     state = successful(
       reduce(sixthDay.state, {
         type: 'pomodoro/start',
-        now: 2_000,
-        durationMs: MIN_POMODORO_DURATION_MS,
+        now: CYCLE_MS + 1_000,
+        durationMs: FOCUS_MS,
       }),
     ).state
-    const seventhDay = successful(reduce(state, { type: 'clock/tick', now: 3_000 }))
+    const seventhDay = successful(reduce(state, { type: 'clock/tick', now: CYCLE_MS * 2 + 1_000 }))
     const expectedPreferenceGeneration = generateActivityPreferences(
       state.random.seed,
       preferenceSequence,
@@ -573,95 +628,41 @@ describe('苹果钟与通知', () => {
     expect(seventhDay.state.random.sequences.preferences).toBe(
       expectedPreferenceGeneration.nextSequence,
     )
-    expect(gameStateV4Schema.safeParse(seventhDay.state).success).toBe(true)
+    expect(gameStateV5Schema.safeParse(seventhDay.state).success).toBe(true)
     expect(seventhDay.effects).toContainEqual({
       type: 'player-effect-expired',
       effect: 'vitality',
       expiredAtCompanionDay: 7,
     })
 
-    const repeated = successful(reduce(seventhDay.state, { type: 'clock/tick', now: 4_000 }))
+    const repeated = successful(
+      reduce(seventhDay.state, { type: 'clock/tick', now: CYCLE_MS * 2 + 1_001 }),
+    )
     expect(repeated.state).toBe(seventhDay.state)
     expect(repeated.state.profile.companionDays).toBe(7)
   })
 
-  it('伴随日上限在开始前拒绝；历史运行态也不能溢出且仍可取消', () => {
-    const original = initialState()
+  it('达到伴随日上限后仍可计时、完成和签发待办提醒，但天数不再增长', () => {
+    const original = createdTodo(initialState(), { dueAt: 1 })
     const capped: GameState = {
       ...original,
       profile: { ...original.profile, companionDays: MAX_COMPANION_DAYS },
     }
-    const blockedStart = reduce(capped, {
-      type: 'pomodoro/start',
-      now: 0,
-      durationMs: MIN_POMODORO_DURATION_MS,
-    })
-    expect(blockedStart).toMatchObject({
-      ok: false,
-      error: { code: 'COMPANION_DAY_LIMIT_REACHED' },
-    })
-    expect(blockedStart.state).toBe(capped)
-
-    const runningAtLimit: GameState = {
-      ...capped,
-      reality: {
-        ...capped.reality,
-        pomodoro: {
-          ...capped.reality.pomodoro,
-          session: {
-            sessionId: 'pomodoro-legacy',
-            status: 'running',
-            startedAt: 0,
-            endsAt: MIN_POMODORO_DURATION_MS,
-            durationMs: MIN_POMODORO_DURATION_MS,
-            completedAt: null,
-            notificationIssuedAt: null,
-            todoId: null,
-            postcardId: null,
-          },
-        },
-      },
-    }
-    const blockedTick = reduce(runningAtLimit, {
-      type: 'clock/tick',
-      now: MIN_POMODORO_DURATION_MS,
-    })
-    expect(blockedTick).toMatchObject({
-      ok: false,
-      error: { code: 'COMPANION_DAY_LIMIT_REACHED' },
-    })
-    expect(blockedTick.state).toBe(runningAtLimit)
-
-    const cancelled = successful(
-      reduce(runningAtLimit, {
-        type: 'pomodoro/cancel',
-        sessionId: 'pomodoro-legacy',
-        now: MIN_POMODORO_DURATION_MS,
-      }),
-    )
-    expect(cancelled.state.reality.pomodoro.session).toBeNull()
-    expect(cancelled.state.profile.companionDays).toBe(MAX_COMPANION_DAYS)
-
-    const almostCapped: GameState = {
-      ...original,
-      profile: { ...original.profile, companionDays: MAX_COMPANION_DAYS - 1 },
-    }
     const started = successful(
-      reduce(almostCapped, {
-        type: 'pomodoro/start',
-        now: 0,
-        durationMs: MIN_POMODORO_DURATION_MS,
-      }),
+      reduce(capped, { type: 'pomodoro/start', now: 0, durationMs: FOCUS_MS }),
     ).state
-    const completed = successful(
-      reduce(started, { type: 'clock/tick', now: MIN_POMODORO_DURATION_MS }),
-    )
+    const completed = successful(reduce(started, { type: 'clock/tick', now: CYCLE_MS }))
+
+    expect(completed.state.reality.pomodoro.session?.status).toBe('completed')
     expect(completed.state.profile.companionDays).toBe(MAX_COMPANION_DAYS)
-    const repeated = successful(
-      reduce(completed.state, { type: 'clock/tick', now: MIN_POMODORO_DURATION_MS + 1 }),
-    )
+    expect(completed.effects.map((effect) => effect.type)).toEqual([
+      'todo-notification-due',
+      'pomodoro-completed',
+    ])
+
+    const repeated = successful(reduce(completed.state, { type: 'clock/tick', now: CYCLE_MS + 1 }))
     expect(repeated.state).toBe(completed.state)
-    expect(repeated.state.profile.companionDays).toBe(MAX_COMPANION_DAYS)
+    expect(repeated.effects).toEqual([])
   })
 })
 

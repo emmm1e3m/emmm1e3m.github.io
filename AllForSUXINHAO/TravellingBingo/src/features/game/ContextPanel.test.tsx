@@ -3,7 +3,7 @@ import type { ReactNode } from 'react'
 
 import type { BilibiliVideo, ContentCatalog } from '@/content'
 import { createInitialGameState, type GameAction, type GameState } from '@/domain'
-import { BilibiliPlayerProvider, createNamedBilibiliPlaylist } from '@/features/player'
+import { BilibiliPlayerProvider, PersistentPlayerDock } from '@/features/player'
 
 import { ContextPanel } from './ContextPanel'
 
@@ -118,11 +118,17 @@ const commonProps = {
   onTaskEvent: vi.fn(),
 }
 
-const recordPlaylist = createNamedBilibiliPlaylist('测试唱片', recordVideos)
-
 function PlayerHarness({ children }: { children: ReactNode }) {
+  const game = createInitialGameState({ now: 1_000, seed: 'player-harness' })
   return (
-    <BilibiliPlayerProvider initialPlaylist={recordPlaylist}>{children}</BilibiliPlayerProvider>
+    <BilibiliPlayerProvider
+      state={game.musicPlayer}
+      onAction={() => undefined}
+      builtInTracks={recordVideos}
+    >
+      {children}
+      <PersistentPlayerDock />
+    </BilibiliPlayerProvider>
   )
 }
 
@@ -142,12 +148,13 @@ function ControlledPlayerHarness({
       builtInTracks={recordVideos}
     >
       {children}
+      <PersistentPlayerDock />
     </BilibiliPlayerProvider>
   )
 }
 
 describe('ContextPanel 信息栏交互', () => {
-  it('PanelHeader 保持左侧标签与可识别的收起按钮', () => {
+  it('PanelHeader 保持左侧标签，并且不再重复提供收起信息栏按钮', () => {
     render(
       <ContextPanel
         {...commonProps}
@@ -157,7 +164,7 @@ describe('ContextPanel 信息栏交互', () => {
     )
 
     expect(screen.getByText('今天的铲铲饼屋')).toHaveClass('paper-tag')
-    expect(screen.getByRole('button', { name: '收起信息栏' })).toHaveTextContent('收起信息栏')
+    expect(screen.queryByRole('button', { name: '收起信息栏' })).not.toBeInTheDocument()
     expect(screen.getByRole('heading', { name: '饼狗今天的心情' })).toBeInTheDocument()
     expect(screen.getByRole('heading', { name: '和饼狗一起做三件小事' })).toBeInTheDocument()
   })
@@ -217,15 +224,15 @@ describe('ContextPanel 信息栏交互', () => {
     }
     const { rerender } = render(<ContextPanel {...props} />)
 
-    expect(screen.getByText('认真刷播和全力冲热共享同一份“电脑”意愿。')).toBeInTheDocument()
+    expect(screen.queryByText('认真刷播和全力冲热共享同一份“电脑”意愿。')).not.toBeInTheDocument()
     expect(await screen.findAllByRole('group', { name: '确认使用活力魔法' })).toHaveLength(1)
     await waitFor(() => expect(screen.getByRole('button', { name: '先不使用' })).toHaveFocus())
     expect(onHandled).toHaveBeenCalledOnce()
     expect(onHandled).toHaveBeenCalledWith(17)
     expect(onAction).not.toHaveBeenCalled()
 
-    fireEvent.keyDown(screen.getByLabelText('设施共享意愿'), { key: 'Escape' })
-    await waitFor(() => expect(screen.getByLabelText('设施共享意愿')).toHaveFocus())
+    fireEvent.keyDown(screen.getByLabelText('使用活力魔法'), { key: 'Escape' })
+    await waitFor(() => expect(screen.getByLabelText('使用活力魔法')).toHaveFocus())
     rerender(<ContextPanel {...props} />)
     expect(screen.queryByRole('group', { name: '确认使用活力魔法' })).not.toBeInTheDocument()
     expect(onHandled).toHaveBeenCalledOnce()
@@ -402,7 +409,7 @@ describe('ContextPanel 信息栏交互', () => {
       </ControlledPlayerHarness>,
     )
 
-    expect(screen.getByRole('button', { name: /百万直拍精选/u })).toHaveAttribute(
+    expect(screen.getByRole('button', { name: /全站第一/u })).toHaveAttribute(
       'aria-pressed',
       'true',
     )
@@ -461,8 +468,6 @@ describe('ContextPanel 信息栏交互', () => {
         activePlaylistId: 'bedtime',
         currentBvid: recordVideos[0]!.bvid,
         currentIndex: 0,
-        startAtSeconds: 12,
-        autoplay: false,
       },
     }
     const onMusicAction = vi.fn()
@@ -487,7 +492,7 @@ describe('ContextPanel 信息栏交互', () => {
     expect(screen.getByLabelText('播放列表名称')).toHaveValue('睡前听听')
     expect(screen.getByLabelText('BV 号或视频链接')).toHaveValue(recordVideos[0]!.bvid)
 
-    fireEvent.click(screen.getByRole('button', { name: /百万直拍精选/u }))
+    fireEvent.click(screen.getByRole('button', { name: /全站第一/u }))
     expect(onMusicAction).toHaveBeenCalledWith({
       type: 'music/playlist-select',
       playlistId: null,
@@ -504,23 +509,35 @@ describe('ContextPanel 信息栏交互', () => {
     const iframe = screen.getByTitle<HTMLIFrameElement>('Bilibili 外链播放器：第一首测试唱片')
     const url = new URL(iframe.src)
     expect(url.searchParams.get('autoplay')).toBe('1')
-    expect(url.searchParams.get('t')).toBe('12')
+    expect(url.searchParams.get('t')).toBeNull()
   })
 
-  it('Reality Dashboard 切换数据与工作面板时映射到 PanelId', () => {
+  it('现实数据和工作入口直接展示对应内容，不再嵌套 Dashboard 标签页', () => {
     const onNavigate = vi.fn()
-    render(
+    const dataGame = gameInReality()
+    const { rerender } = render(
       <ContextPanel
         {...commonProps}
         panel="reality-data"
-        game={gameInReality()}
+        game={dataGame}
         onNavigate={onNavigate}
       />,
     )
 
     expect(screen.getByRole('heading', { name: '刷播与冲热' })).toBeInTheDocument()
-    fireEvent.click(screen.getByRole('tab', { name: /工作/u }))
-    expect(onNavigate).toHaveBeenCalledWith('reality-work')
+    expect(screen.queryByRole('tab')).not.toBeInTheDocument()
+
+    rerender(
+      <ContextPanel
+        {...commonProps}
+        panel="reality-work"
+        game={dataGame}
+        onNavigate={onNavigate}
+      />,
+    )
+    expect(screen.getByRole('heading', { name: '苹果钟与待办' })).toBeInTheDocument()
+    expect(screen.queryByRole('tab')).not.toBeInTheDocument()
+    expect(onNavigate).not.toHaveBeenCalled()
   })
 
   it('工作面板只转交通知请求、苹果钟和待办领域动作', () => {
@@ -537,16 +554,17 @@ describe('ContextPanel 信息栏交互', () => {
       />,
     )
 
-    fireEvent.click(screen.getByRole('button', { name: '开启完成提醒' }))
+    fireEvent.click(screen.getByRole('button', { name: '开启提醒' }))
     expect(onRequestNotificationPermission).toHaveBeenCalledOnce()
 
-    fireEvent.click(screen.getByRole('button', { name: /^5 分钟/u }))
+    expect(screen.queryByRole('button', { name: /^5 分钟/u })).not.toBeInTheDocument()
+    fireEvent.click(screen.getByRole('button', { name: /^90 分钟/u }))
     fireEvent.click(screen.getByRole('button', { name: '开始苹果钟' }))
     expect(onAction).not.toHaveBeenCalledWith(expect.objectContaining({ type: 'pomodoro/start' }))
     fireEvent.click(screen.getByRole('button', { name: '确认开始' }))
     expect(onAction).toHaveBeenCalledWith({
       type: 'pomodoro/start',
-      durationMs: 5 * 60_000,
+      durationMs: 90 * 60_000,
       now: expect.any(Number),
     })
 

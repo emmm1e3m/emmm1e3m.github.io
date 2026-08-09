@@ -4,7 +4,8 @@
   --player-dock-right: var(--player-edge-inline);
   --player-dock-bottom: var(--player-edge-block);
   position: fixed;
-  z-index: 80;
+  /* 高于收藏墙弹层，低于完整图片查看层（110）。 */
+  z-index: 105;
   right: var(--player-dock-right);
   bottom: var(--player-dock-bottom);
   width: min(
@@ -21,22 +22,6 @@
   backdrop-filter: blur(12px);
 }
 
-/*
- * 播放器是 GameHome 的固定兄弟节点。桌面信息栏展开时把它完整留在房间列内；
- * 待机房间则在右侧为维度切换按钮保留独立槽位，避免两个浮层互相遮挡。
- */
-.game-page--v4.has-side-panel ~ .persistent-bilibili-player {
-  --player-dock-right: calc(
-    max(0.75rem, env(safe-area-inset-right, 0px)) + 360px + clamp(10px, 0.8vw, 14px)
-  );
-}
-
-.game-page--v4.is-room-open ~ .persistent-bilibili-player {
-  --player-dock-right: calc(
-    max(0.75rem, env(safe-area-inset-right, 0px)) + clamp(7.25rem, 11vw, 9rem)
-  );
-}
-
 .persistent-bilibili-player__bar {
   display: flex;
   align-items: center;
@@ -51,18 +36,10 @@
   margin: 0;
 }
 
-.persistent-bilibili-player__bar strong,
-.persistent-bilibili-player__bar small {
+.persistent-bilibili-player__bar strong {
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
-}
-
-.persistent-bilibili-player__bar small,
-.persistent-bilibili-player__footnote {
-  color: #7b5d50;
-  font-family: 'TravellingBingo UI', 'Microsoft YaHei UI', sans-serif;
-  font-size: 0.7rem;
 }
 
 .persistent-bilibili-player button {
@@ -108,20 +85,43 @@
   pointer-events: none;
 }
 
-.persistent-bilibili-player__footnote {
-  display: flex;
-  justify-content: space-between;
-  gap: 0.7rem;
-  margin-top: 0.45rem;
+/* 无侧栏时只保留收起条，并让出房间右下角的维度按钮。 */
+.persistent-bilibili-player:not(.persistent-bilibili-player--context):not(
+    .persistent-bilibili-player--album
+  ):not(.persistent-bilibili-player--focus) {
+  --player-dock-bottom: calc(var(--player-edge-block) + 4.5rem);
 }
 
-.persistent-bilibili-player__footnote a {
-  color: #842d38;
+.persistent-bilibili-player--context {
+  --player-dock-right: clamp(8px, 1.25vw, 18px);
+  width: min(360px, calc(100vw - 1.5rem));
+  max-height: min(54dvh, 440px);
+  overflow-y: auto;
 }
 
-/* 单列房间把播放器放进两侧角落按钮之间的上方安全带。 */
+.persistent-bilibili-player--focus {
+  z-index: 155;
+  right: max(1rem, env(safe-area-inset-right, 0px));
+  bottom: max(1rem, env(safe-area-inset-bottom, 0px));
+  width: min(360px, calc(100vw - 2rem));
+}
+
+/* 二次确认是新的顶层弹窗，此时播放器必须退回其下方。 */
+body:has(.pomodoro-focus__confirm-backdrop) .persistent-bilibili-player--focus {
+  z-index: 149;
+  pointer-events: none;
+}
+
+/* 普通顶层弹窗不把播放器列为交互 peer；播放器必须同时退层并停止接收指针。 */
+body:has(.modal-backdrop:not(.collectible-detail-backdrop):not(.collectible-fullscreen-backdrop))
+  .persistent-bilibili-player {
+  z-index: 79;
+  pointer-events: none;
+}
+
+/* 单列房间把播放器放进底部操作区上方。 */
 @media (max-width: 960px) {
-  .game-page--v4 ~ .persistent-bilibili-player {
+  .persistent-bilibili-player {
     --player-dock-right: auto;
     --player-dock-bottom: calc(max(0.5rem, env(safe-area-inset-bottom, 0px)) + 4.5rem);
     right: auto;
@@ -141,13 +141,13 @@
     transform: translateX(-50%);
   }
 
-  .game-page--v4 ~ .persistent-bilibili-player::-webkit-scrollbar {
+  .persistent-bilibili-player::-webkit-scrollbar {
     display: none;
   }
 }
 
 @media (max-width: 620px) {
-  .game-page--v4 ~ .persistent-bilibili-player {
+  .persistent-bilibili-player {
     width: min(
       19rem,
       calc(
@@ -174,18 +174,14 @@
     padding: 0.35rem 0.45rem;
     font-size: 0.7rem;
   }
+}
 
-  .persistent-bilibili-player__footnote {
-    display: block;
-    margin-top: 0.35rem;
-  }
-
-  .persistent-bilibili-player__footnote span {
-    display: none;
-  }
-
-  .persistent-bilibili-player__footnote a {
-    display: block;
-    text-align: right;
+@media (max-width: 960px) {
+  .persistent-bilibili-player--focus {
+    right: max(0.75rem, env(safe-area-inset-right, 0px));
+    bottom: max(0.75rem, env(safe-area-inset-bottom, 0px));
+    left: auto;
+    width: min(360px, calc(100vw - 1.5rem));
+    transform: none;
   }
 }

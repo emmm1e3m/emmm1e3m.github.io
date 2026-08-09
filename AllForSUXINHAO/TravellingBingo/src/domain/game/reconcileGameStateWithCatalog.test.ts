@@ -94,12 +94,15 @@ describe('早期 v2 存档目录协调', () => {
     state.reality.pomodoro.selectedPostcardId = 'postcard-new'
     state.reality.pomodoro.session = {
       sessionId: 'pomodoro-1',
-      status: 'running',
+      status: 'focus',
       startedAt: 10,
-      endsAt: 1_010,
-      durationMs: 1_000,
+      focusEndsAt: 1_010,
+      cycleEndsAt: 1_010,
+      focusDurationMs: 1_000,
+      breakDurationMs: 0,
       completedAt: null,
-      notificationIssuedAt: null,
+      focusNotificationIssuedAt: null,
+      completionNotificationIssuedAt: null,
       todoId: null,
       postcardId: 'postcard-new',
     }
@@ -109,7 +112,8 @@ describe('早期 v2 存档目录协调', () => {
     expect(reconciled.reality.pomodoro.selectedPostcardId).toBeNull()
     expect(reconciled.reality.pomodoro.session).toMatchObject({
       startedAt: 10,
-      endsAt: 1_010,
+      focusEndsAt: 1_010,
+      cycleEndsAt: 1_010,
       postcardId: null,
     })
     expect(state.reality.pomodoro.selectedPostcardId).toBe('postcard-new')

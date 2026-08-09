@@ -41,8 +41,8 @@ export interface GameBalanceV2 {
   }
 }
 
-/** 幸运苹果只影响当次收藏掉落，不写入存档平衡配置。 */
-export const LUCKY_APPLE_COLLECTION_DROP_BONUS = 0.2
+/** 幸运苹果把当次对应收藏的掉落概率提高 10 个百分点，不写入存档平衡配置。 */
+export const LUCKY_APPLE_COLLECTION_DROP_BONUS = 0.1
 
 /** 苹果旅行便当只影响当次旅行遇见朋友，不写入存档平衡配置。 */
 export const APPLE_LUNCHBOX_FRIEND_BONUS = 0.15

@@ -211,7 +211,9 @@ describe('收藏墙模态框', () => {
     expect(detailClose).toHaveFocus()
 
     fireEvent.keyDown(detail, { key: 'Escape' })
-    await waitFor(() => expect(detail).not.toBeInTheDocument())
+    await waitFor(() =>
+      expect(screen.queryByRole('dialog', { name: '测试明信片' })).not.toBeInTheDocument(),
+    )
     await waitFor(() => expect(card).toHaveFocus())
     expect(screen.getByRole('dialog', { name: '饼狗的收藏墙' })).toBeInTheDocument()
   })
@@ -256,25 +258,35 @@ describe('收藏墙模态框', () => {
     expect(within(dialog).queryByText('???')).not.toBeInTheDocument()
   })
 
-  it('收藏播放器桥接事件同时携带收藏 ID 与 BV', () => {
+  it('收藏播放器桥接事件携带收藏 ID 与 BV，且跨面板和苹果钟保持同一 iframe', () => {
     const onAction = vi.fn()
-    render(
-      <GameHome
-        game={videoCollectedGame()}
-        catalog={videoCatalog}
-        now={1_000}
-        panel="album"
-        dirty={false}
-        reward={null}
-        onPanel={vi.fn()}
-        onAction={onAction}
-        onExit={vi.fn()}
-        onBackup={vi.fn()}
-        onDismissReward={vi.fn()}
-      />,
+    const commonProps = {
+      catalog: videoCatalog,
+      now: 1_000,
+      dirty: false,
+      reward: null,
+      onPanel: vi.fn(),
+      onAction,
+      onExit: vi.fn(),
+      onBackup: vi.fn(),
+      onDismissReward: vi.fn(),
+    } as const
+    const { rerender } = render(
+      <GameHome {...commonProps} game={videoCollectedGame()} panel="album" />,
     )
 
     fireEvent.click(screen.getByRole('button', { name: /带视频的收藏/u }))
+
+    const detail = screen.getByRole('dialog', { name: '带视频的收藏' })
+    const dock = screen.getByTestId('persistent-bilibili-player')
+    const iframe = screen.getByTitle('Bilibili 外链播放器：收藏播放器桥接测试')
+    expect(screen.getAllByTestId('persistent-bilibili-player')).toHaveLength(1)
+    expect(detail).not.toContainElement(dock)
+    expect(dock.closest('[inert]')).toBeNull()
+
+    iframe.focus()
+    fireEvent.keyDown(iframe, { key: 'Tab' })
+    expect(within(detail).getByRole('button', { name: '关闭详情' })).toHaveFocus()
 
     expect(onAction).toHaveBeenCalledWith({
       type: 'task/event',
@@ -285,6 +297,47 @@ describe('收藏墙模态框', () => {
       },
       now: expect.any(Number),
     })
+
+    fireEvent.click(within(detail).getByRole('button', { name: '关闭详情' }))
+    expect(screen.getByTitle('Bilibili 外链播放器：收藏播放器桥接测试')).toBe(iframe)
+
+    rerender(<GameHome {...commonProps} game={videoCollectedGame()} panel={null} />)
+    expect(screen.getByTitle('Bilibili 外链播放器：收藏播放器桥接测试')).toBe(iframe)
+
+    rerender(<GameHome {...commonProps} game={videoCollectedGame()} panel="record-player" />)
+    expect(screen.getByTitle('Bilibili 外链播放器：收藏播放器桥接测试')).toBe(iframe)
+
+    const focusBase = videoCollectedGame()
+    const focusGame: GameState = {
+      ...focusBase,
+      world: 'reality',
+      reality: {
+        ...focusBase.reality,
+        activeStay: { stayId: 'player-focus-stay', enteredAt: 1_000 },
+        pomodoro: {
+          ...focusBase.reality.pomodoro,
+          session: {
+            sessionId: 'player-focus-session',
+            status: 'focus',
+            startedAt: 1_000,
+            focusEndsAt: 1_501_000,
+            cycleEndsAt: 1_801_000,
+            focusDurationMs: 25 * 60_000,
+            breakDurationMs: 5 * 60_000,
+            completedAt: null,
+            focusNotificationIssuedAt: null,
+            completionNotificationIssuedAt: null,
+            todoId: null,
+            postcardId: null,
+          },
+        },
+      },
+    }
+    rerender(<GameHome {...commonProps} game={focusGame} panel={null} />)
+
+    expect(screen.getByRole('dialog', { name: '和饼狗一起专注' })).toBeInTheDocument()
+    expect(screen.getByTitle('Bilibili 外链播放器：收藏播放器桥接测试')).toBe(iframe)
+    expect(iframe.closest('[inert]')).toBeNull()
   })
 })
 
@@ -603,9 +656,9 @@ describe('房间互动', () => {
     )
 
     expect(screen.getByRole('button', { name: '弹弹琴' })).toBeInTheDocument()
-    const keyboardRows = screen.getAllByRole('group', { name: /^C[4-6] 到 B[4-6] 琴键$/u })
-    expect(keyboardRows).toHaveLength(3)
-    expect(keyboardRows.flatMap((row) => within(row).getAllByRole('button'))).toHaveLength(36)
+    const keyboardRows = screen.getAllByRole('group', { name: /^C[3-6] 到 B[3-6] 琴键$/u })
+    expect(keyboardRows).toHaveLength(4)
+    expect(keyboardRows.flatMap((row) => within(row).getAllByRole('button'))).toHaveLength(48)
   })
 })
 
@@ -670,10 +723,7 @@ describe('舞台测试与调试控件', () => {
 
     expect(document.querySelector('select')).not.toBeInTheDocument()
     expect(screen.getAllByRole('slider')).toHaveLength(5)
-    expect(screen.getByRole('button', { name: '1 分 12 秒' })).toHaveAttribute(
-      'aria-pressed',
-      'true',
-    )
+    expect(screen.getByRole('button', { name: '10 秒' })).toHaveAttribute('aria-pressed', 'true')
   })
 })
 
@@ -695,21 +745,23 @@ describe('V4 壳层接线', () => {
       <GameHome {...props} game={{ ...base, pet: { ...base.pet, tired: true } }} now={1_000} />,
     )
 
-    const statusBar = screen.getByRole('group', { name: '饼狗状态' })
+    const statusBar = screen.getByRole('status', { name: '饼狗状态' })
     expect(statusBar).toHaveTextContent('今天想先休息')
     expect(statusBar.closest('header')).toHaveClass('game-hud--v4')
     expect(statusBar.parentElement).toHaveClass('game-hud__actions')
 
     rerender(<GameHome {...props} game={activeGame('music')} now={2_000} />)
-    expect(screen.getByRole('group', { name: '饼狗状态' })).toHaveTextContent(
+    expect(screen.getByRole('status', { name: '饼狗状态' })).toHaveTextContent(
       ACTIVITY_COPY.music.verb,
     )
 
     rerender(<GameHome {...props} game={activeGame('music')} now={114_000} />)
-    expect(screen.getByRole('group', { name: '饼狗状态' })).toHaveTextContent('完成啦')
+    expect(screen.getByRole('status', { name: '饼狗状态' })).toHaveTextContent(
+      `${ACTIVITY_COPY.music.name}完成了`,
+    )
   })
 
-  it('右下维度按钮只派发领域动作，现实返回后由待结算弹窗确认奖励', () => {
+  it('桌面精细指针环境先介绍现实维度，确认后才进入', () => {
     const onAction = vi.fn()
     const game = collectedGame()
     const props = {
@@ -723,11 +775,135 @@ describe('V4 壳层接线', () => {
       onExit: vi.fn(),
       onBackup: vi.fn(),
       onDismissReward: vi.fn(),
+      canEnterReality: () => true,
     }
-    const { rerender } = render(<GameHome {...props} game={game} />)
+    render(<GameHome {...props} game={game} />)
 
     fireEvent.click(screen.getByRole('button', { name: '切换到现实生活维度' }))
+    expect(screen.getByRole('dialog', { name: '进入现实维度？' })).toHaveTextContent(
+      '完整的工作与休息苹果钟',
+    )
+    expect(onAction).not.toHaveBeenCalledWith(expect.objectContaining({ type: 'reality/enter' }))
+
+    fireEvent.click(screen.getByRole('button', { name: '进入现实维度' }))
     expect(onAction).toHaveBeenCalledWith({ type: 'reality/enter', now: expect.any(Number) })
+    expect(props.onPanel).toHaveBeenCalledWith(null)
+  })
+
+  it('非桌面精细指针环境拒绝进入现实维度', () => {
+    const onAction = vi.fn()
+    render(
+      <GameHome
+        game={collectedGame()}
+        catalog={catalog}
+        now={1_000}
+        panel={null}
+        dirty={false}
+        reward={null}
+        onPanel={vi.fn()}
+        onAction={onAction}
+        onExit={vi.fn()}
+        onBackup={vi.fn()}
+        onDismissReward={vi.fn()}
+        canEnterReality={() => false}
+      />,
+    )
+
+    fireEvent.click(screen.getByRole('button', { name: '切换到现实生活维度' }))
+    expect(screen.getByRole('dialog', { name: '请使用电脑浏览器' })).toHaveTextContent(
+      '鼠标或触控板',
+    )
+    expect(onAction).not.toHaveBeenCalledWith(expect.objectContaining({ type: 'reality/enter' }))
+
+    fireEvent.click(screen.getByRole('button', { name: '知道了' }))
+    expect(screen.queryByRole('dialog', { name: '请使用电脑浏览器' })).not.toBeInTheDocument()
+  })
+
+  it('确认期间失去桌面精细指针能力时重新拒绝进入', () => {
+    const onAction = vi.fn()
+    let supported = true
+    render(
+      <GameHome
+        game={collectedGame()}
+        catalog={catalog}
+        now={1_000}
+        panel={null}
+        dirty={false}
+        reward={null}
+        onPanel={vi.fn()}
+        onAction={onAction}
+        onExit={vi.fn()}
+        onBackup={vi.fn()}
+        onDismissReward={vi.fn()}
+        canEnterReality={() => supported}
+      />,
+    )
+
+    fireEvent.click(screen.getByRole('button', { name: '切换到现实生活维度' }))
+    supported = false
+    fireEvent.click(screen.getByRole('button', { name: '进入现实维度' }))
+
+    expect(screen.getByRole('dialog', { name: '请使用电脑浏览器' })).toBeInTheDocument()
+    expect(onAction).not.toHaveBeenCalledWith(expect.objectContaining({ type: 'reality/enter' }))
+  })
+
+  it('非 PC 恢复现实维度存档时要求用户显式返回饼屋', () => {
+    const onAction = vi.fn()
+    const onPanel = vi.fn()
+    const base = collectedGame()
+    const restoredRealityGame: GameState = {
+      ...base,
+      world: 'reality',
+      reality: {
+        ...base.reality,
+        activeStay: { stayId: 'restored-reality-stay', enteredAt: 500 },
+      },
+    }
+    render(
+      <GameHome
+        game={restoredRealityGame}
+        catalog={catalog}
+        now={1_000}
+        panel={null}
+        dirty={false}
+        reward={null}
+        onPanel={onPanel}
+        onAction={onAction}
+        onExit={vi.fn()}
+        onBackup={vi.fn()}
+        onDismissReward={vi.fn()}
+        canEnterReality={() => false}
+      />,
+    )
+
+    const dialog = screen.getByRole('dialog', { name: '先回到饼屋' })
+    expect(dialog).toHaveTextContent('当前浏览器不支持继续')
+    expect(onAction).not.toHaveBeenCalledWith(expect.objectContaining({ type: 'reality/leave' }))
+
+    fireEvent.keyDown(document, { key: 'Escape' })
+    expect(screen.getByRole('dialog', { name: '先回到饼屋' })).toBeInTheDocument()
+
+    fireEvent.click(screen.getByRole('button', { name: '返回饼屋' }))
+    expect(onPanel).toHaveBeenCalledWith(null)
+    expect(onAction).toHaveBeenCalledWith({ type: 'reality/leave', now: expect.any(Number) })
+  })
+
+  it('现实返回后由待结算弹窗确认奖励', () => {
+    const onAction = vi.fn()
+    const game = collectedGame()
+    const props = {
+      catalog,
+      now: 1_000,
+      panel: null,
+      dirty: false,
+      reward: null,
+      onPanel: vi.fn(),
+      onAction,
+      onExit: vi.fn(),
+      onBackup: vi.fn(),
+      onDismissReward: vi.fn(),
+      canEnterReality: () => true,
+    }
 
     const pendingGame: GameState = {
       ...game,
@@ -741,7 +917,7 @@ describe('V4 壳层接线', () => {
         },
       },
     }
-    rerender(<GameHome {...props} game={pendingGame} />)
+    render(<GameHome {...props} game={pendingGame} />)
     fireEvent.click(screen.getByRole('button', { name: '没有🥺' }))
     expect(onAction).toHaveBeenCalledWith({
       type: 'reality/settle',
@@ -782,58 +958,124 @@ describe('V4 壳层接线', () => {
     expect(screen.queryByRole('group', { name: '确认取消活动' })).not.toBeInTheDocument()
   })
 
-  it('现实苹果钟运行时房间 ↩️ 打开工作信息栏的取消确认，确认后才派发取消', async () => {
+  it('苹果钟全屏锁定明信片，并让待办和唯一播放器在专注、休息阶段持续可交互', async () => {
     const base = collectedGame()
-    const game: GameState = {
+    const focusCatalog: ContentCatalog = {
+      ...catalog,
+      videosByBvid: { [albumVideo.bvid]: albumVideo },
+      recordPlayerVideos: [albumVideo],
+    }
+    const focusGame: GameState = {
       ...base,
       world: 'reality',
       reality: {
         ...base.reality,
         activeStay: { stayId: 'reality-pomodoro-stay', enteredAt: 1_000 },
-        pomodoro: {
-          ...base.reality.pomodoro,
-          session: {
-            sessionId: 'pomodoro-room-request',
-            status: 'running',
-            startedAt: 1_000,
-            endsAt: 1_501_000,
-            durationMs: 25 * 60_000,
+        todos: {
+          'focus-todo': {
+            id: 'focus-todo',
+            title: '整理材料',
+            createdAt: 1_000,
+            updatedAt: 1_000,
+            dueAt: null,
             completedAt: null,
             notificationIssuedAt: null,
+          },
+        },
+        pomodoro: {
+          ...base.reality.pomodoro,
+          selectedPostcardId: null,
+          session: {
+            sessionId: 'pomodoro-room-request',
+            status: 'focus',
+            startedAt: 1_000,
+            focusEndsAt: 1_501_000,
+            cycleEndsAt: 1_801_000,
+            focusDurationMs: 25 * 60_000,
+            breakDurationMs: 5 * 60_000,
+            completedAt: null,
+            focusNotificationIssuedAt: null,
+            completionNotificationIssuedAt: null,
             todoId: null,
-            postcardId: null,
+            postcardId: postcard.id,
           },
         },
       },
     }
     const onAction = vi.fn()
+    const commonFocusProps = {
+      catalog: focusCatalog,
+      panel: null,
+      dirty: false,
+      reward: null,
+      onPanel: vi.fn(),
+      onAction,
+      onExit: vi.fn(),
+      onBackup: vi.fn(),
+      onDismissReward: vi.fn(),
+    } as const
+    const { rerender } = render(<GameHome {...commonFocusProps} game={focusGame} now={2_000} />)
 
-    function PomodoroHarness() {
-      const [panel, setPanel] = useState<PanelId | null>(null)
-      return (
-        <GameHome
-          game={game}
-          catalog={catalog}
-          now={2_000}
-          panel={panel}
-          dirty={false}
-          reward={null}
-          onPanel={setPanel}
-          onAction={onAction}
-          onExit={vi.fn()}
-          onBackup={vi.fn()}
-          onDismissReward={vi.fn()}
-        />
-      )
+    const focusDialog = screen.getByRole('dialog', { name: '和饼狗一起专注' })
+    expect(focusDialog.closest('[data-background-id]')).toHaveAttribute(
+      'data-background-id',
+      postcard.id,
+    )
+    expect(
+      focusDialog.closest('[data-background-id]')?.querySelector('.pomodoro-focus__background'),
+    ).toHaveAttribute('src', '/assets/collectibles/postcards/test.webp')
+    expect(screen.getByText('24:59')).toBeVisible()
+    expect(document.querySelector('.game-layout')).toHaveAttribute('inert')
+    expect(focusDialog.querySelector('.pomodoro-focus__info')).not.toHaveClass('is-compact')
+
+    fireEvent.click(screen.getByRole('checkbox', { name: '标记为已完成：整理材料' }))
+    expect(onAction).toHaveBeenCalledWith({
+      type: 'todo/completion-set',
+      todoId: 'focus-todo',
+      completed: true,
+      now: expect.any(Number),
+    })
+
+    fireEvent.click(screen.getByRole('button', { name: '播放全站第一' }))
+    const player = await screen.findByRole('complementary', { name: '持久播放器' })
+    const playerIframe = screen.getByTitle('Bilibili 外链播放器：收藏播放器桥接测试')
+    expect(focusDialog).not.toContainElement(player)
+    expect(screen.getAllByTestId('persistent-bilibili-player')).toHaveLength(1)
+    expect(player.closest('[inert]')).toBeNull()
+    expect(focusDialog.querySelector('.pomodoro-focus__info')).toHaveClass('is-compact')
+
+    playerIframe.focus()
+    fireEvent.keyDown(playerIframe, { key: 'Tab' })
+    expect(focusDialog.querySelector('.pomodoro-focus__info')).toHaveFocus()
+
+    fireEvent.click(screen.getByRole('button', { name: '隐藏画面' }))
+    expect(focusDialog.querySelector('.pomodoro-focus__info')).not.toHaveClass('is-compact')
+
+    const breakGame: GameState = {
+      ...focusGame,
+      reality: {
+        ...focusGame.reality,
+        pomodoro: {
+          ...focusGame.reality.pomodoro,
+          session: {
+            ...focusGame.reality.pomodoro.session!,
+            status: 'break',
+            focusNotificationIssuedAt: 1_501_000,
+          },
+        },
+      },
     }
+    rerender(<GameHome {...commonFocusProps} game={breakGame} now={1_502_000} />)
 
-    render(<PomodoroHarness />)
-    fireEvent.click(screen.getByRole('button', { name: '取消当前苹果钟' }))
+    const breakDialog = screen.getByRole('dialog', { name: '休息一下吧' })
+    expect(screen.getByText('04:59')).toBeVisible()
+    expect(breakDialog).not.toContainElement(
+      screen.getByRole('complementary', { name: '持久播放器' }),
+    )
+    expect(screen.getAllByTestId('persistent-bilibili-player')).toHaveLength(1)
 
-    expect(await screen.findByRole('alertdialog', { name: '确认取消苹果钟？' })).toBeVisible()
-    await waitFor(() => expect(screen.getByRole('button', { name: '继续专注' })).toHaveFocus())
-    expect(onAction).not.toHaveBeenCalledWith(expect.objectContaining({ type: 'pomodoro/cancel' }))
-
+    fireEvent.click(screen.getByRole('button', { name: '取消本次计时' }))
+    await waitFor(() => expect(screen.getByRole('button', { name: '继续休息' })).toHaveFocus())
     fireEvent.click(screen.getByRole('button', { name: '确认取消' }))
     expect(onAction).toHaveBeenCalledWith({
       type: 'pomodoro/cancel',
@@ -883,7 +1125,7 @@ describe('V4 壳层接线', () => {
     fireEvent.click(screen.getByRole('button', { name: '去电脑前' }))
 
     expect(await screen.findAllByRole('group', { name: '确认使用活力魔法' })).toHaveLength(1)
-    expect(screen.getByText('认真刷播和全力冲热共享同一份“电脑”意愿。')).toBeVisible()
+    expect(screen.queryByText('认真刷播和全力冲热共享同一份“电脑”意愿。')).not.toBeInTheDocument()
     expect(onAction).not.toHaveBeenCalledWith(expect.objectContaining({ type: 'activity/start' }))
 
     fireEvent.click(screen.getByRole('button', { name: '使用活力魔法' }))

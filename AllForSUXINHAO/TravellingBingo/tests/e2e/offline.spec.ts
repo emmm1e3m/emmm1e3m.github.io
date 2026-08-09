@@ -27,7 +27,7 @@ test('高 DPR 安装后可断网重开，收藏卡片与详情回退到预缓存
 
   await page.goto('./')
   await page.getByRole('textbox', { name: '想让饼狗怎么称呼你？' }).fill('离线测试')
-  await expect(page.getByRole('button', { name: '开始新旅程' })).toBeEnabled()
+  await expect(page.getByRole('button', { name: '新存档' })).toBeEnabled()
   await expect
     .poll(
       () =>

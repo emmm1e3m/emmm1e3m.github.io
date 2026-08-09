@@ -13,8 +13,8 @@ import {
   PET_ENCOURAGEMENT_APPLE_COST,
 } from './constants'
 import { createInitialGameState } from './createGameState'
-import { DEFAULT_GAME_BALANCE } from './gameBalance'
-import { gameStateV4Schema } from './migrateGameStateV3'
+import { DEFAULT_GAME_BALANCE, LUCKY_APPLE_COLLECTION_DROP_BONUS } from './gameBalance'
+import { gameStateV5Schema } from './migrateGameStateV4'
 import { reduceGame } from './reducer'
 import { MAX_DATE_TIMESTAMP_MS } from './time'
 import type { ActivityKind, CollectionCatalog, GameState, GameTransition, ItemId } from './types'
@@ -79,17 +79,17 @@ function seedWhoseRewardRollIsBelow(limit: number, rollIndex: number): string {
   throw new Error(`没有找到小于 ${limit} 的第 ${rollIndex + 1} 次奖励随机值`)
 }
 
-describe('旅行饼狗 v4 领域状态', () => {
-  it('新游戏使用 schema v4、用户名、零天陪伴、72 秒活动与独立随机序列', () => {
+describe('旅行饼狗 v5 领域状态', () => {
+  it('新游戏使用 schema v5、用户名、零天陪伴、10 秒活动与独立随机序列', () => {
     const state = createInitialGameState({ now: 1_000, seed: 'save-seed' })
 
-    expect(state.schemaVersion).toBe(4)
+    expect(state.schemaVersion).toBe(5)
     expect(state.profile).toMatchObject({ displayName: '你', companionDays: 0 })
     expect(state.friends).toEqual({})
     expect(state.economy.apples).toBe(INITIAL_APPLES)
     expect(state.gameBalance).toEqual(DEFAULT_GAME_BALANCE)
     expect(state.gameBalance).toEqual({
-      activityDurationMs: 72_000,
+      activityDurationMs: 10_000,
       probabilities: {
         postcard: 0.65,
         millionShot: 0.4,
@@ -104,7 +104,7 @@ describe('旅行饼狗 v4 领域状态', () => {
       'signal-headphones': 4,
       'trend-toolbox': 7,
       'lucky-apple': 6,
-      'bottled-speed-magic': 8,
+      'bottled-speed-magic': 3,
       'bottled-vitality-magic': 12,
     })
     expect(PET_ENCOURAGEMENT_APPLE_COST).toBe(2)
@@ -114,7 +114,7 @@ describe('旅行饼狗 v4 领域状态', () => {
     expect(Object.values(state.pet.preferences).some(Boolean)).toBe(true)
   })
 
-  it('开始活动原子扣除补给，并以绝对时间推导 72 秒边界', () => {
+  it('开始活动原子扣除补给，并以绝对时间推导 10 秒边界', () => {
     const initial = willing(createInitialGameState({ now: 1_000, seed: 'travel-seed' }), 'travel')
     const started = successful(
       reduceGame(initial, { type: 'activity/start', kind: 'travel', now: 10_000 }, catalog),
@@ -428,7 +428,7 @@ describe('旅行饼狗 v4 领域状态', () => {
   })
 
   it('旅行 0% 遇友和明信片时，幸运苹果加成会实际写入明信片计划', () => {
-    const seed = seedWhoseRewardRollIsBelow(0.2, 1)
+    const seed = seedWhoseRewardRollIsBelow(LUCKY_APPLE_COLLECTION_DROP_BONUS, 1)
     let state = willing(createInitialGameState({ now: 0, seed, debug: true }), 'travel')
     state = withItem(state, 'lucky-apple')
     state = withProbability(withProbability(state, 'travelFriend', 0), 'postcard', 0)
@@ -951,7 +951,7 @@ describe('旅行饼狗 v4 领域状态', () => {
     expect(restClaimed.statistics.started.rest).toBe(Number.MAX_SAFE_INTEGER)
     expect(restClaimed.statistics.claimed.rest).toBe(Number.MAX_SAFE_INTEGER)
     expect(restClaimed.statistics.applesEarned).toBe(Number.MAX_SAFE_INTEGER)
-    expect(gameStateV4Schema.safeParse(restClaimed).success).toBe(true)
+    expect(gameStateV5Schema.safeParse(restClaimed).success).toBe(true)
   })
 
   it('活动统计达到上限后饱和，仍可生成可导出的活动状态', () => {
@@ -969,7 +969,7 @@ describe('旅行饼狗 v4 领域状态', () => {
     ).state
     expect(started.statistics.started.travel).toBe(Number.MAX_SAFE_INTEGER)
     expect(started.random.sequences.reward).toBe(1)
-    expect(gameStateV4Schema.safeParse(started).success).toBe(true)
+    expect(gameStateV5Schema.safeParse(started).success).toBe(true)
   })
 
   it('结束时间超出 Date 上限时在扣补给与推进随机序列前拒绝开始', () => {

@@ -1,5 +1,6 @@
 import { fireEvent, render, screen } from '@testing-library/react'
 
+import mascotStyles from './MascotSprite.css?raw'
 import { MascotSprite, type MascotPose } from './MascotSprite'
 
 const POSE_ATLASES: Readonly<Record<MascotPose, string>> = {
@@ -17,6 +18,15 @@ const POSE_ATLASES: Readonly<Record<MascotPose, string>> = {
 }
 
 describe('饼狗图集演员', () => {
+  it('动作帧定位不依赖游戏页祖先，供全屏 portal 只显示一帧', () => {
+    expect(mascotStyles).toMatch(
+      /\.mascot-sprite--sit\s*\{[^}]*background-position:\s*33\.333% 0;/u,
+    )
+    expect(mascotStyles).toMatch(
+      /\.mascot-sprite--walk,[\s\S]*?\.mascot-sprite--sleep\s*\{[^}]*background-size:\s*400% 100%;/u,
+    )
+  })
+
   it.each(Object.entries(POSE_ATLASES) as Array<[MascotPose, string]>)(
     '%s 姿态带有稳定帧类并读取正确图集',
     (pose, atlas) => {

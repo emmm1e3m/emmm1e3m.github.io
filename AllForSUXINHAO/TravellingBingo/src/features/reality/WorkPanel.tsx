@@ -3,15 +3,17 @@ import { createPortal } from 'react-dom'
 
 import { useModalFocus } from '@/components/useModalFocus'
 import { MascotSprite } from '@/components/MascotSprite'
+import { POMODORO_PRESETS } from '@/domain'
 
 import type { RealityNotificationPermission, RealityTodoView, WorkPanelProps } from './types'
+import { PostcardPicker } from './PostcardPicker'
 import './reality.css'
 
 const NOTIFICATION_LABELS: Readonly<Record<RealityNotificationPermission, string>> = {
-  default: '提醒尚未开启',
-  granted: '页面保持打开时，完成提醒已开启',
-  denied: '提醒已被浏览器关闭',
-  unsupported: '当前浏览器不支持提醒',
+  default: '未开启',
+  granted: '已开启',
+  denied: '浏览器已关闭',
+  unsupported: '当前浏览器不支持',
 }
 
 interface TodoDeleteDialogProps {
@@ -106,7 +108,7 @@ function PomodoroConfirmDialog({
         <h2 id={titleId}>{starting ? '确认开始苹果钟？' : '确认取消苹果钟？'}</h2>
         <p id={descriptionId}>
           {starting
-            ? `和饼狗一起专注${durationLabel ? ` ${durationLabel}` : '这一段时间'}吗？开始后仍可用房间左下角的 ↩️ 中途取消。`
+            ? `和饼狗一起完成${durationLabel ? ` ${durationLabel}` : '这一轮专注与休息'}吗？专注结束后会进入休息，完成整轮才会记为相伴的下一天。`
             : '取消后不会计入相伴的下一天，这一次已经经过的计时也不会保留。'}
         </p>
         <div className="reality-dialog__actions">
@@ -160,22 +162,35 @@ export function WorkPanel({
     : null
   const selectedBackground =
     unlockedBackgrounds.find((background) => background.id === selectedBackgroundId) ?? null
-  const timerRunning = pomodoro.session?.status === 'running'
+  const selectedPreset = POMODORO_PRESETS.find(
+    (preset) => preset.focusDurationMs === pomodoro.selectedDurationMs,
+  )
+  const timerRunning =
+    pomodoro.session !== null &&
+    pomodoro.session !== undefined &&
+    pomodoro.session.status !== 'completed'
   const externalCancelSessionId =
     cancelRequestToken !== null &&
     cancelRequestToken !== undefined &&
-    pomodoro.session?.status === 'running'
+    pomodoro.session !== null &&
+    pomodoro.session !== undefined &&
+    pomodoro.session.status !== 'completed'
       ? pomodoro.session.sessionId
       : null
   const cancelSessionId =
-    pomodoro.session?.status === 'running' &&
+    pomodoro.session !== null &&
+    pomodoro.session !== undefined &&
+    pomodoro.session.status !== 'completed' &&
     (pendingCancelSessionId === pomodoro.session.sessionId ||
       externalCancelSessionId === pomodoro.session.sessionId)
       ? pomodoro.session.sessionId
       : null
-  const selectedDurationLabel =
-    pomodoro.durationOptions.find((option) => option.durationMs === pendingStartDurationMs)
-      ?.label ?? undefined
+  const pendingPreset = POMODORO_PRESETS.find(
+    (preset) => preset.focusDurationMs === pendingStartDurationMs,
+  )
+  const selectedDurationLabel = pendingPreset
+    ? `${pendingPreset.label}专注 + ${Math.round(pendingPreset.breakDurationMs / 60_000)} 分钟休息`
+    : undefined
 
   function closeCancelConfirmation() {
     setPendingCancelSessionId(null)
@@ -241,177 +256,65 @@ export function WorkPanel({
         选一张喜欢的明信片，让饼狗陪你专注一会儿，再把今天的小事一件件完成。
       </p>
 
-      <section
-        className={`reality-work-card reality-timer-card ${
-          selectedBackground?.thumbnailUrl ? 'has-postcard-background' : ''
-        }`.trim()}
-        aria-labelledby={`${headingId}-timer`}
-        data-background-id={selectedBackground?.id ?? 'plain'}
-      >
-        {selectedBackground?.thumbnailUrl && (
-          <img
-            className="reality-timer-card__background"
-            src={selectedBackground.thumbnailUrl}
-            alt=""
-          />
-        )}
-        <span className="reality-timer-card__shade" aria-hidden="true" />
-
+      <section className="reality-work-card" aria-labelledby={`${headingId}-timer`}>
         <div className="reality-work-card__heading">
           <div>
             <span className="reality-card-index">01</span>
-            <h3 id={`${headingId}-timer`}>选择苹果钟时长</h3>
+            <h3 id={`${headingId}-timer`}>设置苹果钟与提醒</h3>
           </div>
-          <div className="reality-timer-card__badges">
-            {selectedBackground && (
-              <span className="reality-background-status">背景 · {selectedBackground.title}</span>
-            )}
-            {pomodoro.session && (
-              <span className="reality-session-status" role="status">
-                {pomodoro.session.statusLabel}
-              </span>
-            )}
-          </div>
-        </div>
-
-        {pomodoro.durationOptions.length > 0 ? (
-          <div className="reality-choice-grid" role="group" aria-label="苹果钟时长">
-            {pomodoro.durationOptions.map((option) => {
-              const selected = option.durationMs === pomodoro.selectedDurationMs
-              return (
-                <button
-                  key={option.durationMs}
-                  className="reality-choice-button"
-                  type="button"
-                  aria-pressed={selected}
-                  disabled={pomodoro.session?.status === 'running'}
-                  onClick={() => actions.onDurationChange(option.durationMs)}
-                >
-                  <strong>{option.label}</strong>
-                  {option.description && <small>{option.description}</small>}
-                </button>
-              )
-            })}
-          </div>
-        ) : (
-          <p className="reality-empty" role="status">
-            还没有可用的苹果钟时长。
-          </p>
-        )}
-
-        {pomodoro.session?.remainingLabel && (
-          <p className="reality-timer-readout" aria-live="polite">
-            <span>当前进度</span>
-            <strong>{pomodoro.session.remainingLabel}</strong>
-          </p>
-        )}
-
-        <div className="reality-action-row">
-          <button
-            ref={startTriggerRef}
-            className="reality-primary-button"
-            type="button"
-            disabled={
-              pomodoro.canStart === false ||
-              pomodoro.durationOptions.length === 0 ||
-              pomodoro.session?.status === 'running'
-            }
-            onClick={() => {
-              setPendingCancelSessionId(null)
-              setPendingStartDurationMs(pomodoro.selectedDurationMs)
-            }}
-          >
-            开始苹果钟
-          </button>
-          {pomodoro.session?.status === 'running' && actions.onPomodoroCancel && (
-            <button
-              ref={cancelTriggerRef}
-              className="reality-secondary-button"
-              type="button"
-              onClick={() => {
-                setPendingStartDurationMs(null)
-                setPendingCancelSessionId(pomodoro.session!.sessionId)
-              }}
-            >
-              取消本次计时
-            </button>
+          {pomodoro.session && (
+            <span className="reality-session-status" role="status">
+              {pomodoro.session.statusLabel}
+            </span>
           )}
         </div>
 
+        <p className="reality-pomodoro-explanation">
+          每轮先专注，再休息。完成两个阶段后，才会记为和饼狗相伴的下一天。
+        </p>
+
+        <div className="reality-choice-grid" role="group" aria-label="苹果钟时长">
+          {POMODORO_PRESETS.map((preset) => {
+            const selected = preset.focusDurationMs === pomodoro.selectedDurationMs
+            return (
+              <button
+                key={preset.id}
+                className="reality-choice-button"
+                type="button"
+                aria-pressed={selected}
+                disabled={timerRunning}
+                onClick={() => actions.onDurationChange(preset.focusDurationMs)}
+              >
+                <strong>{preset.label}</strong>
+                <small>{preset.description}</small>
+              </button>
+            )
+          })}
+        </div>
+
         {notification && (
-          <div className="reality-notification-note">
-            <span>{notificationLabel}</span>
+          <div className="reality-setting-row">
+            <div>
+              <strong>阶段完成提醒</strong>
+              <span>页面保持打开时提醒 · {notificationLabel}</span>
+            </div>
             {notification.permission === 'default' && actions.onNotificationRequest && (
-              <button type="button" onClick={actions.onNotificationRequest}>
-                开启完成提醒
+              <button
+                className="reality-secondary-button"
+                type="button"
+                onClick={actions.onNotificationRequest}
+              >
+                开启提醒
               </button>
             )}
           </div>
         )}
-
-        <div className="reality-timer-companion">
-          <MascotSprite
-            pose={timerRunning ? 'sit' : 'idle'}
-            className="reality-timer-companion__mascot"
-            label={timerRunning ? '正在陪你专注的饼狗' : '准备陪你专注的饼狗'}
-          />
-          <p>
-            <strong>{timerRunning ? '饼狗正在陪你' : '饼狗准备好啦'}</strong>
-            <span>
-              {timerRunning
-                ? '先专心完成眼前这一小段吧。'
-                : selectedBackground
-                  ? `已经铺好“${selectedBackground.title}”，随时可以开始。`
-                  : '选一张明信片，或者就在默认纸张上开始。'}
-            </span>
-          </p>
-        </div>
-      </section>
-
-      <section className="reality-work-card" aria-labelledby={`${headingId}-background`}>
-        <div className="reality-work-card__heading">
-          <div>
-            <span className="reality-card-index">02</span>
-            <h3 id={`${headingId}-background`}>明信片背景</h3>
-          </div>
-          <span className="reality-unlocked-count">已解锁 {unlockedBackgrounds.length}</span>
-        </div>
-        <div className="reality-postcard-grid" role="group" aria-label="苹果钟明信片背景">
-          <button
-            className="reality-postcard-option reality-postcard-option--plain"
-            type="button"
-            aria-pressed={selectedBackgroundId === null}
-            onClick={() => actions.onBackgroundChange(null)}
-          >
-            <span aria-hidden="true">白纸</span>
-            <strong>默认纸张</strong>
-          </button>
-          {unlockedBackgrounds.map((background) => (
-            <button
-              key={background.id}
-              className="reality-postcard-option"
-              type="button"
-              aria-pressed={background.id === selectedBackgroundId}
-              onClick={() => actions.onBackgroundChange(background.id)}
-            >
-              {background.thumbnailUrl ? (
-                <img src={background.thumbnailUrl} alt="" />
-              ) : (
-                <span className="reality-postcard-option__placeholder" aria-hidden="true">
-                  明信片
-                </span>
-              )}
-              <strong>{background.title}</strong>
-              {background.description && <small>{background.description}</small>}
-            </button>
-          ))}
-        </div>
       </section>
 
       <section className="reality-work-card" aria-labelledby={`${headingId}-todos`}>
         <div className="reality-work-card__heading">
           <div>
-            <span className="reality-card-index">03</span>
+            <span className="reality-card-index">02</span>
             <h3 id={`${headingId}-todos`}>待办清单</h3>
           </div>
           <span className="reality-unlocked-count">{todos.length} 项</span>
@@ -508,6 +411,111 @@ export function WorkPanel({
             暂时没有待办，写下一件小事吧。
           </p>
         )}
+      </section>
+
+      <PostcardPicker
+        options={unlockedBackgrounds}
+        selectedId={selectedBackgroundId}
+        onChange={actions.onBackgroundChange}
+      />
+
+      <section
+        className={`reality-work-card reality-timer-card ${
+          selectedBackground?.thumbnailUrl ? 'has-postcard-background' : ''
+        }`.trim()}
+        aria-labelledby={`${headingId}-summary`}
+        data-background-id={selectedBackground?.id ?? 'plain'}
+      >
+        {selectedBackground?.thumbnailUrl && (
+          <img
+            className="reality-timer-card__background"
+            src={selectedBackground.fullUrl ?? selectedBackground.thumbnailUrl}
+            alt=""
+          />
+        )}
+        <span className="reality-timer-card__shade" aria-hidden="true" />
+
+        <div className="reality-work-card__heading">
+          <div>
+            <span className="reality-card-index">04</span>
+            <h3 id={`${headingId}-summary`}>准备开始</h3>
+          </div>
+          {selectedBackground && (
+            <span className="reality-background-status">明信片 · {selectedBackground.title}</span>
+          )}
+        </div>
+
+        <dl className="reality-pomodoro-summary">
+          <div>
+            <dt>专注</dt>
+            <dd>{selectedPreset?.label ?? '请选择固定时长'}</dd>
+          </div>
+          <div>
+            <dt>休息</dt>
+            <dd>
+              {selectedPreset ? `${Math.round(selectedPreset.breakDurationMs / 60_000)} 分钟` : '—'}
+            </dd>
+          </div>
+          <div>
+            <dt>明信片</dt>
+            <dd>{selectedBackground?.title ?? '默认纸张'}</dd>
+          </div>
+        </dl>
+
+        {pomodoro.session?.remainingLabel && (
+          <p className="reality-timer-readout" role="timer">
+            <span>{pomodoro.session.statusLabel}</span>
+            <strong>{pomodoro.session.remainingLabel}</strong>
+          </p>
+        )}
+
+        <div className="reality-timer-companion">
+          <MascotSprite
+            pose={timerRunning ? (pomodoro.session?.status === 'break' ? 'warm' : 'sit') : 'idle'}
+            className="reality-timer-companion__mascot"
+            label={timerRunning ? '正在陪伴你的饼狗' : '准备陪你专注的饼狗'}
+          />
+          <p>
+            <strong>{timerRunning ? '这一轮正在进行' : '饼狗准备好啦'}</strong>
+            <span>
+              {timerRunning
+                ? pomodoro.session?.status === 'break'
+                  ? '休息一下，整轮结束后再一起回到房间。'
+                  : '先专心完成眼前这一段吧。'
+                : selectedBackground
+                  ? `“${selectedBackground.title}”已经铺好。`
+                  : '随时可以在默认纸张上开始。'}
+            </span>
+          </p>
+        </div>
+
+        <div className="reality-action-row">
+          <button
+            ref={startTriggerRef}
+            className="reality-primary-button"
+            type="button"
+            disabled={pomodoro.canStart === false || selectedPreset === undefined || timerRunning}
+            onClick={() => {
+              setPendingCancelSessionId(null)
+              setPendingStartDurationMs(pomodoro.selectedDurationMs)
+            }}
+          >
+            开始苹果钟
+          </button>
+          {timerRunning && actions.onPomodoroCancel && (
+            <button
+              ref={cancelTriggerRef}
+              className="reality-secondary-button"
+              type="button"
+              onClick={() => {
+                setPendingStartDurationMs(null)
+                setPendingCancelSessionId(pomodoro.session!.sessionId)
+              }}
+            >
+              取消本次计时
+            </button>
+          )}
+        </div>
       </section>
 
       {pendingDeleteTodo && (

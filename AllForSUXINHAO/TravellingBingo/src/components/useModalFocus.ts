@@ -22,12 +22,15 @@ export interface ModalFocusOptions {
   initialFocus?: ModalFocusTarget
   /** 关闭后优先恢复的元素；传入 false 可关闭最终焦点恢复。 */
   returnFocus?: ModalFocusTarget | false
+  /** 与弹窗并列但仍需参与焦点圈定的明确交互节点。 */
+  focusPeers?: readonly ModalFocusTarget[]
 }
 
 interface ModalEntry {
   dialog: HTMLElement
   previousFocus: HTMLElement | null
   rootReturnTarget: HTMLElement | null
+  focusPeers: readonly ModalFocusTarget[]
 }
 
 interface InertRecord {
@@ -115,6 +118,29 @@ function resolveFocusTarget(
   return target.current
 }
 
+function resolveFocusPeers(entry: ModalEntry): HTMLElement[] {
+  return [
+    ...new Set(
+      entry.focusPeers
+        .map((target) => resolveFocusTarget(target, document))
+        .filter((element): element is HTMLElement => element !== null && element.isConnected),
+    ),
+  ]
+}
+
+function containsFocusTarget(dialog: HTMLElement, peers: readonly HTMLElement[], target: Node) {
+  return dialog.contains(target) || peers.some((peer) => peer === target || peer.contains(target))
+}
+
+function getModalFocusableElements(dialog: HTMLElement, peers: readonly HTMLElement[]) {
+  return [
+    ...new Set([
+      ...getFocusableElements(dialog),
+      ...peers.flatMap((peer) => [peer, ...getFocusableElements(peer)]).filter(isFocusable),
+    ]),
+  ]
+}
+
 function focusInside(dialog: HTMLElement, target?: ModalFocusTarget) {
   const requested = resolveFocusTarget(target, dialog)
   const destination =
@@ -140,8 +166,10 @@ function releaseManagedInert() {
 
 function syncTopModalInert() {
   releaseManagedInert()
-  const topDialog = modalStack.at(-1)?.dialog
+  const topEntry = modalStack.at(-1)
+  const topDialog = topEntry?.dialog
   if (!topDialog?.isConnected) return
+  const focusPeers = topEntry ? resolveFocusPeers(topEntry) : []
 
   let activeBranch: HTMLElement | null =
     topDialog.closest<HTMLElement>('.modal-backdrop, [data-modal-backdrop]') ?? topDialog
@@ -149,6 +177,7 @@ function syncTopModalInert() {
   while (activeBranch?.parentElement) {
     for (const sibling of activeBranch.parentElement.children) {
       if (sibling === activeBranch || !(sibling instanceof HTMLElement)) continue
+      if (focusPeers.some((peer) => sibling === peer || sibling.contains(peer))) continue
       const originallyInert = isInert(sibling)
       if (!originallyInert) sibling.setAttribute('inert', '')
       inertRecords.push({ element: sibling, originallyInert })
@@ -217,6 +246,7 @@ export function useModalFocus<T extends HTMLElement>(
         : returnSettingAtOpen === false
           ? null
           : (resolveFocusTarget(returnSettingAtOpen, document) ?? previousFocus),
+      focusPeers: optionsRef.current.focusPeers ?? [],
     }
 
     modalStack.push(entry)
@@ -260,7 +290,8 @@ export function useModalFocus<T extends HTMLElement>(
       }
       if (event.key !== 'Tab') return
 
-      const candidates = getFocusableElements(dialog)
+      const focusPeers = resolveFocusPeers(entry)
+      const candidates = getModalFocusableElements(dialog, focusPeers)
       if (candidates.length === 0) {
         event.preventDefault()
         dialog.focus({ preventScroll: true })
@@ -272,7 +303,12 @@ export function useModalFocus<T extends HTMLElement>(
       const active = document.activeElement
       const activeIndex = active instanceof HTMLElement ? candidates.indexOf(active) : -1
 
-      if (event.shiftKey && (activeIndex <= 0 || !dialog.contains(active))) {
+      if (
+        event.shiftKey &&
+        (activeIndex <= 0 ||
+          !(active instanceof Node) ||
+          !containsFocusTarget(dialog, focusPeers, active))
+      ) {
         event.preventDefault()
         last.focus({ preventScroll: true })
       } else if (!event.shiftKey && (activeIndex === candidates.length - 1 || activeIndex === -1)) {
@@ -284,7 +320,14 @@ export function useModalFocus<T extends HTMLElement>(
     const handleFocusIn = (event: FocusEvent) => {
       if (!isTopModal()) return
       const target = event.target
-      if (target instanceof HTMLElement && dialog.contains(target) && isVisible(target)) return
+      const focusPeers = resolveFocusPeers(entry)
+      if (
+        target instanceof HTMLElement &&
+        containsFocusTarget(dialog, focusPeers, target) &&
+        isVisible(target)
+      ) {
+        return
+      }
       focusInside(dialog, optionsRef.current.initialFocus)
     }
 

@@ -2,6 +2,7 @@ import {
   type CollectibleCategory,
   type CollectibleItem,
   type BilibiliVideo,
+  type BilibiliVideoMetadata,
   type BilibiliVideoCatalogSource,
   type FriendCatalogSource,
   type FriendItem,
@@ -17,7 +18,7 @@ export interface ContentCatalog {
   readonly siteFirstChronology: readonly string[]
   readonly friends: readonly FriendItem[]
   readonly friendById: Readonly<Record<string, FriendItem>>
-  readonly videosByBvid: Readonly<Record<string, BilibiliVideo>>
+  readonly videosByBvid: Readonly<Record<string, BilibiliVideoMetadata>>
   readonly recordPlayerVideos: readonly BilibiliVideo[]
 }
 
@@ -48,7 +49,7 @@ function progressGroup(collected: number, total: number): CollectionProgressGrou
   })
 }
 
-function sameVideoMetadata(left: BilibiliVideo, right: BilibiliVideo) {
+function sameVideoMetadata(left: BilibiliVideoMetadata, right: BilibiliVideoMetadata) {
   return (
     left.bvid === right.bvid &&
     left.title === right.title &&
@@ -132,7 +133,10 @@ export function mergeContentCatalogs(
     ),
     friends: Object.freeze([...friendCatalog.items]),
     friendById: Object.freeze(mutableFriendIndex),
-    videosByBvid: Object.freeze({ ...videoCatalog.videos }),
+    videosByBvid: Object.freeze({
+      ...videoCatalog.videos,
+      ...Object.fromEntries(videoCatalog.extraTracks.items.map((video) => [video.bvid, video])),
+    }),
     recordPlayerVideos: Object.freeze([...videoCatalog.recordPlayer.items]),
   })
 }

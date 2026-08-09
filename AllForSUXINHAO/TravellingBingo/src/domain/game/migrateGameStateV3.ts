@@ -23,7 +23,7 @@ import { createDefaultGameBalance, isValidActivityDuration } from './gameBalance
 import { migrateGameStateV1, type MigrateGameStateV1Options } from './migrateGameStateV1'
 import { migrateGameStateV2ToV3, migrateStoredGameStateToV3 } from './migrateGameStateV2'
 import { isValidDisplayName } from './profile'
-import type { CollectionCatalog, GameState, GameStateV1, GameStateV2, GameStateV3 } from './types'
+import type { CollectionCatalog, GameStateV1, GameStateV2, GameStateV3, GameStateV4 } from './types'
 import { validateCollectionCatalog } from './validateCollectionCatalog'
 import { replaceRetiredTaskBoard } from '../tasks/taskBoard'
 import { assertValidTimestamp, MAX_DATE_TIMESTAMP_MS } from './time'
@@ -418,7 +418,7 @@ const gameStateV4Shape = z.strictObject({
 })
 
 /** V4 严格存档 schema；目录成员关系继续由 validateImportedGameState 校验。 */
-export const gameStateV4Schema: z.ZodType<GameState> = gameStateV4Shape.superRefine(
+export const gameStateV4Schema: z.ZodType<GameStateV4> = gameStateV4Shape.superRefine(
   (state, context) => {
     const vitality = state.player.effects.vitality
     if (vitality !== null && state.profile.companionDays >= vitality.expiresAfterCompanionDay) {
@@ -590,7 +590,7 @@ export function isStrictGameStateV3(value: unknown): value is GameStateV3 {
   return gameStateV3Schema.safeParse(value).success
 }
 
-export function isStrictGameStateV4(value: unknown): value is GameState {
+export function isStrictGameStateV4(value: unknown): value is GameStateV4 {
   return gameStateV4Schema.safeParse(value).success
 }
 
@@ -603,7 +603,7 @@ export interface MigrateGameStateV3Options {
 export function migrateGameStateV3ToV4(
   state: GameStateV3,
   options: MigrateGameStateV3Options,
-): GameState {
+): GameStateV4 {
   assertValidTimestamp(options.now, '迁移时间必须是 Date 可表示的非负整数毫秒时间戳')
   const catalogValidation = validateCollectionCatalog(options.catalog)
   if (!catalogValidation.ok) throw new TypeError(catalogValidation.message)
@@ -664,12 +664,12 @@ export function migrateGameStateV3ToV4(
   }
 }
 
-export type StoredGameState = GameStateV1 | GameStateV2 | GameStateV3 | GameState
+export type StoredGameStateThroughV4 = GameStateV1 | GameStateV2 | GameStateV3 | GameStateV4
 
 export function migrateStoredGameStateToV4(
-  state: StoredGameState,
+  state: StoredGameStateThroughV4,
   options: MigrateGameStateV1Options,
-): GameState {
+): GameStateV4 {
   if (state.schemaVersion === 4) {
     return state.musicPlayer.autoplay
       ? state
@@ -683,14 +683,14 @@ export function migrateStoredGameStateToV4(
 export function migrateGameStateV2ToV4(
   state: GameStateV2,
   options: MigrateGameStateV1Options,
-): GameState {
+): GameStateV4 {
   return migrateGameStateV3ToV4(migrateGameStateV2ToV3(state, options), options)
 }
 
 export function migrateGameStateV1ToV4(
   state: GameStateV1,
   options: MigrateGameStateV1Options,
-): GameState {
+): GameStateV4 {
   const migrated = migrateGameStateV3ToV4(
     migrateGameStateV2ToV3(migrateGameStateV1(state, options), options),
     options,

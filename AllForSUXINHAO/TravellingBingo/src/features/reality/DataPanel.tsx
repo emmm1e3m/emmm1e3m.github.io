@@ -56,9 +56,6 @@ export function DataPanel({
           <span className="reality-eyebrow">二楼电脑 · 数据</span>
           <h2 id={headingId}>刷播与冲热</h2>
         </div>
-        <span className="reality-panel__mark" aria-hidden="true">
-          ↗
-        </span>
       </div>
       <p className="reality-panel__intro">
         电脑上放着两张行动卡，选一项想做的事，和饼狗一起为喜欢的人认真努力吧。
@@ -83,8 +80,7 @@ export function DataPanel({
         <div>
           <span aria-hidden="true">📡</span>
           <div>
-            <h3 id={`${headingId}-group-title`}>加入运行组</h3>
-            <p>需要参与实际运行时，请前往微博页面查看最新说明。</p>
+            <h3 id={`${headingId}-group-title`}>冲热刷播，奖品多多</h3>
           </div>
         </div>
         <a
@@ -94,7 +90,7 @@ export function DataPanel({
           rel="noopener noreferrer"
           onClick={onGroupLinkClick}
         >
-          打开运行组页面
+          前往
           <span className="visually-hidden">（在新窗口打开）</span>
         </a>
       </aside>

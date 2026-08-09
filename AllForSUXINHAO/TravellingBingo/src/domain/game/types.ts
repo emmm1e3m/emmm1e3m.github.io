@@ -242,11 +242,16 @@ export interface TaskInstance {
   seenKeys: string[]
 }
 
-export interface TaskBoard {
+export interface TaskBoardV4 {
   active: [TaskInstance, TaskInstance, TaskInstance]
   completedCount: number
   recentTemplateIds: TaskId[]
   oneOffCompleted: TaskId[]
+}
+
+export interface TaskBoard extends TaskBoardV4 {
+  /** 三项全部完成的时刻；未完成的任务板必须为 null。 */
+  completedAt: number | null
 }
 
 export type TaskEvent =
@@ -306,16 +311,51 @@ export interface TodoItem {
   notificationIssuedAt: number | null
 }
 
-export type PomodoroStatus = 'running' | 'completed'
+/** 已发布 V4 苹果钟快照；仅供严格导入与 V4 -> V5 迁移。 */
+export type PomodoroStatusV4 = 'running' | 'completed'
 
-export interface PomodoroSession {
+export interface PomodoroSessionV4 {
   sessionId: string
-  status: PomodoroStatus
+  status: PomodoroStatusV4
   startedAt: number
   endsAt: number
   durationMs: number
   completedAt: number | null
   notificationIssuedAt: number | null
+  todoId: string | null
+  /** 开始时锁定的明信片背景；只保存收藏 ID，不复制展示元数据。 */
+  postcardId: string | null
+}
+
+export interface PomodoroStateV4 {
+  nextSessionSequence: number
+  selectedPostcardId: string | null
+  session: PomodoroSessionV4 | null
+}
+
+export interface RealityStateV4 {
+  nextStaySequence: number
+  activeStay: RealityStay | null
+  pendingSettlement: RealitySettlement | null
+  todos: Record<string, TodoItem>
+  pomodoro: PomodoroStateV4
+}
+
+export type PomodoroStatus = 'focus' | 'break' | 'completed'
+
+export interface PomodoroSession {
+  sessionId: string
+  status: PomodoroStatus
+  startedAt: number
+  focusEndsAt: number
+  cycleEndsAt: number
+  focusDurationMs: number
+  breakDurationMs: number
+  completedAt: number | null
+  /** 专注结束提醒的签发时间；跨过整轮时只作幂等标记，不弹过期提醒。 */
+  focusNotificationIssuedAt: number | null
+  /** 整轮结束提醒的签发时间。 */
+  completionNotificationIssuedAt: number | null
   todoId: string | null
   /** 开始时锁定的明信片背景；只保存收藏 ID，不复制展示元数据。 */
   postcardId: string | null
@@ -354,9 +394,17 @@ export interface MusicPlayerState {
   currentBvid: string | null
   currentIndex: number
   loopMode: MusicLoopMode
-  /** 跨域播放器不可读取真实进度；这里只记录用户最后明确设置的起点。 */
+}
+
+/** 冻结的 V4 播放器形状；仅供旧存档严格校验与迁移。 */
+export interface MusicPlayerStateV4 {
+  playlists: Record<string, MusicPlaylist>
+  order: string[]
+  activePlaylistId: string | null
+  currentBvid: string | null
+  currentIndex: number
+  loopMode: MusicLoopMode
   startAtSeconds: number
-  /** 旧 V4 存档兼容字段；运行态始终规范为 true，不能作为关闭自动播放的开关。 */
   autoplay: boolean
 }
 
@@ -391,7 +439,7 @@ export interface GameStateV2 {
   collections: Record<string, CollectionEntry>
   activeActivity: ActivityRunV2 | null
   pet: PetStateV2
-  tasks: TaskBoard
+  tasks: TaskBoardV4
   gameBalance: GameBalanceV2
   statistics: LegacyGameStatistics
   random: PersistentRandomState
@@ -413,7 +461,7 @@ export interface GameStateV3 {
   friends: FriendCollection
   activeActivity: ActivityRun | null
   pet: PetStateV3
-  tasks: TaskBoard
+  tasks: TaskBoardV4
   gameBalance: GameBalance
   statistics: GameStatistics
   random: PersistentRandomState
@@ -428,18 +476,37 @@ export interface GameStateV4 {
   friends: FriendCollection
   activeActivity: ActivityRun | null
   pet: PetState
-  tasks: TaskBoard
+  tasks: TaskBoardV4
   gameBalance: GameBalance
   statistics: GameStatistics
   random: PersistentRandomState
   /** 玩家当前所处世界；与媒体播放器无关。 */
   world: WorldDimension
   player: PlayerState
+  reality: RealityStateV4
+  musicPlayer: MusicPlayerStateV4
+}
+
+export interface GameStateV5 {
+  schemaVersion: 5
+  profile: GameStateV4['profile']
+  economy: GameStateV4['economy']
+  inventory: Inventory
+  collections: Record<string, CollectionEntry>
+  friends: FriendCollection
+  activeActivity: ActivityRun | null
+  pet: PetState
+  tasks: TaskBoard
+  gameBalance: GameBalance
+  statistics: GameStatistics
+  random: PersistentRandomState
+  world: WorldDimension
+  player: PlayerState
   reality: RealityState
   musicPlayer: MusicPlayerState
 }
 
-export type GameState = GameStateV4
+export type GameState = GameStateV5
 
 export interface ActivityTiming {
   phase: ActivityPhase
@@ -566,9 +633,7 @@ export type GameAction =
   | { type: 'music/playlist-delete'; playlistId: string; now: number }
   | { type: 'music/playlist-select'; playlistId: string | null }
   | { type: 'music/track-select'; bvid: string; index: number }
-  | { type: 'music/seek-set'; startAtSeconds: number }
   | { type: 'music/loop-set'; loopMode: MusicLoopMode }
-  | { type: 'music/autoplay-set'; autoplay: boolean }
   | { type: 'debug/apples-adjust'; delta: number }
   | { type: 'debug/item-adjust'; itemId: ItemId; delta: number }
   | { type: 'debug/collection-set'; collectionId: string; owned: boolean; now: number }
@@ -614,7 +679,6 @@ export type GameEffect =
       target: number
       completed: boolean
       applesAwarded: number
-      boardRefreshed: boolean
     }
   | { type: 'reality-entered'; stay: RealityStay }
   | { type: 'reality-reward-pending'; settlement: RealitySettlement }
@@ -642,6 +706,13 @@ export type GameEffect =
   | { type: 'pomodoro-started'; session: PomodoroSession }
   | { type: 'pomodoro-cancelled'; sessionId: string; cancelledAt: number }
   | {
+      type: 'pomodoro-break-started'
+      notificationId: string
+      session: PomodoroSession
+      notificationTitle: string
+      notificationBody: string
+    }
+  | {
       type: 'pomodoro-completed'
       notificationId: string
       session: PomodoroSession
@@ -656,9 +727,7 @@ export type GameEffect =
         | 'playlist-deleted'
         | 'playlist-selected'
         | 'track-selected'
-        | 'seek-set'
         | 'loop-set'
-        | 'autoplay-set'
       playlistId?: string | null
       bvid?: string | null
     }

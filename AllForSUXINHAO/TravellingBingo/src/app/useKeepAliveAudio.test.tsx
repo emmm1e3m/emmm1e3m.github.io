@@ -54,28 +54,22 @@ function Harness({ factory }: { factory: KeepAliveAudioFactory }) {
   const audio = useKeepAliveAudio(factory)
   return (
     <main>
-      <output data-testid="enabled">{String(audio.enabled)}</output>
-      <output data-testid="status">{audio.status}</output>
       <button type="button" onClick={audio.activateFromJourneyGesture}>
         开始旅程
-      </button>
-      <button type="button" onClick={audio.toggle}>
-        切换保活音频
       </button>
     </main>
   )
 }
 
 describe('App 保活音频', () => {
-  it('只在旅程手势中创建一次 10Hz/0.01 节点并在开关间复用', async () => {
+  it('只在旅程手势中创建 10Hz/0.01 节点并始终复用同一实例', async () => {
     const audio = createAudioHarness()
     render(<Harness factory={audio.factory} />)
 
-    expect(screen.getByTestId('status')).toHaveTextContent('idle')
     expect(audio.factory).not.toHaveBeenCalled()
     fireEvent.click(screen.getByRole('button', { name: '开始旅程' }))
 
-    await waitFor(() => expect(screen.getByTestId('status')).toHaveTextContent('running'))
+    await waitFor(() => expect(audio.context.resume).toHaveBeenCalledOnce())
     expect(audio.factory).toHaveBeenCalledOnce()
     expect(audio.oscillator.frequency.value).toBe(10)
     expect(audio.gain.gain.value).toBe(0.01)
@@ -84,28 +78,15 @@ describe('App 保活音频', () => {
 
     fireEvent.click(screen.getByRole('button', { name: '开始旅程' }))
     expect(audio.factory).toHaveBeenCalledOnce()
-    expect(audio.context.resume).toHaveBeenCalledOnce()
-
-    fireEvent.click(screen.getByRole('button', { name: '切换保活音频' }))
-    await waitFor(() => expect(screen.getByTestId('status')).toHaveTextContent('suspended'))
-    expect(screen.getByTestId('enabled')).toHaveTextContent('false')
-    expect(audio.gain.gain.value).toBe(0)
-    expect(audio.context.suspend).toHaveBeenCalledOnce()
-
-    fireEvent.click(screen.getByRole('button', { name: '开始旅程' }))
-    expect(audio.context.resume).toHaveBeenCalledOnce()
-
-    fireEvent.click(screen.getByRole('button', { name: '切换保活音频' }))
-    await waitFor(() => expect(screen.getByTestId('status')).toHaveTextContent('running'))
-    expect(audio.factory).toHaveBeenCalledOnce()
-    expect(audio.context.resume).toHaveBeenCalledTimes(2)
+    await waitFor(() => expect(audio.context.resume).toHaveBeenCalledTimes(2))
+    expect(audio.context.suspend).not.toHaveBeenCalled()
   })
 
   it('卸载时停止并断开节点，关闭同一个 AudioContext', async () => {
     const audio = createAudioHarness()
     const { unmount } = render(<Harness factory={audio.factory} />)
     fireEvent.click(screen.getByRole('button', { name: '开始旅程' }))
-    await waitFor(() => expect(screen.getByTestId('status')).toHaveTextContent('running'))
+    await waitFor(() => expect(audio.context.resume).toHaveBeenCalledOnce())
 
     unmount()
 
@@ -115,7 +96,7 @@ describe('App 保活音频', () => {
     expect(audio.context.close).toHaveBeenCalledOnce()
   })
 
-  it('创建失败只报告 error，不把异常抛到游戏流程', async () => {
+  it('创建失败不会把异常抛到游戏流程', async () => {
     const factory = vi.fn(() => {
       throw new Error('blocked')
     })
@@ -123,7 +104,7 @@ describe('App 保活音频', () => {
 
     fireEvent.click(screen.getByRole('button', { name: '开始旅程' }))
 
-    await waitFor(() => expect(screen.getByTestId('status')).toHaveTextContent('error'))
-    expect(screen.getByTestId('enabled')).toHaveTextContent('false')
+    await waitFor(() => expect(factory).toHaveBeenCalledOnce())
+    expect(screen.getByRole('button', { name: '开始旅程' })).toBeEnabled()
   })
 })

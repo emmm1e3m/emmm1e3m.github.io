@@ -20,24 +20,16 @@ const STAGE_TEST_URL = 'https://www.bilibili.com/toy/Suxinhao_XHTI_stagetest/ind
 test.setTimeout(90_000)
 
 async function exportAndExit(page: import('@playwright/test').Page) {
-  await page.getByRole('button', { name: /离开铲铲饼屋/u }).click()
-  const exitDialog = page.getByRole('dialog', { name: '要离开铲铲饼屋了吗？' })
-  const requestDownload = exitDialog.getByRole('button', { name: '请求下载存档' })
-  await expect(requestDownload).toBeFocused()
+  await openDebugPanel(page)
   const downloadPromise = page.waitForEvent('download')
-  await requestDownload.click()
+  await page.getByRole('button', { name: '导出调试备份' }).click()
   const download = await downloadPromise
-
-  await expect(page.getByRole('region', { name: '铲铲饼屋互动场景' })).toBeVisible()
-  const savedDialog = page.getByRole('dialog', { name: '存档保存好了吗？' })
-  const confirmExit = savedDialog.getByRole('button', { name: '我已保存，离开' })
-  await expect(confirmExit).toBeFocused()
-  await confirmExit.click()
+  await page.getByRole('button', { name: /离开铲铲饼屋/u }).click()
   await expect(page.getByRole('heading', { name: '旅行饼狗' })).toBeVisible()
   return download
 }
 
-test('用户名、V4 收藏、魔法与现实字段可以下载并恢复', async ({ page }, testInfo) => {
+test('用户名、V5 收藏、魔法与现实字段可以下载并恢复', async ({ page }, testInfo) => {
   test.skip(testInfo.project.name !== 'chromium', '完整存档往返只在桌面项目验证')
   await startGame(page, { debug: true, seed: 'e2e-4', displayName: TEST_PLAYER_NAME })
   await setDebugDuration(page, '10 秒')
@@ -96,7 +88,6 @@ test('用户名、V4 收藏、魔法与现实字段可以下载并恢复', async
         activePlaylistId: unknown
         currentBvid: unknown
         loopMode: string
-        startAtSeconds: number
       }
       collectionTotal?: unknown
       categoryCounts?: unknown
@@ -110,9 +101,9 @@ test('用户名、V4 收藏、魔法与现实字段可以下载并恢复', async
   expect(envelope).toMatchObject({
     format: 'travelling-bingo-save',
     schemaVersion: 1,
-    gameVersion: '0.4.0-demo.1',
+    gameVersion: '0.5.0-demo.1',
     payload: {
-      schemaVersion: 4,
+      schemaVersion: 5,
       profile: { debug: true, displayName: TEST_PLAYER_NAME, companionDays: 1 },
       economy: { apples: savedAppleCount },
       inventory: {
@@ -135,7 +126,6 @@ test('用户名、V4 收藏、魔法与现实字段可以下载并恢复', async
         activePlaylistId: null,
         currentBvid: null,
         loopMode: 'list',
-        startAtSeconds: 0,
       },
     },
     integrity: { algorithm: 'SHA-256' },
@@ -148,10 +138,12 @@ test('用户名、V4 收藏、魔法与现实字段可以下载并恢复', async
   expect(envelope.payload).not.toHaveProperty('unlockedCategories')
   expect(envelope.payload).not.toHaveProperty('friendTotal')
   expect(envelope.payload).not.toHaveProperty('friendCatalog')
+  expect(envelope.payload.musicPlayer).not.toHaveProperty('startAtSeconds')
+  expect(envelope.payload.musicPlayer).not.toHaveProperty('autoplay')
   expect(envelope.integrity.digest).toMatch(/^[A-Za-z0-9_-]{43}$/u)
 
   await page.locator('input[type="file"]').setInputFiles(savePath)
-  const importSummary = page.getByRole('region', { name: '存档摘要' })
+  const importSummary = page.getByRole('region', { name: '存档摘要', exact: true })
   await expect(importSummary).toContainText(TEST_PLAYER_NAME)
   await expect(importSummary).toContainText(`${savedAppleCount}🍎`)
   await expect(importSummary).toContainText('1 件')
@@ -192,7 +184,7 @@ test('进行中的任务保存绝对结束时间，离线完成后读档立即�
   const remaining = envelope.payload.activeActivity!.endsAt - Date.now()
   if (remaining > 0) await page.waitForTimeout(remaining + 500)
   await page.locator('input[type="file"]').setInputFiles(savePath)
-  const importSummary = page.getByRole('region', { name: '存档摘要' })
+  const importSummary = page.getByRole('region', { name: '存档摘要', exact: true })
   await expect(importSummary).toContainText('刷播已完成，等待领取')
   await importSummary.getByRole('button', { name: '进入这次旅程' }).click()
   await expect(page.locator('.game-hud__center')).toContainText('可以看看结果啦')

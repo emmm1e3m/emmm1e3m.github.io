@@ -8,7 +8,7 @@ import {
 import { hashSeed } from '../rewards/prng'
 import { planActivityReward } from '../rewards/planReward'
 import { getLuckyAppleAvailability } from '../rewards/luckyApple'
-import { applyTaskEvent } from '../tasks/taskBoard'
+import { applyTaskEvent, refreshTaskBoardForNewDay } from '../tasks/taskBoard'
 import {
   ALL_ACTIVITY_PREFERENCES,
   getVitalityMagicAvailability,
@@ -603,7 +603,6 @@ function movePet(
 function interactWithRoom(
   state: GameState,
   action: Extract<GameAction, { type: 'room/interact' }>,
-  catalog: CollectionCatalog,
 ): GameTransition {
   if (!isValidTimestamp(action.now)) return fail(state, 'INVALID_TIME', '房间互动时间无效')
   if (state.activeActivity !== null) {
@@ -618,7 +617,7 @@ function interactWithRoom(
     action.area === 'collection-wall'
       ? ({ type: 'collection-wall-opened' } as const)
       : ({ type: 'room-visited', area: action.area } as const)
-  const application = applyTaskEvent(movedState, event, action.now, catalog)
+  const application = applyTaskEvent(movedState, event, action.now)
   const effects: GameEffect[] = [{ type: 'pet-moved', location: action.area }]
   if (application.effect !== null) effects.push(application.effect)
   return succeed(application.state, effects)
@@ -660,10 +659,9 @@ function encouragePet(
 function progressTask(
   state: GameState,
   action: Extract<GameAction, { type: 'task/event' }>,
-  catalog: CollectionCatalog,
 ): GameTransition {
   if (!isValidTimestamp(action.now)) return fail(state, 'INVALID_TIME', '任务事件时间无效')
-  const application = applyTaskEvent(state, action.event, action.now, catalog)
+  const application = applyTaskEvent(state, action.event, action.now)
   return application.effect === null
     ? succeed(application.state)
     : succeed(application.state, [application.effect])
@@ -825,7 +823,7 @@ function clearAllForDebug(
   if (denied !== null) return denied
   if (!isValidTimestamp(action.now)) return fail(state, 'INVALID_TIME', '清空时间无效')
   if (state.activeActivity !== null) {
-    return fail(state, 'PET_BUSY', '请先完成或取消当前活动，再撤销所有收集')
+    return fail(state, 'PET_BUSY', '请先完成或取消当前活动，再清空收集')
   }
   const collectionChangedCount = Object.keys(state.collections).length
   const friendChangedCount = Object.keys(state.friends).length
@@ -940,8 +938,7 @@ function resetDebugTuning(state: GameState): GameTransition {
   ])
 }
 
-/** 游戏领域的唯一状态入口；失败时返回原 state 引用，保证调用方不会提交半成品。 */
-export function reduceGame(
+function reducePreparedGame(
   state: GameState,
   action: GameAction,
   catalog: CollectionCatalog,
@@ -962,13 +959,13 @@ export function reduceGame(
     case 'item/purchase':
       return purchaseItem(state, action)
     case 'room/interact':
-      return interactWithRoom(state, action, catalog)
+      return interactWithRoom(state, action)
     case 'pet/move':
       return movePet(state, action)
     case 'pet/encourage':
       return encouragePet(state, action)
     case 'task/event':
-      return progressTask(state, action, catalog)
+      return progressTask(state, action)
     case 'debug/apples-adjust':
       return adjustDebugApples(state, action)
     case 'debug/item-adjust':
@@ -992,4 +989,19 @@ export function reduceGame(
     default:
       return fail(state, 'INVALID_AMOUNT', '暂不支持的领域动作')
   }
+}
+
+/** 游戏领域的唯一状态入口；失败时返回原 state 引用，保证调用方不会提交半成品。 */
+export function reduceGame(
+  state: GameState,
+  action: GameAction,
+  catalog: CollectionCatalog,
+): GameTransition {
+  const now = 'now' in action ? action.now : null
+  const preparedState =
+    now !== null && isValidTimestamp(now) ? refreshTaskBoardForNewDay(state, now, catalog) : state
+  const transition = reducePreparedGame(preparedState, action, catalog)
+
+  // 刷新与当前动作构成一次提交；当前动作失败时，两者都不落盘。
+  return !transition.ok && preparedState !== state ? { ...transition, state } : transition
 }

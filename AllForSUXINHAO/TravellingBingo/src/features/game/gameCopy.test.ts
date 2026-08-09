@@ -17,4 +17,8 @@ describe('ITEM_COPY', () => {
       },
     )
   })
+
+  it('明确说明幸运苹果把对应收藏概率提高 10 个百分点', () => {
+    expect(ITEM_COPY['lucky-apple'].note).toBe('对应收藏概率提高 10 个百分点')
+  })
 })

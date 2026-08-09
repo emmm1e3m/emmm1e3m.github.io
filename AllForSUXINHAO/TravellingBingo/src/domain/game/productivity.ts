@@ -1,11 +1,10 @@
 import {
   MAX_APPLES,
   MAX_COMPANION_DAYS,
-  MAX_POMODORO_DURATION_MS,
   MAX_TODO_ID_LENGTH,
   MAX_TODO_TITLE_LENGTH,
   MAX_TODOS,
-  MIN_POMODORO_DURATION_MS,
+  POMODORO_PRESETS,
   REALITY_REWARD_INTERVAL_MS,
 } from './constants'
 import { saturatingAddSafeCounter } from './counters'
@@ -359,17 +358,16 @@ function startPomodoro(
   catalog: CollectionCatalog,
 ): GameTransition {
   if (!isValidTimestamp(action.now)) return fail(state, 'INVALID_TIME', '苹果钟开始时间无效')
-  if (state.profile.companionDays >= MAX_COMPANION_DAYS) {
-    return fail(state, 'COMPANION_DAY_LIMIT_REACHED', '陪伴天数已达到存档上限')
+  const preset = POMODORO_PRESETS.find(
+    (candidate) => candidate.focusDurationMs === action.durationMs,
+  )
+  if (!preset) {
+    return fail(state, 'INVALID_DURATION', '苹果钟必须选择 25、50 或 90 分钟的专注时长')
   }
   if (
-    !Number.isSafeInteger(action.durationMs) ||
-    action.durationMs < MIN_POMODORO_DURATION_MS ||
-    action.durationMs > MAX_POMODORO_DURATION_MS
+    state.reality.pomodoro.session !== null &&
+    state.reality.pomodoro.session.status !== 'completed'
   ) {
-    return fail(state, 'INVALID_DURATION', '苹果钟时长必须是 1 秒到 24 小时之间的整毫秒数')
-  }
-  if (state.reality.pomodoro.session?.status === 'running') {
     return fail(state, 'POMODORO_ALREADY_RUNNING', '已经有一轮苹果钟在进行中')
   }
   const todoId = action.todoId ?? null
@@ -384,9 +382,10 @@ function startPomodoro(
       return fail(state, 'UNKNOWN_COLLECTION', '苹果钟背景明信片已经不在收藏中')
     }
   }
-  const endsAt = action.now + action.durationMs
-  if (!isValidTimestamp(endsAt)) {
-    return fail(state, 'INVALID_TIME', '苹果钟结束时间超出 Date 可表示范围')
+  const focusEndsAt = action.now + preset.focusDurationMs
+  const cycleEndsAt = focusEndsAt + preset.breakDurationMs
+  if (!isValidTimestamp(focusEndsAt) || !isValidTimestamp(cycleEndsAt)) {
+    return fail(state, 'INVALID_TIME', '苹果钟截止时间超出 Date 可表示范围')
   }
   if (state.reality.pomodoro.nextSessionSequence >= Number.MAX_SAFE_INTEGER) {
     return fail(state, 'INVALID_AMOUNT', '苹果钟次数已达到存档上限')
@@ -395,12 +394,15 @@ function startPomodoro(
 
   const session: PomodoroSession = {
     sessionId: `pomodoro-${sequence}`,
-    status: 'running',
+    status: 'focus',
     startedAt: action.now,
-    endsAt,
-    durationMs: action.durationMs,
+    focusEndsAt,
+    cycleEndsAt,
+    focusDurationMs: preset.focusDurationMs,
+    breakDurationMs: preset.breakDurationMs,
     completedAt: null,
-    notificationIssuedAt: null,
+    focusNotificationIssuedAt: null,
+    completionNotificationIssuedAt: null,
     todoId,
     postcardId,
   }
@@ -422,16 +424,6 @@ function startPomodoro(
 
 function completeDueWork(state: GameState, now: number): GameTransition {
   const previousSession = state.reality.pomodoro.session
-  const dueSession =
-    previousSession !== null &&
-    previousSession.status === 'running' &&
-    previousSession.endsAt <= now
-      ? previousSession
-      : null
-  if (dueSession !== null && state.profile.companionDays >= MAX_COMPANION_DAYS) {
-    return fail(state, 'COMPANION_DAY_LIMIT_REACHED', '陪伴天数已达到存档上限')
-  }
-
   let todos = state.reality.todos
   const effects: GameEffect[] = []
   const dueTodos = Object.values(todos)
@@ -466,56 +458,80 @@ function completeDueWork(state: GameState, now: number): GameTransition {
   let player = state.player
   let pet = state.pet
   let random = state.random
-  if (dueSession !== null) {
+  const cycleDue =
+    previousSession !== null &&
+    previousSession.status !== 'completed' &&
+    previousSession.cycleEndsAt <= now
+  const focusDue =
+    previousSession?.status === 'focus' && previousSession.focusEndsAt <= now && !cycleDue
+
+  if (focusDue && previousSession !== null) {
     session = {
-      ...dueSession,
+      ...previousSession,
+      status: 'break',
+      focusNotificationIssuedAt: now,
+    }
+    effects.push({
+      type: 'pomodoro-break-started',
+      notificationId: `pomodoro:${previousSession.sessionId}:focus:${previousSession.focusEndsAt}`,
+      session,
+      notificationTitle: '专注结束啦',
+      notificationBody: `休息 ${Math.ceil(previousSession.breakDurationMs / 60_000)} 分钟，再回来继续吧`,
+    })
+  } else if (cycleDue && previousSession !== null) {
+    session = {
+      ...previousSession,
       status: 'completed',
-      completedAt: dueSession.endsAt,
-      notificationIssuedAt: now,
+      completedAt: previousSession.cycleEndsAt,
+      focusNotificationIssuedAt: previousSession.focusNotificationIssuedAt ?? now,
+      completionNotificationIssuedAt: now,
     }
     const linkedTitle =
-      dueSession.todoId === null ? null : state.reality.todos[dueSession.todoId]?.title
+      previousSession.todoId === null ? null : state.reality.todos[previousSession.todoId]?.title
     effects.push({
       type: 'pomodoro-completed',
-      notificationId: `pomodoro:${dueSession.sessionId}:${dueSession.endsAt}`,
+      notificationId: `pomodoro:${previousSession.sessionId}:complete:${previousSession.cycleEndsAt}`,
       session,
       notificationTitle: '苹果钟完成啦',
       notificationBody:
         linkedTitle === null || linkedTitle === undefined
-          ? '这一轮专注时间到了'
-          : `“${linkedTitle}”的专注时间到了`,
+          ? '这一轮专注和休息都完成啦'
+          : `“${linkedTitle}”的专注和休息都完成啦`,
     })
 
-    const dayAdvance = resolveVitalityForCompanionDayAdvance(state)
-    if (!dayAdvance.ok) {
-      return fail(state, 'COMPANION_DAY_LIMIT_REACHED', '陪伴天数已达到存档上限')
-    }
-    profile = { ...state.profile, companionDays: dayAdvance.nextCompanionDay }
-    if (dayAdvance.nextVitality !== state.player.effects.vitality) {
-      player = { effects: { ...state.player.effects, vitality: dayAdvance.nextVitality } }
-    }
-    if (dayAdvance.preferences !== null) {
-      pet = {
-        ...state.pet,
-        preferences: dayAdvance.preferences,
-        tired: isPetTired(dayAdvance.preferences),
+    // 计时功能不能因为极高的陪伴日计数失效；到上限后只停止增长。
+    if (state.profile.companionDays < MAX_COMPANION_DAYS) {
+      const dayAdvance = resolveVitalityForCompanionDayAdvance(state)
+      if (!dayAdvance.ok) {
+        return fail(state, 'COMPANION_DAY_LIMIT_REACHED', '陪伴天数已达到存档上限')
       }
-    }
-    if (dayAdvance.nextPreferenceSequence !== state.random.sequences.preferences) {
-      random = {
-        ...state.random,
-        sequences: {
-          ...state.random.sequences,
-          preferences: dayAdvance.nextPreferenceSequence,
-        },
+      profile = { ...state.profile, companionDays: dayAdvance.nextCompanionDay }
+      if (dayAdvance.nextVitality !== state.player.effects.vitality) {
+        player = { effects: { ...state.player.effects, vitality: dayAdvance.nextVitality } }
       }
-    }
-    if (dayAdvance.vitalityExpired) {
-      effects.push({
-        type: 'player-effect-expired',
-        effect: 'vitality',
-        expiredAtCompanionDay: dayAdvance.nextCompanionDay,
-      })
+      if (dayAdvance.preferences !== null) {
+        pet = {
+          ...state.pet,
+          preferences: dayAdvance.preferences,
+          tired: isPetTired(dayAdvance.preferences),
+        }
+      }
+      if (dayAdvance.nextPreferenceSequence !== state.random.sequences.preferences) {
+        random = {
+          ...state.random,
+          sequences: {
+            ...state.random.sequences,
+            preferences: dayAdvance.nextPreferenceSequence,
+          },
+        }
+      }
+      if (dayAdvance.vitalityExpired) {
+        effects.push({
+          type: 'player-effect-expired',
+          effect: 'vitality',
+          expiredAtCompanionDay: dayAdvance.nextCompanionDay,
+        })
+      }
     }
   }
 
@@ -543,7 +559,7 @@ function cancelPomodoro(
 ): GameTransition {
   if (!isValidTimestamp(action.now)) return fail(state, 'INVALID_TIME', '苹果钟取消时间无效')
   const session = state.reality.pomodoro.session
-  if (session === null || session.status !== 'running') {
+  if (session === null || session.status === 'completed') {
     return fail(state, 'POMODORO_NOT_RUNNING', '当前没有进行中的苹果钟')
   }
   if (session.sessionId !== action.sessionId) {
@@ -552,20 +568,27 @@ function cancelPomodoro(
   if (action.now < session.startedAt) {
     return fail(state, 'INVALID_TIME', '取消时间不能早于苹果钟开始时间')
   }
-  // 绝对截止时间已经到达时必须完成，不能利用延迟的界面计时器绕过完成通知。
-  if (action.now >= session.endsAt && state.profile.companionDays < MAX_COMPANION_DAYS) {
-    return completeDueWork(state, action.now)
+  // 先按绝对时间推进阶段，不能利用延迟界面绕过休息或完成结算。
+  const advanced = completeDueWork(state, action.now)
+  if (!advanced.ok) return advanced
+  const advancedSession = advanced.state.reality.pomodoro.session
+  if (advancedSession?.status === 'completed') return advanced
+  if (advancedSession === null || advancedSession.sessionId !== action.sessionId) {
+    return fail(state, 'RUN_ID_MISMATCH', '取消请求与当前苹果钟不一致')
   }
 
   return succeed(
     {
-      ...state,
+      ...advanced.state,
       reality: {
-        ...state.reality,
-        pomodoro: { ...state.reality.pomodoro, session: null },
+        ...advanced.state.reality,
+        pomodoro: { ...advanced.state.reality.pomodoro, session: null },
       },
     },
-    [{ type: 'pomodoro-cancelled', sessionId: session.sessionId, cancelledAt: action.now }],
+    [
+      ...advanced.effects,
+      { type: 'pomodoro-cancelled', sessionId: session.sessionId, cancelledAt: action.now },
+    ],
   )
 }
 

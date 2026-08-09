@@ -1,5 +1,6 @@
 import { BILIBILI_BVID_PATTERN, MAX_APPLES, PIANO_NOTE_IDS } from '../game/constants'
 import { incrementSafeCounter, saturatingAddSafeCounter } from '../game/counters'
+import { isValidTimestamp } from '../game/time'
 import type {
   CollectionCatalog,
   CollectibleCategory,
@@ -10,6 +11,7 @@ import type {
   TaskId,
   TaskInstance,
   TaskTriggerGroup,
+  TaskBoardV4,
 } from '../game/types'
 import { createRandomCursor, hashSeed, randomInteger, type RandomCursor } from '../rewards/prng'
 
@@ -172,12 +174,12 @@ interface TaskGenerationInput {
 }
 
 export interface GeneratedTaskBoard {
-  board: TaskBoard
+  board: TaskBoardV4
   nextSequence: number
 }
 
 export interface ReplaceRetiredTaskBoardInput {
-  board: TaskBoard
+  board: TaskBoardV4
   seed: string
   sequence: number
   now: number
@@ -468,6 +470,48 @@ export function getTaskProgressLabel(task: TaskInstance): string {
   return isTaskCompleted(task) ? '已完成' : `${task.progress} / ${task.target}`
 }
 
+/** 全完成板下一次允许刷新的本地自然日零点，也是 App 统一时钟的唤醒截止时间。 */
+export function getTaskBoardRefreshDeadline(board: Pick<TaskBoard, 'completedAt'>): number | null {
+  if (board.completedAt === null) return null
+  const completedDate = new Date(board.completedAt)
+  const deadline = new Date(
+    completedDate.getFullYear(),
+    completedDate.getMonth(),
+    completedDate.getDate() + 1,
+  ).getTime()
+  return isValidTimestamp(deadline) ? deadline : null
+}
+
+/** 全完成板在完成日之后首次唤醒时刷新，不按离线天数补抽多轮随机序列。 */
+export function refreshTaskBoardForNewDay(
+  state: GameState,
+  now: number,
+  catalog: CollectionCatalog,
+): GameState {
+  const deadline = getTaskBoardRefreshDeadline(state.tasks)
+  if (deadline === null || now < deadline) return state
+
+  const generated = generateTaskBoard({
+    seed: state.random.seed,
+    sequence: state.random.sequences.tasks,
+    now,
+    catalog,
+    collections: state.collections,
+    recentTemplateIds: state.tasks.recentTemplateIds,
+    oneOffCompleted: state.tasks.oneOffCompleted,
+    completedCount: state.tasks.completedCount,
+  })
+
+  return {
+    ...state,
+    tasks: { ...generated.board, completedAt: null },
+    random: {
+      ...state.random,
+      sequences: { ...state.random.sequences, tasks: generated.nextSequence },
+    },
+  }
+}
+
 function roomAreaKey(event: TaskEvent): RoomArea | null {
   return event.type === 'room-visited' ? event.area : null
 }
@@ -522,14 +566,11 @@ export interface TaskEventApplication {
   effect: Extract<import('../game/types').GameEffect, { type: 'task-progressed' }> | null
 }
 
-/**
- * 同一领域事件只检查到第一条可推进任务；整板刷新后立即返回，旧事件不会落到新板。
- */
+/** 同一领域事件只推进第一条匹配任务；跨日刷新由 reducer 在调用前统一完成。 */
 export function applyTaskEvent(
   state: GameState,
   event: TaskEvent,
   now: number,
-  catalog: CollectionCatalog,
 ): TaskEventApplication {
   const taskIndex = state.tasks.active.findIndex((task) => {
     if (isTaskCompleted(task)) return false
@@ -561,26 +602,12 @@ export function applyTaskEvent(
   }
 
   const boardCompleted = active.every(isTaskCompleted)
-  let nextTasks: TaskBoard = {
+  const nextTasks: TaskBoard = {
     ...state.tasks,
     active,
     completedCount,
     oneOffCompleted,
-  }
-  let nextTaskSequence = state.random.sequences.tasks
-  if (boardCompleted) {
-    const generated = generateTaskBoard({
-      seed: state.random.seed,
-      sequence: state.random.sequences.tasks,
-      now,
-      catalog,
-      collections: state.collections,
-      recentTemplateIds: state.tasks.recentTemplateIds,
-      oneOffCompleted,
-      completedCount,
-    })
-    nextTasks = generated.board
-    nextTaskSequence = generated.nextSequence
+    completedAt: boardCompleted ? now : null,
   }
 
   return {
@@ -592,10 +619,6 @@ export function applyTaskEvent(
         ...state.statistics,
         applesEarned: saturatingAddSafeCounter(state.statistics.applesEarned, applesAwarded),
       },
-      random: {
-        ...state.random,
-        sequences: { ...state.random.sequences, tasks: nextTaskSequence },
-      },
     },
     effect: {
       type: 'task-progressed',
@@ -605,7 +628,6 @@ export function applyTaskEvent(
       target: nextTask.target,
       completed,
       applesAwarded,
-      boardRefreshed: boardCompleted,
     },
   }
 }

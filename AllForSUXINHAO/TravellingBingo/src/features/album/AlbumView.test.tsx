@@ -2,6 +2,7 @@ import { fireEvent, render, screen, within } from '@testing-library/react'
 
 import type { BilibiliVideo, CollectibleItem, ContentCatalog, FriendItem } from '@/content'
 import { createInitialGameState, type CollectibleCategory, type GameState } from '@/domain'
+import { BilibiliPlayerProvider, PersistentPlayerDock } from '@/features/player'
 
 import albumStyles from './AlbumView.css?raw'
 import { AlbumView } from './AlbumView'
@@ -79,8 +80,32 @@ function gameWithCollections(entries: ReadonlyArray<[string, number]>): GameStat
   }
 }
 
+function AlbumHarness({
+  catalog,
+  game,
+  onClose = vi.fn(),
+  onPlayerOpened,
+}: {
+  catalog: ContentCatalog
+  game: GameState
+  onClose?: () => void
+  onPlayerOpened?: (collectionId: string, bvid: string) => void
+}) {
+  return (
+    <BilibiliPlayerProvider
+      state={game.musicPlayer}
+      onAction={() => undefined}
+      builtInTracks={catalog.recordPlayerVideos}
+      resolveTrack={(bvid) => catalog.videosByBvid[bvid]}
+    >
+      <AlbumView catalog={catalog} game={game} onClose={onClose} onPlayerOpened={onPlayerOpened} />
+      <PersistentPlayerDock />
+    </BilibiliPlayerProvider>
+  )
+}
+
 function renderAlbum(catalog: ContentCatalog, game: GameState) {
-  return render(<AlbumView catalog={catalog} game={game} onClose={vi.fn()} />)
+  return render(<AlbumHarness catalog={catalog} game={game} />)
 }
 
 describe('饼狗的收藏墙', () => {
@@ -135,7 +160,7 @@ describe('饼狗的收藏墙', () => {
 
     const addedLater = collectible('postcard-added-later', 'postcard', '后来新增的明信片')
     const expandedCatalog = contentCatalog([...originalCatalog.items, addedLater])
-    rerender(<AlbumView catalog={expandedCatalog} game={game} onClose={vi.fn()} />)
+    rerender(<AlbumHarness catalog={expandedCatalog} game={game} />)
 
     expect(screen.queryByText(/3\s*\/\s*4/u)).not.toBeInTheDocument()
     expect(screen.queryByText(addedLater.title)).not.toBeInTheDocument()
@@ -263,7 +288,12 @@ describe('饼狗的收藏墙', () => {
 
     const onClose = vi.fn()
     const { rerender } = render(
-      <AlbumView catalog={catalog} game={game} onClose={onClose} onPlayerOpened={onPlayerOpened} />,
+      <AlbumHarness
+        catalog={catalog}
+        game={game}
+        onClose={onClose}
+        onPlayerOpened={onPlayerOpened}
+      />,
     )
 
     fireEvent.click(screen.getByRole('button', { name: /带视频的百万直拍/u }))
@@ -273,14 +303,20 @@ describe('饼狗的收藏墙', () => {
     expect(screen.queryByRole('button', { name: '打开播放器' })).not.toBeInTheDocument()
     expect(screen.queryByRole('button', { name: '关闭播放器' })).not.toBeInTheDocument()
 
-    const iframe = screen.getByTitle('收藏里的测试舞台播放器')
+    const detail = screen.getByRole('dialog', { name: '带视频的百万直拍' })
+    expect(within(detail).getByText(albumVideo.title)).toHaveClass('bilibili-player-summary')
+    const playerDock = screen.getByTestId('persistent-bilibili-player')
+    const iframe = screen.getByTitle('Bilibili 外链播放器：收藏里的测试舞台')
+    expect(screen.getAllByTestId('persistent-bilibili-player')).toHaveLength(1)
+    expect(detail).not.toContainElement(playerDock)
+    expect(playerDock.closest('[inert]')).toBeNull()
     fireEvent.load(iframe)
     fireEvent.error(iframe)
     fireEvent.abort(iframe)
     expect(onPlayerOpened).toHaveBeenCalledOnce()
 
     rerender(
-      <AlbumView
+      <AlbumHarness
         catalog={catalog}
         game={{ ...game }}
         onClose={onClose}
@@ -291,5 +327,14 @@ describe('饼狗的收藏墙', () => {
     expect(
       screen.queryByRole('button', { name: /(?:打开|关闭|收起)播放器/u }),
     ).not.toBeInTheDocument()
+
+    fireEvent.click(within(detail).getByRole('button', { name: '关闭详情' }))
+    expect(screen.queryByRole('dialog', { name: '带视频的百万直拍' })).not.toBeInTheDocument()
+    expect(screen.getByTitle('Bilibili 外链播放器：收藏里的测试舞台')).toBe(iframe)
+
+    fireEvent.click(screen.getByRole('button', { name: /带视频的百万直拍/u }))
+    expect(screen.getByTitle('Bilibili 外链播放器：收藏里的测试舞台')).toBe(iframe)
+    expect(screen.getAllByTestId('persistent-bilibili-player')).toHaveLength(1)
+    expect(onPlayerOpened).toHaveBeenCalledOnce()
   })
 })

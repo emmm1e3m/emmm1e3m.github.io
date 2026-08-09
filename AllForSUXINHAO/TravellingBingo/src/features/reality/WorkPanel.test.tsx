@@ -1,4 +1,4 @@
-import { fireEvent, render, screen, waitFor } from '@testing-library/react'
+import { fireEvent, render, screen, waitFor, within } from '@testing-library/react'
 
 import realityStyles from './reality.css?raw'
 import { WorkPanel } from './WorkPanel'
@@ -21,7 +21,7 @@ function createActions(): WorkPanelActions {
 describe('工作面板移动触控', () => {
   it('完成提醒按钮的宽高下限均为 44px', () => {
     expect(realityStyles).toContain(
-      '.reality-notification-note button {\n  min-width: 44px;\n  min-height: 44px;',
+      '.reality-setting-row .reality-secondary-button {\n  min-width: 44px;\n  min-height: 44px;',
     )
   })
 })
@@ -52,6 +52,16 @@ function createProps(actions = createActions()): WorkPanelProps {
 }
 
 describe('WorkPanel', () => {
+  it('依次展示设置提醒、待办、明信片选择器和开始摘要', () => {
+    const { container } = render(<WorkPanel {...createProps()} />)
+
+    expect(
+      within(container)
+        .getAllByRole('heading', { level: 3 })
+        .map((heading) => heading.textContent),
+    ).toEqual(['设置苹果钟与提醒', '待办清单', '选择陪伴明信片', '准备开始'])
+  })
+
   it('用按钮选择时长和已解锁背景，所有改变只交给 actions', () => {
     const actions = createActions()
     const props = createProps(actions)
@@ -65,9 +75,9 @@ describe('WorkPanel', () => {
     fireEvent.click(screen.getByRole('button', { name: /50 分钟/u }))
     expect(actions.onDurationChange).toHaveBeenCalledWith(50 * 60 * 1_000)
 
-    fireEvent.click(screen.getByRole('button', { name: /晚霞明信片/u }))
+    fireEvent.click(screen.getByRole('radio', { name: /晚霞明信片/u }))
     expect(actions.onBackgroundChange).toHaveBeenCalledWith('postcard-2')
-    fireEvent.click(screen.getByRole('button', { name: /默认纸张/u }))
+    fireEvent.click(screen.getByRole('radio', { name: /默认纸张/u }))
     expect(actions.onBackgroundChange).toHaveBeenCalledWith(null)
 
     expect(container.querySelector('select')).toBeNull()
@@ -116,8 +126,8 @@ describe('WorkPanel', () => {
     expect(timerCard).toHaveAttribute('data-background-id', 'postcard-1')
     expect(background).toHaveAttribute('src', '/postcard-1.webp')
     expect(window.getComputedStyle(background!).objectFit).toBe('cover')
-    expect(screen.getByText('背景 · 海边明信片')).toBeVisible()
-    expect(screen.getByText(/已经铺好“海边明信片”/u)).toBeVisible()
+    expect(screen.getByText('明信片 · 海边明信片')).toBeVisible()
+    expect(screen.getByText(/“海边明信片”已经铺好/u)).toBeVisible()
   })
 
   it('计时中显示进度和陪伴饼狗，二次确认后才取消且明确不计下一天', async () => {
@@ -131,7 +141,7 @@ describe('WorkPanel', () => {
           canStart: false,
           session: {
             sessionId: 'pomodoro-running',
-            status: 'running',
+            status: 'focus',
             statusLabel: '专注中',
             remainingLabel: '12:34',
           },
@@ -139,9 +149,9 @@ describe('WorkPanel', () => {
       />,
     )
 
-    expect(screen.getByText('专注中')).toHaveAttribute('role', 'status')
+    expect(screen.getByRole('status')).toHaveTextContent('专注中')
     expect(screen.getByText('12:34')).toBeVisible()
-    expect(screen.getByRole('img', { name: '正在陪你专注的饼狗' })).toBeVisible()
+    expect(screen.getByRole('img', { name: '正在陪伴你的饼狗' })).toBeVisible()
     expect(document.querySelector('.reality-timer-companion .mascot-sprite--sit')).toBeVisible()
     expect(screen.getByRole('button', { name: '开始苹果钟' })).toBeDisabled()
 
@@ -168,7 +178,7 @@ describe('WorkPanel', () => {
           canStart: false,
           session: {
             sessionId: 'pomodoro-room-cancel',
-            status: 'running',
+            status: 'focus',
             statusLabel: '专注中',
           },
         }}
@@ -190,7 +200,7 @@ describe('WorkPanel', () => {
     const actions = createActions()
     render(<WorkPanel {...createProps(actions)} />)
 
-    fireEvent.click(screen.getByRole('button', { name: '开启完成提醒' }))
+    fireEvent.click(screen.getByRole('button', { name: '开启提醒' }))
 
     expect(actions.onNotificationRequest).toHaveBeenCalledOnce()
   })
@@ -199,7 +209,7 @@ describe('WorkPanel', () => {
     const actions = createActions()
     render(<WorkPanel {...createProps(actions)} notification={{ permission: 'granted' }} />)
 
-    expect(screen.getByText('页面保持打开时，完成提醒已开启')).toBeVisible()
+    expect(screen.getByText('页面保持打开时提醒 · 已开启')).toBeVisible()
   })
 
   it('把待办新增、编辑和完成状态变更交给对应 action', () => {

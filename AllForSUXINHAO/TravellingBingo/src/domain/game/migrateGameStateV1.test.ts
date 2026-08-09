@@ -5,6 +5,7 @@ import { MAX_APPLES } from './constants'
 import { gameStateV1Schema, isStrictGameStateV1, migrateGameStateV1 } from './migrateGameStateV1'
 import { migrateGameStateV1ToV3, migrateStoredGameStateToV3 } from './migrateGameStateV2'
 import { migrateGameStateV1ToV4 } from './migrateGameStateV3'
+import { migrateGameStateV4ToV5 } from './migrateGameStateV4'
 import { reduceGame } from './reducer'
 import type { CollectionCatalog, GameStateV1 } from './types'
 import { validateImportedGameState } from './validateImportedGameState'
@@ -174,15 +175,16 @@ describe('v1 存档显式迁移', () => {
       now: 9_000,
       catalog: expandedCatalog,
     })
-    expect(validateImportedGameState(migratedV4, expandedCatalog)).toEqual({ ok: true })
-    expect(migratedV4.activeActivity?.legacySource).toBe('v1')
-    const applesBefore = migratedV4.economy.apples
+    const migrated = migrateGameStateV4ToV5(migratedV4)
+    expect(validateImportedGameState(migrated, expandedCatalog)).toEqual({ ok: true })
+    expect(migrated.activeActivity?.legacySource).toBe('v1')
+    const applesBefore = migrated.economy.apples
     const claimed = reduceGame(
-      migratedV4,
+      migrated,
       {
         type: 'activity/claim',
-        runId: migratedV4.activeActivity!.runId,
-        now: migratedV4.activeActivity!.endsAt,
+        runId: migrated.activeActivity!.runId,
+        now: migrated.activeActivity!.endsAt,
       },
       expandedCatalog,
     )
@@ -209,7 +211,7 @@ describe('v1 存档显式迁移', () => {
 
   it('V1 已拥有的计划收藏按历史规则结算重复次数与补偿', () => {
     const legacy = legacyState()
-    const migrated = migrateGameStateV1ToV4(legacy, { now: 9_000, catalog })
+    const migrated = migrateGameStateV4ToV5(migrateGameStateV1ToV4(legacy, { now: 9_000, catalog }))
     const applesBefore = migrated.economy.apples
     const duplicateRewardsBefore = migrated.statistics.duplicateRewards
     expect(migrated.activeActivity?.legacySource).toBe('v1')
@@ -239,7 +241,9 @@ describe('v1 存档显式迁移', () => {
   })
 
   it('V1 冻结奖励空间不足时保持整次待领取，不截断或部分写入', () => {
-    const migrated = migrateGameStateV1ToV4(legacyState(), { now: 9_000, catalog })
+    const migrated = migrateGameStateV4ToV5(
+      migrateGameStateV1ToV4(legacyState(), { now: 9_000, catalog }),
+    )
     const capped: typeof migrated = {
       ...migrated,
       economy: { apples: MAX_APPLES - 1 },

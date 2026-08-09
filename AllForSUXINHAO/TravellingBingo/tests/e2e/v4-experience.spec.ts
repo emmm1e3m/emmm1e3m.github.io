@@ -2,6 +2,7 @@ import { expect, test } from '@playwright/test'
 
 import {
   buySupply,
+  enterReality,
   expectElementWithinViewport,
   expectNoOverlap,
   openDebugPanel,
@@ -13,40 +14,32 @@ import {
   startGame,
 } from './support/game'
 
-test.describe('V4 房间契约', () => {
+test.describe('V5 房间契约', () => {
   test.beforeEach(({}, testInfo) => {
-    test.skip(testInfo.project.name !== 'chromium', 'V4 桌面主流程只在 Chromium 验证')
+    test.skip(testInfo.project.name !== 'chromium', 'V5 桌面主流程只在 Chromium 验证')
   })
 
-  test('进入前可显式检查新布置，默认读条为 1 分 12 秒', async ({ page }) => {
+  test('进入前可显式检查新布置，默认读条为 10 秒', async ({ page }) => {
     test.setTimeout(90_000)
     await page.goto('./')
     await expect(page.locator('link[rel="icon"]')).toHaveAttribute('href', './icons/favicon-32.png')
     const updateRegion = page.getByRole('region', { name: '检查游戏更新' })
     await expect(updateRegion.getByRole('button', { name: '检查新布置' })).toBeVisible()
-    await expect(updateRegion).toContainText('进入前，可以先看看饼屋有没有新布置。')
     await expect
       .poll(() => page.evaluate(() => navigator.serviceWorker.getRegistration().then(Boolean)), {
         timeout: 60_000,
       })
       .toBe(true)
     await updateRegion.getByRole('button', { name: '检查新布置' }).click()
-    const terminalButton = updateRegion.getByRole('button', {
-      name: /^(?:再检查一次|重新检查新布置)$/u,
+    await expect(updateRegion.getByRole('button', { name: '检查新布置' })).toBeEnabled({
+      timeout: 30_000,
     })
-    await expect(terminalButton).toBeVisible({ timeout: 30_000 })
-    const firstTerminalLabel = await terminalButton.textContent()
-    if (firstTerminalLabel === '重新检查新布置') {
-      await expect(updateRegion).toContainText('刚才没能看清，再试一次吧。')
-      await terminalButton.click()
-      await expect(terminalButton).toBeVisible({ timeout: 30_000 })
-    } else {
-      await expect(updateRegion).toContainText('已经检查过，现在看到的是最新布置。')
-    }
+    await expect(page.getByRole('status').filter({ hasText: '已经检查过新布置啦' })).toBeVisible()
+    await expect(updateRegion.getByRole('status')).toHaveCount(0)
 
     await startGame(page, { debug: true, displayName: '新布置测试', seed: 'v4-update' })
     await openDebugPanel(page)
-    await expect(page.getByRole('button', { name: '1 分 12 秒', exact: true })).toHaveAttribute(
+    await expect(page.getByRole('button', { name: '10 秒', exact: true })).toHaveAttribute(
       'aria-pressed',
       'true',
     )
@@ -55,10 +48,14 @@ test.describe('V4 房间契约', () => {
     await expect(hudTitle).toHaveText('今天也要好好吃苹果')
     await expect(hudTitle).toHaveCSS('white-space', 'nowrap')
     await expect(page.locator('.apple-counter .numeric-copy')).toHaveText(/^\d+🍎$/u)
-    await expect(page.locator('.game-hud').getByRole('group', { name: '饼狗状态' })).toBeVisible()
+    const status = page.getByRole('status', { name: '饼狗状态' })
+    await expect(status.locator('.pet-status-bar__label')).toHaveText('状态很好')
+    await expect(status).toContainText('新布置测试陪伴饼狗已经 0 天')
+    await expect(status).not.toContainText('🐶')
+    await expect(status.getByRole('button')).toHaveCount(0)
     await expect(page.locator('.game-page > .pet-status-bar')).toHaveCount(0)
     await expect(page.getByRole('button', { name: '查看房屋玩法说明' })).toHaveText('ℹ️')
-    await expect(page.getByRole('button', { name: '切换到现实生活维度' })).toBeVisible()
+    await expect(page.getByRole('button', { name: '切换到现实生活维度' })).toHaveText('🔃')
   })
 
   test('速度魔法经二次确认消耗一瓶并立刻完成当前读条', async ({ page }) => {
@@ -70,13 +67,7 @@ test.describe('V4 房间契约', () => {
     await page.locator('.game-hud__center').click()
     const activePanel = page.locator('.context-panel--activity')
     await expect(activePanel.getByText('这一次 Bingo', { exact: true })).toBeVisible()
-    const [tagBox, closeBox] = await Promise.all([
-      activePanel.getByText('这一次 Bingo', { exact: true }).boundingBox(),
-      activePanel.getByRole('button', { name: '收起信息栏' }).boundingBox(),
-    ])
-    expect(tagBox && closeBox).toBeTruthy()
-    expect(tagBox!.x).toBeLessThan(closeBox!.x)
-    expect(tagBox!.y).toBeLessThanOrEqual(closeBox!.y + closeBox!.height)
+    await expect(activePanel.locator('.context-panel__close')).toHaveCount(0)
 
     await activePanel.getByRole('button', { name: '使用速度魔法' }).click()
     const confirmation = activePanel.getByRole('group', { name: '确认使用速度魔法' })
@@ -106,9 +97,9 @@ test.describe('V4 房间契约', () => {
     await expect(confirmation.getByRole('button', { name: '先不使用' })).toBeFocused()
     await confirmation.getByRole('button', { name: '使用活力魔法' }).click()
 
-    const petStatus = page.getByRole('group', { name: '饼狗状态' })
-    await expect(petStatus.locator('.pet-status-bar__label')).toHaveText('✨ 活力满满')
-    await expect(petStatus.locator('.pet-status-bar__effect')).toContainText('7 天')
+    const petStatus = page.getByRole('status', { name: '饼狗状态' })
+    await expect(petStatus.locator('.pet-status-bar__label')).toHaveText('活力满满')
+    await expect(petStatus.locator('.pet-status-bar__effect')).toHaveText('活力还可陪伴 7 天')
     await expect(card).toHaveAttribute('data-interest', 'willing')
     await expect(card.getByRole('button', { name: '准备出去旅行' })).toBeEnabled()
 
@@ -126,7 +117,7 @@ test.describe('V4 房间契约', () => {
     await startGame(page, { displayName: '现实测试', seed: 'v4-reality' })
     const applesBefore = await readAppleCount(page)
 
-    await page.getByRole('button', { name: '切换到现实生活维度' }).click()
+    await enterReality(page)
     const room = page.getByRole('region', { name: '铲铲饼屋互动场景' })
     await expect(room.locator('[data-hotspot="电脑"]')).toHaveText('数据')
     await expect(room.locator('[data-hotspot="一楼电脑"]')).toHaveText('工作')
@@ -137,7 +128,7 @@ test.describe('V4 房间契约', () => {
     await expect(dataPanel).toContainText(
       '在该页面中启动冲热任务（需要加入运行组，与最新版插件配合使用）',
     )
-    await expect(dataPanel.getByRole('link', { name: /打开运行组页面/u })).toHaveAttribute(
+    await expect(dataPanel.getByRole('link', { name: /前往/u })).toHaveAttribute(
       'href',
       'https://www.weibo.com/u/7878664767',
     )
@@ -145,18 +136,18 @@ test.describe('V4 房间契约', () => {
     await room.locator('[data-hotspot="一楼电脑"]').click()
     const workPanel = page.locator('.context-panel--reality-work')
     await expect(workPanel.getByRole('heading', { name: '苹果钟与待办' })).toBeVisible()
-    await workPanel.getByLabel('新待办').fill('完成 V4 验收')
+    await workPanel.getByLabel('新待办').fill('完成 V5 验收')
     await workPanel.getByRole('button', { name: '添加' }).click()
     const todo = workPanel.getByRole('list', { name: '现实生活待办' }).getByRole('listitem')
-    await expect(todo).toContainText('完成 V4 验收')
-    await todo.getByRole('checkbox', { name: '标记为已完成：完成 V4 验收' }).check()
+    await expect(todo).toContainText('完成 V5 验收')
+    await todo.getByRole('checkbox', { name: '标记为已完成：完成 V5 验收' }).check()
     await todo.getByRole('button', { name: '编辑' }).click()
-    await todo.getByLabel('待办标题').fill('完成 V4 桌面验收')
+    await todo.getByLabel('待办标题').fill('完成 V5 桌面验收')
     await todo.getByRole('button', { name: '保存' }).click()
 
     await room.locator('[data-hotspot="电脑"]').click()
     await room.locator('[data-hotspot="一楼电脑"]').click()
-    await expect(page.getByRole('list', { name: '现实生活待办' })).toContainText('完成 V4 桌面验收')
+    await expect(page.getByRole('list', { name: '现实生活待办' })).toContainText('完成 V5 桌面验收')
     await saveScreenshot(page, 'reality-work-todos.png', false)
 
     await page.clock.fastForward(10 * 60_000 + 1_000)
@@ -164,41 +155,49 @@ test.describe('V4 房间契约', () => {
     const returnDialog = page.getByRole('dialog', { name: '现实里的事情认真完成了吗？' })
     await expect(returnDialog).toContainText('这段时间一共攒下 1🍎')
     await returnDialog.getByRole('button', { name: '是的🥰' }).click()
+    const resultDialog = page.getByRole('dialog', { name: '认真完成，全部带回来啦' })
+    await expect(resultDialog).toContainText('收好 1🍎')
+    await expect(resultDialog.getByRole('button', { name: '收好啦' })).toBeFocused()
     await expect.poll(() => readAppleCount(page)).toBe(applesBefore + 1)
+    await resultDialog.getByRole('button', { name: '收好啦' }).click()
   })
 
   test('现实苹果钟开始与 ↩️ 取消均二次确认，取消不推进陪伴天数', async ({ page }) => {
     await startGame(page, { displayName: '苹果钟测试', seed: 'v4-pomodoro-confirm' })
     const daysBefore = await readCompanionDays(page)
-    await page.getByRole('button', { name: '切换到现实生活维度' }).click()
+    await enterReality(page)
     await page.locator('[data-hotspot="一楼电脑"]').click()
 
     const workPanel = page.locator('.context-panel--reality-work')
-    const durationChoice = workPanel
-      .getByRole('group', { name: '苹果钟时长' })
-      .getByRole('button', { name: /^5 分钟/u })
+    const durationGroup = workPanel.getByRole('group', { name: '苹果钟时长' })
+    await expect(durationGroup.getByRole('button')).toHaveText([
+      '25 分钟专注 25 分钟，休息 5 分钟',
+      '50 分钟专注 50 分钟，休息 10 分钟',
+      '90 分钟专注 90 分钟，休息 15 分钟',
+    ])
+    const durationChoice = durationGroup.getByRole('button', { name: /^25 分钟/u })
     await durationChoice.click()
     await expect(durationChoice).toHaveAttribute('aria-pressed', 'true')
     await workPanel.getByRole('button', { name: '开始苹果钟' }).click()
 
     const startDialog = page.getByRole('alertdialog', { name: '确认开始苹果钟？' })
-    await expect(startDialog).toContainText('房间左下角的 ↩️ 中途取消')
+    await expect(startDialog).toContainText('25 分钟专注 + 5 分钟休息')
     await expect(startDialog.getByRole('button', { name: '再想想' })).toBeFocused()
     await expect(page.getByRole('button', { name: '取消当前苹果钟' })).toHaveCount(0)
     await startDialog.getByRole('button', { name: '确认开始' }).click()
 
-    await expect(workPanel.getByRole('status').filter({ hasText: '专注中' })).toBeVisible()
-    await expect(workPanel.getByRole('img', { name: '正在陪你专注的饼狗' })).toBeVisible()
-    const roomCancel = page.getByRole('button', { name: '取消当前苹果钟' })
-    await expect(roomCancel).toHaveText('↩️')
-    await roomCancel.click()
+    const focusOverlay = page.getByRole('dialog', { name: '和饼狗一起专注' })
+    await expect(focusOverlay).toBeVisible()
+    await expect(focusOverlay.locator('.pomodoro-focus__mascot')).toBeVisible()
+    await expect(focusOverlay.getByRole('heading', { name: '待办事项' })).toBeVisible()
+    await focusOverlay.getByRole('button', { name: '取消本次计时' }).click()
 
     const cancelDialog = page.getByRole('alertdialog', { name: '确认取消苹果钟？' })
-    await expect(cancelDialog).toContainText('不会计入相伴的下一天')
+    await expect(cancelDialog).toContainText('不会推进相伴天数')
     await expect(cancelDialog.getByRole('button', { name: '继续专注' })).toBeFocused()
     await cancelDialog.getByRole('button', { name: '确认取消' }).click()
 
-    await expect(roomCancel).toHaveCount(0)
+    await expect(focusOverlay).toHaveCount(0)
     await expect(workPanel.getByRole('button', { name: '开始苹果钟' })).toBeEnabled()
 
     await workPanel.getByRole('button', { name: '开始苹果钟' }).click()
@@ -206,7 +205,10 @@ test.describe('V4 房间契约', () => {
       .getByRole('alertdialog', { name: '确认开始苹果钟？' })
       .getByRole('button', { name: '确认开始' })
       .click()
-    await workPanel.getByRole('button', { name: '取消本次计时' }).click()
+    await page
+      .getByRole('dialog', { name: '和饼狗一起专注' })
+      .getByRole('button', { name: '取消本次计时' })
+      .click()
     const panelCancelDialog = page.getByRole('alertdialog', { name: '确认取消苹果钟？' })
     await expect(panelCancelDialog.getByRole('button', { name: '继续专注' })).toBeFocused()
     await panelCancelDialog.getByRole('button', { name: '确认取消' }).click()
@@ -220,12 +222,12 @@ test.describe('V4 房间契约', () => {
     await startGame(page, { displayName: '苹果钟完成测试', seed: 'v4-pomodoro-complete' })
     const daysBefore = await readCompanionDays(page)
 
-    await page.getByRole('button', { name: '切换到现实生活维度' }).click()
+    await enterReality(page)
     await page.locator('[data-hotspot="一楼电脑"]').click()
     const workPanel = page.locator('.context-panel--reality-work')
     await workPanel
       .getByRole('group', { name: '苹果钟时长' })
-      .getByRole('button', { name: /^5 分钟/u })
+      .getByRole('button', { name: /^25 分钟/u })
       .click()
     await workPanel.getByRole('button', { name: '开始苹果钟' }).click()
     await page
@@ -233,10 +235,17 @@ test.describe('V4 房间契约', () => {
       .getByRole('button', { name: '确认开始' })
       .click()
 
+    await page.clock.fastForward(25 * 60_000 + 1_000)
+    await expect(page.getByRole('dialog', { name: '休息一下吧' })).toBeVisible()
+    await expect(page.getByRole('status').filter({ hasText: '专注结束啦' })).toContainText(
+      '休息 5 分钟',
+    )
+    expect(await readCompanionDays(page)).toBe(daysBefore)
+
     await page.clock.fastForward(5 * 60_000 + 1_000)
     await expect(workPanel.getByRole('status').filter({ hasText: '本轮已完成' })).toBeVisible()
     await expect(page.getByRole('status').filter({ hasText: '苹果钟完成啦' })).toContainText(
-      '这一轮专注时间到了',
+      '这一轮专注和休息都完成啦',
     )
     await expect.poll(() => readCompanionDays(page)).toBe(daysBefore + 1)
 

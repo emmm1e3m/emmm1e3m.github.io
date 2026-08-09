@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest'
 
 import { createInitialGameState } from './createGameState'
-import { PIANO_NOTE_IDS } from './constants'
+import { BASE_ACTIVITY_DURATION_MS, ITEM_PRICES, PIANO_NOTE_IDS } from './constants'
 import { reduceGame } from './reducer'
 import type {
   ActivityKind,
@@ -58,6 +58,11 @@ function withActivitySupply(
 }
 
 describe('V4 瓶装速度魔法', () => {
+  it('单价为 3 个苹果，普通活动默认读条为 10 秒', () => {
+    expect(ITEM_PRICES['bottled-speed-magic']).toBe(3)
+    expect(BASE_ACTIVITY_DURATION_MS).toBe(10_000)
+  })
+
   it.each<ActivityKind>(['travel', 'stream', 'trend', 'music', 'rest'])(
     '%s 活动可在 running 阶段消耗一瓶并立即 ready',
     (kind) => {
@@ -79,7 +84,7 @@ describe('V4 瓶装速度魔法', () => {
         ),
       ).state
       const activityBefore = structuredClone(started.activeActivity!)
-      expect(activityBefore.endsAt).toBe(73_000)
+      expect(activityBefore.endsAt).toBe(1_000 + BASE_ACTIVITY_DURATION_MS)
 
       const accelerated = successful(
         reduceGame(
@@ -170,14 +175,15 @@ describe('V4 瓶装速度魔法', () => {
   })
 })
 
-describe('V4 三八度电子琴契约', () => {
-  it('固定暴露 C4–B6 共三排 36 个互不重复琴键', () => {
-    expect(PIANO_NOTE_IDS).toHaveLength(36)
-    expect(PIANO_NOTE_IDS[0]).toBe('C4')
-    expect(PIANO_NOTE_IDS[12]).toBe('C5')
-    expect(PIANO_NOTE_IDS[24]).toBe('C6')
+describe('V4 四八度电子琴契约', () => {
+  it('只从领域常量暴露 C3–B6 共 48 个互不重复琴键', () => {
+    expect(PIANO_NOTE_IDS).toHaveLength(48)
+    expect(PIANO_NOTE_IDS[0]).toBe('C3')
+    expect(PIANO_NOTE_IDS[12]).toBe('C4')
+    expect(PIANO_NOTE_IDS[24]).toBe('C5')
+    expect(PIANO_NOTE_IDS[36]).toBe('C6')
     expect(PIANO_NOTE_IDS.at(-1)).toBe('B6')
-    expect(new Set(PIANO_NOTE_IDS).size).toBe(36)
+    expect(new Set(PIANO_NOTE_IDS).size).toBe(48)
   })
 })
 
@@ -295,7 +301,7 @@ describe('V4 瓶装活力魔法', () => {
 })
 
 describe('V4 调试收集与用户播放列表', () => {
-  it('一键全收集包含好友，一键撤销同时清空且保持其他长期状态', () => {
+  it('一键全收集包含好友，清空收集同时清空且保持其他长期状态', () => {
     const debug = {
       ...createInitialGameState({ now: 0, seed: 'debug-all', debug: true }),
       friends: {
@@ -327,6 +333,21 @@ describe('V4 调试收集与用户播放列表', () => {
     expect(cleared.reality.nextStaySequence).toBe(4)
   })
 
+  it('活动进行中清空收集会提示先结束当前活动', () => {
+    const debug = willing(createInitialGameState({ now: 0, seed: 'debug-clear-busy', debug: true }))
+    const started = successful(
+      reduceGame(debug, { type: 'activity/start', kind: 'music', now: 1 }, catalog),
+    ).state
+
+    expect(reduceGame(started, { type: 'debug/clear-all', now: 2 }, catalog)).toMatchObject({
+      ok: false,
+      error: {
+        code: 'PET_BUSY',
+        message: '请先完成或取消当前活动，再清空收集',
+      },
+    })
+  })
+
   it('播放列表动作校验 BV、顺序与当前曲目，并在删除当前列表后回到内置列表', () => {
     const initial = createInitialGameState({ now: 0, seed: 'playlist' })
     const created = successful(
@@ -342,11 +363,8 @@ describe('V4 调试收集与用户播放列表', () => {
         catalog,
       ),
     ).state
-    const configured = successful(
-      reduceGame(created, { type: 'music/seek-set', startAtSeconds: 12 }, catalog),
-    ).state
     const selected = successful(
-      reduceGame(configured, { type: 'music/playlist-select', playlistId: 'my-list' }, catalog),
+      reduceGame(created, { type: 'music/playlist-select', playlistId: 'my-list' }, catalog),
     ).state
     const track = successful(
       reduceGame(selected, { type: 'music/track-select', bvid: 'BV1yy411c7mE', index: 1 }, catalog),
@@ -355,8 +373,9 @@ describe('V4 调试收集与用户播放列表', () => {
       activePlaylistId: 'my-list',
       currentBvid: 'BV1yy411c7mE',
       currentIndex: 1,
-      startAtSeconds: 12,
     })
+    expect(track.musicPlayer).not.toHaveProperty('startAtSeconds')
+    expect(track.musicPlayer).not.toHaveProperty('autoplay')
 
     const invalid = reduceGame(
       track,
@@ -373,12 +392,6 @@ describe('V4 调试收集与用户播放列表', () => {
       activePlaylistId: null,
       currentBvid: null,
       currentIndex: 0,
-      startAtSeconds: 12,
     })
-
-    const autoplay = successful(
-      reduceGame(deleted, { type: 'music/autoplay-set', autoplay: false }, catalog),
-    ).state
-    expect(autoplay.musicPlayer.autoplay).toBe(true)
   })
 })

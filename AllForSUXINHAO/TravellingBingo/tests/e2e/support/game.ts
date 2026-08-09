@@ -45,12 +45,22 @@ export async function startGame(page: Page, options: StartGameOptions = {}) {
   }
 
   await page.getByLabel('想让饼狗怎么称呼你？').fill(displayName)
-  await page.getByRole('button', { name: '开始新旅程' }).click()
+  await page.getByRole('button', { name: '新存档' }).click()
   await expect(page.getByRole('region', { name: '铲铲饼屋互动场景' })).toBeVisible()
   await expect(page.locator('.hud-companion')).toContainText(`${displayName}陪伴饼狗已经`)
   if (debug) {
     await expect(page.getByRole('button', { name: '打开调试面板' })).toBeVisible()
   }
+}
+
+export async function enterReality(page: Page) {
+  const toggle = page.getByRole('button', { name: '切换到现实生活维度' })
+  await toggle.click()
+  const dialog = page.getByRole('dialog', { name: '进入现实维度？' })
+  await expect(dialog).toContainText('完整的工作与休息苹果钟')
+  await expect(dialog.getByRole('button', { name: '进入现实维度' })).toBeFocused()
+  await dialog.getByRole('button', { name: '进入现实维度' }).click()
+  await expect(page.getByRole('button', { name: '回到旅行饼狗游戏' })).toBeVisible()
 }
 
 export async function openDebugPanel(page: Page) {
@@ -166,7 +176,7 @@ export async function openAlbum(page: Page) {
 }
 
 export async function saveScreenshot(page: Page, fileName: string, fullPage = true) {
-  const outputDirectory = path.resolve(process.cwd(), 'output', 'playwright', 'v4-final')
+  const outputDirectory = path.resolve(process.cwd(), 'output', 'playwright', 'v5-final')
   await mkdir(outputDirectory, { recursive: true })
   await page.screenshot({
     path: path.join(outputDirectory, fileName),

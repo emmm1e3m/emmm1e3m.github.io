@@ -119,7 +119,6 @@ describe('活动场景标题', () => {
         onAction={vi.fn()}
         onBackup={vi.fn()}
         onTaskEvent={vi.fn()}
-        onClose={vi.fn()}
       />,
     )
 

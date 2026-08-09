@@ -46,7 +46,7 @@ const EXPECTED_PET_CENTERS: Record<RoomAreaId, { x: number; y: number }> = {
   keyboard: { x: 257, y: 1103 },
   fridge: { x: 633, y: 951 },
   recordPlayer: { x: 783, y: 1030 },
-  album: { x: 1053, y: 673 },
+  album: { x: 673, y: 1053 },
   workComputer: { x: 420, y: 1172 },
   door: { x: 980, y: 1176 },
 }

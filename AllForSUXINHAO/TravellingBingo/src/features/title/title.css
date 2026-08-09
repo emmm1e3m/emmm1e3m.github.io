@@ -145,12 +145,50 @@
 }
 
 .landing-intro {
-  margin: clamp(1.2rem, 2.6vh, 1.85rem) 0 clamp(1.55rem, 3.8vh, 2.6rem);
+  margin: clamp(1.2rem, 2.6vh, 1.85rem) 0 0.8rem;
   color: #694c44;
   font:
     400 clamp(1.1rem, 1.6vw, 1.34rem) / 1.65 'TravellingBingo UI',
     sans-serif;
   letter-spacing: 0.025em;
+}
+
+.landing-social-links {
+  display: flex;
+  align-items: center;
+  gap: 0.65rem;
+  margin-bottom: clamp(1rem, 2.8vh, 1.8rem);
+}
+
+.landing-social-links a {
+  width: 52px;
+  height: 52px;
+  overflow: hidden;
+  display: block;
+  border: 2px solid rgb(255 253 248 / 92%);
+  border-radius: 50%;
+  background: #f8dfc7;
+  box-shadow: 0 5px 14px rgb(94 61 47 / 16%);
+  transition:
+    transform 160ms ease,
+    box-shadow 160ms ease;
+}
+
+.landing-social-links a:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 8px 18px rgb(94 61 47 / 20%);
+}
+
+.landing-social-links a:focus-visible {
+  outline: 3px solid #236d8d;
+  outline-offset: 3px;
+}
+
+.landing-social-links img {
+  width: 100%;
+  height: 100%;
+  display: block;
+  object-fit: cover;
 }
 
 .landing-actions {
@@ -162,6 +200,18 @@
 
 .landing-new-game {
   width: min(100%, 520px);
+}
+
+.landing-actions--entries {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+}
+
+.landing-actions--entries .landing-button {
+  width: 100%;
+  min-width: 0;
+  padding-inline: 0.8rem;
+  text-align: center;
 }
 
 .landing-name-field {
@@ -339,6 +389,45 @@
   white-space: nowrap;
 }
 
+.landing-cache {
+  width: min(100%, 560px);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.8rem;
+  margin: 0 0 0.85rem;
+  padding: 0.72rem 0.85rem;
+  border: 1px solid rgb(117 72 59 / 20%);
+  border-radius: 16px;
+  color: #5b4038;
+  background: rgb(255 253 248 / 62%);
+  font-size: 0.72rem;
+}
+
+.landing-cache > div {
+  min-width: 0;
+  display: grid;
+  gap: 0.18rem;
+}
+
+.landing-cache strong,
+.landing-cache span {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.landing-cache strong {
+  font-size: 0.82rem;
+  font-weight: 400;
+}
+
+.landing-cache > .numeric-copy {
+  flex: 0 1 auto;
+  color: var(--landing-muted);
+  text-align: right;
+}
+
 .landing-error {
   width: min(100%, 560px);
   margin: 0.9rem 0 0;
@@ -368,44 +457,17 @@
   width: min(100%, 560px);
   display: flex;
   align-items: center;
-  gap: 0.8rem;
   margin-top: 0.9rem;
-  padding: 0.72rem 0.8rem;
-  border: 1px solid rgb(117 72 59 / 20%);
-  border-radius: 16px;
-  background: rgb(255 253 248 / 62%);
+  padding: 0;
 }
 
 .landing-update__button {
-  min-height: 44px;
-  flex: 0 0 auto;
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  gap: 0.35rem;
-  padding: 0.58rem 0.78rem;
-  border: 1px solid rgb(105 69 57 / 36%);
-  border-radius: 13px;
-  color: #5b4038;
-  background: #fff9ef;
-  box-shadow: 0 3px 0 rgb(115 71 55 / 14%);
-  font:
-    400 0.78rem/1.2 'TravellingBingo UI',
-    sans-serif;
-  cursor: pointer;
+  min-height: 54px;
 }
 
 .landing-update__button:disabled {
   opacity: 0.62;
   cursor: wait;
-}
-
-.landing-update p {
-  margin: 0;
-  color: var(--landing-muted);
-  font-size: 0.68rem;
-  line-height: 1.5;
-  text-align: left;
 }
 
 .landing-scene {
@@ -562,9 +624,14 @@
   .landing-intro,
   .landing-error,
   .landing-import,
+  .landing-cache,
   .landing-new-game,
   .landing-update {
     margin-inline: auto;
+  }
+
+  .landing-social-links {
+    justify-content: center;
   }
 
   .landing-retry {
@@ -613,8 +680,27 @@
   }
 
   .landing-intro {
-    margin: 0.9rem 0 1.25rem;
+    margin: 0.9rem 0 0.65rem;
     font-size: 1rem;
+  }
+
+  .landing-social-links {
+    margin-bottom: 1rem;
+  }
+
+  .landing-social-links a {
+    width: 46px;
+    height: 46px;
+  }
+
+  .landing-cache {
+    align-items: flex-start;
+    flex-direction: column;
+    text-align: left;
+  }
+
+  .landing-cache > .numeric-copy {
+    text-align: left;
   }
 
   .landing-actions {

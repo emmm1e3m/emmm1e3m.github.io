@@ -12,7 +12,8 @@ import { PwaUpdatePrompt, type InstallPwaUpdate } from '@/components/PwaUpdatePr
 import { loadContentCatalog, type ContentCatalog } from '@/content'
 import {
   createInitialGameState,
-  migrateStoredGameStateToV4,
+  getTaskBoardRefreshDeadline,
+  migrateStoredGameStateToV5,
   normalizeImportedGameBalance,
   reconcileGameStateWithCatalog,
   validateImportedGameState,
@@ -21,17 +22,28 @@ import {
   type GameAction,
   type GameState,
 } from '@/domain'
-import { GameHome, type PanelId } from '@/features/game/GameHome'
-import { TitleScreen, type ImportPreview } from '@/features/title/TitleScreen'
+import { GameHome, type PanelId, type RealitySettlementResult } from '@/features/game/GameHome'
 import {
+  TitleScreen,
+  type CachedSavePreview,
+  type ImportPreview,
+} from '@/features/title/TitleScreen'
+import {
+  createBrowserGameCache,
   createBingoSave,
   downloadBingoSave,
   importBingoSave,
+  markPeriodicBackupRequested,
+  readBrowserGameCache,
+  updateBrowserGameCache,
+  writeBrowserGameCache,
+  type BrowserGameCache,
   type BingoSaveSummary,
 } from '@/infrastructure/persistence'
 
-const GAME_VERSION = '0.4.0-demo.1'
+const GAME_VERSION = '0.5.0-demo.1'
 const DEBUG_PASSWORD = 'TravellingBingo'
+const PERIODIC_BACKUP_INTERVAL_MS = 3 * 24 * 60 * 60 * 1_000
 
 interface PendingImport {
   fileName: string
@@ -39,15 +51,12 @@ interface PendingImport {
   game: GameState
 }
 
-type ProtectedOperation = 'exit' | 'update'
 type UpdateCheckStatus = 'idle' | 'checking' | 'checked' | 'unsupported' | 'error'
 type AppNotificationPermission = NotificationPermission | 'unsupported'
 
-interface PendingSaveConfirmation {
-  fileName: string
-  intent: number
-  operation: ProtectedOperation
-  revision: number
+interface PreparedBrowserCache {
+  cache: BrowserGameCache<GameState>
+  game: GameState
 }
 
 function createSeed() {
@@ -88,7 +97,13 @@ function nextClockDeadline(game: GameState | null): number | null {
     }
   }
   const session = game.reality.pomodoro.session
-  if (session && session.notificationIssuedAt === null) deadlines.push(session.endsAt)
+  if (session?.status === 'focus' && session.focusNotificationIssuedAt === null) {
+    deadlines.push(session.focusEndsAt)
+  } else if (session?.status === 'break' && session.completionNotificationIssuedAt === null) {
+    deadlines.push(session.cycleEndsAt)
+  }
+  const taskBoardDeadline = getTaskBoardRefreshDeadline(game.tasks)
+  if (taskBoardDeadline !== null) deadlines.push(taskBoardDeadline)
   return deadlines.length > 0 ? Math.min(...deadlines) : null
 }
 
@@ -106,6 +121,34 @@ function buildImportPreview(pending: PendingImport | null): ImportPreview | null
     displayName: game.profile.displayName,
     companionDays: game.profile.companionDays,
   }
+}
+
+function buildCachedPreview(prepared: PreparedBrowserCache | null): CachedSavePreview | null {
+  if (!prepared) return null
+  const { cache, game } = prepared
+  return {
+    updatedAt: cache.updatedAt,
+    gameVersion: cache.gameVersion,
+    apples: game.economy.apples,
+    collectionCount: Object.keys(game.collections).length,
+    activityLabel: activitySummary(game),
+    debug: game.profile.debug,
+    displayName: game.profile.displayName,
+    companionDays: game.profile.companionDays,
+  }
+}
+
+function prepareStoredGame(
+  stored: ImportableGameState,
+  catalog: CollectionCatalog,
+  now: number,
+): GameState {
+  const migrated = migrateStoredGameStateToV5(stored, { now, catalog })
+  const normalized = normalizeImportedGameBalance(migrated)
+  const reconciled = reconcileGameStateWithCatalog(normalized, catalog)
+  const validation = validateImportedGameState(reconciled, catalog)
+  if (!validation.ok) throw new Error(validation.message)
+  return reconciled
 }
 
 const reloadCurrentPage: InstallPwaUpdate = async () => {
@@ -140,19 +183,21 @@ export function App({
   const [catalog, setCatalog] = useState<ContentCatalog | null>(null)
   const [catalogError, setCatalogError] = useState<string | null>(null)
   const [catalogAttempt, setCatalogAttempt] = useState(0)
+  const [cacheReady, setCacheReady] = useState(false)
+  const [cacheError, setCacheError] = useState<string | null>(null)
+  const [preparedCache, setPreparedCache] = useState<PreparedBrowserCache | null>(null)
   const [screen, setScreen] = useState<'title' | 'home'>('title')
   const { game, replaceGame, applyAction: applyGameAction, getSnapshot } = useGameController()
   const [panel, setPanel] = useState<PanelId | null>(null)
   const [now, setNow] = useState(() => Date.now())
-  const [dirty, setDirty] = useState(false)
+  const [cacheWriteFailed, setCacheWriteFailed] = useState(false)
+  const [entryBusy, setEntryBusy] = useState(false)
   const [toast, setToast] = useState<string | null>(null)
   const [reward, setReward] = useState<ClaimSummary | null>(null)
+  const [realitySettlementResult, setRealitySettlementResult] =
+    useState<RealitySettlementResult | null>(null)
   const [pendingImport, setPendingImport] = useState<PendingImport | null>(null)
   const [importError, setImportError] = useState<string | null>(null)
-  const [exitOpen, setExitOpen] = useState(false)
-  const [protectedOperation, setProtectedOperation] = useState<ProtectedOperation>('exit')
-  const [pendingSaveConfirmation, setPendingSaveConfirmation] =
-    useState<PendingSaveConfirmation | null>(null)
   const [debugOpen, setDebugOpen] = useState(false)
   const [debugPassword, setDebugPassword] = useState('')
   const [debugError, setDebugError] = useState<string | null>(null)
@@ -164,39 +209,81 @@ export function App({
   const [updateCheckStatus, setUpdateCheckStatus] = useState<UpdateCheckStatus>(() =>
     checkForUpdatesOverride || 'serviceWorker' in globalThis.navigator ? 'idle' : 'unsupported',
   )
-  const {
-    enabled: keepAliveAudioEnabled,
-    status: keepAliveAudioStatus,
-    activateFromJourneyGesture,
-    toggle: toggleKeepAliveAudio,
-  } = useKeepAliveAudio(createAudioContext)
+  const { activateFromJourneyGesture } = useKeepAliveAudio(createAudioContext)
   const titleActivations = useRef<number[]>([])
   const importAttempt = useRef(0)
-  const lastConfirmedRevision = useRef(0)
-  const exitIntent = useRef(0)
-  const pendingUpdate = useRef<InstallPwaUpdate | null>(null)
-  const closeExitDialog = useCallback(() => {
-    exitIntent.current += 1
-    pendingUpdate.current = null
-    setPendingSaveConfirmation(null)
-    setExitOpen(false)
-  }, [])
-  const openExitDialog = useCallback(() => {
-    exitIntent.current += 1
-    pendingUpdate.current = null
-    setProtectedOperation('exit')
-    setPendingSaveConfirmation(null)
-    setExitOpen(true)
-  }, [])
+  const preparedCacheRef = useRef<PreparedBrowserCache | null>(null)
+  const periodicBackupInFlight = useRef(false)
+  const pwaUpdateBackupPending = useRef(false)
+  const pwaUpdateBackupRequest = useRef<Promise<void> | null>(null)
   const debugDialogRef = useModalFocus<HTMLFormElement>(debugOpen, () => setDebugOpen(false))
-  const exitDialogRef = useModalFocus<HTMLElement>(exitOpen, closeExitDialog)
-  const saveFlowPrimaryRef = useRef<HTMLButtonElement>(null)
-
-  useEffect(() => {
-    if (exitOpen) saveFlowPrimaryRef.current?.focus()
-  }, [exitOpen, pendingSaveConfirmation])
 
   const domainCatalog = useMemo(() => (catalog ? toDomainCatalog(catalog) : null), [catalog])
+
+  const setCurrentCache = useCallback((next: PreparedBrowserCache | null) => {
+    preparedCacheRef.current = next
+    setPreparedCache(next)
+  }, [])
+
+  const persistGameToCache = useCallback(
+    (nextGame: GameState, replaceSlot = false) => {
+      const savedAt = Date.now()
+      const current = preparedCacheRef.current
+      const nextCache =
+        replaceSlot || current === null
+          ? createBrowserGameCache({
+              saveId: createSeed(),
+              gameVersion: GAME_VERSION,
+              now: savedAt,
+              payload: nextGame,
+            })
+          : updateBrowserGameCache(current.cache, nextGame, savedAt, GAME_VERSION)
+      const prepared = { cache: nextCache, game: nextGame }
+      setCurrentCache(prepared)
+      try {
+        writeBrowserGameCache(nextCache)
+        setCacheWriteFailed(false)
+        setCacheError(null)
+        return true
+      } catch (error) {
+        setCacheWriteFailed(true)
+        setToast(error instanceof Error ? error.message : '浏览器缓存存档没有写入成功。')
+        return false
+      }
+    },
+    [setCurrentCache],
+  )
+
+  const downloadGameSnapshot = useCallback(async (snapshot: GameState) => {
+    const exported = await createBingoSave(
+      { gameVersion: GAME_VERSION, payload: snapshot },
+      gameStateSchema,
+    )
+    const fileName = snapshot.profile.debug
+      ? exported.fileName.replace(/\.bingo$/u, '-debug.bingo')
+      : exported.fileName
+    downloadBingoSave({ fileName, text: exported.text })
+  }, [])
+
+  const startPwaUpdateBackup = useCallback(() => {
+    pwaUpdateBackupPending.current = true
+    const snapshot = preparedCacheRef.current?.game ?? getSnapshot().game
+    if (!snapshot) return null
+
+    pwaUpdateBackupPending.current = false
+    const request = downloadGameSnapshot(snapshot)
+    pwaUpdateBackupRequest.current = request
+    void request.catch((error: unknown) => {
+      setToast(
+        error instanceof Error ? error.message : '发现新布置，但当前缓存存档没有自动下载成功。',
+      )
+    })
+    return request
+  }, [downloadGameSnapshot, getSnapshot])
+
+  useEffect(() => {
+    if (preparedCache && pwaUpdateBackupPending.current) startPwaUpdateBackup()
+  }, [preparedCache, startPwaUpdateBackup])
 
   const invalidatePendingImport = useCallback(() => {
     importAttempt.current += 1
@@ -221,6 +308,43 @@ export function App({
   }, [catalogAttempt])
 
   useEffect(() => {
+    if (!domainCatalog) return
+    let active = true
+    void Promise.resolve().then(() => {
+      if (!active) return
+      setCacheReady(false)
+      try {
+        const rawCache = readBrowserGameCache()
+        if (rawCache === null) {
+          setCurrentCache(null)
+          setCacheError(null)
+          return
+        }
+        const parsedPayload = importableGameStateSchema.safeParse(rawCache.payload)
+        if (!parsedPayload.success) {
+          throw new Error('缓存中的游戏进度没有通过结构校验。', {
+            cause: parsedPayload.error,
+          })
+        }
+        const preparedGame = prepareStoredGame(parsedPayload.data, domainCatalog, Date.now())
+        setCurrentCache({
+          cache: { ...rawCache, payload: preparedGame },
+          game: preparedGame,
+        })
+        setCacheError(null)
+      } catch (error) {
+        setCurrentCache(null)
+        setCacheError(error instanceof Error ? error.message : '浏览器缓存存档没有读取成功。')
+      } finally {
+        setCacheReady(true)
+      }
+    })
+    return () => {
+      active = false
+    }
+  }, [domainCatalog, setCurrentCache])
+
+  useEffect(() => {
     const update = () => {
       setNow(Date.now())
       setNotificationPermission(readNotificationPermission())
@@ -242,21 +366,24 @@ export function App({
   }, [toast])
 
   useEffect(() => {
-    if (!dirty) return
+    if (!cacheWriteFailed) return
     const warn = (event: BeforeUnloadEvent) => {
       event.preventDefault()
       event.returnValue = ''
     }
     globalThis.addEventListener('beforeunload', warn)
     return () => globalThis.removeEventListener('beforeunload', warn)
-  }, [dirty])
+  }, [cacheWriteFailed])
 
   const startNewGame = useCallback(
-    (displayName: string) => {
+    async (displayName: string) => {
       if (!catalog) return
-      activateFromJourneyGesture()
+      void activateFromJourneyGesture()
+      setEntryBusy(true)
       let initial: GameState
       try {
+        const previous = preparedCacheRef.current?.game
+        if (previous) await downloadGameSnapshot(previous)
         initial = createInitialGameState({
           now: Date.now(),
           seed: createSeed(),
@@ -264,19 +391,46 @@ export function App({
           debug: debugUnlocked,
         })
       } catch (error) {
-        setToast(error instanceof Error ? error.message : '这个称呼暂时不能使用。')
+        setToast(error instanceof Error ? error.message : '新存档暂时没有准备好。')
+        setEntryBusy(false)
         return
       }
       invalidatePendingImport()
+      const cacheSaved = persistGameToCache(initial, true)
       replaceGame(initial)
+      setRealitySettlementResult(null)
       setRestTransitionKey(0)
-      setDirty(true)
       setPanel(null)
       setScreen('home')
-      setToast(debugUnlocked ? 'DEBUG 旅程已经开始。' : '欢迎回到铲铲饼屋。')
+      setEntryBusy(false)
+      if (cacheSaved) {
+        setToast(debugUnlocked ? 'DEBUG 旅程已经开始。' : '欢迎回到铲铲饼屋。')
+      }
     },
-    [activateFromJourneyGesture, catalog, debugUnlocked, invalidatePendingImport, replaceGame],
+    [
+      activateFromJourneyGesture,
+      catalog,
+      debugUnlocked,
+      downloadGameSnapshot,
+      invalidatePendingImport,
+      persistGameToCache,
+      replaceGame,
+    ],
   )
+
+  const continueCachedGame = useCallback(() => {
+    const cached = preparedCacheRef.current
+    if (!cached) return
+    void activateFromJourneyGesture()
+    const cacheSaved = persistGameToCache(cached.game)
+    replaceGame(cached.game)
+    setRealitySettlementResult(null)
+    setRestTransitionKey(0)
+    setDebugUnlocked((value) => value || cached.game.profile.debug)
+    setPanel(null)
+    setScreen('home')
+    if (cacheSaved) setToast('已从浏览器缓存继续旅程。')
+  }, [activateFromJourneyGesture, persistGameToCache, replaceGame])
 
   const issueBrowserNotification = useCallback(
     (notificationId: string, title: string, body: string) => {
@@ -334,13 +488,14 @@ export function App({
   const applyAction = useCallback(
     (action: GameAction) => {
       if (!domainCatalog) return
+      const previousGame = getSnapshot().game
       const transition = applyGameAction(action, domainCatalog)
       if (!transition) return
       if (!transition.ok) {
         setToast(transition.error.message)
         return
       }
-      setDirty(true)
+      const cacheSaved = persistGameToCache(transition.state)
       setNow(Date.now())
       for (const effect of transition.effects) {
         if (effect.type === 'item-purchased') {
@@ -369,11 +524,7 @@ export function App({
         } else if (effect.type === 'pet-encouraged') {
           setToast(`饼狗收下了鼓励，花掉 ${effect.applesSpent}🍎。`)
         } else if (effect.type === 'task-progressed' && effect.completed) {
-          setToast(
-            effect.boardRefreshed
-              ? `Bingo！收好 ${effect.applesAwarded}🍎，新的三件小事写好啦。`
-              : `小事完成，收好 ${effect.applesAwarded}🍎。`,
-          )
+          setToast(`小事完成，收好 ${effect.applesAwarded}🍎。`)
         } else if (effect.type === 'debug-applied') {
           if (effect.action === 'debug/collect-all') {
             setToast(`DEBUG：收好 ${effect.changedCount ?? 0} 份收藏与好友记录。`)
@@ -393,14 +544,21 @@ export function App({
         } else if (effect.type === 'reality-reward-pending') {
           setToast('欢迎回来，请告诉饼狗这段现实任务完成得怎么样。')
         } else if (effect.type === 'reality-reward-settled') {
-          setToast(`现实任务结算完成，收好 ${effect.awardedApples}🍎。`)
+          setRealitySettlementResult({
+            decision: effect.decision,
+            awardedApples: effect.awardedApples,
+            fullRewardApples: effect.fullRewardApples,
+          })
         } else if (effect.type === 'todo-notification-due') {
           issueBrowserNotification(
             effect.notificationId,
             effect.notificationTitle,
             effect.notificationBody,
           )
-        } else if (effect.type === 'pomodoro-completed') {
+        } else if (
+          effect.type === 'pomodoro-break-started' ||
+          effect.type === 'pomodoro-completed'
+        ) {
           issueBrowserNotification(
             effect.notificationId,
             effect.notificationTitle,
@@ -408,8 +566,33 @@ export function App({
           )
         }
       }
+      const unlockedSiteFirst =
+        previousGame !== null &&
+        domainCatalog['site-first'].some(
+          (id) => previousGame.collections[id] === undefined && transition.state.collections[id],
+        )
+      const metNewFriend =
+        previousGame !== null &&
+        Object.keys(transition.state.friends).some(
+          (id) =>
+            previousGame.friends[id as keyof typeof previousGame.friends] === undefined &&
+            transition.state.friends[id as keyof typeof transition.state.friends] !== undefined,
+        )
+      if (unlockedSiteFirst || metNewFriend) {
+        void downloadGameSnapshot(transition.state).catch((error: unknown) => {
+          setToast(error instanceof Error ? error.message : '关键节点存档没有自动下载成功。')
+        })
+      }
+      if (!cacheSaved) setToast('浏览器缓存存档没有写入成功，请立即下载一份存档。')
     },
-    [applyGameAction, domainCatalog, issueBrowserNotification],
+    [
+      applyGameAction,
+      domainCatalog,
+      downloadGameSnapshot,
+      getSnapshot,
+      issueBrowserNotification,
+      persistGameToCache,
+    ],
   )
 
   const clockDeadline = useMemo(() => nextClockDeadline(game), [game])
@@ -462,14 +645,7 @@ export function App({
       if (!domainCatalog) {
         throw new Error('收藏目录尚未准备好，暂时不能校验这份存档。')
       }
-      const migrated = migrateStoredGameStateToV4(result.payload, {
-        now: Date.now(),
-        catalog: domainCatalog,
-      })
-      const normalized = normalizeImportedGameBalance(migrated)
-      const imported = reconcileGameStateWithCatalog(normalized, domainCatalog)
-      const validation = validateImportedGameState(imported, domainCatalog)
-      if (!validation.ok) throw new Error(validation.message)
+      const imported = prepareStoredGame(result.payload, domainCatalog, Date.now())
       setPendingImport({ fileName: file.name, summary: result.summary, game: imported })
     } catch (error) {
       if (attempt !== importAttempt.current) return
@@ -482,135 +658,119 @@ export function App({
     }
   }
 
-  function confirmImport() {
-    if (!pendingImport || !catalog || !domainCatalog) return
-    activateFromJourneyGesture()
+  async function confirmImport() {
+    if (!pendingImport || entryBusy) return
+    void activateFromJourneyGesture()
     const imported = pendingImport.game
-    const validation = validateImportedGameState(imported, domainCatalog)
-    if (!validation.ok) {
-      importAttempt.current += 1
-      setPendingImport(null)
-      setImportError(`这份存档没有打开，当前进度未改变：${validation.message}`)
+    setEntryBusy(true)
+    try {
+      const previous = preparedCacheRef.current?.game
+      if (previous) await downloadGameSnapshot(previous)
+    } catch (error) {
+      setToast(error instanceof Error ? error.message : '原缓存存档没有自动下载成功。')
+      setEntryBusy(false)
       return
     }
     importAttempt.current += 1
+    const cacheSaved = persistGameToCache(imported, true)
     replaceGame(imported)
-    lastConfirmedRevision.current = getSnapshot().revision
+    setRealitySettlementResult(null)
     setRestTransitionKey(0)
     setDebugUnlocked((value) => value || imported.profile.debug)
     setPendingImport(null)
     setImportError(null)
-    setDirty(false)
+    setEntryBusy(false)
     setPanel(null)
     setScreen('home')
-    setToast('存档已打开，饼狗回家啦。')
+    if (cacheSaved) setToast('存档已打开，饼狗回家啦。')
   }
 
-  function requestPwaUpdate(installUpdate: InstallPwaUpdate) {
-    const currentSnapshot = getSnapshot()
-    const hasUnsavedProgress =
-      currentSnapshot.game !== null && currentSnapshot.revision !== lastConfirmedRevision.current
-    if (!hasUnsavedProgress) {
-      void installUpdate().catch((error: unknown) => {
-        setToast(error instanceof Error ? error.message : '新布置没有打开，请稍后再试。')
-      })
-      return
+  useEffect(() => {
+    if (!preparedCache) return
+    let timer: ReturnType<typeof globalThis.setTimeout> | null = null
+
+    const requestIfDue = () => {
+      const current = preparedCacheRef.current
+      if (!current || periodicBackupInFlight.current) return
+      const base = current.cache.lastPeriodicBackupRequestedAt ?? current.cache.firstCachedAt
+      const deadline = base + PERIODIC_BACKUP_INTERVAL_MS
+      const currentTime = Date.now()
+      if (currentTime < deadline) return
+
+      periodicBackupInFlight.current = true
+      const saveId = current.cache.saveId
+      void downloadGameSnapshot(current.game)
+        .then(() => {
+          const latest = preparedCacheRef.current
+          if (!latest || latest.cache.saveId !== saveId) return
+          const markedCache = markPeriodicBackupRequested(latest.cache, Date.now())
+          const marked = { cache: markedCache, game: latest.game }
+          setCurrentCache(marked)
+          try {
+            writeBrowserGameCache(markedCache)
+            setCacheWriteFailed(false)
+          } catch (error) {
+            setCacheWriteFailed(true)
+            setToast(error instanceof Error ? error.message : '周期备份时间没有写入缓存。')
+          }
+        })
+        .catch((error: unknown) => {
+          setToast(error instanceof Error ? error.message : '三天周期存档没有自动下载成功。')
+        })
+        .finally(() => {
+          periodicBackupInFlight.current = false
+        })
     }
 
-    exitIntent.current += 1
-    pendingUpdate.current = installUpdate
-    setProtectedOperation('update')
-    setPendingSaveConfirmation(null)
-    setExitOpen(true)
+    const base =
+      preparedCache.cache.lastPeriodicBackupRequestedAt ?? preparedCache.cache.firstCachedAt
+    const delay = Math.min(
+      Math.max(0, base + PERIODIC_BACKUP_INTERVAL_MS - Date.now()),
+      2_147_483_647,
+    )
+    timer = globalThis.setTimeout(requestIfDue, delay)
+    const resume = () => {
+      if (document.visibilityState === 'visible') requestIfDue()
+    }
+    globalThis.addEventListener('focus', requestIfDue)
+    document.addEventListener('visibilitychange', resume)
+    return () => {
+      if (timer !== null) globalThis.clearTimeout(timer)
+      globalThis.removeEventListener('focus', requestIfDue)
+      document.removeEventListener('visibilitychange', resume)
+    }
+  }, [downloadGameSnapshot, preparedCache, setCurrentCache])
+
+  function requestPwaUpdate(installUpdate: InstallPwaUpdate) {
+    void (async () => {
+      try {
+        const backupRequest = pwaUpdateBackupRequest.current ?? startPwaUpdateBackup()
+        if (backupRequest) await backupRequest
+        await installUpdate()
+      } catch (error) {
+        setToast(error instanceof Error ? error.message : '新布置没有打开，请稍后再试。')
+      }
+    })()
   }
 
-  async function exportGame(operation?: ProtectedOperation, requestedExitIntent?: number) {
-    const capturedExitIntent = operation ? requestedExitIntent : undefined
-    const exportSnapshot = getSnapshot()
-    const snapshotGame = exportSnapshot.game
+  async function exportGame() {
+    const snapshotGame = getSnapshot().game ?? preparedCacheRef.current?.game ?? null
     if (!snapshotGame) return
     try {
-      const exported = await createBingoSave(
-        { gameVersion: GAME_VERSION, payload: snapshotGame },
-        gameStateSchema,
-      )
-      const latestSnapshot = getSnapshot()
-      if (operation && capturedExitIntent !== exitIntent.current) return
-      if (latestSnapshot.revision !== exportSnapshot.revision) {
-        if (operation) closeExitDialog()
-        setDirty(
-          latestSnapshot.game !== null && latestSnapshot.revision !== lastConfirmedRevision.current,
-        )
-        setToast(
-          operation === 'exit'
-            ? '刚刚又记下了新进度，请重新保存后再离开。'
-            : operation === 'update'
-              ? '刚刚又记下了新进度，请重新保存后再更新。'
-              : '刚刚又记下了新进度，这次没有下载，请再保存一次。',
-        )
-        return
-      }
-
-      const fileName = snapshotGame.profile.debug
-        ? exported.fileName.replace(/\.bingo$/u, '-debug.bingo')
-        : exported.fileName
-      downloadBingoSave({ fileName, text: exported.text })
-      if (operation) {
-        setPendingSaveConfirmation({
-          fileName,
-          intent: capturedExitIntent!,
-          operation,
-          revision: exportSnapshot.revision,
-        })
-        setToast('已请求浏览器下载存档，请确认文件保存好后再继续。')
-      } else {
-        setToast('已请求浏览器下载存档，当前进度仍留在房间里。')
-      }
+      await downloadGameSnapshot(snapshotGame)
+      setToast('存档已经交给浏览器下载。')
     } catch (error) {
-      if (operation && capturedExitIntent !== exitIntent.current) return
       setToast(error instanceof Error ? error.message : '存档下载没有成功，请再试一次。')
     }
   }
 
-  function confirmSavedAndContinue() {
-    const pending = pendingSaveConfirmation
-    if (!pending || pending.intent !== exitIntent.current) return
-
-    const latestSnapshot = getSnapshot()
-    if (!latestSnapshot.game || latestSnapshot.revision !== pending.revision) {
-      setPendingSaveConfirmation(null)
-      setDirty(
-        latestSnapshot.game !== null && latestSnapshot.revision !== lastConfirmedRevision.current,
-      )
-      setToast(
-        pending.operation === 'update'
-          ? '刚刚又记下了新进度，请重新保存后再更新。'
-          : '刚刚又记下了新进度，请重新保存后再离开。',
-      )
-      return
-    }
-
-    lastConfirmedRevision.current = pending.revision
-    setDirty(false)
-    if (pending.operation === 'exit') {
-      closeExitDialog()
-      setScreen('title')
-      replaceGame(null)
-      setRestTransitionKey(0)
-      setPanel(null)
-      setReward(null)
-      return
-    }
-
-    const installUpdate = pendingUpdate.current
-    closeExitDialog()
-    if (!installUpdate) {
-      setToast('新布置没有打开，请稍后再试。')
-      return
-    }
-    void installUpdate().catch((error: unknown) => {
-      setToast(error instanceof Error ? error.message : '新布置没有打开，请稍后再试。')
-    })
+  function leaveHome() {
+    setScreen('title')
+    replaceGame(null)
+    setRestTransitionKey(0)
+    setPanel(null)
+    setReward(null)
+    setRealitySettlementResult(null)
   }
 
   function activateTitle() {
@@ -639,18 +799,21 @@ export function App({
   }
 
   const preview = buildImportPreview(pendingImport)
+  const cachedPreview = buildCachedPreview(preparedCache)
 
   return (
     <>
       {screen === 'title' || !game || !catalog ? (
         <TitleScreen
-          loading={!catalog && !catalogError}
-          available={Boolean(catalog)}
-          error={catalogError ?? importError}
+          loading={entryBusy || (!catalog && !catalogError) || (Boolean(catalog) && !cacheReady)}
+          available={Boolean(catalog) && cacheReady}
+          error={catalogError ?? importError ?? cacheError}
           importPreview={preview}
+          cachedPreview={cachedPreview}
           debugUnlocked={debugUnlocked}
           updateCheckStatus={updateCheckStatus}
           onStart={startNewGame}
+          onContinueCached={continueCachedGame}
           onFile={(file) => void loadFile(file)}
           onConfirmImport={confirmImport}
           onCancelImport={invalidatePendingImport}
@@ -667,21 +830,18 @@ export function App({
           catalog={catalog}
           now={now}
           panel={panel}
-          dirty={dirty}
+          dirty={cacheWriteFailed}
           restTransitionKey={restTransitionKey}
           reward={reward}
+          realitySettlementResult={realitySettlementResult}
           notificationPermission={notificationPermission}
-          updateCheckStatus={updateCheckStatus}
-          keepAliveAudioEnabled={keepAliveAudioEnabled}
-          keepAliveAudioStatus={keepAliveAudioStatus}
           onPanel={setPanel}
           onAction={applyAction}
-          onExit={openExitDialog}
+          onExit={leaveHome}
           onBackup={() => void exportGame()}
-          onCheckForUpdates={requestUpdateCheck}
           onRequestNotificationPermission={requestNotificationPermission}
-          onToggleKeepAliveAudio={toggleKeepAliveAudio}
           onDismissReward={() => setReward(null)}
+          onDismissRealitySettlementResult={() => setRealitySettlementResult(null)}
         />
       )}
 
@@ -692,8 +852,8 @@ export function App({
       )}
 
       <PwaUpdatePrompt
-        hasUnsavedProgress={dirty}
         onNeedReload={() => requestPwaUpdate(reloadPage)}
+        onUpdateAvailable={startPwaUpdateBackup}
         onRequestUpdate={requestPwaUpdate}
       />
 
@@ -735,67 +895,6 @@ export function App({
               </button>
             </div>
           </form>
-        </div>
-      )}
-
-      {exitOpen && game && (
-        <div className="modal-backdrop" role="presentation" onMouseDown={closeExitDialog}>
-          <article
-            ref={exitDialogRef}
-            className="small-dialog exit-dialog"
-            role="dialog"
-            aria-modal="true"
-            aria-labelledby="exit-title"
-            tabIndex={-1}
-            onMouseDown={(event) => event.stopPropagation()}
-          >
-            <span className="exit-dialog__bag" aria-hidden="true">
-              🎒
-            </span>
-            <h2 id="exit-title">
-              {pendingSaveConfirmation
-                ? '存档保存好了吗？'
-                : protectedOperation === 'update'
-                  ? '更新前先保存这次旅程'
-                  : '要离开铲铲饼屋了吗？'}
-            </h2>
-            {pendingSaveConfirmation ? (
-              <p>
-                已请求下载 <code>{pendingSaveConfirmation.fileName}</code>
-                。请在浏览器下载记录或保存位置确认文件已经存在。
-              </p>
-            ) : (
-              <p>
-                {protectedOperation === 'update'
-                  ? '先请求浏览器下载最新的 `.bingo` 存档，确认保存后再安装新布置。'
-                  : '先请求浏览器下载最新的 `.bingo` 存档，确认保存后再回到标题页。'}
-              </p>
-            )}
-            <div className="button-row">
-              {pendingSaveConfirmation ? (
-                <button
-                  ref={saveFlowPrimaryRef}
-                  className="paper-button paper-button--primary"
-                  type="button"
-                  onClick={confirmSavedAndContinue}
-                >
-                  {protectedOperation === 'update' ? '我已保存，安装更新' : '我已保存，离开'}
-                </button>
-              ) : (
-                <button
-                  ref={saveFlowPrimaryRef}
-                  className="paper-button paper-button--primary"
-                  type="button"
-                  onClick={() => void exportGame(protectedOperation, exitIntent.current)}
-                >
-                  请求下载存档
-                </button>
-              )}
-              <button className="paper-button" type="button" onClick={closeExitDialog}>
-                {protectedOperation === 'update' ? '晚点更新' : '继续陪饼狗'}
-              </button>
-            </div>
-          </article>
         </div>
       )}
     </>

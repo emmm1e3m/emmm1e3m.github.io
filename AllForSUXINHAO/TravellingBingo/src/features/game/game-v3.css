@@ -158,8 +158,7 @@
   justify-self: stretch;
   width: 100%;
   height: 100%;
-  display: grid;
-  place-items: center;
+  display: block;
   aspect-ratio: auto;
   border: 1px solid rgb(88 60 53 / 48%);
   border-radius: 27px;
@@ -174,25 +173,19 @@
 }
 
 .room-card--v3::before {
-  position: absolute;
-  z-index: 0;
-  inset: -24px;
-  content: '';
-  background:
-    linear-gradient(rgb(255 238 215 / 72%), rgb(255 238 215 / 72%)),
-    var(--room-backdrop-image) center / cover;
-  filter: blur(18px) saturate(0.72);
-  opacity: 0.56;
+  content: none;
 }
 
 .room-stage {
-  position: relative;
+  position: absolute;
   z-index: 1;
+  inset: 0;
+  width: 100%;
   height: 100%;
-  max-width: 100%;
-  aspect-ratio: 1098 / 1433;
+  max-width: none;
+  aspect-ratio: auto;
   overflow: hidden;
-  box-shadow: 0 0 0 1px rgb(88 60 53 / 18%);
+  box-shadow: none;
 }
 
 .room-card--v3 .room-picture {
@@ -209,15 +202,10 @@
 
 .room-card--v3 .room-picture img {
   display: block;
-  object-fit: cover;
+  /* 桌面房间是横向卡片；不裁掉上下两层，确保所有设施与母版坐标仍可操作。 */
+  object-fit: fill;
   transform: none;
   filter: saturate(0.98) contrast(1.02);
-}
-
-.room-card--v3 .room-vignette {
-  box-shadow:
-    inset 0 0 62px rgb(95 54 36 / 8%),
-    inset 0 -22px 48px rgb(114 61 43 / 5%);
 }
 
 .room-background-dismiss {
@@ -234,26 +222,6 @@
   top: 2.2%;
   left: 2.2%;
   font-size: 0.68rem;
-}
-
-.room-help-button {
-  position: absolute;
-  z-index: 7;
-  top: 2.1%;
-  right: 2.2%;
-  width: 44px;
-  height: 44px;
-  display: grid;
-  place-items: center;
-  padding: 0;
-  border: 1px solid rgb(88 60 53 / 46%);
-  border-radius: 50%;
-  color: var(--v2-cocoa);
-  background: rgb(255 250 242 / 90%);
-  box-shadow: 0 5px 16px rgb(80 45 32 / 14%);
-  font: 400 1.05rem/1 var(--v2-display);
-  cursor: pointer;
-  backdrop-filter: blur(7px);
 }
 
 .room-card--v3 .room-hotspot--text {
@@ -312,7 +280,6 @@
 }
 
 .game-page--v3 .pet-menu__heading button,
-.game-page--v3 .status-metrics span,
 .game-page--v3 .eyebrow,
 .game-page--v3 .task-number,
 .game-page--v3 .task-copy small,
@@ -354,24 +321,6 @@
   font-size: 0.72rem;
 }
 
-.room-activity-return {
-  position: absolute;
-  z-index: 22;
-  left: 2.5%;
-  bottom: 2.5%;
-  min-width: 76px;
-  min-height: 44px;
-  padding: 0.45rem 0.7rem;
-  border: 1px solid rgb(88 60 53 / 52%);
-  border-radius: 999px;
-  color: var(--v2-cocoa);
-  background: rgb(255 250 242 / 92%);
-  box-shadow: 0 5px 16px rgb(80 45 32 / 16%);
-  font: 400 0.72rem/1 var(--v2-display);
-  cursor: pointer;
-  backdrop-filter: blur(7px);
-}
-
 .day-night-overlay.is-resting {
   opacity: var(--rest-darkness);
   transition: opacity 1s linear;
@@ -405,7 +354,6 @@
   gap: 0.5rem;
 }
 
-.context-panel__close,
 .text-action {
   min-height: 42px;
   padding: 0.45rem 0.62rem;
@@ -851,11 +799,6 @@
     width: 100%;
     height: auto;
     aspect-ratio: 1098 / 1433;
-  }
-
-  .room-stage {
-    width: 100%;
-    height: 100%;
   }
 
   .game-page--v3 .context-panel,

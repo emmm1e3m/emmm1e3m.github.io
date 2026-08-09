@@ -16,6 +16,7 @@ import {
   migrateGameStateV3ToV4,
   migrateStoredGameStateToV4,
 } from './migrateGameStateV3'
+import { migrateGameStateV4ToV5 } from './migrateGameStateV4'
 import type { CollectionCatalog, GameStateV1, GameStateV3 } from './types'
 import { MAX_DATE_TIMESTAMP_MS } from './time'
 import { validateImportedGameState } from './validateImportedGameState'
@@ -153,7 +154,7 @@ describe('schemaVersion 3 -> 4 显式迁移', () => {
     expect(isStrictGameStateV3({ ...state, world: 'game' })).toBe(false)
   })
 
-  it('普通 V3 只让未来活动采用 72 秒，进行中的 112 秒绝对时间与奖励快照原样保留', () => {
+  it('普通 V3 只让未来活动采用 10 秒，进行中的 112 秒绝对时间与奖励快照原样保留', () => {
     const state = v3Fixture()
     const before = structuredClone(state)
     const migrated = migrateGameStateV3ToV4(state, migrationOptions)
@@ -275,7 +276,9 @@ describe('schemaVersion 3 -> 4 显式迁移', () => {
     expect(migrated.activeActivity).toEqual(state.activeActivity)
     expect(migrated.activeActivity?.legacySource).toBeUndefined()
     expect(gameStateV4Schema.safeParse(migrated).success).toBe(true)
-    expect(validateImportedGameState(migrated, catalog)).toEqual({ ok: true })
+    expect(validateImportedGameState(migrateGameStateV4ToV5(migrated), catalog)).toEqual({
+      ok: true,
+    })
   })
 
   it('迁移时确定性替换已删除的打招呼任务，且只推进 tasks 随机序列', () => {
@@ -321,7 +324,9 @@ describe('schemaVersion 3 -> 4 显式迁移', () => {
     expect(migrated.tasks.active.map((task) => task.taskId)).not.toContain('greet-bingo')
     expect(migrated.random.sequences.tasks).toBe(Number.MAX_SAFE_INTEGER)
     expect(gameStateV4Schema.safeParse(migrated).success).toBe(true)
-    expect(validateImportedGameState(migrated, catalog)).toEqual({ ok: true })
+    expect(validateImportedGameState(migrateGameStateV4ToV5(migrated), catalog)).toEqual({
+      ok: true,
+    })
   })
 
   it('拒绝非法迁移时间与非法收藏目录', () => {

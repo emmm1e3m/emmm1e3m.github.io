@@ -1,5 +1,3 @@
-import type { ReactNode } from 'react'
-
 import type { ActivityRun, ActivityTiming, GameState } from '@/domain'
 
 import { ACTIVITY_COPY, formatCountdown } from './gameCopy'
@@ -10,7 +8,8 @@ interface GameHudProps {
   timing: ActivityTiming
   dirty: boolean
   inert?: boolean
-  statusBar?: ReactNode
+  statusLabel: string
+  vitalityDays: number
   onExit: () => void
   onCenter: () => void
   onFridge: () => void
@@ -24,7 +23,8 @@ export function GameHud({
   timing,
   dirty,
   inert,
-  statusBar,
+  statusLabel,
+  vitalityDays,
   onExit,
   onCenter,
   onFridge,
@@ -60,7 +60,18 @@ export function GameHud({
       </button>
 
       <div className="game-hud__actions">
-        {statusBar}
+        <div className="pet-status-bar" role="status" aria-label="饼狗状态">
+          <span className="pet-status-bar__label">{statusLabel}</span>
+          <span className="hud-companion">
+            {game.profile.displayName}陪伴饼狗已经{' '}
+            <span className="numeric-copy">{game.profile.companionDays}</span> 天
+          </span>
+          {vitalityDays > 0 && (
+            <span className="pet-status-bar__effect">
+              活力还可陪伴 <span className="numeric-copy">{vitalityDays}</span> 天
+            </span>
+          )}
+        </div>
         <div className="game-hud__buttons">
           <button
             className="apple-counter"

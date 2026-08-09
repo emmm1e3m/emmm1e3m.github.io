@@ -27,7 +27,8 @@ describe('GameHud', () => {
         activity={null}
         timing={deriveActivityTiming(null, 1_000)}
         dirty={false}
-        statusBar={<div role="group" aria-label="饼狗状态" />}
+        statusLabel="状态很好"
+        vitalityDays={0}
         onExit={vi.fn()}
         onCenter={vi.fn()}
         onFridge={vi.fn()}
@@ -41,8 +42,11 @@ describe('GameHud', () => {
     expect(center.querySelector('strong')).toHaveTextContent('今天也要好好吃苹果')
     expect(screen.queryByText('今天也要')).not.toBeInTheDocument()
     expect(center.closest('header')).toHaveClass('game-hud--v4')
-    expect(screen.getByRole('group', { name: '饼狗状态' }).closest('header')).toBe(
+    expect(screen.getByRole('status', { name: '饼狗状态' }).closest('header')).toBe(
       center.closest('header'),
+    )
+    expect(screen.getByRole('status', { name: '饼狗状态' })).toHaveTextContent(
+      '状态很好你陪伴饼狗已经 0 天',
     )
   })
 })

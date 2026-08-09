@@ -469,34 +469,6 @@ img {
   line-height: 1.7;
 }
 
-.status-metrics {
-  display: grid;
-  grid-template-columns: repeat(3, 1fr);
-  gap: 0.48rem;
-  margin: 1rem 0;
-}
-
-.status-metrics > div {
-  display: flex;
-  flex-direction: column;
-  gap: 0.14rem;
-  padding: 0.68rem 0.45rem;
-  border: 1.5px solid #e1c7aa;
-  border-radius: 14px;
-  text-align: center;
-  background: #fff2dd;
-}
-
-.status-metrics strong {
-  font: 800 1.04rem/1.2 var(--display-font);
-}
-
-.status-metrics span {
-  color: var(--muted);
-  font-size: 0.62rem;
-  font-weight: 750;
-}
-
 .activity-status-card {
   display: grid;
   grid-template-columns: auto 1fr auto;
@@ -693,7 +665,8 @@ img {
   background:
     linear-gradient(rgb(255 248 237 / 92%), rgb(255 248 237 / 96%)),
     repeating-linear-gradient(0deg, transparent 0 31px, rgb(120 88 70 / 8%) 31px 32px);
-  animation: page-in 240ms ease both;
+  /* 动画结束后必须恢复 transform:none，否则内部 fixed 详情层会随收藏墙滚动。 */
+  animation: page-in 240ms ease;
 }
 
 .album-header {

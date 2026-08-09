@@ -21,9 +21,6 @@ interface ManifestItem {
     video?: {
       bvid: string
       title: string
-      authorName: string
-      publishedAt: string
-      sourceUrl: string
     }
   }
 }
@@ -226,7 +223,7 @@ test('明信片奖励不显示活动完成，弹窗无可见滚动条与顶部�
   await saveScreenshot(page, 'postcard-reward.png', false)
 })
 
-test('DEBUG 全收集包含好友，Survivors 自动播放，并可一键撤销所有收集', async ({
+test('DEBUG 全收集包含好友，Survivors 自动播放，并可清空收集', async ({
   page,
   request,
 }, testInfo) => {
@@ -301,23 +298,14 @@ test('DEBUG 全收集包含好友，Survivors 自动播放，并可一键撤销�
 
   const video = survivors.metadata.video!
   await expect(detail).toContainText(video.title)
-  await expect(detail).toContainText(video.authorName)
-  const publishedAt = new Date(video.publishedAt)
-  const publishedLabel = `${publishedAt.getFullYear()}.${String(publishedAt.getMonth() + 1).padStart(2, '0')}.${String(publishedAt.getDate()).padStart(2, '0')}`
-  await expect(detail).toContainText(publishedLabel)
-  await expect(detail.getByRole('link', { name: '在来源页打开' })).toHaveAttribute(
-    'href',
-    video.sourceUrl,
-  )
+  await expect(detail.locator('.bilibili-player-summary')).toHaveText(video.title)
+  await expect(detail.locator('.bilibili-player__note')).toHaveCount(0)
   await expect(detail.getByRole('button', { name: /打开播放器|关闭播放器/u })).toHaveCount(0)
   await expect(detail.locator('iframe')).toHaveCount(0)
   const persistentPlayer = page.getByTestId('persistent-bilibili-player')
   const iframe = persistentPlayer.locator('iframe[title^="Bilibili 外链播放器："]')
   await expect(iframe).toBeAttached()
   await expect(page.locator('iframe[title^="Bilibili 外链播放器："]')).toHaveCount(1)
-  await expect(detail).toContainText(video.authorName)
-  await expect(detail).toContainText(publishedLabel)
-  await expect(detail).toContainText(video.bvid)
   const playerUrl = new URL((await iframe.getAttribute('src'))!)
   expect(playerUrl.hostname).toBe('player.bilibili.com')
   expect(playerUrl.searchParams.get('bvid')).toBe(video.bvid)
@@ -340,10 +328,10 @@ test('DEBUG 全收集包含好友，Survivors 自动播放，并可一键撤销�
   await album.getByRole('button', { name: '关闭收藏墙' }).click()
 
   await openDebugPanel(page)
-  await page.getByRole('button', { name: '一键撤销全部收集', exact: true }).click()
+  await page.getByRole('button', { name: '清空收集', exact: true }).click()
   await page
-    .getByRole('group', { name: '确认一键撤销全部收集' })
-    .getByRole('button', { name: '确认撤销' })
+    .getByRole('group', { name: '确认清空收集' })
+    .getByRole('button', { name: '确认清空' })
     .click()
   const clearedAlbum = await openAlbum(page)
   await expect(clearedAlbum.getByRole('tab')).toHaveCount(0)

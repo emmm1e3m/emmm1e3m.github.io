@@ -37,7 +37,6 @@ export type ImportedGameStateValidationCode =
   | 'REWARD_PLAN_MISMATCH'
   | 'ACTIVITY_TIME_INVALID'
   | 'TASK_BOARD_INVALID'
-  | 'TASK_BOARD_STALLED'
   | 'PET_FATIGUE_MISMATCH'
   | 'POMODORO_BACKGROUND_INVALID'
 
@@ -177,7 +176,11 @@ export function validateImportedGameState(
     if (!reachability.ok) {
       return invalid('TASK_BOARD_INVALID', reachability.message)
     }
-    if (task.taskId === 'stage-test' && state.tasks.oneOffCompleted.includes('stage-test')) {
+    if (
+      task.taskId === 'stage-test' &&
+      task.progress < task.target &&
+      state.tasks.oneOffCompleted.includes('stage-test')
+    ) {
       return invalid('TASK_BOARD_INVALID', '已经完成过的单次舞台测试不能再次出现在任务板。')
     }
     if (taskTriggerGroups.has(template.triggerGroup)) {
@@ -186,11 +189,15 @@ export function validateImportedGameState(
     taskTriggerGroups.add(template.triggerGroup)
   }
 
-  if (state.tasks.active.every((task) => task.progress >= task.target)) {
-    return invalid(
-      'TASK_BOARD_STALLED',
-      '任务板中的三件小事都已完成，却没有刷新；请使用完成前保存的存档。',
-    )
+  const taskBoardCompleted = state.tasks.active.every((task) => task.progress >= task.target)
+  if (taskBoardCompleted !== (state.tasks.completedAt !== null)) {
+    return invalid('TASK_BOARD_INVALID', '任务板完成状态与完成时间不一致。')
+  }
+  if (
+    state.tasks.completedAt !== null &&
+    state.tasks.completedAt < Math.max(...state.tasks.active.map((task) => task.assignedAt))
+  ) {
+    return invalid('TASK_BOARD_INVALID', '任务板完成时间不能早于任务签发时间。')
   }
 
   if (state.pet.tired !== isPetTired(state.pet.preferences)) {

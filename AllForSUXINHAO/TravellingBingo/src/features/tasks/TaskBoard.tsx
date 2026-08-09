@@ -26,13 +26,11 @@ export function TaskBoard({ game }: { game: GameState }) {
           return (
             <li key={task.instanceId} className={complete ? 'is-complete' : ''}>
               <span className="task-number" aria-hidden="true">
-                {complete ? '好' : index + 1}
+                {complete ? '√' : index + 1}
               </span>
               <span className="task-copy">
                 <strong>{copy.title}</strong>
-                <small>
-                  {complete ? `已经完成，${task.rewardApples}🍎收好啦` : copy.description}
-                </small>
+                {!complete && <small>{copy.description}</small>}
               </span>
               <span className="task-progress" aria-label={`进度 ${getTaskProgressLabel(task)}`}>
                 <span aria-hidden="true">{getTaskProgressLabel(task)}</span>

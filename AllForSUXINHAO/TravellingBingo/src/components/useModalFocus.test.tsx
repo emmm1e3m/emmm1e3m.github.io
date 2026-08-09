@@ -107,6 +107,41 @@ function AnimatedModalHarness({ visible }: { visible: boolean }) {
   )
 }
 
+function PeerModalHarness() {
+  const [open, setOpen] = useState(false)
+  const dialogRef = useModalFocus<HTMLElement>(open, () => setOpen(false), {
+    focusPeers: ['[data-modal-focus-peer="test-player"]'],
+  })
+
+  return (
+    <>
+      <main>
+        <button type="button" onClick={() => setOpen(true)}>
+          打开带播放器的弹窗
+        </button>
+        <button type="button">背景操作</button>
+        {open && (
+          <div className="modal-backdrop">
+            <section
+              ref={dialogRef}
+              role="dialog"
+              aria-modal="true"
+              aria-label="带播放器的弹窗"
+              tabIndex={-1}
+            >
+              <button type="button">弹窗操作</button>
+            </section>
+          </div>
+        )}
+      </main>
+      <aside data-modal-focus-peer="test-player">
+        <button type="button">播放器操作</button>
+        <iframe title="测试播放器" />
+      </aside>
+    </>
+  )
+}
+
 describe('useModalFocus', () => {
   it('过滤不可见与 inert 元素，并把 Tab 和外部焦点留在最上层弹窗', async () => {
     render(<NestedModalHarness />)
@@ -165,5 +200,22 @@ describe('useModalFocus', () => {
     fireEvent.animationEnd(dialog)
 
     expect(returnButton).toHaveFocus()
+  })
+
+  it('明确 peer 不会被 inert，并与弹窗共同参与焦点圈定', () => {
+    render(<PeerModalHarness />)
+    fireEvent.click(screen.getByRole('button', { name: '打开带播放器的弹窗' }))
+
+    const dialogButton = screen.getByRole('button', { name: '弹窗操作' })
+    const playerButton = screen.getByRole('button', { name: '播放器操作' })
+    const iframe = screen.getByTitle('测试播放器')
+    expect(screen.getByRole('button', { name: '背景操作' })).toHaveAttribute('inert')
+    expect(playerButton.closest('[inert]')).toBeNull()
+
+    playerButton.focus()
+    expect(playerButton).toHaveFocus()
+    iframe.focus()
+    fireEvent.keyDown(iframe, { key: 'Tab' })
+    expect(dialogButton).toHaveFocus()
   })
 })

@@ -1,6 +1,6 @@
 import { expect, test } from '@playwright/test'
 
-import { saveScreenshot, startActivity, startGame } from './support/game'
+import { enterReality, saveScreenshot, startActivity, startGame } from './support/game'
 
 const ROOM_RATIO = 1098 / 1433
 
@@ -22,7 +22,7 @@ const GAME_PET_CENTERS = [
   { hotspot: '电子琴', x: 257, y: 1103 },
   { hotspot: '冰箱', x: 633, y: 951 },
   { hotspot: '唱片机', x: 783, y: 1030 },
-  { hotspot: '收藏墙', x: 1053, y: 673 },
+  { hotspot: '收藏墙', x: 673, y: 1053 },
   { hotspot: '房门', x: 980, y: 1176 },
 ] as const
 
@@ -80,21 +80,16 @@ for (const viewport of [
     expectNear(horizontalGap, verticalGap)
     expect(roomIdle!.width).toBeGreaterThan(roomOpen!.width + 100)
 
-    await page.getByRole('button', { name: '收起信息栏' }).click()
-    await expect(page.locator('.context-panel')).toHaveCount(0)
-    await expect
-      .poll(async () => (await room.boundingBox())?.width ?? 0)
-      .toBeGreaterThan(roomOpen!.width + 100)
+    await page.getByRole('button', { name: '回到房间概览' }).click()
+    const statusPanel = page.locator('.context-panel--status')
+    await expect(statusPanel).toBeVisible()
+    const roomStatus = await room.boundingBox()
+    expect(roomStatus).not.toBeNull()
+    expectNear(roomStatus!.width, roomOpen!.width)
 
     const help = page.getByRole('button', { name: '查看房屋玩法说明' })
-    const [stageBox, helpBox] = await Promise.all([
-      page.locator('.room-stage').boundingBox(),
-      help.boundingBox(),
-    ])
-    expect(stageBox && helpBox).toBeTruthy()
-    expect(helpBox!.x).toBeGreaterThan(stageBox!.x)
-    expect(helpBox!.x + helpBox!.width).toBeLessThanOrEqual(stageBox!.x + stageBox!.width)
-    expect(helpBox!.y).toBeGreaterThanOrEqual(stageBox!.y)
+    await expect(room.locator(':scope > .room-corner-control--help')).toBeVisible()
+    await expect(room.locator(':scope > .room-corner-control--dimension')).toBeVisible()
     await help.click()
     const helpDialog = page.getByRole('dialog', { name: '怎么陪饼狗玩' })
     await expect(helpDialog).toBeVisible()
@@ -107,7 +102,7 @@ for (const viewport of [
   })
 }
 
-test('房间原图、热点与饼狗落点共用同一套 portrait 坐标', async ({ page }, testInfo) => {
+test('房间单图层、热点与饼狗落点共用同一套母版坐标', async ({ page }, testInfo) => {
   test.skip(testInfo.project.name !== 'chromium', 'portrait 坐标只需在桌面验证一次')
   await page.setViewportSize({ width: 1440, height: 900 })
   await startGame(page)
@@ -146,9 +141,12 @@ test('房间原图、热点与饼狗落点共用同一套 portrait 坐标', asyn
   expect(imageMetrics.currentSrc).toMatch(/chan-chan-house-v2-(?:768|1098)\.webp$/u)
   expect(imageMetrics.naturalWidth / imageMetrics.naturalHeight).toBeCloseTo(ROOM_RATIO, 2)
 
-  const stageBox = await stage.boundingBox()
-  expect(stageBox).not.toBeNull()
-  expect(stageBox!.width / stageBox!.height).toBeCloseTo(ROOM_RATIO, 2)
+  const [roomBox, stageBox] = await Promise.all([room.boundingBox(), stage.boundingBox()])
+  expect(roomBox && stageBox).toBeTruthy()
+  expectNear(stageBox!.x, roomBox!.x)
+  expectNear(stageBox!.y, roomBox!.y)
+  expectNear(stageBox!.width, roomBox!.width)
+  expectNear(stageBox!.height, roomBox!.height)
 
   for (const expected of HOTSPOTS) {
     const hotspot = room.locator(`[data-hotspot="${expected.name}"]`)
@@ -183,7 +181,7 @@ test('房间原图、热点与饼狗落点共用同一套 portrait 坐标', asyn
     }
   }
 
-  await page.getByRole('button', { name: '切换到现实生活维度' }).click()
+  await enterReality(page)
   await expect(room.locator('.room-hotspot')).toHaveText(['数据', '放张唱片', '工作'])
   for (const hiddenLabel of [
     '去床边',
@@ -244,12 +242,12 @@ test('饼狗站在冰箱前时热点与角色都能用普通鼠标点击', async
 
   await fridge.click()
   await expect(page.locator('.context-panel--fridge')).toBeVisible()
-  await page.getByRole('button', { name: '收起信息栏' }).click()
+  await page.getByRole('button', { name: '回到房间概览' }).click()
   await expect(room.locator('.mascot-sprite--fridge')).toBeVisible()
 
   await fridge.click()
   await expect(page.locator('.context-panel--fridge')).toBeVisible()
-  await page.getByRole('button', { name: '收起信息栏' }).click()
+  await page.getByRole('button', { name: '回到房间概览' }).click()
 
   const actor = room.getByRole('button', { name: '饼狗，打开行动菜单' })
   await actor.click()

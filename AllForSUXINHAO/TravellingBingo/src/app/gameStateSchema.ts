@@ -6,10 +6,12 @@ import {
   gameStateV2Schema as frozenGameStateV2Schema,
   gameStateV3Schema as frozenGameStateV3Schema,
   gameStateV4Schema as frozenGameStateV4Schema,
+  gameStateV5Schema as currentGameStateV5Schema,
   type GameState,
   type GameStateV1,
   type GameStateV2,
   type GameStateV3,
+  type GameStateV4,
   type StoredGameState,
 } from '@/domain'
 
@@ -23,9 +25,12 @@ export const gameStateV2ImportSchema: z.ZodType<GameStateV2> = frozenGameStateV2
 export const gameStateV3ImportSchema: z.ZodType<GameStateV3> = frozenGameStateV3Schema
 
 /** V4 导入允许历史普通档规则；摘要校验后再显式规范未来活动的默认值。 */
-export const gameStateV4ImportSchema: z.ZodType<GameState> = frozenGameStateV4Schema
+export const gameStateV4ImportSchema: z.ZodType<GameStateV4> = frozenGameStateV4Schema
 
-const gameStateV4ExportSchema = gameStateV4ImportSchema.superRefine((state, context) => {
+/** V5 当前严格载荷；工作与休息阶段均使用绝对截止时间。 */
+export const gameStateV5ImportSchema: z.ZodType<GameState> = currentGameStateV5Schema
+
+const gameStateV5ExportSchema = gameStateV5ImportSchema.superRefine((state, context) => {
   if (
     !state.profile.debug &&
     (state.gameBalance.activityDurationMs !== DEFAULT_GAME_BALANCE.activityDurationMs ||
@@ -43,11 +48,11 @@ const gameStateV4ExportSchema = gameStateV4ImportSchema.superRefine((state, cont
   }
 })
 
-/** 新导出只写 V4；目录总数、视频元数据与派生倒计时不属于存档。 */
-export const gameStateSchema: z.ZodType<GameState> = gameStateV4ExportSchema
+/** 新导出只写 V5；目录总数、视频元数据与派生倒计时不属于存档。 */
+export const gameStateSchema: z.ZodType<GameState> = gameStateV5ExportSchema
 
 /**
- * 导入只严格解析原始 v1/v2/v3/v4：importBingoSave 必须先按文件原值验证摘要，
+ * 导入只严格解析原始 v1/v2/v3/v4/v5：importBingoSave 必须先按文件原值验证摘要，
  * App 随后才能显式迁移、规范规则、reconcile 可安全修复的旧引用并完成语义校验。
  */
 export const importableGameStateSchema: z.ZodType<StoredGameState> = z.union([
@@ -55,6 +60,7 @@ export const importableGameStateSchema: z.ZodType<StoredGameState> = z.union([
   gameStateV2ImportSchema,
   gameStateV3ImportSchema,
   gameStateV4ImportSchema,
+  gameStateV5ImportSchema,
 ])
 
-export type ImportableGameState = GameStateV1 | GameStateV2 | GameStateV3 | GameState
+export type ImportableGameState = GameStateV1 | GameStateV2 | GameStateV3 | GameStateV4 | GameState

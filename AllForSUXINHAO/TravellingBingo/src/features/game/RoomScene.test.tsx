@@ -2,6 +2,7 @@ import { act, fireEvent, render, screen } from '@testing-library/react'
 
 import { createInitialGameState, type GameState } from '@/domain'
 
+import gameV3Styles from './game-v3.css?raw'
 import gameV4Styles from './game-v4.css?raw'
 import { RoomScene } from './RoomScene'
 import { DEFAULT_ROOM_AREA, ROOM_AREAS, ROOM_CANVAS, type RoomArea } from './roomConfig'
@@ -42,6 +43,8 @@ function renderRoom({
   onRequestCancelActivity,
   pomodoroRunning,
   onRequestCancelPomodoro,
+  dimensionToggleDisabled,
+  onToggleDimension,
 }: {
   game?: GameState
   area?: RoomArea
@@ -53,6 +56,8 @@ function renderRoom({
   onRequestCancelActivity?: Parameters<typeof RoomScene>[0]['onRequestCancelActivity']
   pomodoroRunning?: Parameters<typeof RoomScene>[0]['pomodoroRunning']
   onRequestCancelPomodoro?: Parameters<typeof RoomScene>[0]['onRequestCancelPomodoro']
+  dimensionToggleDisabled?: Parameters<typeof RoomScene>[0]['dimensionToggleDisabled']
+  onToggleDimension?: Parameters<typeof RoomScene>[0]['onToggleDimension']
 } = {}) {
   return render(
     <RoomScene
@@ -70,12 +75,32 @@ function renderRoom({
       pomodoroRunning={pomodoroRunning}
       onRequestCancelPomodoro={onRequestCancelPomodoro}
       onHelp={vi.fn()}
+      dimensionToggleDisabled={dimensionToggleDisabled}
+      onToggleDimension={onToggleDimension}
       onTaskEvent={vi.fn()}
     />,
   )
 }
 
 describe('房屋场景定位与返回交互', () => {
+  it('只渲染一层房屋图片，并让母版坐标层铺满整个房间卡片', () => {
+    renderRoom()
+
+    const room = screen.getByRole('region', { name: '铲铲饼屋互动场景' })
+    expect(room.style.getPropertyValue('--room-backdrop-image')).toBe('')
+    expect(room.querySelectorAll('.room-stage')).toHaveLength(1)
+    expect(room.querySelectorAll('.room-picture')).toHaveLength(1)
+    expect(room.querySelectorAll('.room-picture img[src*="chan-chan-house-v2-"]')).toHaveLength(1)
+
+    expect(gameV3Styles).not.toContain('var(--room-backdrop-image)')
+    expect(gameV3Styles).toMatch(
+      /\.room-stage\s*\{[^}]*position:\s*absolute;[^}]*inset:\s*0;[^}]*width:\s*100%;[^}]*height:\s*100%;[^}]*aspect-ratio:\s*auto;/su,
+    )
+    expect(gameV3Styles).toMatch(
+      /\.room-card--v3 \.room-picture img\s*\{[^}]*object-fit:\s*fill;/su,
+    )
+  })
+
   it.each([DEFAULT_ROOM_AREA, ...ROOM_AREAS])('$label 的饼狗中心由母版像素严格换算', (area) => {
     renderRoom({ area })
 
@@ -304,6 +329,37 @@ describe('房屋场景定位与返回交互', () => {
     renderRoom()
 
     expect(screen.getByRole('button', { name: '查看房屋玩法说明' })).toHaveTextContent('ℹ️')
+  })
+
+  it('维度角落按钮只把切换请求交给上层，并遵守禁用状态', () => {
+    const onToggleDimension = vi.fn()
+    const { rerender } = renderRoom({ onToggleDimension })
+
+    const toggle = screen.getByRole('button', { name: '切换到现实生活维度' })
+    expect(toggle).toHaveTextContent('🔃')
+    fireEvent.click(toggle)
+    expect(onToggleDimension).toHaveBeenCalledOnce()
+
+    rerender(
+      <RoomScene
+        game={createInitialGameState({ now: 1_000, seed: 'room-scene-disabled-dimension' })}
+        panel={null}
+        area={DEFAULT_ROOM_AREA}
+        walking={false}
+        sleeping={false}
+        restDarkness={0}
+        onArea={vi.fn()}
+        onPanel={vi.fn()}
+        onBackgroundActivate={vi.fn()}
+        onHelp={vi.fn()}
+        dimensionToggleDisabled
+        onToggleDimension={onToggleDimension}
+        onTaskEvent={vi.fn()}
+      />,
+    )
+
+    fireEvent.click(screen.getByRole('button', { name: '切换到现实生活维度' }))
+    expect(onToggleDimension).toHaveBeenCalledOnce()
   })
 
   it('活动期间左下角只请求上层进入取消流程', () => {

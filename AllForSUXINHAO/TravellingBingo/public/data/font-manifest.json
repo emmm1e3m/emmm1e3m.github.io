@@ -4,8 +4,8 @@
   "generatedAt": "2026-08-08",
   "glyphSet": {
     "strategy": "all Unicode code points used by runtime game source and collectible catalogs, plus printable ASCII and Chinese punctuation",
-    "codePointCount": 1298,
-    "sha256": "d4338e87743266ac21a7ab53fa5d299bb154783c93fc747b721784bbefdba301",
+    "codePointCount": 1296,
+    "sha256": "5b6bd3a6efa3432992ee96694858a0f77fd879a287ad2b75153acf21fb9fad6f",
     "sourceFiles": [
       "AllForSUXINHAO/TravellingBingo/index.html",
       "AllForSUXINHAO/TravellingBingo/public/data/million-shot-posters.json",
@@ -17,7 +17,6 @@
       "AllForSUXINHAO/TravellingBingo/src/app/useGameController.ts",
       "AllForSUXINHAO/TravellingBingo/src/app/useKeepAliveAudio.ts",
       "AllForSUXINHAO/TravellingBingo/src/components/AppleIcon.tsx",
-      "AllForSUXINHAO/TravellingBingo/src/components/BilibiliPlayer.css",
       "AllForSUXINHAO/TravellingBingo/src/components/BilibiliPlayer.tsx",
       "AllForSUXINHAO/TravellingBingo/src/components/MascotSprite.css",
       "AllForSUXINHAO/TravellingBingo/src/components/MascotSprite.tsx",
@@ -39,6 +38,7 @@
       "AllForSUXINHAO/TravellingBingo/src/domain/game/migrateGameStateV1.ts",
       "AllForSUXINHAO/TravellingBingo/src/domain/game/migrateGameStateV2.ts",
       "AllForSUXINHAO/TravellingBingo/src/domain/game/migrateGameStateV3.ts",
+      "AllForSUXINHAO/TravellingBingo/src/domain/game/migrateGameStateV4.ts",
       "AllForSUXINHAO/TravellingBingo/src/domain/game/musicPlayer.ts",
       "AllForSUXINHAO/TravellingBingo/src/domain/game/normalizeImportedGameBalance.ts",
       "AllForSUXINHAO/TravellingBingo/src/domain/game/productivity.ts",
@@ -63,7 +63,9 @@
       "AllForSUXINHAO/TravellingBingo/src/features/album/CollectiblePicture.tsx",
       "AllForSUXINHAO/TravellingBingo/src/features/debug/DebugPanel.tsx",
       "AllForSUXINHAO/TravellingBingo/src/features/game/ActivityLauncher.tsx",
+      "AllForSUXINHAO/TravellingBingo/src/features/game/browserPlatform.ts",
       "AllForSUXINHAO/TravellingBingo/src/features/game/ContextPanel.tsx",
+      "AllForSUXINHAO/TravellingBingo/src/features/game/DimensionDialog.tsx",
       "AllForSUXINHAO/TravellingBingo/src/features/game/game-v2.css",
       "AllForSUXINHAO/TravellingBingo/src/features/game/game-v3.css",
       "AllForSUXINHAO/TravellingBingo/src/features/game/game-v4.css",
@@ -83,9 +85,12 @@
       "AllForSUXINHAO/TravellingBingo/src/features/player/playerModel.ts",
       "AllForSUXINHAO/TravellingBingo/src/features/reality/DataPanel.tsx",
       "AllForSUXINHAO/TravellingBingo/src/features/reality/index.ts",
+      "AllForSUXINHAO/TravellingBingo/src/features/reality/PomodoroFocusOverlay.tsx",
+      "AllForSUXINHAO/TravellingBingo/src/features/reality/PostcardPicker.tsx",
       "AllForSUXINHAO/TravellingBingo/src/features/reality/reality.css",
-      "AllForSUXINHAO/TravellingBingo/src/features/reality/RealityDashboard.tsx",
       "AllForSUXINHAO/TravellingBingo/src/features/reality/RealityReturnDialog.tsx",
+      "AllForSUXINHAO/TravellingBingo/src/features/reality/RealitySettlementResultDialog.tsx",
+      "AllForSUXINHAO/TravellingBingo/src/features/reality/realityViewModel.ts",
       "AllForSUXINHAO/TravellingBingo/src/features/reality/types.ts",
       "AllForSUXINHAO/TravellingBingo/src/features/reality/WorkPanel.tsx",
       "AllForSUXINHAO/TravellingBingo/src/features/rewards/RewardDialog.css",
@@ -94,6 +99,7 @@
       "AllForSUXINHAO/TravellingBingo/src/features/title/title.css",
       "AllForSUXINHAO/TravellingBingo/src/features/title/TitleScreen.tsx",
       "AllForSUXINHAO/TravellingBingo/src/infrastructure/persistence/bingoSave.ts",
+      "AllForSUXINHAO/TravellingBingo/src/infrastructure/persistence/browserGameCache.ts",
       "AllForSUXINHAO/TravellingBingo/src/infrastructure/persistence/index.ts",
       "AllForSUXINHAO/TravellingBingo/src/main.tsx",
       "AllForSUXINHAO/TravellingBingo/src/styles/fonts.css",
@@ -115,9 +121,9 @@
       },
       "file": {
         "path": "assets/fonts/kehua-lerongrong.woff2",
-        "byteLength": 484864,
+        "byteLength": 487032,
         "mime": "font/woff2",
-        "sha256": "464d17f95b7f811fb6c00270db98f3b00c2894b3eeff60a13b981659636f20f8"
+        "sha256": "ebd9698985ce9973f2e22215b211afff49855251d4bf4c68600b82d024b935f3"
       }
     },
     {
@@ -134,9 +140,9 @@
       },
       "file": {
         "path": "assets/fonts/kehua-naitang.woff2",
-        "byteLength": 413500,
+        "byteLength": 415396,
         "mime": "font/woff2",
-        "sha256": "2e3156f984553a0792451c32bffb28d3f1f785046a9721497ecd07acd5b1e23e"
+        "sha256": "c3fe8831412718ddf22e8abfc7d67ed36a7dc2c25f3be85d9e0a534e371fca78"
       }
     }
   ]

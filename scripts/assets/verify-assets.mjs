@@ -649,19 +649,20 @@ for (const mapping of siteFirstMappings) {
   )
 }
 
-const millionLatestPage = videoCatalog.folders?.millionShots?.latestPage
 ensure(
-  millionLatestPage?.pageNumber === 1 && millionLatestPage.items.length >= 7,
-  '百万直拍收藏夹快照缺少最新页前 7 项',
+  videoCatalog.recordPlayer?.sourceFavoriteId === videoCatalog.folders.siteFirsts.favoriteId,
+  '唱片机收藏夹来源不是全站第一收藏夹',
 )
-ensure(
-  videoCatalog.recordPlayer?.sourceFavoriteId === videoCatalog.folders.millionShots.favoriteId,
-  '唱片机收藏夹来源不是百万直拍收藏夹',
-)
+const latestSiteFirstMappings = videoCatalog.posterMappings.siteFirsts.slice(-7)
+const expectedRecordPlayer = latestSiteFirstMappings.map((mapping) => ({
+  ...videoCatalog.videos[mapping.bvid],
+  favoriteId: mapping.favoriteId,
+  favoriteOrder: mapping.favoriteOrder,
+}))
 ensureJsonEqual(
   videoCatalog.recordPlayer?.items,
-  millionLatestPage.items.slice(0, 7),
-  '唱片机必须精确使用百万直拍收藏夹最新页第 1–7 项',
+  expectedRecordPlayer,
+  '唱片机必须精确使用最新 7 个全站第一（chronology 第 2–8 项）',
 )
 
 const postcardSource = JSON.parse(await readFile(postcardSourcePath, 'utf8'))

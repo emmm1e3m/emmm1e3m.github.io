@@ -28,7 +28,7 @@ export function createInitialGameState(options: InitialGameOptions): GameState {
   })
 
   return {
-    schemaVersion: 4,
+    schemaVersion: 5,
     profile: {
       createdAt: options.now,
       debug: options.debug ?? false,
@@ -46,7 +46,7 @@ export function createInitialGameState(options: InitialGameOptions): GameState {
       tired: false,
       restCount: 0,
     },
-    tasks: generatedTasks.board,
+    tasks: { ...generatedTasks.board, completedAt: null },
     gameBalance: createDefaultGameBalance(),
     statistics: {
       started: { travel: 0, stream: 0, trend: 0, music: 0, rest: 0 },
@@ -82,8 +82,6 @@ export function createInitialGameState(options: InitialGameOptions): GameState {
       currentBvid: null,
       currentIndex: 0,
       loopMode: 'list',
-      startAtSeconds: 0,
-      autoplay: true,
     },
   }
 }

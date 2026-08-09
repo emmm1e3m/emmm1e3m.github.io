@@ -6,21 +6,26 @@ import './PwaUpdatePrompt.css'
 export type InstallPwaUpdate = () => Promise<void>
 
 interface PwaUpdatePromptProps {
-  hasUnsavedProgress: boolean
   onNeedReload: () => void
+  onUpdateAvailable: () => void
   onRequestUpdate: (installUpdate: InstallPwaUpdate) => void
 }
 
 export function PwaUpdatePrompt({
-  hasUnsavedProgress,
   onNeedReload,
+  onUpdateAvailable,
   onRequestUpdate,
 }: PwaUpdatePromptProps) {
   const onNeedReloadRef = useRef(onNeedReload)
+  const onUpdateAvailableRef = useRef(onUpdateAvailable)
   const serviceWorkerHasControl = useRef(false)
+  const backupRequestedForRefresh = useRef(false)
   useEffect(() => {
     onNeedReloadRef.current = onNeedReload
   }, [onNeedReload])
+  useEffect(() => {
+    onUpdateAvailableRef.current = onUpdateAvailable
+  }, [onUpdateAvailable])
 
   const {
     offlineReady: [offlineReady, setOfflineReady],
@@ -34,13 +39,21 @@ export function PwaUpdatePrompt({
     },
   })
 
+  useEffect(() => {
+    if (!needRefresh) {
+      backupRequestedForRefresh.current = false
+      return
+    }
+    if (backupRequestedForRefresh.current) return
+    backupRequestedForRefresh.current = true
+    onUpdateAvailableRef.current()
+  }, [needRefresh])
+
   if (!offlineReady && !needRefresh) return null
 
   const title = needRefresh ? '饼屋换上新布置啦' : '离线行囊收拾好啦'
   const description = needRefresh
-    ? hasUnsavedProgress
-      ? '先保存好这次旅程，再打开新布置。'
-      : '打开新布置后，饼狗会在原地等你。'
+    ? '打开新布置前会自动备份，饼狗会在原地等你。'
     : '暂时没有网络，也能继续陪饼狗待在家里。'
 
   function dismiss() {
@@ -74,7 +87,7 @@ export function PwaUpdatePrompt({
               onRequestUpdate(() => updateServiceWorker(true))
             }}
           >
-            {hasUnsavedProgress ? '保存后更新' : '看看新布置'}
+            看看新布置
           </button>
         )}
         <button type="button" onClick={dismiss}>

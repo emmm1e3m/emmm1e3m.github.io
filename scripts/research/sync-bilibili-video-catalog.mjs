@@ -183,7 +183,11 @@ export async function refreshVideoCatalog(seedCatalog) {
     })
   }
 
-  const recordPlayerItems = millionFolder.latestItems.slice(0, 7)
+  const recordPlayerItems = siteMappings.slice(-7).map((mapping) => ({
+    ...videoMap.get(mapping.bvid),
+    favoriteId: mapping.favoriteId,
+    favoriteOrder: mapping.favoriteOrder,
+  }))
   const refreshed = {
     schemaVersion: 1,
     catalogId: 'travelling-bingo-bilibili-video-catalog',
@@ -219,10 +223,12 @@ export async function refreshVideoCatalog(seedCatalog) {
       siteFirsts: siteMappings,
     },
     recordPlayer: {
-      sourceFavoriteId: millionFolder.config.favoriteId,
-      selectionRule: '固定选取百万直拍收藏夹刷新快照的最新页第 1–7 项；运行时不请求 Bilibili API。',
+      sourceFavoriteId: siteFirstFolder.config.favoriteId,
+      selectionRule:
+        '固定选取已核验全站第一 chronology 最新 7 项（Talk WORTHY? Talk DIRTY! 至 POWER）；运行时不请求 Bilibili API。',
       items: recordPlayerItems,
     },
+    extraTracks: seedCatalog.extraTracks,
   }
   return assertVideoCatalog(refreshed)
 }

@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState, type CSSProperties } from 'react'
+import { useEffect, useRef, useState, type CSSProperties, type Ref } from 'react'
 
 import { publicAsset } from '@/app/assets'
 import { MascotSprite, type MascotPose } from '@/components/MascotSprite'
@@ -126,6 +126,9 @@ interface RoomSceneProps {
   pomodoroRunning?: boolean
   onRequestCancelPomodoro?: () => void
   onHelp: () => void
+  dimensionToggleRef?: Ref<HTMLButtonElement>
+  dimensionToggleDisabled?: boolean
+  onToggleDimension?: () => void
   onTaskEvent: (event: TaskEvent) => void
 }
 
@@ -144,6 +147,9 @@ export function RoomScene({
   pomodoroRunning = false,
   onRequestCancelPomodoro,
   onHelp,
+  dimensionToggleRef,
+  dimensionToggleDisabled = false,
+  onToggleDimension = () => undefined,
   onTaskEvent,
 }: RoomSceneProps) {
   const [menuOpen, setMenuOpen] = useState(false)
@@ -182,16 +188,11 @@ export function RoomScene({
   return (
     <section
       className="room-card room-card--v3 room-card--v4"
-      style={
-        {
-          '--room-backdrop-image': `url("${publicAsset('assets/game/chan-chan-house-v2-768.webp')}")`,
-        } as CSSProperties
-      }
       aria-label="铲铲饼屋互动场景"
       onClick={(event) => {
         if (
           event.target === event.currentTarget ||
-          (event.target instanceof Element && event.target.closest('.room-picture, .room-vignette'))
+          (event.target instanceof Element && event.target.closest('.room-picture'))
         ) {
           closeRoomLayers()
         }
@@ -216,7 +217,6 @@ export function RoomScene({
             height="1433"
           />
         </picture>
-        <div className="room-vignette" aria-hidden="true" />
         {(panel !== null || menuOpen) && (
           <button
             className="room-background-dismiss"
@@ -228,15 +228,6 @@ export function RoomScene({
         <span className="room-bingo-badge" aria-hidden="true">
           Bingo!
         </span>
-        <button
-          className="room-help-button"
-          type="button"
-          onClick={onHelp}
-          aria-label="查看房屋玩法说明"
-        >
-          ℹ️
-        </button>
-
         {ROOM_AREAS.map((configuredHotspot) => {
           if (hotspotHidden(configuredHotspot)) return null
           const hotspot = roomAreaForWorld(configuredHotspot, game.world)
@@ -302,32 +293,50 @@ export function RoomScene({
             setMenuOpen(false)
           }}
         />
-        {(game.activeActivity || pomodoroRunning) && (
-          <button
-            className="room-activity-return room-activity-cancel"
-            type="button"
-            aria-label={game.activeActivity ? '取消当前活动' : '取消当前苹果钟'}
-            onClick={() => {
-              closePetMenu()
-              if (game.activeActivity) {
-                if (onRequestCancelActivity) onRequestCancelActivity()
-                else onPanel('activity')
-                return
-              }
-
-              if (onRequestCancelPomodoro) onRequestCancelPomodoro()
-              else onPanel('reality-work')
-            }}
-          >
-            <span aria-hidden="true">↩️</span>
-          </button>
-        )}
         <div
           className={`day-night-overlay ${restDarkness > 0 ? 'is-resting' : ''} ${sleeping ? 'is-playing' : ''}`}
           style={{ '--rest-darkness': restDarkness } as CSSProperties}
           aria-hidden="true"
         />
       </div>
+      <button
+        className="room-corner-control room-corner-control--help"
+        type="button"
+        onClick={onHelp}
+        aria-label={game.world === 'reality' ? '查看现实维度说明' : '查看房屋玩法说明'}
+      >
+        <span aria-hidden="true">ℹ️</span>
+      </button>
+      {(game.activeActivity || pomodoroRunning) && (
+        <button
+          className="room-corner-control room-corner-control--return"
+          type="button"
+          aria-label={game.activeActivity ? '取消当前活动' : '取消当前苹果钟'}
+          onClick={() => {
+            closePetMenu()
+            if (game.activeActivity) {
+              if (onRequestCancelActivity) onRequestCancelActivity()
+              else onPanel('activity')
+              return
+            }
+
+            if (onRequestCancelPomodoro) onRequestCancelPomodoro()
+            else onPanel('reality-work')
+          }}
+        >
+          <span aria-hidden="true">↩️</span>
+        </button>
+      )}
+      <button
+        ref={dimensionToggleRef}
+        className="room-corner-control room-corner-control--dimension"
+        type="button"
+        disabled={dimensionToggleDisabled}
+        onClick={onToggleDimension}
+        aria-label={game.world === 'reality' ? '回到旅行饼狗游戏' : '切换到现实生活维度'}
+      >
+        <span aria-hidden="true">🔃</span>
+      </button>
     </section>
   )
 }

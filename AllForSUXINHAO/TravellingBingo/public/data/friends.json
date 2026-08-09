@@ -28,9 +28,9 @@
         "path": "assets/friends/class-representative-bing.webp",
         "width": 360,
         "height": 560,
-        "byteLength": 21506,
+        "byteLength": 20656,
         "mime": "image/webp",
-        "sha256": "60122cddac22c8da369601e635e0d6f12cdc0113f6c65718f3d813eb5272f0c9"
+        "sha256": "0abe2b2b4be930d7f2cb18ed641edc6a574c76f08b52656c6d0f80e07408e406"
       },
       "sourceCell": 1
     },
@@ -44,9 +44,9 @@
         "path": "assets/friends/san-hao-rabbit.webp",
         "width": 360,
         "height": 560,
-        "byteLength": 16986,
+        "byteLength": 15940,
         "mime": "image/webp",
-        "sha256": "6831e5212c24e3a0d1c5cb78985a872632180eb80d3591c3fe634ed33c40fc6f"
+        "sha256": "a041de2214b98cbd56e266e8c1d90c197c3b6aab76b6860947cd61d349ce8699"
       },
       "sourceCell": 2
     },
@@ -60,9 +60,9 @@
         "path": "assets/friends/xin-hao-rabbit.webp",
         "width": 360,
         "height": 560,
-        "byteLength": 17362,
+        "byteLength": 18200,
         "mime": "image/webp",
-        "sha256": "acdb9f7f69001f3541e5a7160dc53f74a0b62656d725d5d65e077cb5787b446f"
+        "sha256": "9ae7e6f12639cc5fce8d248829648b60e7e49498140d4c6a3d69f96c6c38c7b0"
       },
       "sourceCell": 3
     },
@@ -76,9 +76,9 @@
         "path": "assets/friends/signal-dog.webp",
         "width": 360,
         "height": 560,
-        "byteLength": 19604,
+        "byteLength": 18590,
         "mime": "image/webp",
-        "sha256": "7ffd32517a7b3933af2eb7561d969aaf2efe8bdb002375a9d8b4f4e1e2a5ad88"
+        "sha256": "fa3fbea3248f3dcddc103b43af2952780431c66fb6bbcc6d66c0a944e80ef92d"
       },
       "sourceCell": 4
     },
@@ -92,9 +92,9 @@
         "path": "assets/friends/bili-bing.webp",
         "width": 360,
         "height": 560,
-        "byteLength": 22672,
+        "byteLength": 21090,
         "mime": "image/webp",
-        "sha256": "42edb1bcb668db53deee2bee06a94904a733e48c84b7ce1e00f0ff44bbfa4b30"
+        "sha256": "6386d02c9d0c6a30099cf65277d91f78c5062d885c859f6fc6cc61e559b8860c"
       },
       "sourceCell": 5
     }

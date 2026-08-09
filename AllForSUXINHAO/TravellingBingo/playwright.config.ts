@@ -12,7 +12,8 @@ export default defineConfig({
     command: 'npm run build && npm run preview -- --host 127.0.0.1 --port 4173',
     cwd: '../..',
     port: 4173,
-    reuseExistingServer: !process.env.CI,
+    // 本地也必须由本次测试构建并启动，避免误用 4173 端口上的陈旧预览产物。
+    reuseExistingServer: false,
   },
   projects: [
     { name: 'chromium', use: { ...devices['Desktop Chrome'] } },

@@ -92,33 +92,49 @@ export const friendItemSchema = z
   })
   .strict()
 
+const bilibiliVideoMetadataFields = {
+  bvid: bvidSchema,
+  title: z.string().trim().min(1),
+  authorName: z.string().trim().min(1),
+  authorMid: z.number().int().positive().safe(),
+  publishedAt: isoDateTimeSchema,
+  durationSeconds: z.number().int().positive().safe(),
+  coverUrl: httpUrlSchema,
+  sourceUrl: httpUrlSchema,
+}
+
+function addBilibiliVideoSourceCheck(
+  video: { bvid: string; sourceUrl: string },
+  context: z.RefinementCtx,
+) {
+  if (!video.sourceUrl.includes(`/video/${video.bvid}`)) {
+    context.addIssue({
+      code: 'custom',
+      path: ['sourceUrl'],
+      message: '视频来源 URL 必须与 bvid 一致',
+    })
+  }
+}
+
+export const bilibiliVideoMetadataSchema = z
+  .object({
+    ...bilibiliVideoMetadataFields,
+  })
+  .strict()
+  .superRefine(addBilibiliVideoSourceCheck)
+
 export const bilibiliVideoSchema = z
   .object({
-    bvid: bvidSchema,
-    title: z.string().trim().min(1),
-    authorName: z.string().trim().min(1),
-    authorMid: z.number().int().positive().safe(),
-    publishedAt: isoDateTimeSchema,
-    durationSeconds: z.number().int().positive().safe(),
-    coverUrl: httpUrlSchema,
-    sourceUrl: httpUrlSchema,
+    ...bilibiliVideoMetadataFields,
     favoriteId: z.number().int().positive().safe(),
     favoriteOrder: z.number().int().positive().safe(),
   })
   .strict()
-  .superRefine((video, context) => {
-    if (!video.sourceUrl.includes(`/video/${video.bvid}`)) {
-      context.addIssue({
-        code: 'custom',
-        path: ['sourceUrl'],
-        message: '视频来源 URL 必须与 bvid 一致',
-      })
-    }
-  })
+  .superRefine(addBilibiliVideoSourceCheck)
 
 function videosMatch(
-  left: z.infer<typeof bilibiliVideoSchema>,
-  right: z.infer<typeof bilibiliVideoSchema>,
+  left: z.infer<typeof bilibiliVideoMetadataSchema>,
+  right: z.infer<typeof bilibiliVideoMetadataSchema>,
 ) {
   return (
     left.bvid === right.bvid &&
@@ -487,6 +503,12 @@ export const bilibiliVideoCatalogSchema = z
         items: z.array(bilibiliVideoSchema).length(7),
       })
       .strict(),
+    extraTracks: z
+      .object({
+        selectionRule: z.string().trim().min(1),
+        items: z.array(bilibiliVideoMetadataSchema).length(2),
+      })
+      .strict(),
   })
   .strict()
   .superRefine((catalog, context) => {
@@ -500,11 +522,11 @@ export const bilibiliVideoCatalogSchema = z
       }
     }
 
-    if (catalog.recordPlayer.sourceFavoriteId !== catalog.folders.millionShots.favoriteId) {
+    if (catalog.recordPlayer.sourceFavoriteId !== catalog.folders.siteFirsts.favoriteId) {
       context.addIssue({
         code: 'custom',
         path: ['recordPlayer', 'sourceFavoriteId'],
-        message: '唱片机曲库必须来自百万直拍收藏夹',
+        message: '唱片机曲库必须来自全站第一收藏夹',
       })
     }
 
@@ -518,11 +540,7 @@ export const bilibiliVideoCatalogSchema = z
           path: ['recordPlayer', 'items', index, 'bvid'],
           message: '唱片机曲目必须存在于视频索引中',
         })
-      } else if (
-        !videosMatch(video, indexed) ||
-        video.favoriteId !== indexed.favoriteId ||
-        video.favoriteOrder !== indexed.favoriteOrder
-      ) {
+      } else if (!videosMatch(video, indexed)) {
         context.addIssue({
           code: 'custom',
           path: ['recordPlayer', 'items', index],
@@ -538,19 +556,32 @@ export const bilibiliVideoCatalogSchema = z
       }
       seenRecordPlayerVideos.add(video.bvid)
 
-      const latestPageVideo = catalog.folders.millionShots.latestPage.items[index]
+      const mapping = catalog.posterMappings.siteFirsts[index + 1]
       if (
-        latestPageVideo === undefined ||
-        !videosMatch(video, latestPageVideo) ||
-        video.favoriteId !== latestPageVideo.favoriteId ||
-        video.favoriteOrder !== latestPageVideo.favoriteOrder
+        mapping === undefined ||
+        mapping.bvid !== video.bvid ||
+        mapping.chronology !== index + 2 ||
+        mapping.favoriteId !== video.favoriteId ||
+        mapping.favoriteOrder !== video.favoriteOrder
       ) {
         context.addIssue({
           code: 'custom',
           path: ['recordPlayer', 'items', index],
-          message: '唱片机曲库必须按百万直拍收藏夹最新页前七项排列',
+          message: '唱片机曲库必须按全站第一 chronology 最新第 2–8 项排列',
         })
       }
+    })
+
+    const seenExtraTracks = new Set<string>()
+    catalog.extraTracks.items.forEach((video, index) => {
+      if (catalog.videos[video.bvid] !== undefined || seenExtraTracks.has(video.bvid)) {
+        context.addIssue({
+          code: 'custom',
+          path: ['extraTracks', 'items', index, 'bvid'],
+          message: '额外曲目不能与视频索引或彼此重复',
+        })
+      }
+      seenExtraTracks.add(video.bvid)
     })
 
     const seenPosterIds = new Set<string>()
@@ -595,6 +626,7 @@ export type PostcardItem = z.infer<typeof postcardItemSchema>
 export type FriendItem = z.infer<typeof friendItemSchema>
 export type FriendId = z.infer<typeof friendIdSchema>
 export type BilibiliVideo = z.infer<typeof bilibiliVideoSchema>
+export type BilibiliVideoMetadata = z.infer<typeof bilibiliVideoMetadataSchema>
 export type RemoteCollectibleItem = z.infer<typeof remoteCollectibleItemSchema>
 export type CollectibleItem = z.infer<typeof collectibleItemSchema>
 export type CollectibleCategory = CollectibleItem['category']

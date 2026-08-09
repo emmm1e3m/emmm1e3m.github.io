@@ -1,35 +1,5 @@
 import type { ReactNode } from 'react'
 
-export const REALITY_PANEL_IDS = {
-  data: 'data',
-  work: 'work',
-  recordPlayer: 'record-player',
-} as const
-
-export type BuiltInRealityPanelId = (typeof REALITY_PANEL_IDS)[keyof typeof REALITY_PANEL_IDS]
-
-export interface RealityDashboardPanel {
-  id: string
-  label: string
-  /** 展示入口所在的位置，例如“二楼电脑”。 */
-  location?: string
-  icon?: ReactNode
-  content: ReactNode
-  disabled?: boolean
-}
-
-export interface RealityDashboardProps {
-  panels: readonly RealityDashboardPanel[]
-  activePanelId: string
-  onPanelChange: (panelId: string) => void
-  title?: string
-  description?: string
-  /** 由 App 映射为 reality/leave；组件不自行切换 world。 */
-  onClose?: () => void
-  closeLabel?: string
-  className?: string
-}
-
 export interface RealityDataSnapshot {
   statusLabel: string
   detail: string
@@ -45,13 +15,14 @@ export interface DataPanelProps {
 
 export interface PomodoroDurationOption {
   durationMs: number
+  breakDurationMs?: number
   label: string
   description?: string
 }
 
 export interface PomodoroSessionView {
   sessionId: string
-  status: 'running' | 'completed'
+  status: 'focus' | 'break' | 'completed'
   statusLabel: string
   /** 由 App 格式化，组件不根据时间戳自行倒计时。 */
   remainingLabel?: string
@@ -68,6 +39,8 @@ export interface PostcardBackgroundOption {
   id: string
   title: string
   thumbnailUrl?: string
+  fullUrl?: string
+  alt?: string
   description?: string
 }
 
@@ -112,6 +85,21 @@ export interface WorkPanelProps {
   /** 房间左下角发出的一次性“打开苹果钟取消确认”请求。 */
   cancelRequestToken?: number | null
   onCancelRequestHandled?: (token: number) => void
+  className?: string
+}
+
+export interface PomodoroFocusOverlayProps {
+  session: PomodoroSessionView & {
+    status: 'focus' | 'break'
+    focusDurationMs: number
+    breakDurationMs: number
+  }
+  background: PostcardBackgroundOption | null
+  todos: readonly RealityTodoView[]
+  musicStarter?: ReactNode
+  playerExpanded?: boolean
+  onTodoCompletionChange: (todoId: string, completed: boolean) => void
+  onCancel: (sessionId: string) => void
   className?: string
 }
 

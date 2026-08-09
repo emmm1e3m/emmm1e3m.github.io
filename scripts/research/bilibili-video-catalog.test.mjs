@@ -6,6 +6,7 @@ import { fileURLToPath } from 'node:url'
 
 import {
   assertFavoriteVideo,
+  assertVideoMetadata,
   assertVideoCatalog,
   buildPublicVideoCatalog,
   videoForMapping,
@@ -52,11 +53,16 @@ test('已提交的视频目录、公开目录与两类海报映射保持一致',
   assert.equal(catalog.posterMappings.millionShots.length, 30)
   assert.equal(catalog.posterMappings.siteFirsts.length, 8)
   assert.equal(catalog.recordPlayer.items.length, 7)
+  assert.equal(catalog.extraTracks.items.length, 2)
   assert.equal(JSON.stringify(catalog).includes('"embedUrl"'), false)
   assert.equal(Object.keys(publicCatalog.videos).length, catalog.videos.length)
   for (const [bvid, video] of Object.entries(publicCatalog.videos)) {
     assert.equal(video.bvid, bvid)
     assert.doesNotThrow(() => assertFavoriteVideo(video, `public.videos.${bvid}`))
+  }
+  for (const video of publicCatalog.extraTracks.items) {
+    assert.doesNotThrow(() => assertVideoMetadata(video, `public.extraTracks.${video.bvid}`))
+    assert.equal(Object.hasOwn(publicCatalog.videos, video.bvid), false)
   }
 
   const millionById = new Map(millionManifest.items.map((item) => [item.id, item]))
@@ -174,20 +180,51 @@ test('模拟 --refresh 后会同步两类公开海报元数据且不重建图片
   }
 })
 
-test('唱片机固定使用百万收藏夹最新页第 1–7 项', async () => {
+test('唱片机固定使用全站第一 chronology 最新第 2–8 项', async () => {
   const catalog = await readJson(
     'research/travelling-bingo/data/bilibili-video-catalog.source.json',
   )
   assert.deepEqual(
     catalog.recordPlayer.items.map((video) => video.bvid),
     [
-      'BV1D23262EaD',
-      'BV15Q3u6UEfW',
+      'BV1rtDRBJE7s',
+      'BV1MbZnYoEk1',
+      'BV1i7LM6oErE',
+      'BV1fjpAzmE1T',
       'BV1Dx3i6nEm8',
-      'BV1Dp6hBuEWm',
-      'BV1mLDRBtE91',
-      'BV1dbBiBXEww',
-      'BV12G6nBKE8W',
+      'BV179v1B2Emc',
+      'BV1D23262EaD',
+    ],
+  )
+})
+
+test('用户指定的两个短视频保留完整静态元数据', async () => {
+  const catalog = await readJson(
+    'research/travelling-bingo/data/bilibili-video-catalog.source.json',
+  )
+  assert.deepEqual(
+    catalog.extraTracks.items.map(({ bvid, title, authorName, publishedAt, durationSeconds }) => ({
+      bvid,
+      title,
+      authorName,
+      publishedAt,
+      durationSeconds,
+    })),
+    [
+      {
+        bvid: 'BV13FdBBAEUF',
+        title: '苏苏跳手势舞0417',
+        authorName: '倚门回首却',
+        publishedAt: '2026-04-17T10:38:19.000+08:00',
+        durationSeconds: 21,
+      },
+      {
+        bvid: 'BV16VDdBUEfC',
+        title: '苏苏跳手势舞0413',
+        authorName: '倚门回首却',
+        publishedAt: '2026-04-13T00:48:47.000+08:00',
+        durationSeconds: 21,
+      },
     ],
   )
 })

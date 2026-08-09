@@ -1,17 +1,17 @@
 export { DataPanel } from './DataPanel'
-export { RealityDashboard } from './RealityDashboard'
+export { PomodoroFocusOverlay } from './PomodoroFocusOverlay'
+export { PostcardPicker } from './PostcardPicker'
 export { RealityReturnDialog } from './RealityReturnDialog'
+export { RealitySettlementResultDialog } from './RealitySettlementResultDialog'
+export { buildRealityTodoViews, buildUnlockedPostcardBackgrounds } from './realityViewModel'
 export { WorkPanel } from './WorkPanel'
 export {
-  REALITY_PANEL_IDS,
-  type BuiltInRealityPanelId,
   type DataPanelProps,
   type PomodoroDurationOption,
+  type PomodoroFocusOverlayProps,
   type PomodoroSessionView,
   type PomodoroView,
   type PostcardBackgroundOption,
-  type RealityDashboardPanel,
-  type RealityDashboardProps,
   type RealityDataSnapshot,
   type RealityNotificationPermission,
   type RealityNotificationView,

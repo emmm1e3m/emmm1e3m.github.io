@@ -1,6 +1,7 @@
 import { expect, test } from '@playwright/test'
 
 import {
+  enterReality,
   expectElementWithinViewport,
   expectMinimumTouchTarget,
   expectNoOverlap,
@@ -98,11 +99,7 @@ test('播放器点击立即记入任务，加载失败与同 BV 跨入口不会�
   await expectElementWithinViewport(persistentPlayer)
   await expectElementWithinViewport(dimensionToggle)
   await expectNoOverlap(persistentPlayer, dimensionToggle, ['持久播放器', '维度切换按钮'])
-  const recordIframeHandle = await recordIframe.elementHandle()
-
-  await recordPanel.getByRole('button', { name: '收起信息栏' }).click()
-  await expect(persistentPlayer).toBeAttached()
-  expect(await recordIframeHandle!.evaluate((element) => element.isConnected)).toBe(true)
+  await expect(recordPanel.locator('.context-panel__close')).toHaveCount(0)
   await page.locator('.game-hud__center').click()
   await expect(musicTask.getByLabel('进度 1 / 2')).toBeVisible()
 
@@ -121,7 +118,6 @@ test('播放器点击立即记入任务，加载失败与同 BV 跨入口不会�
   const albumIframe = persistentPlayer.locator('iframe[title^="Bilibili 外链播放器："]')
   await expect(albumIframe).toBeAttached()
   await expect(page.locator('iframe[title^="Bilibili 外链播放器："]')).toHaveCount(1)
-  const albumIframeHandle = await albumIframe.elementHandle()
   const albumPlayerUrl = new URL((await albumIframe.getAttribute('src'))!)
   expect(albumPlayerUrl.searchParams.get('bvid')).toBe(shared!.video.bvid)
   expect(albumPlayerUrl.searchParams.get('autoplay')).toBe('1')
@@ -129,14 +125,14 @@ test('播放器点击立即记入任务，加载失败与同 BV 跨入口不会�
   await detail.getByRole('button', { name: '关闭详情' }).click()
   await album.getByRole('button', { name: '关闭收藏墙' }).click()
   await expect(persistentPlayer).toBeAttached()
-  expect(await albumIframeHandle!.evaluate((element) => element.isConnected)).toBe(true)
+  await expect(page.locator('iframe[title^="Bilibili 外链播放器："]')).toHaveCount(1)
   await page.locator('.game-hud__center').click()
   await expect(musicTask.getByLabel('进度 1 / 2')).toBeVisible()
   await page.waitForTimeout(300)
   await expect(musicTask.getByLabel('进度 1 / 2')).toBeVisible()
 })
 
-test('唱片机可创建命名列表、解析去重、保存模式与起播位置并跨维度续播', async ({
+test('唱片机可创建命名列表、解析去重，并跨维度保存列表与切歌模式', async ({
   page,
   request,
 }, testInfo) => {
@@ -178,21 +174,18 @@ test('唱片机可创建命名列表、解析去重、保存模式与起播位�
   })
   await randomMode.click()
   await expect(randomMode).toHaveAttribute('aria-pressed', 'true')
-  await panel.getByLabel('起播位置（秒）').fill('12')
   await tracks.getByRole('listitem').first().getByRole('button').click()
 
   const persistentPlayer = page.getByTestId('persistent-bilibili-player')
   const iframe = persistentPlayer.locator('iframe[title^="Bilibili 外链播放器："]')
   await expect(iframe).toBeAttached()
-  const iframeHandle = await iframe.elementHandle()
   const playerUrl = new URL((await iframe.getAttribute('src'))!)
   expect(playerUrl.searchParams.get('bvid')).toBe(first!.bvid)
   expect(playerUrl.searchParams.get('autoplay')).toBe('1')
-  expect(playerUrl.searchParams.get('t')).toBe('12')
+  expect(playerUrl.searchParams.has('t')).toBe(false)
 
-  await panel.getByRole('button', { name: '收起信息栏' }).click()
-  await page.getByRole('button', { name: '切换到现实生活维度' }).click()
-  expect(await iframeHandle!.evaluate((element) => element.isConnected)).toBe(true)
+  await expect(panel.locator('.context-panel__close')).toHaveCount(0)
+  await enterReality(page)
   await page.locator('[data-hotspot="唱片机"]').click()
   const reopenedPanel = page.locator('.context-panel--record-player')
   await expect(
@@ -204,8 +197,74 @@ test('唱片机可创建命名列表、解析去重、保存模式与起播位�
     'aria-pressed',
     'true',
   )
-  await expect(reopenedPanel.getByLabel('起播位置（秒）')).toHaveValue('12')
-  expect(await iframeHandle!.evaluate((element) => element.isConnected)).toBe(true)
+  const resumedIframe = page.locator('iframe[title^="Bilibili 外链播放器："]')
+  await expect(resumedIframe).toHaveCount(1)
+  expect(new URL((await resumedIframe.getAttribute('src'))!).searchParams.get('bvid')).toBe(
+    first!.bvid,
+  )
+})
+
+test('播放器跨房间面板、收藏墙与苹果钟时保持同一个 iframe 节点', async ({ page }, testInfo) => {
+  test.skip(testInfo.project.name !== 'chromium', '播放器节点身份只在桌面 Chromium 验证')
+
+  await startGame(page, { seed: 'player-identity-v5', displayName: '播放器节点测试' })
+  await page.route('https://player.bilibili.com/**', async (route) => route.abort())
+
+  await page.locator('[data-hotspot="唱片机"]').click()
+  await page
+    .locator('.context-panel--record-player')
+    .getByRole('list', { name: '唱片列表' })
+    .getByRole('listitem')
+    .first()
+    .getByRole('button')
+    .click()
+
+  const iframe = page.locator('iframe[title^="Bilibili 外链播放器："]')
+  await expect(iframe).toHaveCount(1)
+  const originalIframe = await iframe.elementHandle()
+  expect(originalIframe).not.toBeNull()
+
+  const expectOriginalIframe = async () => {
+    await expect(iframe).toHaveCount(1)
+    expect(
+      await iframe.evaluate((current, original) => current.isSameNode(original), originalIframe!),
+    ).toBe(true)
+  }
+
+  await expectOriginalIframe()
+  const album = await openAlbum(page)
+  await expectOriginalIframe()
+  await album.getByRole('button', { name: '关闭收藏墙' }).click()
+  await expectOriginalIframe()
+
+  const persistentPlayer = page.getByTestId('persistent-bilibili-player')
+  const dimensionToggle = page.getByRole('button', { name: '切换到现实生活维度' })
+  await expectNoOverlap(persistentPlayer, dimensionToggle, ['收起后的持久播放器', '维度切换按钮'])
+
+  await enterReality(page)
+  await expectOriginalIframe()
+  await page.locator('[data-hotspot="一楼电脑"]').click()
+  const workPanel = page.locator('.context-panel--reality-work')
+  await workPanel
+    .getByRole('group', { name: '苹果钟时长' })
+    .getByRole('button', { name: /^25 分钟/u })
+    .click()
+  await workPanel.getByRole('button', { name: '开始苹果钟' }).click()
+  await page
+    .getByRole('alertdialog', { name: '确认开始苹果钟？' })
+    .getByRole('button', { name: '确认开始' })
+    .click()
+  await expect(page.getByRole('dialog', { name: '和饼狗一起专注' })).toBeVisible()
+  await expectOriginalIframe()
+
+  await page
+    .getByRole('dialog', { name: '和饼狗一起专注' })
+    .getByRole('button', { name: '取消本次计时' })
+    .click()
+  await page
+    .getByRole('alertdialog', { name: '确认取消苹果钟？' })
+    .getByRole('button', { name: '确认取消' })
+    .click()
 })
 
 test('390px 移动端播放器在展开与收起后都避开房屋角落控件', async ({ page }, testInfo) => {
@@ -259,7 +318,7 @@ test('390px 移动端播放器在展开与收起后都避开房屋角落控件',
   await expect(dimension).toBeInViewport()
   await expectNoOverlap(player, dimension, ['持久播放器', '维度切换按钮'])
 
-  await recordPanel.getByRole('button', { name: '收起信息栏' }).click()
+  await player.getByRole('button', { name: '隐藏画面' }).click()
   await expect(player).toHaveAttribute('data-dock-state', 'collapsed')
   const collapsedControls = player.getByRole('button')
   for (let index = 0; index < (await collapsedControls.count()); index += 1) {
@@ -268,5 +327,12 @@ test('390px 移动端播放器在展开与收起后都避开房屋角落控件',
   expect(await iframeHandle!.evaluate((element) => element.isConnected)).toBe(true)
   await expectElementWithinViewport(player)
   await expectNoOverlap(player, dimension, ['收起后的持久播放器', '维度切换按钮'])
+
+  await dimension.click()
+  const unavailable = page.getByRole('dialog', { name: '请使用电脑浏览器' })
+  await expect(unavailable).toContainText('鼠标或触控板')
+  await expect(unavailable.getByRole('button', { name: '知道了' })).toBeFocused()
+  await unavailable.getByRole('button', { name: '知道了' }).click()
+  await expect(page.locator('[data-hotspot="一楼电脑"]')).toHaveCount(0)
   await saveScreenshot(page, 'mobile-390x844-player-corners.png', false)
 })

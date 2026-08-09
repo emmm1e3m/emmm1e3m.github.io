@@ -1282,31 +1282,55 @@
     ]
   },
   "recordPlayer": {
-    "sourceFavoriteId": 1130054521,
-    "selectionRule": "固定选取百万直拍收藏夹刷新快照的最新页第 1–7 项；运行时不请求 Bilibili API。",
+    "sourceFavoriteId": 3489626721,
+    "selectionRule": "固定选取已核验全站第一 chronology 最新 7 项（Talk WORTHY? Talk DIRTY! 至 POWER）；运行时不请求 Bilibili API。",
     "items": [
       {
-        "bvid": "BV1D23262EaD",
-        "title": "【苏新皓｜4K直拍】POWER 直拍｜梦寐以求·演唱会",
+        "bvid": "BV1rtDRBJE7s",
+        "title": "【苏新皓｜4K直拍】Talk WORTHY? Talk DIRTY! 直拍｜浪漫主义·演唱会",
         "authorName": "JUSTSU_苏新皓",
         "authorMid": 3546749647980910,
-        "publishedAt": "2026-08-02T10:00:00.000+08:00",
-        "durationSeconds": 240,
-        "coverUrl": "https://i0.hdslb.com/bfs/archive/6a5bd608470ff24d8456474ef73883f0db809088.jpg",
-        "sourceUrl": "https://www.bilibili.com/video/BV1D23262EaD/",
-        "favoriteId": 1130054521,
-        "favoriteOrder": 1
+        "publishedAt": "2026-04-13T03:19:53.000+08:00",
+        "durationSeconds": 542,
+        "coverUrl": "https://i1.hdslb.com/bfs/archive/32726639587c274602dbeae81ca27008c96cc3cb.jpg",
+        "sourceUrl": "https://www.bilibili.com/video/BV1rtDRBJE7s/",
+        "favoriteId": 3489626721,
+        "favoriteOrder": 6
       },
       {
-        "bvid": "BV15Q3u6UEfW",
-        "title": "【苏新皓】囍 solo直拍 梦寐以求青岛演唱会",
-        "authorName": "Renaissance苏新皓",
-        "authorMid": 700458787,
-        "publishedAt": "2026-07-25T21:23:20.000+08:00",
-        "durationSeconds": 314,
-        "coverUrl": "https://i0.hdslb.com/bfs/archive/3f9b70bafe9c9ff6016fac38c38c7ef601b6eaf9.jpg",
-        "sourceUrl": "https://www.bilibili.com/video/BV15Q3u6UEfW/",
-        "favoriteId": 1130054521,
+        "bvid": "BV1MbZnYoEk1",
+        "title": "【苏新皓】自制MV cover NCT U 《Make A Wish》，堪比专业制作，难道他真的是天才？",
+        "authorName": "苏新皓的时光胶囊",
+        "authorMid": 1210409821,
+        "publishedAt": "2025-03-31T17:11:50.000+08:00",
+        "durationSeconds": 100,
+        "coverUrl": "https://i0.hdslb.com/bfs/archive/f73ece32c85dd72a2f81a07f8afb2eb87752f574.jpg",
+        "sourceUrl": "https://www.bilibili.com/video/BV1MbZnYoEk1/",
+        "favoriteId": 3489626721,
+        "favoriteOrder": 8
+      },
+      {
+        "bvid": "BV1i7LM6oErE",
+        "title": "【苏新皓】原创英文单曲《Dawn in my soul》｜灵魂深处的曙光 双向奔赴的告白",
+        "authorName": "苏新皓的时光胶囊",
+        "authorMid": 1210409821,
+        "publishedAt": "2026-05-19T13:12:28.000+08:00",
+        "durationSeconds": 237,
+        "coverUrl": "https://i2.hdslb.com/bfs/archive/32632fbc43b58edfbecb6bebbfd55ec61c309680.jpg",
+        "sourceUrl": "https://www.bilibili.com/video/BV1i7LM6oErE/",
+        "favoriteId": 3489626721,
+        "favoriteOrder": 5
+      },
+      {
+        "bvid": "BV1fjpAzmE1T",
+        "title": "【苏新皓｜4K直拍】愿与愁 直拍 “我们不回头”",
+        "authorName": "JUSTSU_苏新皓",
+        "authorMid": 3546749647980910,
+        "publishedAt": "2025-09-14T21:23:11.000+08:00",
+        "durationSeconds": 301,
+        "coverUrl": "https://i2.hdslb.com/bfs/archive/cc7fb8feae4f9a54334b8d9e4a26ce12a5e8a889.jpg",
+        "sourceUrl": "https://www.bilibili.com/video/BV1fjpAzmE1T/",
+        "favoriteId": 3489626721,
         "favoriteOrder": 2
       },
       {
@@ -1318,56 +1342,57 @@
         "durationSeconds": 610,
         "coverUrl": "https://i2.hdslb.com/bfs/archive/c9eb3a424e6815a3f0183fcba5705b60d30fc010.jpg",
         "sourceUrl": "https://www.bilibili.com/video/BV1Dx3i6nEm8/",
-        "favoriteId": 1130054521,
-        "favoriteOrder": 3
-      },
-      {
-        "bvid": "BV1Dp6hBuEWm",
-        "title": "【苏新皓｜4K直拍】千疮百孔 双机位直拍｜荣耀之战",
-        "authorName": "烬雪AnewFrost_苏新皓",
-        "authorMid": 3690987811506228,
-        "publishedAt": "2026-02-02T01:03:44.000+08:00",
-        "durationSeconds": 253,
-        "coverUrl": "https://i0.hdslb.com/bfs/archive/a97c9a3d5bfaaef35fa5d6047b57bb538f0cd435.jpg",
-        "sourceUrl": "https://www.bilibili.com/video/BV1Dp6hBuEWm/",
-        "favoriteId": 1130054521,
+        "favoriteId": 3489626721,
         "favoriteOrder": 4
       },
       {
-        "bvid": "BV1mLDRBtE91",
-        "title": "【苏新皓｜8K直拍】ECHO！三机位直拍｜260412 浪漫主义演唱会",
-        "authorName": "SUtopia_苏新皓",
-        "authorMid": 3546557030860956,
-        "publishedAt": "2026-04-13T03:03:11.000+08:00",
-        "durationSeconds": 142,
-        "coverUrl": "https://i1.hdslb.com/bfs/archive/d6ac2a0d5a03f567b13c4643d5e5ec7da3b88e6f.jpg",
-        "sourceUrl": "https://www.bilibili.com/video/BV1mLDRBtE91/",
-        "favoriteId": 1130054521,
-        "favoriteOrder": 5
-      },
-      {
-        "bvid": "BV1dbBiBXEww",
-        "title": "【苏新皓】《Do you love me》双机位 新音DAY1丨4K直拍",
-        "authorName": "Renaissance苏新皓",
-        "authorMid": 700458787,
-        "publishedAt": "2025-12-26T21:16:55.000+08:00",
-        "durationSeconds": 236,
-        "coverUrl": "https://i2.hdslb.com/bfs/archive/191ce24532584e8868d61ee1754c812f568d4e13.jpg",
-        "sourceUrl": "https://www.bilibili.com/video/BV1dbBiBXEww/",
-        "favoriteId": 1130054521,
-        "favoriteOrder": 6
-      },
-      {
-        "bvid": "BV12G6nBKE8W",
-        "title": "【苏新皓｜4K直拍】Blow 双机位直拍｜TF家族·荣耀之战 DAY1",
+        "bvid": "BV179v1B2Emc",
+        "title": "【苏新皓｜4K直拍】Hey Mama 四机位直拍｜2026 TF家族新年音乐会·荣耀 DAY3",
         "authorName": "JUSTSU_苏新皓",
         "authorMid": 3546749647980910,
-        "publishedAt": "2026-01-31T22:56:46.000+08:00",
-        "durationSeconds": 190,
-        "coverUrl": "https://i2.hdslb.com/bfs/archive/2344540da7ae10b90ad0e1658cb3f9fe388ecf20.jpg",
-        "sourceUrl": "https://www.bilibili.com/video/BV12G6nBKE8W/",
-        "favoriteId": 1130054521,
+        "publishedAt": "2025-12-29T06:26:23.000+08:00",
+        "durationSeconds": 198,
+        "coverUrl": "https://i0.hdslb.com/bfs/archive/5af9e1869d9898fd64b9085ff66a27cfd3df17c4.jpg",
+        "sourceUrl": "https://www.bilibili.com/video/BV179v1B2Emc/",
+        "favoriteId": 3489626721,
         "favoriteOrder": 7
+      },
+      {
+        "bvid": "BV1D23262EaD",
+        "title": "【苏新皓｜4K直拍】POWER 直拍｜梦寐以求·演唱会",
+        "authorName": "JUSTSU_苏新皓",
+        "authorMid": 3546749647980910,
+        "publishedAt": "2026-08-02T10:00:00.000+08:00",
+        "durationSeconds": 240,
+        "coverUrl": "https://i0.hdslb.com/bfs/archive/6a5bd608470ff24d8456474ef73883f0db809088.jpg",
+        "sourceUrl": "https://www.bilibili.com/video/BV1D23262EaD/",
+        "favoriteId": 3489626721,
+        "favoriteOrder": 3
+      }
+    ]
+  },
+  "extraTracks": {
+    "selectionRule": "用户指定的短视频，用于自定义播放列表元数据解析。",
+    "items": [
+      {
+        "bvid": "BV13FdBBAEUF",
+        "title": "苏苏跳手势舞0417",
+        "authorName": "倚门回首却",
+        "authorMid": 3690997355645688,
+        "publishedAt": "2026-04-17T10:38:19.000+08:00",
+        "durationSeconds": 21,
+        "coverUrl": "https://i1.hdslb.com/bfs/archive/244e491d8b0f3de1bf0fe4bd76a0abcd85707330.jpg",
+        "sourceUrl": "https://www.bilibili.com/video/BV13FdBBAEUF/"
+      },
+      {
+        "bvid": "BV16VDdBUEfC",
+        "title": "苏苏跳手势舞0413",
+        "authorName": "倚门回首却",
+        "authorMid": 3690997355645688,
+        "publishedAt": "2026-04-13T00:48:47.000+08:00",
+        "durationSeconds": 21,
+        "coverUrl": "https://i1.hdslb.com/bfs/archive/244e491d8b0f3de1bf0fe4bd76a0abcd85707330.jpg",
+        "sourceUrl": "https://www.bilibili.com/video/BV16VDdBUEfC/"
       }
     ]
   }

@@ -13,6 +13,7 @@ const serviceWorker = vi.hoisted(() => ({
 
 const requestUpdate = vi.fn()
 const requestReload = vi.fn()
+const requestAutomaticBackup = vi.fn()
 
 vi.mock('virtual:pwa-register/react', () => ({
   useRegisterSW: (options?: { onNeedReload?: () => void }) => {
@@ -36,14 +37,15 @@ describe('PwaUpdatePrompt', () => {
     serviceWorker.updateServiceWorker.mockResolvedValue(undefined)
     requestUpdate.mockReset()
     requestReload.mockReset()
+    requestAutomaticBackup.mockReset()
   })
 
   it('用游戏内语气提示离线准备完成，并可收起提示', () => {
     serviceWorker.offlineReady = true
     render(
       <PwaUpdatePrompt
-        hasUnsavedProgress={false}
         onNeedReload={requestReload}
+        onUpdateAvailable={requestAutomaticBackup}
         onRequestUpdate={requestUpdate}
       />,
     )
@@ -68,46 +70,29 @@ describe('PwaUpdatePrompt', () => {
     })
     render(
       <PwaUpdatePrompt
-        hasUnsavedProgress={false}
         onNeedReload={requestReload}
+        onUpdateAvailable={requestAutomaticBackup}
         onRequestUpdate={requestUpdate}
       />,
     )
 
     const prompt = screen.getByRole('status', { name: '饼屋换上新布置啦' })
-    expect(prompt).toHaveAccessibleDescription('打开新布置后，饼狗会在原地等你。')
+    expect(prompt).toHaveAccessibleDescription('打开新布置前会自动备份，饼狗会在原地等你。')
     fireEvent.click(screen.getByRole('button', { name: '看看新布置' }))
 
     expect(requestUpdate).toHaveBeenCalledOnce()
+    expect(requestAutomaticBackup).toHaveBeenCalledOnce()
     expect(serviceWorker.updateServiceWorker).not.toHaveBeenCalled()
     await installUpdate?.()
     expect(serviceWorker.updateServiceWorker).toHaveBeenCalledWith(true)
     expect(screen.getByRole('button', { name: '晚点再看' })).toBeVisible()
   })
 
-  it('有未保存进度时明确提示先保存', () => {
-    serviceWorker.needRefresh = true
-    render(
-      <PwaUpdatePrompt
-        hasUnsavedProgress
-        onNeedReload={requestReload}
-        onRequestUpdate={requestUpdate}
-      />,
-    )
-
-    const prompt = screen.getByRole('status', { name: '饼屋换上新布置啦' })
-    expect(prompt).toHaveAccessibleDescription('先保存好这次旅程，再打开新布置。')
-    fireEvent.click(screen.getByRole('button', { name: '保存后更新' }))
-
-    expect(requestUpdate).toHaveBeenCalledOnce()
-    expect(serviceWorker.updateServiceWorker).not.toHaveBeenCalled()
-  })
-
   it('没有状态变化时不占据页面', () => {
     const { container } = render(
       <PwaUpdatePrompt
-        hasUnsavedProgress={false}
         onNeedReload={requestReload}
+        onUpdateAvailable={requestAutomaticBackup}
         onRequestUpdate={requestUpdate}
       />,
     )
@@ -119,16 +104,16 @@ describe('PwaUpdatePrompt', () => {
     const latestReloadRequest = vi.fn()
     const { rerender } = render(
       <PwaUpdatePrompt
-        hasUnsavedProgress={false}
         onNeedReload={firstReloadRequest}
+        onUpdateAvailable={requestAutomaticBackup}
         onRequestUpdate={requestUpdate}
       />,
     )
 
     rerender(
       <PwaUpdatePrompt
-        hasUnsavedProgress
         onNeedReload={latestReloadRequest}
+        onUpdateAvailable={requestAutomaticBackup}
         onRequestUpdate={requestUpdate}
       />,
     )
@@ -142,8 +127,8 @@ describe('PwaUpdatePrompt', () => {
     serviceWorker.needRefresh = true
     render(
       <PwaUpdatePrompt
-        hasUnsavedProgress
         onNeedReload={requestReload}
+        onUpdateAvailable={requestAutomaticBackup}
         onRequestUpdate={requestUpdate}
       />,
     )
@@ -151,10 +136,49 @@ describe('PwaUpdatePrompt', () => {
     serviceWorker.onNeedReload?.()
     expect(requestReload).toHaveBeenCalledOnce()
 
-    fireEvent.click(screen.getByRole('button', { name: '保存后更新' }))
+    fireEvent.click(screen.getByRole('button', { name: '看看新布置' }))
 
     expect(requestReload).toHaveBeenCalledTimes(2)
     expect(requestUpdate).not.toHaveBeenCalled()
     expect(serviceWorker.updateServiceWorker).not.toHaveBeenCalled()
+  })
+
+  it('同一次 needRefresh 只自动请求一次备份，下一次更新可重新请求', () => {
+    serviceWorker.needRefresh = true
+    const { rerender } = render(
+      <PwaUpdatePrompt
+        onNeedReload={requestReload}
+        onUpdateAvailable={requestAutomaticBackup}
+        onRequestUpdate={requestUpdate}
+      />,
+    )
+
+    rerender(
+      <PwaUpdatePrompt
+        onNeedReload={requestReload}
+        onUpdateAvailable={requestAutomaticBackup}
+        onRequestUpdate={requestUpdate}
+      />,
+    )
+    expect(requestAutomaticBackup).toHaveBeenCalledOnce()
+
+    serviceWorker.needRefresh = false
+    rerender(
+      <PwaUpdatePrompt
+        onNeedReload={requestReload}
+        onUpdateAvailable={requestAutomaticBackup}
+        onRequestUpdate={requestUpdate}
+      />,
+    )
+    serviceWorker.needRefresh = true
+    rerender(
+      <PwaUpdatePrompt
+        onNeedReload={requestReload}
+        onUpdateAvailable={requestAutomaticBackup}
+        onRequestUpdate={requestUpdate}
+      />,
+    )
+
+    expect(requestAutomaticBackup).toHaveBeenCalledTimes(2)
   })
 })

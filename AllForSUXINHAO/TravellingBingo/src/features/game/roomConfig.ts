@@ -130,7 +130,7 @@ export const ROOM_AREAS: readonly RoomArea[] = [
     label: '收藏墙',
     buttonLabel: '看看收藏墙',
     hotspot: { x: 81, y: 60 },
-    petCenter: { x: 1053, y: 673 },
+    petCenter: { x: 673, y: 1053 },
     worlds: ['game'],
     petLocation: 'collection-wall',
   },

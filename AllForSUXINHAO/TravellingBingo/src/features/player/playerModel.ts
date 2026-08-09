@@ -11,6 +11,8 @@ export interface BilibiliPlayerTrack {
   readonly sourceUrl: string
   readonly authorName?: string
   readonly publishedAt?: string
+  /** 只有静态目录已收录的曲目才有可靠时长。 */
+  readonly durationSeconds?: number
 }
 
 export interface NamedBilibiliPlaylist {
@@ -45,7 +47,6 @@ export interface ParsedBilibiliPlaylistInput {
 
 export interface BilibiliPlayerUrlOptions {
   readonly bvid: string
-  readonly startAtSeconds?: number
   readonly page?: number
   readonly danmaku?: boolean
 }
@@ -166,14 +167,8 @@ export function createNamedBilibiliPlaylist(
   }
 }
 
-export function normalizeStartAtSeconds(value: number) {
-  if (!Number.isFinite(value) || value <= 0) return 0
-  return Math.min(Number.MAX_SAFE_INTEGER, Math.floor(value))
-}
-
 export function buildBilibiliPlayerUrl({
   bvid,
-  startAtSeconds = 0,
   page = 1,
   danmaku = false,
 }: BilibiliPlayerUrlOptions) {
@@ -186,8 +181,6 @@ export function buildBilibiliPlayerUrl({
   // 产品契约要求每次选曲都立即向外链播放器请求自动播放。
   url.searchParams.set('autoplay', '1')
   url.searchParams.set('danmaku', danmaku ? '1' : '0')
-  const normalizedStart = normalizeStartAtSeconds(startAtSeconds)
-  if (normalizedStart > 0) url.searchParams.set('t', String(normalizedStart))
   return url.toString()
 }
 
@@ -200,12 +193,28 @@ export function adjacentTrackIndex(
 ) {
   if (trackCount <= 0) return null
   if (currentIndex === null || currentIndex < 0 || currentIndex >= trackCount) return 0
-  if (mode === 'single' || trackCount === 1) return currentIndex
-  if (mode === 'list') return (currentIndex + direction + trackCount) % trackCount
+  if (trackCount === 1) return currentIndex
+  // “单曲循环”只影响自然播完后的动作，用户点上一首/下一首仍应正常切歌。
+  if (mode === 'list' || mode === 'single') {
+    return (currentIndex + direction + trackCount) % trackCount
+  }
 
   const boundedRandom = Number.isFinite(randomValue)
     ? Math.min(Math.max(randomValue, 0), 1 - Number.EPSILON)
     : 0
   const offset = 1 + Math.floor(boundedRandom * (trackCount - 1))
   return (currentIndex + offset) % trackCount
+}
+
+/** 根据自然播完事件计算目标；与用户主动切歌严格分开。 */
+export function endedTrackIndex(
+  mode: BilibiliPlaybackMode,
+  currentIndex: number | null,
+  trackCount: number,
+  randomValue = Math.random(),
+) {
+  if (trackCount <= 0) return null
+  if (currentIndex === null || currentIndex < 0 || currentIndex >= trackCount) return 0
+  if (mode === 'single' || trackCount === 1) return currentIndex
+  return adjacentTrackIndex(mode, currentIndex, trackCount, 1, randomValue)
 }

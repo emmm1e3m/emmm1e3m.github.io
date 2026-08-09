@@ -21,14 +21,13 @@
   gap: 0.8rem;
 }
 
-.piano__heading span,
 .piano__heading small {
   color: #7b5d50;
   font-size: 0.72rem;
 }
 
 .piano__heading h3 {
-  margin: 0.16rem 0 0;
+  margin: 0;
   font-size: 1rem;
 }
 
@@ -76,7 +75,7 @@
   display: grid;
   width: 100%;
   min-width: 0;
-  height: clamp(76px, 10.5vh, 104px);
+  height: clamp(70px, 9vh, 92px);
   grid-template-columns: repeat(7, minmax(0, 1fr));
   isolation: isolate;
   overflow: hidden;
@@ -164,6 +163,6 @@
   }
 
   .piano__keys {
-    height: 72px;
+    height: 64px;
   }
 }

@@ -226,53 +226,6 @@
   filter: drop-shadow(0 7px 8px rgb(82 44 32 / 19%));
 }
 
-.game-page--v2 .mascot-sprite--walk,
-.game-page--v2 .mascot-sprite--fridge,
-.game-page--v2 .mascot-sprite--warm,
-.game-page--v2 .mascot-sprite--sit,
-.game-page--v2 .mascot-sprite--ready,
-.game-page--v2 .mascot-sprite--sleep,
-.game-page--v2 .mascot-sprite--refuse {
-  aspect-ratio: 1;
-  background-repeat: no-repeat;
-}
-
-.game-page--v2 .mascot-sprite--walk,
-.game-page--v2 .mascot-sprite--fridge,
-.game-page--v2 .mascot-sprite--warm,
-.game-page--v2 .mascot-sprite--sit,
-.game-page--v2 .mascot-sprite--ready,
-.game-page--v2 .mascot-sprite--sleep {
-  background-size: 400% 100%;
-}
-
-.game-page--v2 .mascot-sprite--walk {
-  animation: bingo-walk-frames 560ms step-end infinite;
-}
-
-.game-page--v2 .mascot-sprite--fridge {
-  background-position: 0 0;
-}
-
-.game-page--v2 .mascot-sprite--sit {
-  background-position: 33.333% 0;
-}
-
-.game-page--v2 .mascot-sprite--warm,
-.game-page--v2 .mascot-sprite--ready {
-  background-position: 66.666% 0;
-}
-
-.game-page--v2 .mascot-sprite--sleep {
-  background-position: 100% 0;
-  animation: sleeping-breathe 1.8s ease-in-out infinite;
-}
-
-.game-page--v2 .mascot-sprite--refuse {
-  background-size: 200% 100%;
-  animation: bingo-refuse-frames 920ms step-end infinite;
-}
-
 .pet-menu {
   position: absolute;
   z-index: 12;
@@ -434,27 +387,6 @@
   color: #fffaf5;
   background: var(--v2-red);
   box-shadow: 0 4px 13px rgb(132 45 56 / 18%);
-}
-
-.game-page--v2 .status-metrics {
-  gap: 0.48rem;
-  margin: 0.9rem 0;
-}
-
-.game-page--v2 .status-metrics > div {
-  padding: 0.66rem 0.34rem;
-  border: 1px solid #e2c3ad;
-  border-radius: 14px;
-  background: #fff3e3;
-}
-
-.game-page--v2 .status-metrics strong {
-  font-size: 1.08rem;
-}
-
-.game-page--v2 .status-metrics span {
-  color: var(--v2-muted);
-  font-size: 0.59rem;
 }
 
 .activity-status-card--button {

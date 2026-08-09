@@ -148,6 +148,7 @@ export function planActivityReward(input: RewardPlanningInput): RewardPlan {
     const category = COLLECTION_CATEGORY_BY_ACTIVITY[input.kind]
     const drop = nextRandom(cursor)
     cursor = drop.cursor
+    // 幸运苹果只叠加当前活动对应的收藏概率，不改变遇友概率。
     const dropChance = addProbabilityBonus(
       probabilities[PROBABILITY_BY_ACTIVITY[input.kind]],
       input.usedLuckyApple ? LUCKY_APPLE_COLLECTION_DROP_BONUS : 0,
