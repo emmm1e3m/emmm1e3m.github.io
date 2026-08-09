@@ -15,18 +15,16 @@ interface PostcardPickerProps {
 interface PostcardPickerDialogProps {
   options: readonly PostcardBackgroundOption[]
   selectedId: string | null
-  onSelectedIdChange: (postcardId: string | null) => void
+  onSelect: (postcardId: string | null) => void
   onCancel: () => void
-  onConfirm: () => void
   returnFocus: () => HTMLElement | null
 }
 
 function PostcardPickerDialog({
   options,
   selectedId,
-  onSelectedIdChange,
+  onSelect,
   onCancel,
-  onConfirm,
   returnFocus,
 }: PostcardPickerDialogProps) {
   const titleId = useId()
@@ -52,7 +50,7 @@ function PostcardPickerDialog({
           <div>
             <span className="reality-eyebrow">陪伴明信片</span>
             <h2 id={titleId}>选择这一轮的风景</h2>
-            <p id={descriptionId}>选好后确认，专注开始时会在全屏完整显示这张明信片。</p>
+            <p id={descriptionId}>选择一张即可确定，专注开始时会在全屏完整显示这张明信片。</p>
           </div>
           <span className="reality-unlocked-count">已解锁 {options.length}</span>
         </header>
@@ -63,7 +61,10 @@ function PostcardPickerDialog({
               type="radio"
               name={titleId}
               checked={selectedId === null}
-              onChange={() => onSelectedIdChange(null)}
+              onChange={() => onSelect(null)}
+              onClick={() => {
+                if (selectedId === null) onSelect(null)
+              }}
             />
             <span aria-hidden="true">白纸</span>
             <strong>默认纸张</strong>
@@ -74,7 +75,10 @@ function PostcardPickerDialog({
                 type="radio"
                 name={titleId}
                 checked={option.id === selectedId}
-                onChange={() => onSelectedIdChange(option.id)}
+                onChange={() => onSelect(option.id)}
+                onClick={() => {
+                  if (option.id === selectedId) onSelect(option.id)
+                }}
               />
               {option.thumbnailUrl ? (
                 <img
@@ -102,9 +106,6 @@ function PostcardPickerDialog({
           >
             取消
           </button>
-          <button className="reality-primary-button" type="button" onClick={onConfirm}>
-            确认明信片
-          </button>
         </div>
       </section>
     </div>,
@@ -121,11 +122,9 @@ export function PostcardPicker({
   const headingId = useId()
   const triggerRef = useRef<HTMLButtonElement>(null)
   const [open, setOpen] = useState(false)
-  const [draftId, setDraftId] = useState<string | null>(selectedId)
   const selected = options.find((option) => option.id === selectedId) ?? null
 
   function openPicker() {
-    setDraftId(selectedId)
     setOpen(true)
   }
 
@@ -133,8 +132,8 @@ export function PostcardPicker({
     setOpen(false)
   }
 
-  function confirmPicker() {
-    onChange(draftId)
+  function selectPostcard(postcardId: string | null) {
+    onChange(postcardId)
     setOpen(false)
   }
 
@@ -179,10 +178,9 @@ export function PostcardPicker({
       {open && (
         <PostcardPickerDialog
           options={options}
-          selectedId={draftId}
-          onSelectedIdChange={setDraftId}
+          selectedId={selectedId}
+          onSelect={selectPostcard}
           onCancel={closePicker}
-          onConfirm={confirmPicker}
           returnFocus={() => triggerRef.current}
         />
       )}

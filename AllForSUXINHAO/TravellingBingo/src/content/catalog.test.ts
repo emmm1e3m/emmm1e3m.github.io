@@ -187,6 +187,12 @@ describe('目录合并与收藏进度', () => {
     expect(catalog.recordPlayerVideos.map((video) => video.durationSeconds)).toEqual([
       183, 542, 100, 237, 301, 610, 198, 240,
     ])
+    const siteFirstDisplayTitles = [...siteFirstCatalog.items]
+      .sort((left, right) => left.metadata.chronology - right.metadata.chronology)
+      .map((item) => item.title)
+    expect(catalog.recordPlayerVideos.map((video) => video.displayTitle)).toEqual(
+      siteFirstDisplayTitles,
+    )
   })
 
   it('拒绝海报内嵌视频与集中视频目录发生漂移', () => {

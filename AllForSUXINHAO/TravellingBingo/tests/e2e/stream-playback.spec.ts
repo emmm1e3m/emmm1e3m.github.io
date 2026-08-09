@@ -5,7 +5,7 @@ import { enterReality, openDebugPanel, startGame } from './support/game'
 const TEST_BVIDS = ['BV1xx411c7mD', 'BV1yy411c7mE'] as const
 const BROWSER_SAVE_KEY = 'travelling-bingo:browser-save:v1'
 const DEBUG_ROUND_DURATION_SECONDS = 5
-const DEBUG_ROUND_DURATION_MS = DEBUG_ROUND_DURATION_SECONDS * 1_000
+const TIMED_STOP_HOURS = 0.003
 
 function isCanonicalVideoDocument(request: Request, canonicalUrls: ReadonlySet<string>) {
   return (
@@ -25,7 +25,10 @@ test.describe('现实刷播浏览器契约', () => {
     )
   })
 
-  test('按调试时长完成轮次，且网络只访问规范视频页', async ({ context, page }, testInfo) => {
+  test('依次打开规范视频页，并把定时结束前的多轮汇总为一次任务', async ({
+    context,
+    page,
+  }, testInfo) => {
     const appOrigin = new URL(testInfo.project.use.baseURL as string).origin
     const canonicalUrls = new Set(
       TEST_BVIDS.map((bvid) => `https://www.bilibili.com/video/${bvid}/?autoplay=1&t=0`),
@@ -61,83 +64,78 @@ test.describe('现实刷播浏览器契约', () => {
       debug: true,
     })
     await openDebugPanel(page)
-    const durationInput = page.getByRole('spinbutton', { name: '刷播轮次时长（秒）' })
-    await durationInput.fill(String(DEBUG_ROUND_DURATION_SECONDS))
+    await page
+      .getByRole('spinbutton', { name: '刷播轮次时长（秒）' })
+      .fill(String(DEBUG_ROUND_DURATION_SECONDS))
     await page.getByRole('button', { name: '应用刷播时长' }).click()
-    await expect(page.getByText(`当前为 ${DEBUG_ROUND_DURATION_SECONDS} 秒`)).toBeVisible()
 
     await enterReality(page)
     await page.getByRole('button', { name: '刷播', exact: true }).click()
     const panel = page.locator('.context-panel--reality-stream')
     await panel.getByRole('textbox', { name: '视频BV号或链接列表' }).fill(TEST_BVIDS.join('\n'))
+    await expect(panel.getByRole('spinbutton', { name: '打开间隔（秒）' })).toHaveValue('8')
+    await panel.getByRole('spinbutton', { name: '打开间隔（秒）' }).fill('1')
+    await panel.getByRole('spinbutton', { name: '定时停止（小时）' }).fill(String(TIMED_STOP_HOURS))
 
-    const firstRoundStartedAt = await page.evaluate(() => Date.now())
+    const sessionStartedAt = await page.evaluate(() => Date.now())
     await panel.getByRole('button', { name: '开始刷播' }).click()
     await expect.poll(() => openedPages.length).toBe(TEST_BVIDS.length)
     await expect(panel).toContainText('本轮播放中')
     await expect(panel).toContainText('已经打开2')
-
     await expect
       .poll(() => openedPages.map((openedPage) => openedPage.url()).sort())
       .toEqual([...canonicalUrls].sort())
     expect(unexpectedRequests).toEqual([])
 
-    const firstRoundPages = [...openedPages]
-    await expect
-      .poll(() => firstRoundPages.every((openedPage) => openedPage.isClosed()), {
-        timeout: DEBUG_ROUND_DURATION_MS + 10_000,
-      })
-      .toBe(true)
-    await expect
-      .poll(() => openedPages.length, { timeout: DEBUG_ROUND_DURATION_MS + 10_000 })
-      .toBe(TEST_BVIDS.length * 2)
-    const secondRoundPages = openedPages.slice(TEST_BVIDS.length)
-    await expect
-      .poll(() => secondRoundPages.map((openedPage) => openedPage.url()).sort())
-      .toEqual([...canonicalUrls].sort())
-    await expect(panel.locator('.reality-stream-status')).toContainText(/下一动作00:0[45]/u)
-    await expect(panel.getByText('第 1 轮', { exact: true })).toBeVisible()
-    await expect(panel.locator('.reality-stream-status')).toContainText('完成轮次1')
+    await expect(panel).toContainText('本次完成轮次1', { timeout: 9_000 })
+    await expect(panel).toContainText('已按时完成', { timeout: 9_000 })
+    await expect(panel.getByText('按时完成 · 1 轮')).toBeVisible()
+    await expect.poll(() => openedPages.every((openedPage) => openedPage.isClosed())).toBe(true)
+    expect(openedPages).toHaveLength(TEST_BVIDS.length * 2)
 
-    const persistedHistory = await page.evaluate((key) => {
-      const serialized = localStorage.getItem(key)
-      if (serialized === null) return null
-      const cache = JSON.parse(serialized) as {
-        payload?: {
-          schemaVersion?: number
-          reality?: {
-            streamHistory?: {
-              completedRounds?: number
-              recentRounds?: Array<{ round?: number; completedAt?: number }>
+    const readPersistedHistory = () =>
+      page.evaluate((key) => {
+        const serialized = localStorage.getItem(key)
+        if (serialized === null) return null
+        const cache = JSON.parse(serialized) as {
+          payload?: {
+            schemaVersion?: number
+            reality?: {
+              streamHistory?: {
+                completedRounds?: number
+                recentSessions?: Array<{
+                  sessionId?: string
+                  startedAt?: number
+                  endedAt?: number
+                  roundsCompleted?: number
+                  outcome?: string
+                }>
+              }
             }
           }
         }
-      }
-      return {
-        serialized,
-        now: Date.now(),
-        schemaVersion: cache.payload?.schemaVersion,
-        completedRounds: cache.payload?.reality?.streamHistory?.completedRounds,
-        recentRounds: cache.payload?.reality?.streamHistory?.recentRounds,
-      }
-    }, BROWSER_SAVE_KEY)
-    expect(persistedHistory?.schemaVersion).toBe(6)
-    expect(persistedHistory?.completedRounds).toBe(1)
-    expect(persistedHistory?.recentRounds).toHaveLength(1)
-    expect(persistedHistory?.recentRounds?.[0]?.round).toBe(1)
-    expect(persistedHistory?.recentRounds?.[0]?.completedAt).toBeGreaterThanOrEqual(
-      firstRoundStartedAt + DEBUG_ROUND_DURATION_MS - 250,
-    )
-    expect(persistedHistory?.recentRounds?.[0]?.completedAt).toBeLessThanOrEqual(
-      persistedHistory?.now ?? 0,
-    )
-    expect(persistedHistory?.serialized).not.toContain('streamRoundDurationMs')
-    expect(unexpectedRequests).toEqual([])
+        return {
+          serialized,
+          now: Date.now(),
+          schemaVersion: cache.payload?.schemaVersion,
+          completedRounds: cache.payload?.reality?.streamHistory?.completedRounds,
+          recentSessions: cache.payload?.reality?.streamHistory?.recentSessions,
+        }
+      }, BROWSER_SAVE_KEY)
+    await expect.poll(readPersistedHistory).toMatchObject({
+      schemaVersion: 7,
+      completedRounds: 1,
+      recentSessions: [expect.objectContaining({ roundsCompleted: 1, outcome: 'completed' })],
+    })
+    const persistedHistory = await readPersistedHistory()
 
-    await panel.getByRole('button', { name: '停止刷播' }).click()
-    await expect
-      .poll(() => secondRoundPages.filter((openedPage) => !openedPage.isClosed()).length)
-      .toBe(0)
-    await expect(panel).toContainText('已停止')
+    const record = persistedHistory?.recentSessions?.[0]
+    expect(record?.startedAt).toBeGreaterThanOrEqual(sessionStartedAt)
+    expect(record?.endedAt).toBeLessThanOrEqual(persistedHistory?.now ?? 0)
+    expect(persistedHistory?.recentSessions).toHaveLength(1)
+    expect(persistedHistory?.serialized).not.toContain('streamRoundDurationMs')
+    expect(persistedHistory?.serialized).not.toContain('openDelayMs')
+    expect(persistedHistory?.serialized).not.toContain('stopAfterMs')
+    expect(unexpectedRequests).toEqual([])
   })
 })

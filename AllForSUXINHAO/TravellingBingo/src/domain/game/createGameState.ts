@@ -28,7 +28,7 @@ export function createInitialGameState(options: InitialGameOptions): GameState {
   })
 
   return {
-    schemaVersion: 6,
+    schemaVersion: 7,
     profile: {
       createdAt: options.now,
       debug: options.debug ?? false,
@@ -76,7 +76,7 @@ export function createInitialGameState(options: InitialGameOptions): GameState {
       },
       streamHistory: {
         completedRounds: 0,
-        recentRounds: [],
+        recentSessions: [],
       },
     },
     musicPlayer: {

@@ -139,7 +139,7 @@ async function completeTenSecondRest(page: Page) {
   await reward.getByRole('button', { name: '回到房间' }).click()
 }
 
-test.describe('V6 高风险集成契约', () => {
+test.describe('V7 高风险集成契约', () => {
   test.beforeEach(({ browserName }, testInfo) => {
     test.skip(
       browserName !== 'chromium' || testInfo.project.name !== 'chromium',
@@ -251,8 +251,9 @@ test.describe('V6 高风险集成契约', () => {
       'object-fit',
       'contain',
     )
-    await picker.getByRole('radio').nth(1).check()
-    await picker.getByRole('button', { name: '确认明信片' }).click()
+    await picker.getByRole('radio').nth(1).focus()
+    await page.keyboard.press('Space')
+    await expect(picker).not.toBeVisible()
     const selectedPostcardPreview = workPanel.locator('.reality-postcard-picker__preview')
     await expect(selectedPostcardPreview).not.toHaveAttribute('data-background-id', 'plain')
     await expect(selectedPostcardPreview.locator('img')).toHaveCSS('object-fit', 'contain')

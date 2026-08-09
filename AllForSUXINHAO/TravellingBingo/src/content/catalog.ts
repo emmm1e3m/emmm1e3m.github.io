@@ -19,8 +19,10 @@ export interface ContentCatalog {
   readonly friends: readonly FriendItem[]
   readonly friendById: Readonly<Record<string, FriendItem>>
   readonly videosByBvid: Readonly<Record<string, BilibiliVideoMetadata>>
-  readonly recordPlayerVideos: readonly BilibiliVideo[]
+  readonly recordPlayerVideos: readonly RecordPlayerVideo[]
 }
+
+export type RecordPlayerVideo = BilibiliVideo & { readonly displayTitle: string }
 
 export interface CollectionProgressGroup {
   readonly collected: number
@@ -122,6 +124,15 @@ export function mergeContentCatalogs(
     throw new Error('视频目录含有未知、重复或缺失的收藏映射')
   }
 
+  const siteFirstTitleByBvid = new Map(
+    siteFirsts.items.map((item) => [item.metadata.bvid, item.title] as const),
+  )
+  const recordPlayerVideos = videoCatalog.recordPlayer.items.map((video) => {
+    const displayTitle = siteFirstTitleByBvid.get(video.bvid)
+    if (!displayTitle) throw new Error(`唱片机曲目“${video.bvid}”没有对应的全站第一短标题`)
+    return Object.freeze({ ...video, displayTitle })
+  })
+
   return Object.freeze({
     items,
     byId: Object.freeze(mutableIndex),
@@ -134,7 +145,7 @@ export function mergeContentCatalogs(
     friends: Object.freeze([...friendCatalog.items]),
     friendById: Object.freeze(mutableFriendIndex),
     videosByBvid: Object.freeze({ ...videoCatalog.videos }),
-    recordPlayerVideos: Object.freeze([...videoCatalog.recordPlayer.items]),
+    recordPlayerVideos: Object.freeze(recordPlayerVideos),
   })
 }
 

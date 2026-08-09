@@ -375,20 +375,43 @@ export interface RealityState {
   pomodoro: PomodoroState
 }
 
-/** 已完成的一轮刷播；recentRounds 按最新到最旧保存。 */
+/** 冻结 V6 刷播历史中的单轮记录。 */
 export interface StreamRoundRecord {
   round: number
   /** 该轮实际完成时间。 */
   completedAt: number
 }
 
-export interface StreamHistory {
+/** 冻结 V6 刷播历史；仅供旧存档严格校验与迁移。 */
+export interface StreamHistoryV6 {
   completedRounds: number
   /** 最近十轮，索引 0 始终是最新一轮。 */
   recentRounds: StreamRoundRecord[]
 }
 
 export interface RealityStateV6 extends RealityState {
+  streamHistory: StreamHistoryV6
+}
+
+export type StreamSessionOutcome = 'completed' | 'stopped'
+
+/** 一次已经结束的刷播任务；一项可以包含多轮。 */
+export interface StreamSessionRecord {
+  sessionId: string
+  startedAt: number
+  endedAt: number
+  roundsCompleted: number
+  outcome: StreamSessionOutcome
+}
+
+export interface StreamHistory {
+  /** 所有刷播任务累计完成的轮次。 */
+  completedRounds: number
+  /** 最近十次已结束的刷播任务，索引 0 始终是最新一次。 */
+  recentSessions: StreamSessionRecord[]
+}
+
+export interface RealityStateV7 extends RealityState {
   streamHistory: StreamHistory
 }
 
@@ -531,7 +554,12 @@ export interface GameStateV6 extends Omit<GameStateV5, 'schemaVersion' | 'realit
   reality: RealityStateV6
 }
 
-export type GameState = GameStateV6
+export interface GameStateV7 extends Omit<GameStateV6, 'schemaVersion' | 'reality'> {
+  schemaVersion: 7
+  reality: RealityStateV7
+}
+
+export type GameState = GameStateV7
 
 export interface ActivityTiming {
   phase: ActivityPhase
@@ -619,7 +647,20 @@ export type GameAction =
   | { type: 'task/event'; event: TaskEvent; now: number }
   | { type: 'reality/enter'; now: number }
   | { type: 'reality/leave'; now: number }
-  | { type: 'reality/stream-round-complete'; completedAt: number }
+  | {
+      type: 'reality/stream-session-progress'
+      sessionId: string
+      startedAt: number
+      completedAt: number
+    }
+  | {
+      type: 'reality/stream-session-end'
+      sessionId: string
+      startedAt: number
+      endedAt: number
+      roundsCompleted: number
+      outcome: StreamSessionOutcome
+    }
   | {
       type: 'reality/settle'
       stayId: string

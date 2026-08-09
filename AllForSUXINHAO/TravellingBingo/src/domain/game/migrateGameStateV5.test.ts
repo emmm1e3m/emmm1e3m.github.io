@@ -7,8 +7,7 @@ import {
   migrateGameStateV5ToV6,
   migrateStoredGameStateToV6,
 } from './migrateGameStateV5'
-import { reduceGame } from './reducer'
-import type { CollectionCatalog, GameState, GameStateV5, GameTransition } from './types'
+import type { CollectionCatalog, GameStateV5, GameStateV6 } from './types'
 
 const catalog: CollectionCatalog = {
   postcard: ['postcard-1'],
@@ -27,11 +26,6 @@ function v5Fixture(): GameStateV5 {
     pomodoro: current.reality.pomodoro,
   }
   return { ...current, schemaVersion: 5, reality }
-}
-
-function successful(transition: GameTransition): Extract<GameTransition, { ok: true }> {
-  if (!transition.ok) throw new Error(transition.error.message)
-  return transition
 }
 
 describe('schemaVersion 5 -> 6 显式迁移', () => {
@@ -61,7 +55,7 @@ describe('schemaVersion 5 -> 6 显式迁移', () => {
 
 describe('V6 刷播历史严格状态', () => {
   it('拒绝缺失、额外字段、断裂轮次和非因果时间', () => {
-    const valid = createInitialGameState({ now: 1_000, seed: 'v6-schema' })
+    const valid = migrateGameStateV5ToV6(v5Fixture())
     expect(gameStateV6Schema.safeParse(valid).success).toBe(true)
 
     const missingHistory = structuredClone(valid) as unknown as {
@@ -80,7 +74,7 @@ describe('V6 刷播历史严格状态', () => {
       }).success,
     ).toBe(false)
 
-    const discontinuous: GameState = {
+    const discontinuous: GameStateV6 = {
       ...valid,
       reality: {
         ...valid.reality,
@@ -95,7 +89,7 @@ describe('V6 刷播历史严格状态', () => {
     }
     expect(gameStateV6Schema.safeParse(discontinuous).success).toBe(false)
 
-    const nonMonotonic: GameState = {
+    const nonMonotonic: GameStateV6 = {
       ...valid,
       reality: {
         ...valid.reality,
@@ -110,7 +104,7 @@ describe('V6 刷播历史严格状态', () => {
     }
     expect(gameStateV6Schema.safeParse(nonMonotonic).success).toBe(false)
 
-    const beforeProfileCreated: GameState = {
+    const beforeProfileCreated: GameStateV6 = {
       ...valid,
       reality: {
         ...valid.reality,
@@ -122,7 +116,7 @@ describe('V6 刷播历史严格状态', () => {
     }
     expect(gameStateV6Schema.safeParse(beforeProfileCreated).success).toBe(false)
 
-    const invalidTimestamp: GameState = {
+    const invalidTimestamp: GameStateV6 = {
       ...valid,
       reality: {
         ...valid.reality,
@@ -133,87 +127,5 @@ describe('V6 刷播历史严格状态', () => {
       },
     }
     expect(gameStateV6Schema.safeParse(invalidTimestamp).success).toBe(false)
-  })
-
-  it('reducer 生成连续轮次，最新在前并只保留十条', () => {
-    let state = createInitialGameState({ now: 1_000, seed: 'stream-rounds' })
-    for (let round = 1; round <= 12; round += 1) {
-      state = successful(
-        reduceGame(
-          state,
-          { type: 'reality/stream-round-complete', completedAt: 10_000 + round },
-          catalog,
-        ),
-      ).state
-    }
-
-    expect(state.reality.streamHistory.completedRounds).toBe(12)
-    expect(state.reality.streamHistory.recentRounds).toEqual(
-      Array.from({ length: 10 }, (_, index) => ({
-        round: 12 - index,
-        completedAt: 10_012 - index,
-      })),
-    )
-    expect(gameStateV6Schema.safeParse(state).success).toBe(true)
-  })
-
-  it('拒绝非法、早于建档、不晚于上轮的时间与计数器上限', () => {
-    const initial = createInitialGameState({ now: 1_000, seed: 'stream-invalid' })
-    const beforeProfileCreated = reduceGame(
-      initial,
-      { type: 'reality/stream-round-complete', completedAt: 999 },
-      catalog,
-    )
-    expect(beforeProfileCreated).toMatchObject({
-      ok: false,
-      error: { code: 'INVALID_TIME' },
-    })
-    expect(beforeProfileCreated.state).toBe(initial)
-
-    const once = successful(
-      reduceGame(initial, { type: 'reality/stream-round-complete', completedAt: 2_000 }, catalog),
-    ).state
-
-    for (const completedAt of [-1, 1.5, Number.MAX_SAFE_INTEGER]) {
-      const rejected = reduceGame(
-        once,
-        { type: 'reality/stream-round-complete', completedAt },
-        catalog,
-      )
-      expect(rejected).toMatchObject({ ok: false, error: { code: 'INVALID_TIME' } })
-      expect(rejected.state).toBe(once)
-    }
-
-    for (const completedAt of [2_000, 1_999]) {
-      const rejected = reduceGame(
-        once,
-        { type: 'reality/stream-round-complete', completedAt },
-        catalog,
-      )
-      expect(rejected).toMatchObject({ ok: false, error: { code: 'INVALID_TIME' } })
-      expect(rejected.state).toBe(once)
-    }
-
-    const capped: GameState = {
-      ...once,
-      reality: {
-        ...once.reality,
-        streamHistory: {
-          completedRounds: Number.MAX_SAFE_INTEGER,
-          recentRounds: Array.from({ length: 10 }, (_, index) => ({
-            round: Number.MAX_SAFE_INTEGER - index,
-            completedAt: 20_000 - index,
-          })),
-        },
-      },
-    }
-    expect(gameStateV6Schema.safeParse(capped).success).toBe(true)
-    const rejected = reduceGame(
-      capped,
-      { type: 'reality/stream-round-complete', completedAt: 20_001 },
-      catalog,
-    )
-    expect(rejected).toMatchObject({ ok: false, error: { code: 'INVALID_AMOUNT' } })
-    expect(rejected.state).toBe(capped)
   })
 })

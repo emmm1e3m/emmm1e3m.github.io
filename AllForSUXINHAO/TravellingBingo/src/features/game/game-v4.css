@@ -516,6 +516,8 @@
 .game-page--v4 .context-content--v4.piano-panel {
   display: grid;
   align-content: start;
+  /* 让信息栏滚动，不让有限高度反向压扁电子琴和下方活动卡。 */
+  grid-auto-rows: max-content;
   gap: clamp(0.8rem, 1.5vw, 1rem);
 }
 

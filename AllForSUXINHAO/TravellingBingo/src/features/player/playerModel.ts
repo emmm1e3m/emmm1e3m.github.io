@@ -7,11 +7,19 @@ export type BilibiliPlaybackMode = 'list' | 'single' | 'shuffle'
 export interface BilibiliPlayerTrack {
   readonly bvid: string
   readonly title: string
+  /** 收藏目录提供的界面短标题；完整视频标题始终保留在 title。 */
+  readonly displayTitle?: string
   readonly sourceUrl: string
   readonly authorName?: string
   readonly publishedAt?: string
   /** 静态目录中的实际视频时长，是播放进度与续播计时的共同来源。 */
   readonly durationSeconds: number
+}
+
+export function displayTitleForTrack(
+  track: Pick<BilibiliPlayerTrack, 'title' | 'displayTitle'>,
+): string {
+  return track.displayTitle ?? track.title
 }
 
 interface BilibiliPlayerUrlOptions {

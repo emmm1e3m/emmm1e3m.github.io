@@ -240,6 +240,56 @@ test('弹琴活动读条期间仍可弹四排 48 键，并只给白键映射电�
   await cancelActivity(page)
 })
 
+test('电子琴在窄信息栏中保持四排完整琴键', async ({ page }, testInfo) => {
+  test.skip(testInfo.project.name !== 'chromium', '窄信息栏布局只需在桌面 Chromium 验证')
+  await page.setViewportSize({ width: 1280, height: 650 })
+  await startGame(page, { seed: 'piano-layout', displayName: '琴键布局' })
+
+  await page.locator('[data-hotspot="电子琴"]').click()
+  const panel = page.locator('.context-content--v4.piano-panel')
+  const keyboard = panel.locator('.piano')
+  await expect(keyboard).toBeVisible()
+
+  const geometry = await keyboard.evaluate((element) => {
+    const rows = [...element.querySelectorAll<HTMLElement>('.piano__row')]
+    const labels = [...element.querySelectorAll<HTMLElement>('.piano__row-label')]
+    const whiteKeyCopies = [
+      ...element.querySelectorAll<HTMLElement>('.piano-key--white span, .piano-key--white small'),
+    ]
+    return {
+      rowHeights: rows.map((row) => row.getBoundingClientRect().height),
+      labelsVisible: labels.every((label) => {
+        const row = label.closest<HTMLElement>('.piano__row')
+        if (!row) return false
+        const rowBox = row.getBoundingClientRect()
+        const box = label.getBoundingClientRect()
+        return box.height > 0 && box.top >= rowBox.top && box.bottom <= rowBox.bottom
+      }),
+      whiteKeyCopiesVisible: whiteKeyCopies.every((copy) => {
+        const row = copy.closest<HTMLElement>('.piano__row')
+        if (!row) return false
+        const rowBox = row.getBoundingClientRect()
+        const box = copy.getBoundingClientRect()
+        return (
+          box.width > 0 && box.height > 0 && box.top >= rowBox.top && box.bottom <= rowBox.bottom
+        )
+      }),
+    }
+  })
+
+  expect(geometry.rowHeights).toHaveLength(4)
+  expect(geometry.rowHeights.every((height) => height >= 69)).toBe(true)
+  expect(geometry.labelsVisible).toBe(true)
+  expect(geometry.whiteKeyCopiesVisible).toBe(true)
+
+  const c3 = keyboard.getByRole('button', { name: 'C3，键盘 Z' })
+  const cSharp6 = keyboard.getByRole('button', { name: 'C#6', exact: true })
+  await expect(c3).toBeEnabled()
+  await expect(cSharp6).toBeEnabled()
+  await c3.click()
+  await cSharp6.click()
+})
+
 test('电子琴在 inert 弹窗后不响应，收藏墙切走面板会卸载音频且菜单不重现', async ({
   page,
 }, testInfo) => {

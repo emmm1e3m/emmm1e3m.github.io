@@ -95,8 +95,15 @@ export {
   isStrictGameStateV6,
   migrateGameStateV5ToV6,
   migrateStoredGameStateToV6,
-  type StoredGameState,
+  type StoredGameStateThroughV6,
 } from './game/migrateGameStateV5'
+export {
+  gameStateV7Schema,
+  isStrictGameStateV7,
+  migrateGameStateV6ToV7,
+  migrateStoredGameStateToV7,
+  type StoredGameState,
+} from './game/migrateGameStateV6'
 export { reduceGame } from './game/reducer'
 export {
   isProductivityAction,
@@ -147,6 +154,7 @@ export type {
   GameStateV5,
   GameStateV5LegacyMusic,
   GameStateV6,
+  GameStateV7,
   GameTransition,
   Inventory,
   ItemId,
@@ -175,9 +183,13 @@ export type {
   RealityState,
   RealityStateV4,
   RealityStateV6,
+  RealityStateV7,
   RealityStay,
   StreamHistory,
+  StreamHistoryV6,
   StreamRoundRecord,
+  StreamSessionOutcome,
+  StreamSessionRecord,
   TodoItem,
   VitalityEffect,
   WorldDimension,

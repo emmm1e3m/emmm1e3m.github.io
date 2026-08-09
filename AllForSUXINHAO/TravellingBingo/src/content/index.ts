@@ -6,6 +6,7 @@ export {
   type CollectionProgress,
   type CollectionProgressGroup,
   type ContentCatalog,
+  type RecordPlayerVideo,
 } from './catalog'
 export {
   ContentCatalogLoadError,

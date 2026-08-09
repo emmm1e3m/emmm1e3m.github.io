@@ -18,6 +18,7 @@ import {
 } from './migrateGameStateV3'
 import { migrateGameStateV4ToV5 } from './migrateGameStateV4'
 import { gameStateV6Schema, migrateGameStateV5ToV6 } from './migrateGameStateV5'
+import { migrateGameStateV6ToV7 } from './migrateGameStateV6'
 import type { CollectionCatalog, GameStateV1, GameStateV3 } from './types'
 import { MAX_DATE_TIMESTAMP_MS } from './time'
 import { validateImportedGameState } from './validateImportedGameState'
@@ -301,7 +302,7 @@ describe('schemaVersion 3 -> 4 显式迁移', () => {
       expect(v5.activeActivity?.rewardPlan).toEqual(rewardPlan)
       expect(v6.activeActivity?.rewardPlan).toEqual(rewardPlan)
       expect(gameStateV6Schema.safeParse(v6).success).toBe(true)
-      expect(validateImportedGameState(v6, catalog)).toEqual({ ok: true })
+      expect(validateImportedGameState(migrateGameStateV6ToV7(v6), catalog)).toEqual({ ok: true })
     },
   )
 
@@ -349,7 +350,10 @@ describe('schemaVersion 3 -> 4 显式迁移', () => {
     expect(migrated.random.sequences.tasks).toBe(Number.MAX_SAFE_INTEGER)
     expect(gameStateV4Schema.safeParse(migrated).success).toBe(true)
     expect(
-      validateImportedGameState(migrateGameStateV5ToV6(migrateGameStateV4ToV5(migrated)), catalog),
+      validateImportedGameState(
+        migrateGameStateV6ToV7(migrateGameStateV5ToV6(migrateGameStateV4ToV5(migrated))),
+        catalog,
+      ),
     ).toEqual({
       ok: true,
     })

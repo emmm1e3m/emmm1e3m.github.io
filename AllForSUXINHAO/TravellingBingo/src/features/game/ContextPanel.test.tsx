@@ -1,17 +1,18 @@
 import { fireEvent, render, screen, waitFor, within } from '@testing-library/react'
 import type { ReactNode } from 'react'
 
-import type { BilibiliVideo, ContentCatalog } from '@/content'
+import type { ContentCatalog, RecordPlayerVideo } from '@/content'
 import { createInitialGameState, type GameAction, type GameState } from '@/domain'
 import { BilibiliPlayerProvider, PersistentPlayerDock } from '@/features/player'
 import type { StreamPlaybackController } from '@/features/reality'
 
 import { ContextPanel } from './ContextPanel'
 
-const recordVideos: readonly BilibiliVideo[] = [
+const recordVideos: readonly RecordPlayerVideo[] = [
   {
     bvid: 'BV1xx411c7mD',
     title: '第一首测试唱片',
+    displayTitle: '第一首测试唱片',
     authorName: '苏新皓',
     authorMid: 1,
     publishedAt: '2026-06-19T12:00:00.000Z',
@@ -24,6 +25,7 @@ const recordVideos: readonly BilibiliVideo[] = [
   {
     bvid: 'BV1yy411c7mE',
     title: '第二首测试唱片',
+    displayTitle: '第二首测试唱片',
     authorName: '苏新皓',
     authorMid: 1,
     publishedAt: '2026-06-20T12:00:00.000Z',
@@ -114,6 +116,9 @@ function idleStreamPlayback(): StreamPlaybackController {
     state: {
       status: 'idle',
       round: 0,
+      sessionRoundsCompleted: 0,
+      openDelayMs: 8_000,
+      stopAfterMs: null,
       mode: null,
       sourceInput: '',
       parsedBvids: [],
@@ -125,6 +130,7 @@ function idleStreamPlayback(): StreamPlaybackController {
     resume: vi.fn(() => true),
     stop: vi.fn(),
     getRemainingMs: vi.fn(() => null),
+    getStopRemainingMs: vi.fn(() => null),
   }
 }
 

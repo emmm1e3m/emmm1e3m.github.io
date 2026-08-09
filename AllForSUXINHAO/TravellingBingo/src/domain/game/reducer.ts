@@ -964,39 +964,91 @@ function resetDebugTuning(state: GameState): GameTransition {
   ])
 }
 
-function completeStreamRound(
-  state: GameState,
-  action: Extract<GameAction, { type: 'reality/stream-round-complete' }>,
-): GameTransition {
-  if (!isValidTimestamp(action.completedAt)) {
-    return fail(state, 'INVALID_TIME', '刷播完成时间无效')
-  }
+function isValidStreamSessionId(sessionId: string): boolean {
+  return sessionId.trim().length > 0 && sessionId.length <= 128
+}
 
-  if (action.completedAt < state.profile.createdAt) {
-    return fail(state, 'INVALID_TIME', '刷播完成时间不能早于建档时间')
+function progressStreamSession(
+  state: GameState,
+  action: Extract<GameAction, { type: 'reality/stream-session-progress' }>,
+): GameTransition {
+  if (!isValidStreamSessionId(action.sessionId)) {
+    return fail(state, 'DUPLICATE_ID', '刷播任务编号无效')
+  }
+  if (
+    !isValidTimestamp(action.startedAt) ||
+    !isValidTimestamp(action.completedAt) ||
+    action.startedAt < state.profile.createdAt ||
+    action.completedAt < action.startedAt
+  ) {
+    return fail(state, 'INVALID_TIME', '刷播任务时间无效')
   }
 
   const history = state.reality.streamHistory
-  const latestRound = history.recentRounds[0]
-  if (latestRound && action.completedAt <= latestRound.completedAt) {
-    return fail(state, 'INVALID_TIME', '刷播完成时间必须晚于上一轮')
-  }
   if (history.completedRounds >= Number.MAX_SAFE_INTEGER) {
     return fail(state, 'INVALID_AMOUNT', '刷播轮次已经达到安全上限')
   }
 
-  const round = incrementSafeCounter(history.completedRounds)
   return succeed({
     ...state,
     reality: {
       ...state.reality,
       streamHistory: {
-        completedRounds: round,
-        recentRounds: [{ round, completedAt: action.completedAt }, ...history.recentRounds].slice(
-          0,
-          10,
-        ),
+        ...history,
+        completedRounds: incrementSafeCounter(history.completedRounds),
       },
+    },
+  })
+}
+
+function endStreamSession(
+  state: GameState,
+  action: Extract<GameAction, { type: 'reality/stream-session-end' }>,
+): GameTransition {
+  if (!isValidStreamSessionId(action.sessionId)) {
+    return fail(state, 'DUPLICATE_ID', '刷播任务编号无效')
+  }
+  if (
+    !isValidTimestamp(action.startedAt) ||
+    !isValidTimestamp(action.endedAt) ||
+    action.startedAt < state.profile.createdAt ||
+    action.endedAt < action.startedAt
+  ) {
+    return fail(state, 'INVALID_TIME', '刷播任务时间无效')
+  }
+  if (!Number.isSafeInteger(action.roundsCompleted) || action.roundsCompleted < 0) {
+    return fail(state, 'INVALID_AMOUNT', '刷播任务轮次无效')
+  }
+
+  const history = state.reality.streamHistory
+  const existing = history.recentSessions.find((session) => session.sessionId === action.sessionId)
+  if (existing) {
+    const isSameRecord =
+      existing.startedAt === action.startedAt &&
+      existing.endedAt === action.endedAt &&
+      existing.roundsCompleted === action.roundsCompleted &&
+      existing.outcome === action.outcome
+    return isSameRecord ? succeed(state) : fail(state, 'DUPLICATE_ID', '已经结束的刷播任务不能改写')
+  }
+
+  const session = {
+    sessionId: action.sessionId,
+    startedAt: action.startedAt,
+    endedAt: action.endedAt,
+    roundsCompleted: action.roundsCompleted,
+    outcome: action.outcome,
+  }
+  const recentSessions = [session, ...history.recentSessions].slice(0, 10)
+  const recordedRounds = recentSessions.reduce((total, record) => total + record.roundsCompleted, 0)
+  if (recordedRounds > history.completedRounds) {
+    return fail(state, 'INVALID_AMOUNT', '刷播任务记录的轮次超过累计完成轮次')
+  }
+
+  return succeed({
+    ...state,
+    reality: {
+      ...state.reality,
+      streamHistory: { ...history, recentSessions },
     },
   })
 }
@@ -1029,8 +1081,10 @@ function reducePreparedGame(
       return encouragePet(state, action)
     case 'task/event':
       return progressTask(state, action)
-    case 'reality/stream-round-complete':
-      return completeStreamRound(state, action)
+    case 'reality/stream-session-progress':
+      return progressStreamSession(state, action)
+    case 'reality/stream-session-end':
+      return endStreamSession(state, action)
     case 'debug/apples-adjust':
       return adjustDebugApples(state, action)
     case 'debug/item-adjust':

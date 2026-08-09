@@ -12,7 +12,7 @@ import { PwaUpdatePrompt, type InstallPwaUpdate } from '@/components/PwaUpdatePr
 import { loadContentCatalog, type ContentCatalog } from '@/content'
 import {
   createInitialGameState,
-  migrateStoredGameStateToV6,
+  migrateStoredGameStateToV7,
   normalizeImportedGameBalance,
   reconcileGameStateWithCatalog,
   validateImportedGameState,
@@ -40,7 +40,7 @@ import {
   type BingoSaveSummary,
 } from '@/infrastructure/persistence'
 
-const GAME_VERSION = '0.6.0-demo.1'
+const GAME_VERSION = '0.7.0-demo.1'
 const DEBUG_PASSWORD = 'TravellingBingo'
 const PERIODIC_BACKUP_INTERVAL_MS = 3 * 24 * 60 * 60 * 1_000
 
@@ -140,7 +140,7 @@ function prepareStoredGame(
   catalog: CollectionCatalog,
   now: number,
 ): GameState {
-  const migrated = migrateStoredGameStateToV6(stored, { now, catalog })
+  const migrated = migrateStoredGameStateToV7(stored, { now, catalog })
   const normalized = normalizeImportedGameBalance(migrated)
   const reconciled = reconcileGameStateWithCatalog(normalized, catalog)
   const validation = validateImportedGameState(reconciled, catalog)

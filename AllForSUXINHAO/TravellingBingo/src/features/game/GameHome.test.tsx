@@ -1248,7 +1248,7 @@ describe('V4 壳层接线', () => {
     const focusCatalog: ContentCatalog = {
       ...catalog,
       videosByBvid: { [albumVideo.bvid]: albumVideo },
-      recordPlayerVideos: [albumVideo],
+      recordPlayerVideos: [{ ...albumVideo, displayTitle: albumVideo.title }],
     }
     const focusGame: GameState = {
       ...base,

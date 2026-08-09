@@ -78,13 +78,10 @@ describe('WorkPanel', () => {
 
     fireEvent.click(screen.getByRole('button', { name: '选择陪伴明信片' }))
     fireEvent.click(screen.getByRole('radio', { name: /晚霞明信片/u }))
-    expect(actions.onBackgroundChange).not.toHaveBeenCalled()
-    fireEvent.click(screen.getByRole('button', { name: '确认明信片' }))
     expect(actions.onBackgroundChange).toHaveBeenCalledWith('postcard-2')
 
     fireEvent.click(screen.getByRole('button', { name: '选择陪伴明信片' }))
     fireEvent.click(screen.getByRole('radio', { name: /默认纸张/u }))
-    fireEvent.click(screen.getByRole('button', { name: '确认明信片' }))
     expect(actions.onBackgroundChange).toHaveBeenCalledWith(null)
 
     expect(container.querySelector('select')).toBeNull()

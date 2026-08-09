@@ -13,6 +13,7 @@ import {
 import { migrateGameStateV3ToV4 } from './migrateGameStateV3'
 import { migrateGameStateV4ToV5 } from './migrateGameStateV4'
 import { migrateGameStateV5ToV6 } from './migrateGameStateV5'
+import { migrateGameStateV6ToV7 } from './migrateGameStateV6'
 import { reduceGame } from './reducer'
 import type { CollectionCatalog, GameStateV2, GameTransition } from './types'
 import { MAX_DATE_TIMESTAMP_MS } from './time'
@@ -137,8 +138,10 @@ describe('schemaVersion 2 -> 3 显式迁移', () => {
       preferences: { travel: false, computer: false, music: false },
     })
 
-    const migratedV5 = migrateGameStateV5ToV6(
-      migrateGameStateV4ToV5(migrateGameStateV3ToV4(migrated, { now: 20_000, catalog })),
+    const migratedV5 = migrateGameStateV6ToV7(
+      migrateGameStateV5ToV6(
+        migrateGameStateV4ToV5(migrateGameStateV3ToV4(migrated, { now: 20_000, catalog })),
+      ),
     )
     const before = structuredClone(migratedV5)
     const result = reduceGame(
@@ -153,8 +156,10 @@ describe('schemaVersion 2 -> 3 显式迁移', () => {
   it('进行中活动保持绝对时间和 legacy 双结果，原 endsAt 到点即可领取', () => {
     const migrated = migrateGameStateV2ToV3(v2Fixture(), { now: 12_000, catalog })
     const activity = migrated.activeActivity!
-    const migratedV5 = migrateGameStateV5ToV6(
-      migrateGameStateV4ToV5(migrateGameStateV3ToV4(migrated, { now: 12_000, catalog })),
+    const migratedV5 = migrateGameStateV6ToV7(
+      migrateGameStateV5ToV6(
+        migrateGameStateV4ToV5(migrateGameStateV3ToV4(migrated, { now: 12_000, catalog })),
+      ),
     )
 
     expect(activity).toMatchObject({

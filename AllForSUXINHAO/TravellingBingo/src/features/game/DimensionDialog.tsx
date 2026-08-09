@@ -18,7 +18,7 @@ const DIALOG_COPY: Record<
   'confirm-enter': {
     title: '进入现实维度？',
     description:
-      '这里可以安排待办、使用完整的工作与休息苹果钟，也可以查看刷播与冲热。返回饼屋时会结算这次带回的苹果。',
+      '这里可以安排待办、使用完整的工作与休息苹果钟，也可以进行真正的刷播和冲热。返回饼屋时会结算这次带回的苹果。',
     confirmLabel: '进入现实维度',
   },
   'confirm-leave': {

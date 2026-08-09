@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 
-import type { BilibiliVideoMetadata, ContentCatalog } from '@/content'
+import type { ContentCatalog, RecordPlayerVideo } from '@/content'
 import {
   deriveActivityTiming,
   type ActivityKind,
@@ -27,6 +27,8 @@ import {
   buildRealityTodoViews,
   buildUnlockedPostcardBackgrounds,
   type RealityNotificationPermission,
+  type StreamRoundCompletion,
+  type StreamSessionEnd,
   useStreamPlayback,
 } from '@/features/reality'
 import { RewardDialog } from '@/features/rewards/RewardDialog'
@@ -111,10 +113,11 @@ interface GameHomeProps {
   restTransitionKey?: number
 }
 
-function toPlayerTrack(video: BilibiliVideoMetadata): BilibiliPlayerTrack {
+function toPlayerTrack(video: RecordPlayerVideo): BilibiliPlayerTrack {
   return {
     bvid: video.bvid,
     title: video.title,
+    displayTitle: video.displayTitle,
     sourceUrl: video.sourceUrl,
     authorName: video.authorName,
     publishedAt: video.publishedAt,
@@ -254,8 +257,14 @@ export function GameHome({
     [catalog.recordPlayerVideos],
   )
   const handleStreamRoundCompleted = useCallback(
-    ({ completedAt }: { completedAt: number }) => {
-      onAction({ type: 'reality/stream-round-complete', completedAt })
+    (event: StreamRoundCompletion) => {
+      onAction({ type: 'reality/stream-session-progress', ...event })
+    },
+    [onAction],
+  )
+  const handleStreamSessionEnded = useCallback(
+    (event: StreamSessionEnd) => {
+      onAction({ type: 'reality/stream-session-end', ...event })
     },
     [onAction],
   )
@@ -263,6 +272,7 @@ export function GameHome({
     completedRounds: game.reality.streamHistory.completedRounds,
     roundDurationMs: streamRoundDurationMs,
     onRoundCompleted: handleStreamRoundCompleted,
+    onSessionEnded: handleStreamSessionEnded,
   })
   const handlePetCenterChange = useCallback((point: RoomPixelPoint) => {
     visiblePetCenterRef.current = point

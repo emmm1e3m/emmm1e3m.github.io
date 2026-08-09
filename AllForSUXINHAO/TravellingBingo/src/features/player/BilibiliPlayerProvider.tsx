@@ -3,7 +3,12 @@ import { createPortal } from 'react-dom'
 
 import type { GameAction, MusicPlayerState } from '@/domain/game/types'
 
-import { adjacentTrackIndex, buildBilibiliPlayerUrl, endedTrackIndex } from './playerModel'
+import {
+  adjacentTrackIndex,
+  buildBilibiliPlayerUrl,
+  displayTitleForTrack,
+  endedTrackIndex,
+} from './playerModel'
 import {
   createInitialBilibiliPlayerRuntimeState,
   reduceBilibiliPlayerRuntimeState,
@@ -175,8 +180,8 @@ export function PersistentPlayerDock({
       data-modal-focus-peer="persistent-player"
     >
       <div className="persistent-bilibili-player__bar">
-        <p>
-          <strong>{request.track.title}</strong>
+        <p title={request.track.title} aria-label={request.track.title}>
+          <strong>{displayTitleForTrack(request.track)}</strong>
         </p>
         <button
           type="button"

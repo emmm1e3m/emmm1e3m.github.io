@@ -66,7 +66,7 @@ function contentCatalog(
     friends,
     friendById: Object.fromEntries(friends.map((friend) => [friend.id, friend])),
     videosByBvid: Object.fromEntries(videos.map((video) => [video.bvid, video])),
-    recordPlayerVideos: videos,
+    recordPlayerVideos: videos.map((video) => ({ ...video, displayTitle: video.title })),
   }
 }
 

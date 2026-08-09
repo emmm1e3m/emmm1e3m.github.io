@@ -12,9 +12,10 @@ type MusicAction = Extract<GameAction, { type: `music/${string}` }>
 
 const tracks: readonly BilibiliPlayerTrack[] = [
   {
-    bvid: 'BV1xx411c7mD',
-    title: '全站第一一号',
-    sourceUrl: 'https://www.bilibili.com/video/BV1xx411c7mD/',
+    bvid: 'BV1cfCSYfEo3',
+    title: '【登陆少年】苏新皓《Dynamite》Cover',
+    displayTitle: 'Dynamite Cover',
+    sourceUrl: 'https://www.bilibili.com/video/BV1cfCSYfEo3/',
     durationSeconds: 183,
   },
   {
@@ -65,7 +66,7 @@ describe('BilibiliPlaylistPanel', () => {
     fireEvent.click(screen.getByRole('button', { name: '单曲' }))
     expect(screen.getByRole('button', { name: '单曲' })).toHaveAttribute('aria-pressed', 'true')
 
-    fireEvent.click(screen.getByRole('button', { name: '全站第一一号' }))
+    fireEvent.click(screen.getByRole('button', { name: tracks[0]!.title }))
     fireEvent.click(screen.getByRole('button', { name: '下一首' }))
     expect(onTrackOpened).toHaveBeenNthCalledWith(1, tracks[0]!.bvid)
     expect(onTrackOpened).toHaveBeenNthCalledWith(2, tracks[1]!.bvid)
@@ -80,10 +81,10 @@ describe('BilibiliPlaylistPanel', () => {
     const transport = screen.getByRole('group', { name: '上下首' })
     expect(transport).toContainElement(screen.getByRole('button', { name: '上一首' }))
     expect(transport).toContainElement(screen.getByRole('button', { name: '下一首' }))
-    expect(screen.getByRole('button', { name: tracks[0]!.title })).toHaveAttribute(
-      'title',
-      tracks[0]!.title,
-    )
+    const firstTrack = screen.getByRole('button', { name: tracks[0]!.title })
+    expect(firstTrack).toHaveAttribute('title', tracks[0]!.title)
+    expect(firstTrack).toHaveTextContent('Dynamite Cover')
+    expect(firstTrack.textContent).toBe('Dynamite Cover')
   })
 
   it('外层不裁切按钮向外延伸的全局焦点环', () => {

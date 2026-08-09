@@ -54,6 +54,9 @@ function idleStreamPlayback(): StreamPlaybackController {
     state: {
       status: 'idle',
       round: 0,
+      sessionRoundsCompleted: 0,
+      openDelayMs: 8_000,
+      stopAfterMs: null,
       mode: null,
       sourceInput: '',
       parsedBvids: [],
@@ -65,6 +68,7 @@ function idleStreamPlayback(): StreamPlaybackController {
     resume: vi.fn(() => true),
     stop: vi.fn(),
     getRemainingMs: vi.fn(() => null),
+    getStopRemainingMs: vi.fn(() => null),
   }
 }
 

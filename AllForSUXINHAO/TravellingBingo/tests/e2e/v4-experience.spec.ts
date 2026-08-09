@@ -14,11 +14,11 @@ import {
   startGame,
 } from './support/game'
 
-test.describe('V6 房间契约', () => {
+test.describe('V7 房间契约', () => {
   test.beforeEach(({ browserName }, testInfo) => {
     test.skip(
       browserName !== 'chromium' || testInfo.project.name !== 'chromium',
-      'V6 桌面主流程只在 Chromium 验证',
+      'V7 桌面主流程只在 Chromium 验证',
     )
   })
 
@@ -142,7 +142,7 @@ test.describe('V6 房间契约', () => {
     const streamPanel = page.locator('.context-panel--reality-stream')
     await expect(streamPanel.getByRole('heading', { name: '视频刷播' })).toBeVisible()
     await expect(streamPanel).toContainText(
-      '输入视频BV号或链接列表，可以包含自测视频。并允许网站弹出窗口的权限。',
+      '输入视频BV号或链接列表，可以包含自测视频，并允许网站弹出窗口的权限。',
     )
 
     await room.locator('[data-hotspot="二楼电脑·冲热"]').click()
@@ -157,18 +157,18 @@ test.describe('V6 房间契约', () => {
     await room.locator('[data-hotspot="一楼电脑"]').click()
     const workPanel = page.locator('.context-panel--reality-work')
     await expect(workPanel.getByRole('heading', { name: '苹果钟与待办' })).toBeVisible()
-    await workPanel.getByLabel('新待办').fill('完成 V6 验收')
+    await workPanel.getByLabel('新待办').fill('完成 V7 验收')
     await workPanel.getByRole('button', { name: '添加' }).click()
     const todo = workPanel.getByRole('list', { name: '现实生活待办' }).getByRole('listitem')
-    await expect(todo).toContainText('完成 V6 验收')
-    await todo.getByRole('checkbox', { name: '标记为已完成：完成 V6 验收' }).check()
+    await expect(todo).toContainText('完成 V7 验收')
+    await todo.getByRole('checkbox', { name: '标记为已完成：完成 V7 验收' }).check()
     await todo.getByRole('button', { name: '编辑' }).click()
-    await todo.getByLabel('待办标题').fill('完成 V6 桌面验收')
+    await todo.getByLabel('待办标题').fill('完成 V7 桌面验收')
     await todo.getByRole('button', { name: '保存' }).click()
 
     await room.locator('[data-hotspot="电脑"]').click()
     await room.locator('[data-hotspot="一楼电脑"]').click()
-    await expect(page.getByRole('list', { name: '现实生活待办' })).toContainText('完成 V6 桌面验收')
+    await expect(page.getByRole('list', { name: '现实生活待办' })).toContainText('完成 V7 桌面验收')
     await saveScreenshot(page, 'reality-work-todos.png', false)
 
     await page.clock.fastForward(10 * 60_000 + 1_000)

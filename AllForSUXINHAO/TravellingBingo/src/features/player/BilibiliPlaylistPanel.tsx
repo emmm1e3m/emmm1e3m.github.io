@@ -1,5 +1,5 @@
 import { useBilibiliPlayerController } from './playerContext'
-import type { BilibiliPlaybackMode } from './playerModel'
+import { displayTitleForTrack, type BilibiliPlaybackMode } from './playerModel'
 
 import './BilibiliPlaylistPanel.css'
 
@@ -69,11 +69,12 @@ export function BilibiliPlaylistPanel({
             <li key={track.bvid}>
               <button
                 type="button"
+                aria-label={track.title}
                 aria-pressed={controller.state.selectedBvid === track.bvid}
                 title={track.title}
                 onClick={() => reportRequest(controller.selectTrack(track.bvid))}
               >
-                <strong>{track.title}</strong>
+                <strong>{displayTitleForTrack(track)}</strong>
               </button>
             </li>
           ))}

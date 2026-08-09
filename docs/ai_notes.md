@@ -3,26 +3,26 @@
 ## 稳定项目边界
 
 - 游戏路径固定为 `/AllForSUXINHAO/TravellingBingo/`；仓库根首页只做入口。
-- 当前业务状态为 `GameStateV6`，`schemaVersion: 6`；新导出封套中的 `gameVersion` 为 `0.6.0-demo.1`。
+- 当前业务状态为 `GameStateV7`，`schemaVersion: 7`；新导出封套中的 `gameVersion` 为 `0.7.0-demo.1`。
 - `localStorage` 单槽缓存是日常主存档，`.bingo` 是自动备份与跨浏览器导入格式。收藏、好友和视频目录是当前版本输入，不复制进存档。
 - 标题页有缓存时显示“继续”，并始终提供“全新旅程”“本地存档”。全新旅程或本地导入覆盖缓存前先备份旧档；首次获得新的全站第一或认识新朋友形成关键节点时、距离上次周期备份满三天时、检测到网页更新时也自动请求下载当前档。
 - 运行时不抓取 B 站收藏夹或微博页面；BVID、作者、发布时间、海报映射和唱片机内置曲目来自构建期静态目录。
 
-## V6 状态与迁移不变量
+## V7 状态与迁移不变量
 
 应用目录 `AllForSUXINHAO/TravellingBingo/` 下的关键路径：
 
-- `src/domain/game/types.ts`：`GameStateV1`–`GameStateV6`、动作与 effect。
-- `src/domain/game/migrateGameStateV1.ts`–`migrateGameStateV5.ts`：逐代迁移；冻结的 V1–V5 schema 不回写新字段。
-- `src/app/gameStateSchema.ts`：严格历史 schema 联合与 V6 导出 schema。
+- `src/domain/game/types.ts`：`GameStateV1`–`GameStateV7`、动作与 effect。
+- `src/domain/game/migrateGameStateV1.ts`–`migrateGameStateV6.ts`：逐代迁移；冻结的 V1–V6 schema 不回写新字段。
+- `src/app/gameStateSchema.ts`：严格历史 schema 联合与 V7 导出 schema。
 - `src/infrastructure/persistence/browserGameCache.ts`：浏览器缓存封套与单槽读写。
 - `src/app/App.tsx`：三入口、缓存同步、自动备份、通知、更新检查和守候音频接线。
 
 导入顺序固定为：
 
 1. 按文件原始 payload 校验 SHA-256 摘要。
-2. 用对应的严格 V1–V6 schema 解析。
-3. 显式迁移至 V6。
+2. 用对应的严格 V1–V7 schema 解析。
+3. 显式迁移至 V7。
 4. 规范未来活动使用的平衡配置。
 5. 用当前目录协调可安全修复的旧引用。
 6. 执行最终语义校验后才进入旅程。
@@ -39,7 +39,7 @@
 - `reconcileTaskBoardAvailability` 仅在任务板结构、触发组、进度、key 与一次性记录均可安全验证时工作，只替换未完成且已失去前置条件的槽位。替补由持久 seed/sequence 确定，沿用原 `assignedAt`；完成任务和仍可达任务保留原对象、进度与奖励快照。畸形板原样进入最终校验并被拒绝。
 - `prepareStoredGame` 为本地文件与浏览器缓存执行“迁移 → 平衡规范 → 目录/任务协调 → 最终校验”；DEBUG 单项移除收藏与“清空收集”在 reducer 内调用同一协调。任何路径都不能用修复掩盖非法任务板。
 
-V5/V6 相对旧版新增或调整的主要持久字段：
+V5–V7 相对旧版新增或调整的主要持久字段：
 
 ```text
 world: game | reality
@@ -47,10 +47,10 @@ player.effects.vitality
 reality.pomodoro.session.status / focusEndsAt / cycleEndsAt
 tasks.completedAt
 musicPlayer.currentBvid / currentIndex / loopMode
-reality.streamHistory.completedRounds / recentRounds[0..9]
+reality.streamHistory.completedRounds / recentSessions[0..9]
 ```
 
-V1–V5 迁移到 V6 时初始化空刷播历史。V6 的 `recentRounds` 必须按 `round` 从大到小连续保存，长度为 `min(completedRounds, 10)`；`completedAt` 只保存用于显示的完成回调时间，不参与排序。
+V1–V5 先迁到 V6 并初始化空刷播历史，再迁到 V7。V6 的每条 `recentRounds` 独立转为一条 `legacy-round-*` 会话，不按时间阈值猜测合并。V7 每轮 progress 只增加累计轮次；session end 才追加最近任务，重复的完全相同 end 幂等，冲突内容拒绝。
 
 当前面板、弹窗焦点、琴键按下状态、奖励弹窗和布局动画仍是 UI 瞬时状态，不写入存档。
 
@@ -133,9 +133,9 @@ public/assets/game/chan-chan-house-v2-1098.webp
 - `browserPlatform.ts` 只用 `(hover: hover) and (pointer: fine)` 表达 PC 主输入能力，不用 UA 名单或窗口宽度；进入前与确认时各检查一次。非 PC 恢复 reality 存档时只显示显式返回与结算入口。
 - 二楼现实入口拆分为“刷播”和“冲热（开发中）”；冲热页只保留居中的字母建设站入口。一楼“工作”先显示待办，再显示专门的明信片选择器。
 - `features/reality/stream/parser.ts` 只本地解析裸 BV 或含单个 BV 的 `bilibili.com` 长链接；拒绝需要联网展开的短链、非 B 站链接和一行多个 BV，不调用 API 或跨域代理。
-- `useStreamPlayback.ts` 只用顶层 `window.open` 打开标准视频页。弹窗模式同步开完，新标签模式在每次成功打开后延迟 8 秒；最后一个页面实际打开后签发一次当前轮时长的 `setTimeout`。
-- 后台冻结可能延迟回调；页面恢复后最多推进当前轮，不补开多轮。`focus` / `pageshow` / `visibilitychange` 负责恢复时协调；弹窗拦截不记历史，停止/卸载会清理定时器并关闭已持有窗口。
-- `Date.now()` 只在完成回调中写入用于显示的 `completedAt`。reducer 按递增 `round` 前插并截取 10 条，历史顺序不依赖完成时间。
+- `useStreamPlayback.ts` 只用顶层 `window.open` 打开标准视频页。弹窗和标签都按会话快照的间隔依次打开，默认 8 秒、可调 1–60 秒；最后一个页面实际打开后等待当前轮快照时长。
+- 会话可快照 0–24 小时的定时停止，0/null 为不限时。打开步骤、轮次截止和会话截止共用一个一次性 timer；后台恢复最多推进当前到期步骤，不补开多轮。`focus` / `pageshow` / `visibilitychange` 负责恢复协调；停止/卸载会清理 timer 和窗口。
+- 每轮完成派发 `reality/stream-session-progress`，只增加累计轮次；主动停止或限时完成派发一次 `reality/stream-session-end`，把 session 起止、总轮数与结果作为最近 10 次任务中的一条。0 轮也记录；运行参数不持久化。
 - 默认刷播轮次为 310 秒。DEBUG 通过页面运行态向 `useStreamPlayback({ roundDurationMs })` 提供 1–3600 秒覆盖值；当前轮在开始时快照时长，修改只影响下一轮或重新开始，且不写入存档。
 - 苹果钟预设为 25+5、50+10、90+15 分钟。全屏层锁定启动时的明信片并以 `cover` 铺满背景、允许裁切，与可操作的游戏播放器控件、待办和饼狗共同组成焦点 UI。
 - `clock/tick` 按绝对时间切换 focus → break → completed，并签发稳定 `notificationId` 的 effect；只在 completed 时推进陪伴日。
@@ -146,7 +146,7 @@ public/assets/game/chan-chan-house-v2-1098.webp
 - “检查更新”调用当前 Service Worker registration 的 `update()`。无 Service Worker、未注册或网络失败时显示对应状态；检查本身不强制安装更新。
 - `needRefresh` 首次表明检测到新版本时自动下载当前缓存档；随后安装该版本前再次调用同一幂等备份入口，避免无备份刷新。
 - 周期备份以 `lastPeriodicBackupRequestedAt ?? firstCachedAt` 为基准判断三天间隔；成功请求后写回 `lastPeriodicBackupRequestedAt`，避免重复下载。
-- `prepareBrowserCache` 只要 payload 迁移/规范/协调成新对象或 `gameVersion` 过旧，就用 `updateBrowserGameCache` 同步 V6 payload、`0.6.0-demo.1` 与 `updatedAt`；保留 `saveId`、`firstCachedAt`、`lastPeriodicBackupRequestedAt` 和外层 `cacheVersion: 1`。
+- `prepareBrowserCache` 只要 payload 迁移/规范/协调成新对象或 `gameVersion` 过旧，就用 `updateBrowserGameCache` 同步 V7 payload、`0.7.0-demo.1` 与 `updatedAt`；保留 `saveId`、`firstCachedAt`、`lastPeriodicBackupRequestedAt` 和外层 `cacheVersion: 1`。
 - 守候音频只在三个旅程入口的明确用户手势中创建并复用，运行期保持开启；状态栏不显示开关。它不能绕过浏览器或操作系统的后台冻结策略。
 - GitHub Pages 是静态托管，浏览器不能伪造 B 站 Referer；B 站 API、DASH/MP4 流也不向当前 Pages Origin 提供可直接播放的跨域响应。因此不固化会过期的签名流地址，也不引入未知第三方代理，继续使用官方 iframe。
 - 现实刷播与收藏/唱片机播放器是两条独立边界：前者直接打开标准 B 站顶层页面且不读取页面内容，后者继续使用官方 iframe；两者都不使用跨域代理或运行时 B 站 API。
@@ -176,4 +176,4 @@ npm run site:verify
 npm run test:e2e
 ```
 
-`npm run verify` 不包含 Playwright；浏览器 E2E 必须单独执行。测试播放器时只能断言请求 URL、iframe 生命周期、任务事件和持久状态，不能断言跨域 iframe 的真实播放状态。现实刷播 E2E 应拦截标准视频页，验证两种开页方式、310 秒单次定时、冻结恢复当前轮、DEBUG 下一轮时长覆盖、停止清理、无代理/API 请求与 V6 最近 10 轮历史。
+`npm run verify` 不包含 Playwright；浏览器 E2E 必须单独执行。测试播放器时只能断言请求 URL、iframe 生命周期、任务事件和持久状态，不能断言跨域 iframe 的真实播放状态。现实刷播 E2E 应拦截标准视频页，验证两种方式依次开页、可调间隔、310 秒轮次、任务定时停止、冻结恢复当前步骤、DEBUG 下一轮时长覆盖、停止清理、无代理/API 请求与 V7 最近 10 次任务历史。

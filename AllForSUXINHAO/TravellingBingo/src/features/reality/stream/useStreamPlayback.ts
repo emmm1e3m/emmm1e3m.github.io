@@ -8,15 +8,34 @@ import {
 } from './parser'
 
 export type StreamPlaybackMode = 'popup' | 'tabs'
-export type StreamPlaybackStatus = 'idle' | 'opening' | 'waiting' | 'blocked' | 'stopped'
+export type StreamPlaybackStatus =
+  'idle' | 'opening' | 'waiting' | 'blocked' | 'stopped' | 'completed'
 
 export interface StreamRoundCompletion {
+  readonly sessionId: string
+  readonly startedAt: number
   readonly completedAt: number
+}
+
+export interface StreamSessionEnd {
+  readonly sessionId: string
+  readonly startedAt: number
+  readonly endedAt: number
+  readonly roundsCompleted: number
+  readonly outcome: 'completed' | 'stopped'
+}
+
+export interface StreamStartSettings {
+  readonly openDelayMs?: number
+  readonly stopAfterMs?: number | null
 }
 
 export interface StreamPlaybackState {
   readonly status: StreamPlaybackStatus
   readonly round: number
+  readonly sessionRoundsCompleted: number
+  readonly openDelayMs: number
+  readonly stopAfterMs: number | null
   readonly mode: StreamPlaybackMode | null
   readonly sourceInput: string
   readonly parsedBvids: readonly string[]
@@ -29,27 +48,42 @@ export interface UseStreamPlaybackOptions {
   readonly completedRounds?: number
   readonly roundDurationMs?: number
   readonly onRoundCompleted?: (event: StreamRoundCompletion) => void
+  readonly onSessionEnded?: (event: StreamSessionEnd) => void
 }
 
 export interface StreamPlaybackController {
   readonly state: StreamPlaybackState
-  readonly start: (input: string, mode: StreamPlaybackMode) => StreamParseResult
+  readonly start: (
+    input: string,
+    mode: StreamPlaybackMode,
+    settings?: StreamStartSettings,
+  ) => StreamParseResult
   readonly resume: () => boolean
   readonly stop: () => void
   readonly getRemainingMs: () => number | null
+  readonly getStopRemainingMs: () => number | null
 }
 
-export const STREAM_TAB_OPEN_DELAY_MS = 8_000
+export const STREAM_OPEN_DELAY_MS = 8_000
 export const STREAM_ROUND_DURATION_MS = 310_000
+export const STREAM_MIN_OPEN_DELAY_MS = 1_000
+export const STREAM_MAX_OPEN_DELAY_MS = 60_000
+export const STREAM_MAX_SESSION_DURATION_MS = 24 * 60 * 60 * 1_000
 
 const POPUP_FEATURES = 'popup=yes,width=960,height=720'
 
 interface StreamRuntime {
   status: StreamPlaybackStatus
   round: number
+  sessionId: string | null
+  sessionStartedAt: number | null
+  sessionRoundsCompleted: number
+  sessionStopAt: number | null
+  sessionStopAfterMs: number | null
   mode: StreamPlaybackMode | null
   sourceInput: string
   bvids: string[]
+  openDelayMs: number
   roundDurationMs: number
   nextActionAt: number | null
   nextIndex: number
@@ -62,9 +96,15 @@ function createRuntime(): StreamRuntime {
   return {
     status: 'idle',
     round: 0,
+    sessionId: null,
+    sessionStartedAt: null,
+    sessionRoundsCompleted: 0,
+    sessionStopAt: null,
+    sessionStopAfterMs: null,
     mode: null,
     sourceInput: '',
     bvids: [],
+    openDelayMs: STREAM_OPEN_DELAY_MS,
     roundDurationMs: STREAM_ROUND_DURATION_MS,
     nextActionAt: null,
     nextIndex: 0,
@@ -74,15 +114,18 @@ function createRuntime(): StreamRuntime {
   }
 }
 
-function remainingUntilNextAction(runtime: StreamRuntime) {
-  if (runtime.nextActionAt === null) return null
-  return Math.max(0, runtime.nextActionAt - globalThis.performance.now())
+function remainingUntil(deadline: number | null) {
+  if (deadline === null) return null
+  return Math.max(0, deadline - globalThis.performance.now())
 }
 
 function toState(runtime: StreamRuntime): StreamPlaybackState {
   return {
     status: runtime.status,
     round: runtime.round,
+    sessionRoundsCompleted: runtime.sessionRoundsCompleted,
+    openDelayMs: runtime.openDelayMs,
+    stopAfterMs: runtime.sessionStopAfterMs,
     mode: runtime.mode,
     sourceInput: runtime.sourceInput,
     parsedBvids: [...runtime.bvids],
@@ -103,27 +146,60 @@ function normalizeRoundDuration(value: number) {
   return value
 }
 
+function normalizeOpenDelay(value: number | undefined) {
+  if (value === undefined) return STREAM_OPEN_DELAY_MS
+  if (
+    !Number.isSafeInteger(value) ||
+    value < STREAM_MIN_OPEN_DELAY_MS ||
+    value > STREAM_MAX_OPEN_DELAY_MS
+  ) {
+    throw new RangeError('刷播打开间隔必须在 1–60 秒之间')
+  }
+  return value
+}
+
+function normalizeStopAfter(value: number | null | undefined) {
+  if (value === null || value === undefined || value === 0) return null
+  if (!Number.isFinite(value) || value < 0 || value > STREAM_MAX_SESSION_DURATION_MS) {
+    throw new RangeError('刷播定时停止必须在 0 至 24 小时之间')
+  }
+  return value
+}
+
+let sessionSequence = 0
+
+function createSessionId() {
+  sessionSequence += 1
+  return `stream-${Date.now().toString(36)}-${sessionSequence.toString(36)}`
+}
+
 /**
- * 只通过顶层窗口打开公开播放页。计时以绝对截止时刻为准，页面恢复时最多推进一步，
- * 不会为了补偿后台冻结而连续创建多轮窗口。
+ * 只通过顶层窗口打开公开播放页。打开视频、结束轮次与定时停止共用一个一次性计时器；
+ * 页面恢复时只处理当前已经到期的步骤，不追赶已经错过的多轮。
  */
 export function useStreamPlayback({
   completedRounds = 0,
   roundDurationMs = STREAM_ROUND_DURATION_MS,
   onRoundCompleted,
+  onSessionEnded,
 }: UseStreamPlaybackOptions = {}): StreamPlaybackController {
   const runtimeRef = useRef<StreamRuntime>(createRuntime())
   const timerRef = useRef<ReturnType<typeof globalThis.setTimeout> | null>(null)
   const timerGenerationRef = useRef(0)
-  const callbackRef = useRef(onRoundCompleted)
+  const roundCallbackRef = useRef(onRoundCompleted)
+  const sessionCallbackRef = useRef(onSessionEnded)
   const completedRoundsRef = useRef(completedRounds)
   const roundDurationRef = useRef(normalizeRoundDuration(roundDurationMs))
   const [state, setState] = useState<StreamPlaybackState>(() => toState(createRuntime()))
   const reconcileRef = useRef<() => void>(() => undefined)
 
   useEffect(() => {
-    callbackRef.current = onRoundCompleted
+    roundCallbackRef.current = onRoundCompleted
   }, [onRoundCompleted])
+
+  useEffect(() => {
+    sessionCallbackRef.current = onSessionEnded
+  }, [onSessionEnded])
 
   useEffect(() => {
     completedRoundsRef.current = normalizeCounter(completedRounds)
@@ -163,12 +239,53 @@ export function useStreamPlayback({
     [clearTimer],
   )
 
-  const ensureScheduledAt = useCallback(
-    (deadline: number) => {
-      if (timerRef.current !== null) return
-      scheduleAt(deadline)
+  const scheduleNextDeadline = useCallback(() => {
+    const runtime = runtimeRef.current
+    const deadlines = [runtime.nextActionAt, runtime.sessionStopAt].filter(
+      (deadline): deadline is number => deadline !== null,
+    )
+    if (deadlines.length === 0) {
+      clearTimer()
+      return
+    }
+    scheduleAt(Math.min(...deadlines))
+  }, [clearTimer, scheduleAt])
+
+  const ensureNextDeadlineScheduled = useCallback(() => {
+    if (timerRef.current !== null) return
+    scheduleNextDeadline()
+  }, [scheduleNextDeadline])
+
+  const finishSession = useCallback(
+    (outcome: StreamSessionEnd['outcome']) => {
+      const runtime = runtimeRef.current
+      const sessionId = runtime.sessionId
+      const startedAt = runtime.sessionStartedAt
+      const roundsCompleted = runtime.sessionRoundsCompleted
+
+      clearTimer()
+      closeHandles()
+      runtime.status = outcome === 'completed' ? 'completed' : 'stopped'
+      runtime.nextActionAt = null
+      runtime.sessionStopAt = null
+      runtime.nextIndex = 0
+      runtime.message = outcome === 'completed' ? '刷播已按时完成' : '刷播已停止'
+      runtime.errors = []
+      runtime.sessionId = null
+      runtime.sessionStartedAt = null
+      publish()
+
+      if (sessionId !== null && startedAt !== null) {
+        sessionCallbackRef.current?.({
+          sessionId,
+          startedAt,
+          endedAt: Date.now(),
+          roundsCompleted,
+          outcome,
+        })
+      }
     },
-    [scheduleAt],
+    [clearTimer, closeHandles, publish],
   )
 
   const enterBlocked = useCallback(() => {
@@ -179,14 +296,19 @@ export function useStreamPlayback({
     runtime.nextActionAt = null
     runtime.message = '浏览器拦截了新窗口。请允许本站弹出窗口后，点击继续重试。'
     publish()
-  }, [clearTimer, closeHandles, publish])
+    if (runtime.sessionStopAt !== null) scheduleAt(runtime.sessionStopAt)
+  }, [clearTimer, closeHandles, publish, scheduleAt])
 
-  const openNextTab = useCallback(() => {
+  const openNext = useCallback(() => {
     const runtime = runtimeRef.current
-    if (runtime.mode !== 'tabs' || runtime.nextIndex >= runtime.bvids.length) return
+    if (runtime.mode === null || runtime.nextIndex >= runtime.bvids.length) return
 
     const bvid = runtime.bvids[runtime.nextIndex]!
-    const handle = window.open(buildStreamVideoUrl(bvid), '_blank')
+    const url = buildStreamVideoUrl(bvid)
+    const handle =
+      runtime.mode === 'popup'
+        ? window.open(url, '_blank', POPUP_FEATURES)
+        : window.open(url, '_blank')
     if (!handle) {
       enterBlocked()
       return
@@ -199,17 +321,14 @@ export function useStreamPlayback({
       runtime.status = 'waiting'
       runtime.nextActionAt = openedAt + runtime.roundDurationMs
       runtime.message = `第 ${runtime.round} 轮播放中`
-      publish()
-      scheduleAt(runtime.nextActionAt)
-      return
+    } else {
+      runtime.status = 'opening'
+      runtime.nextActionAt = openedAt + runtime.openDelayMs
+      runtime.message = `第 ${runtime.round} 轮正在依次打开视频`
     }
-
-    runtime.status = 'opening'
-    runtime.nextActionAt = openedAt + STREAM_TAB_OPEN_DELAY_MS
-    runtime.message = `第 ${runtime.round} 轮正在打开视频`
     publish()
-    scheduleAt(runtime.nextActionAt)
-  }, [enterBlocked, publish, scheduleAt])
+    scheduleNextDeadline()
+  }, [enterBlocked, publish, scheduleNextDeadline])
 
   const beginRound = useCallback(
     (round: number, durationMs = roundDurationRef.current) => {
@@ -221,68 +340,77 @@ export function useStreamPlayback({
       runtime.nextIndex = 0
       runtime.nextActionAt = null
       runtime.status = 'opening'
-      runtime.message = `第 ${round} 轮正在打开视频`
+      runtime.message = `第 ${round} 轮正在依次打开视频`
       publish()
-
-      if (runtime.mode === 'tabs') {
-        openNextTab()
-        return
-      }
-
-      for (const bvid of runtime.bvids) {
-        const handle = window.open(buildStreamVideoUrl(bvid), '_blank', POPUP_FEATURES)
-        if (!handle) {
-          enterBlocked()
-          return
-        }
-        runtime.handles.push(handle)
-        runtime.nextIndex += 1
-      }
-
-      const lastOpenedAt = globalThis.performance.now()
-      runtime.status = 'waiting'
-      runtime.nextActionAt = lastOpenedAt + runtime.roundDurationMs
-      runtime.message = `第 ${round} 轮播放中`
-      publish()
-      scheduleAt(runtime.nextActionAt)
+      openNext()
     },
-    [clearTimer, closeHandles, enterBlocked, openNextTab, publish, scheduleAt],
+    [clearTimer, closeHandles, openNext, publish],
   )
 
   const reconcile = useCallback(() => {
     const runtime = runtimeRef.current
     const now = globalThis.performance.now()
+    const stopDue = runtime.sessionStopAt !== null && now >= runtime.sessionStopAt
+
+    // 定时停止与本轮完成同时到期时，先计入已经完整结束的这一轮。
+    if (
+      runtime.status === 'waiting' &&
+      runtime.nextActionAt !== null &&
+      now >= runtime.nextActionAt &&
+      (runtime.sessionStopAt === null || runtime.nextActionAt <= runtime.sessionStopAt)
+    ) {
+      clearTimer()
+      closeHandles()
+      const completedRound = runtime.round
+      const completedDeadline = runtime.nextActionAt
+      const sessionId = runtime.sessionId
+      const startedAt = runtime.sessionStartedAt
+      runtime.sessionRoundsCompleted += 1
+      if (sessionId !== null && startedAt !== null) {
+        roundCallbackRef.current?.({ sessionId, startedAt, completedAt: Date.now() })
+      }
+
+      if (
+        runtime.status !== 'waiting' ||
+        runtime.round !== completedRound ||
+        runtime.nextActionAt !== completedDeadline ||
+        runtime.sessionId !== sessionId
+      ) {
+        return
+      }
+
+      if (stopDue) {
+        finishSession('completed')
+      } else {
+        beginRound(completedRound + 1)
+      }
+      return
+    }
+
+    if (stopDue) {
+      finishSession('completed')
+      return
+    }
 
     if (runtime.status === 'opening' && runtime.nextActionAt !== null) {
       if (now >= runtime.nextActionAt) {
         clearTimer()
-        openNextTab()
+        openNext()
       } else {
-        ensureScheduledAt(runtime.nextActionAt)
+        ensureNextDeadlineScheduled()
       }
       return
     }
 
     if (runtime.status === 'waiting' && runtime.nextActionAt !== null) {
-      if (now < runtime.nextActionAt) {
-        ensureScheduledAt(runtime.nextActionAt)
-        return
-      }
-
-      clearTimer()
-      closeHandles()
-      const completedRound = runtime.round
-      const completedDeadline = runtime.nextActionAt
-      callbackRef.current?.({ completedAt: Date.now() })
-      if (
-        runtime.status === 'waiting' &&
-        runtime.round === completedRound &&
-        runtime.nextActionAt === completedDeadline
-      ) {
-        beginRound(completedRound + 1)
-      }
+      ensureNextDeadlineScheduled()
+      return
     }
-  }, [beginRound, clearTimer, closeHandles, ensureScheduledAt, openNextTab])
+
+    if (runtime.status === 'blocked' && runtime.sessionStopAt !== null) {
+      ensureNextDeadlineScheduled()
+    }
+  }, [beginRound, clearTimer, closeHandles, ensureNextDeadlineScheduled, finishSession, openNext])
 
   useEffect(() => {
     reconcileRef.current = reconcile
@@ -290,23 +418,27 @@ export function useStreamPlayback({
 
   const stop = useCallback(() => {
     const runtime = runtimeRef.current
-    clearTimer()
-    closeHandles()
-    runtime.status = 'stopped'
-    runtime.nextActionAt = null
-    runtime.nextIndex = 0
-    runtime.message = '刷播已停止'
-    runtime.errors = []
-    publish()
-  }, [clearTimer, closeHandles, publish])
-
-  const start = useCallback(
-    (input: string, mode: StreamPlaybackMode) => {
-      const result = parseStreamInput(input)
+    if (runtime.sessionId === null) {
       clearTimer()
       closeHandles()
+      runtime.status = 'stopped'
+      runtime.nextActionAt = null
+      runtime.nextIndex = 0
+      runtime.message = '刷播已停止'
+      runtime.errors = []
+      publish()
+      return
+    }
+    finishSession('stopped')
+  }, [clearTimer, closeHandles, finishSession, publish])
+
+  const start = useCallback(
+    (input: string, mode: StreamPlaybackMode, settings: StreamStartSettings = {}) => {
+      const result = parseStreamInput(input)
 
       if (!result.ok) {
+        clearTimer()
+        closeHandles()
         runtimeRef.current = {
           ...createRuntime(),
           mode,
@@ -318,10 +450,22 @@ export function useStreamPlayback({
         return result
       }
 
+      const openDelayMs = normalizeOpenDelay(settings.openDelayMs)
+      const stopAfterMs = normalizeStopAfter(settings.stopAfterMs)
+      clearTimer()
+      closeHandles()
       const runtime = runtimeRef.current
+      const startedAt = Date.now()
       runtime.mode = mode
       runtime.sourceInput = input
       runtime.bvids = [...result.bvids]
+      runtime.openDelayMs = openDelayMs
+      runtime.sessionId = createSessionId()
+      runtime.sessionStartedAt = startedAt
+      runtime.sessionRoundsCompleted = 0
+      runtime.sessionStopAt =
+        stopAfterMs === null ? null : globalThis.performance.now() + stopAfterMs
+      runtime.sessionStopAfterMs = stopAfterMs
       runtime.errors = []
       beginRound(completedRoundsRef.current + 1)
       return result
@@ -331,14 +475,20 @@ export function useStreamPlayback({
 
   const resume = useCallback(() => {
     const runtime = runtimeRef.current
-    if (runtime.status !== 'blocked' || runtime.mode === null || runtime.bvids.length === 0) {
+    if (
+      runtime.status !== 'blocked' ||
+      runtime.mode === null ||
+      runtime.bvids.length === 0 ||
+      runtime.sessionId === null
+    ) {
       return false
     }
     beginRound(runtime.round, runtime.roundDurationMs)
     return true
   }, [beginRound])
 
-  const getRemainingMs = useCallback(() => remainingUntilNextAction(runtimeRef.current), [])
+  const getRemainingMs = useCallback(() => remainingUntil(runtimeRef.current.nextActionAt), [])
+  const getStopRemainingMs = useCallback(() => remainingUntil(runtimeRef.current.sessionStopAt), [])
 
   useEffect(() => {
     const handleResume = () => reconcileRef.current()
@@ -361,7 +511,7 @@ export function useStreamPlayback({
     }
   }, [clearTimer, closeHandles])
 
-  return { state, start, resume, stop, getRemainingMs }
+  return { state, start, resume, stop, getRemainingMs, getStopRemainingMs }
 }
 
 export { buildStreamVideoUrl, parseStreamInput }

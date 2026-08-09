@@ -129,6 +129,15 @@ function Probe() {
   )
 }
 
+function DirectTrackProbe({ track }: { track: BilibiliPlayerTrack }) {
+  const controller = useBilibiliPlayerController()
+  return (
+    <button type="button" onClick={() => controller.requestTrack(track)}>
+      播放指定曲目
+    </button>
+  )
+}
+
 describe('持久播放器样式', () => {
   it('按钮保留触控尺寸，展开的 iframe 可交互且收起容器不接收指针', () => {
     expect(playerStyles).toContain(
@@ -213,6 +222,30 @@ describe('BilibiliPlayerProvider', () => {
 
     fireEvent.click(screen.getByRole('button', { name: '取消播放' }))
     expect(screen.queryByTitle(/Bilibili 外链播放器/u)).not.toBeInTheDocument()
+  })
+
+  it('播放器摘要显示简短作品名，同时保留完整原始标题', () => {
+    const track: BilibiliPlayerTrack = {
+      bvid: 'BV1rtDRBJE7s',
+      title: '【苏新皓｜4K直拍】Talk WORTHY? Talk DIRTY! 直拍｜浪漫主义·演唱会',
+      displayTitle: 'Talk WORTHY? Talk DIRTY! 直拍',
+      sourceUrl: 'https://www.bilibili.com/video/BV1rtDRBJE7s/',
+      durationSeconds: 542,
+    }
+    render(
+      <PlayerHarness playerTracks={[track]}>
+        <DirectTrackProbe track={track} />
+      </PlayerHarness>,
+    )
+
+    fireEvent.click(screen.getByRole('button', { name: '播放指定曲目' }))
+    const dock = screen.getByTestId('persistent-bilibili-player')
+    const summary = dock.querySelector('.persistent-bilibili-player__bar p')
+    expect(summary).toHaveTextContent('Talk WORTHY? Talk DIRTY! 直拍')
+    expect(summary?.textContent).toBe('Talk WORTHY? Talk DIRTY! 直拍')
+    expect(summary).toHaveAttribute('title', track.title)
+    expect(summary).toHaveAttribute('aria-label', track.title)
+    expect(screen.getByTitle(`Bilibili 外链播放器：${track.title}`)).toBeInTheDocument()
   })
 
   it('暂停会卸载 iframe 停止声音，继续从同一已播秒数重建并恢复剩余计时', () => {

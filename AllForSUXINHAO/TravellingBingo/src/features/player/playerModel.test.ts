@@ -1,4 +1,9 @@
-import { adjacentTrackIndex, buildBilibiliPlayerUrl, endedTrackIndex } from './playerModel'
+import {
+  adjacentTrackIndex,
+  buildBilibiliPlayerUrl,
+  displayTitleForTrack,
+  endedTrackIndex,
+} from './playerModel'
 
 describe('Bilibili 播放 URL', () => {
   it('新曲显式从 0 秒自动播放，暂停后继续才写入运行时秒数', () => {
@@ -38,5 +43,17 @@ describe('播放顺序', () => {
     expect(endedTrackIndex('shuffle', null, 4, 0.5)).toBe(2)
     expect(endedTrackIndex('shuffle', null, 4, 0.999)).toBe(3)
     expect(endedTrackIndex('list', null, 0)).toBeNull()
+  })
+})
+
+describe('唱片机显示标题', () => {
+  it('优先使用目录投影的短标题，曲库外视频保留原始标题', () => {
+    expect(
+      displayTitleForTrack({
+        title: '【登陆少年】苏新皓《Dynamite》Cover',
+        displayTitle: 'Dynamite Cover',
+      }),
+    ).toBe('Dynamite Cover')
+    expect(displayTitleForTrack({ title: '收藏墙视频标题' })).toBe('收藏墙视频标题')
   })
 })

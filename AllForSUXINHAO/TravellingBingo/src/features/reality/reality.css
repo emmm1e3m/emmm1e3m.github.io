@@ -259,6 +259,30 @@
   outline-offset: 2px;
 }
 
+.reality-stream-settings {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 0.55rem;
+}
+
+.reality-stream-field input {
+  width: 100%;
+  min-height: 2.75rem;
+  padding: 0.58rem 0.68rem;
+  border: 1.5px solid #caa181;
+  border-radius: 12px 15px 11px 14px;
+  color: var(--ink, #432c29);
+  background: #fffdf8;
+  font: 750 0.74rem/1.4 var(--body-font, inherit);
+}
+
+.reality-stream-setting-error {
+  margin: -0.25rem 0 0;
+  color: #762b35;
+  font-size: 0.68rem;
+  font-weight: 750;
+}
+
 .reality-stream-modes {
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));
@@ -417,6 +441,12 @@
   border-radius: 10px;
   background: #fff8ed;
   font-size: 0.7rem;
+}
+
+.reality-stream-history li > span {
+  color: var(--muted, #765752);
+  font-size: 0.64rem;
+  text-align: right;
 }
 
 .reality-stream-history time {
@@ -739,7 +769,10 @@
   position: absolute;
   width: 1px;
   height: 1px;
-  opacity: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip-path: inset(50%);
+  white-space: nowrap;
 }
 
 .reality-postcard-tile img,
@@ -1328,7 +1361,8 @@ body:has(.persistent-bilibili-player--focus.is-expanded) .pomodoro-focus__worksp
 }
 
 @media (max-width: 680px) {
-  .reality-stream-modes {
+  .reality-stream-modes,
+  .reality-stream-settings {
     grid-template-columns: minmax(0, 1fr);
   }
 

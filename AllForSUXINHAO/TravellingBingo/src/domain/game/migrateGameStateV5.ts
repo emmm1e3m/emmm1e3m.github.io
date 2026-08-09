@@ -7,7 +7,7 @@ import {
 } from './migrateGameStateV4'
 import type { MigrateGameStateV3Options } from './migrateGameStateV3'
 import { MAX_DATE_TIMESTAMP_MS } from './time'
-import type { GameState, GameStateV5, StreamHistory } from './types'
+import type { GameStateV5, GameStateV6, StreamHistoryV6 } from './types'
 
 const timestamp = z.number().int().nonnegative().max(MAX_DATE_TIMESTAMP_MS)
 const safeCounter = z.number().int().nonnegative().max(Number.MAX_SAFE_INTEGER)
@@ -17,7 +17,7 @@ const streamRoundRecordSchema = z.strictObject({
   completedAt: timestamp,
 })
 
-const streamHistorySchema: z.ZodType<StreamHistory> = z
+const streamHistorySchema: z.ZodType<StreamHistoryV6> = z
   .strictObject({
     completedRounds: safeCounter,
     recentRounds: z.array(streamRoundRecordSchema).max(10),
@@ -109,15 +109,15 @@ function refineGameStateV6(value: unknown, context: z.RefinementCtx) {
 }
 
 /** 当前 V6 严格载荷；刷播历史按最新到最旧保存最近十轮。 */
-export const gameStateV6Schema: z.ZodType<GameState> = z
+export const gameStateV6Schema: z.ZodType<GameStateV6> = z
   .unknown()
-  .superRefine(refineGameStateV6) as z.ZodType<GameState>
+  .superRefine(refineGameStateV6) as z.ZodType<GameStateV6>
 
-export function isStrictGameStateV6(value: unknown): value is GameState {
+export function isStrictGameStateV6(value: unknown): value is GameStateV6 {
   return gameStateV6Schema.safeParse(value).success
 }
 
-export function migrateGameStateV5ToV6(state: GameStateV5): GameState {
+export function migrateGameStateV5ToV6(state: GameStateV5): GameStateV6 {
   const cloned = structuredClone(state)
   return {
     ...cloned,
@@ -132,12 +132,12 @@ export function migrateGameStateV5ToV6(state: GameStateV5): GameState {
   }
 }
 
-export type StoredGameState = StoredGameStateThroughV5 | GameState
+export type StoredGameStateThroughV6 = StoredGameStateThroughV5 | GameStateV6
 
 export function migrateStoredGameStateToV6(
-  state: StoredGameState,
+  state: StoredGameStateThroughV6,
   options: MigrateGameStateV3Options,
-): GameState {
+): GameStateV6 {
   if (state.schemaVersion === 6) return state
   return migrateGameStateV5ToV6(migrateStoredGameStateToV5(state, options))
 }

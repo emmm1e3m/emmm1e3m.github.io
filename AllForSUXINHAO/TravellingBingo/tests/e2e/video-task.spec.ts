@@ -90,8 +90,13 @@ test('播放器点击立即记入任务，加载失败与同 BV 跨入口不会�
   const sharedTrack = recordPanel
     .getByRole('list', { name: '全站第一曲目' })
     .getByRole('listitem')
-    .filter({ hasText: shared!.video.title })
-  await sharedTrack.getByRole('button').click()
+    .filter({ hasText: shared!.collectible.title })
+  const sharedTrackButton = sharedTrack.getByRole('button', {
+    name: shared!.video.title,
+    exact: true,
+  })
+  await expect(sharedTrackButton).toHaveAttribute('title', shared!.video.title)
+  await sharedTrackButton.click()
   await expect(recordPanel.getByRole('button', { name: /打开播放器/u })).toHaveCount(0)
   const persistentPlayer = page.getByTestId('persistent-bilibili-player')
   await expect(persistentPlayer).toBeVisible()
@@ -145,13 +150,22 @@ test('播放器点击立即记入任务，加载失败与同 BV 跨入口不会�
 
 test('唱片机只有八首全站第一，并跨维度保留选曲与切歌模式', async ({ page, request }, testInfo) => {
   test.skip(testInfo.project.name !== 'chromium', '唯一曲库只在桌面 Chromium 验证')
-  const response = await request.get('data/video-catalog.json')
-  expect(response.ok()).toBe(true)
-  const catalog = (await response.json()) as VideoCatalog
+  const [videoResponse, siteFirstResponse] = await Promise.all([
+    request.get('data/video-catalog.json'),
+    request.get('data/site-firsts.json'),
+  ])
+  expect(videoResponse.ok()).toBe(true)
+  expect(siteFirstResponse.ok()).toBe(true)
+  const catalog = (await videoResponse.json()) as VideoCatalog
+  const siteFirstManifest = (await siteFirstResponse.json()) as SiteFirstManifest
   const [first] = catalog.recordPlayer.items
+  const firstDisplayTitle = siteFirstManifest.items.find(
+    (item) => item.metadata.video?.bvid === first?.bvid,
+  )?.title
   expect(catalog.recordPlayer.items).toHaveLength(8)
   expect(catalog.recordPlayer.items.some((track) => /Dynamite/iu.test(track.title))).toBe(true)
   expect(first).toBeDefined()
+  expect(firstDisplayTitle).toBeDefined()
 
   await startGame(page, { seed: 'site-first-library-v5', displayName: '曲库测试' })
   await page.route('https://player.bilibili.com/**', async (route) =>
@@ -230,7 +244,7 @@ test('唱片机只有八首全站第一，并跨维度保留选曲与切歌模�
     reopenedPanel.getByRole('group', { name: '切歌模式' }).getByRole('button', { name: '随机' }),
   ).toHaveAttribute('aria-pressed', 'true')
   await expect(reopenedPanel.getByRole('list', { name: '全站第一曲目' })).toContainText(
-    first!.title,
+    firstDisplayTitle!,
   )
   const persistentIframe = page.locator('iframe[title^="Bilibili 外链播放器："]')
   await expect(persistentIframe).toHaveCount(1)

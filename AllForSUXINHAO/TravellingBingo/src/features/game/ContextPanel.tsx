@@ -187,9 +187,10 @@ function RealityPanel({
       <StreamPanel
         now={now}
         completedRounds={game.reality.streamHistory.completedRounds}
-        recentRounds={game.reality.streamHistory.recentRounds}
+        recentSessions={game.reality.streamHistory.recentSessions}
         playback={streamPlayback.state}
         getRemainingMs={streamPlayback.getRemainingMs}
+        getStopRemainingMs={streamPlayback.getStopRemainingMs}
         onStart={streamPlayback.start}
         onResume={streamPlayback.resume}
         onStop={streamPlayback.stop}

@@ -4,6 +4,15 @@ import { DimensionDialog } from './DimensionDialog'
 import gameV4Styles from './game-v4.css?raw'
 
 describe('DimensionDialog', () => {
+  it('进入现实维度前说明可以进行真正的刷播和冲热', () => {
+    render(<DimensionDialog mode="confirm-enter" onCancel={vi.fn()} onConfirm={vi.fn()} />)
+
+    expect(screen.getByRole('dialog', { name: '进入现实维度？' })).toHaveTextContent(
+      '也可以进行真正的刷播和冲热',
+    )
+    expect(screen.queryByText(/也可以查看刷播与冲热/u)).not.toBeInTheDocument()
+  })
+
   it('从现实维度返回时同时提供取消和确认操作', () => {
     const onCancel = vi.fn()
     const onConfirm = vi.fn()

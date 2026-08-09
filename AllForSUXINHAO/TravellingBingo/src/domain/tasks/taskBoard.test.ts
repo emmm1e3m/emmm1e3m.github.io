@@ -2,7 +2,7 @@ import { describe, expect, it } from 'vitest'
 
 import { MAX_APPLES } from '../game/constants'
 import { createInitialGameState } from '../game/createGameState'
-import { gameStateV6Schema } from '../game/migrateGameStateV5'
+import { gameStateV7Schema } from '../game/migrateGameStateV6'
 import { reduceGame } from '../game/reducer'
 import type {
   CollectionCatalog,
@@ -122,7 +122,7 @@ describe('今日 Bingo 任务板', () => {
     expect(completed.state.tasks.completedAt).toBe(1_000)
     expect(completed.state.tasks.active.every(isTaskCompleted)).toBe(true)
     expect(completed.effects[0]).toMatchObject({ completed: true })
-    expect(gameStateV6Schema.safeParse(completed.state).success).toBe(true)
+    expect(gameStateV7Schema.safeParse(completed.state).success).toBe(true)
   })
 
   it('最近六项会优先避开，直到候选触发组不足', () => {

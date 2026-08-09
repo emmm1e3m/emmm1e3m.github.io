@@ -9,7 +9,7 @@ const options = [
 ]
 
 describe('PostcardPicker', () => {
-  it('用按钮打开完整全屏明信片墙，确认后才提交草稿选择', async () => {
+  it('用按钮打开完整全屏明信片墙，单击明信片后立即提交并关闭', async () => {
     const onChange = vi.fn()
     const { container } = render(
       <PostcardPicker options={options} selectedId="sea" onChange={onChange} />,
@@ -25,22 +25,41 @@ describe('PostcardPicker', () => {
     await waitFor(() => expect(screen.getByRole('button', { name: '取消' })).toHaveFocus())
 
     fireEvent.click(screen.getByRole('radio', { name: /晚霞明信片/u }))
-    expect(onChange).not.toHaveBeenCalled()
-    fireEvent.click(screen.getByRole('button', { name: '确认明信片' }))
     expect(onChange).toHaveBeenCalledWith('sunset')
+    expect(onChange).toHaveBeenCalledTimes(1)
+    expect(screen.queryByRole('button', { name: '确认明信片' })).not.toBeInTheDocument()
+    expect(screen.queryByRole('dialog', { name: '选择这一轮的风景' })).not.toBeInTheDocument()
     await waitFor(() => expect(trigger).toHaveFocus())
   })
 
-  it('取消或 Escape 放弃草稿并把焦点还给入口按钮', async () => {
+  it('单击当前已选中的明信片也会确定并关闭', () => {
+    const onChange = vi.fn()
+    render(<PostcardPicker options={options} selectedId="sea" onChange={onChange} />)
+
+    fireEvent.click(screen.getByRole('button', { name: '选择陪伴明信片' }))
+    fireEvent.click(screen.getByRole('radio', { name: /海边明信片/u }))
+
+    expect(onChange).toHaveBeenCalledWith('sea')
+    expect(onChange).toHaveBeenCalledTimes(1)
+    expect(screen.queryByRole('dialog', { name: '选择这一轮的风景' })).not.toBeInTheDocument()
+  })
+
+  it('取消或 Escape 不改变选择，并把焦点还给入口按钮', async () => {
     const onChange = vi.fn()
     render(<PostcardPicker options={options} selectedId="sea" onChange={onChange} />)
     const trigger = screen.getByRole('button', { name: '选择陪伴明信片' })
 
     trigger.focus()
     fireEvent.click(trigger)
-    const dialog = screen.getByRole('dialog', { name: '选择这一轮的风景' })
-    fireEvent.click(screen.getByRole('radio', { name: /晚霞明信片/u }))
-    fireEvent.keyDown(dialog, { key: 'Escape' })
+    fireEvent.click(screen.getByRole('button', { name: '取消' }))
+
+    expect(onChange).not.toHaveBeenCalled()
+    await waitFor(() => expect(trigger).toHaveFocus())
+
+    fireEvent.click(trigger)
+    fireEvent.keyDown(screen.getByRole('dialog', { name: '选择这一轮的风景' }), {
+      key: 'Escape',
+    })
 
     expect(onChange).not.toHaveBeenCalled()
     await waitFor(() => expect(trigger).toHaveFocus())

@@ -15,7 +15,7 @@ import {
   DEFAULT_GAME_BALANCE,
   DEFAULT_GAME_BALANCE_V3,
   deriveActivityTiming,
-  migrateStoredGameStateToV6,
+  migrateStoredGameStateToV7,
   normalizeImportedGameBalance,
   reconcileGameStateWithCatalog,
   reduceGame,
@@ -184,22 +184,50 @@ describe('游戏活动存档时长快照', () => {
     expect(readyClaim.state.activeActivity).toBeNull()
   })
 
-  it('刷播历史的连续轮次与完成时间可完整导出并恢复', async () => {
+  it('刷播任务的累计轮次与单次会话可完整导出并恢复', async () => {
     const initial = createInitialGameState({ now: 50_000, seed: 'stream-history-save' })
     const firstRound = successful(
-      reduceGame(initial, { type: 'reality/stream-round-complete', completedAt: 80_000 }, catalog),
+      reduceGame(
+        initial,
+        {
+          type: 'reality/stream-session-progress',
+          sessionId: 'stream-session-save',
+          startedAt: 70_000,
+          completedAt: 80_000,
+        },
+        catalog,
+      ),
+    ).state
+    const secondRound = successful(
+      reduceGame(
+        firstRound,
+        {
+          type: 'reality/stream-session-progress',
+          sessionId: 'stream-session-save',
+          startedAt: 70_000,
+          completedAt: 81_000,
+        },
+        catalog,
+      ),
     ).state
     const completed = successful(
       reduceGame(
-        firstRound,
-        { type: 'reality/stream-round-complete', completedAt: 81_000 },
+        secondRound,
+        {
+          type: 'reality/stream-session-end',
+          sessionId: 'stream-session-save',
+          startedAt: 70_000,
+          endedAt: 82_000,
+          roundsCompleted: 2,
+          outcome: 'completed',
+        },
         catalog,
       ),
     ).state
 
     expect(gameStateSchema.safeParse(completed).success).toBe(true)
     const exported = await createBingoSave(
-      { gameVersion: '0.6.0-stream-history', exportedAt: 90_000, payload: completed },
+      { gameVersion: '0.7.0-stream-history', exportedAt: 90_000, payload: completed },
       gameStateSchema,
       { subtle: webcrypto.subtle },
     )
@@ -209,9 +237,14 @@ describe('游戏活动存档时长快照', () => {
 
     expect(imported.payload.reality.streamHistory).toEqual({
       completedRounds: 2,
-      recentRounds: [
-        { round: 2, completedAt: 81_000 },
-        { round: 1, completedAt: 80_000 },
+      recentSessions: [
+        {
+          sessionId: 'stream-session-save',
+          startedAt: 70_000,
+          endedAt: 82_000,
+          roundsCompleted: 2,
+          outcome: 'completed',
+        },
       ],
     })
   })
@@ -403,7 +436,7 @@ describe('游戏活动存档时长快照', () => {
     if (imported.payload.schemaVersion !== 3) throw new Error('测试存档没有保留 V3 payload')
 
     const normalized = normalizeImportedGameBalance(
-      migrateStoredGameStateToV6(imported.payload, { now: startedAt + 1_000, catalog }),
+      migrateStoredGameStateToV7(imported.payload, { now: startedAt + 1_000, catalog }),
       futureDefault,
     )
     expect(normalized.gameBalance).toEqual(futureDefault)
@@ -492,7 +525,7 @@ describe('游戏活动存档时长快照', () => {
       subtle: webcrypto.subtle,
     })
     const normalized = normalizeImportedGameBalance(
-      migrateStoredGameStateToV6(imported.payload, { now: startedAt + 1_000, catalog }),
+      migrateStoredGameStateToV7(imported.payload, { now: startedAt + 1_000, catalog }),
     )
 
     expect(normalized.gameBalance).toEqual(DEFAULT_GAME_BALANCE)
@@ -510,10 +543,10 @@ describe('冻结的已发布存档兼容性', () => {
 
     expect(imported.summary.schemaVersion).toBe(1)
     expect(imported.payload.schemaVersion).toBe(1)
-    const migrated = migrateStoredGameStateToV6(imported.payload, { now: 900_000, catalog })
+    const migrated = migrateStoredGameStateToV7(imported.payload, { now: 900_000, catalog })
 
     expect(migrated).toMatchObject({
-      schemaVersion: 6,
+      schemaVersion: 7,
       profile: { displayName: '你', companionDays: 3 },
       friends: {},
     })
@@ -529,7 +562,7 @@ describe('冻结的已发布存档兼容性', () => {
 
     const migrated = reconcileGameStateWithCatalog(
       normalizeImportedGameBalance(
-        migrateStoredGameStateToV6(imported.payload, { now: 900_000, catalog }),
+        migrateStoredGameStateToV7(imported.payload, { now: 900_000, catalog }),
       ),
       catalog,
     )
@@ -571,7 +604,7 @@ describe('冻结的已发布存档兼容性', () => {
     const imported = await importBingoSave(text, importableGameStateSchema, {
       subtle: webcrypto.subtle,
     })
-    const migrated = migrateStoredGameStateToV6(imported.payload, { now: 900_000, catalog })
+    const migrated = migrateStoredGameStateToV7(imported.payload, { now: 900_000, catalog })
 
     expect(migrated.profile.debug).toBe(true)
     expect(migrated.gameBalance).toEqual({
@@ -622,7 +655,7 @@ describe('冻结的已发布存档兼容性', () => {
     const imported = await importBingoSave(oldSave.text, importableGameStateSchema, {
       subtle: webcrypto.subtle,
     })
-    const migrated = migrateStoredGameStateToV6(imported.payload, { now: 2_000, catalog })
+    const migrated = migrateStoredGameStateToV7(imported.payload, { now: 2_000, catalog })
 
     expect(migrated.musicPlayer).toEqual({
       currentBvid: 'BV1234567890',
