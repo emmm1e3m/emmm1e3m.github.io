@@ -1,5 +1,5 @@
 import { createInitialGameState } from './createGameState'
-import { gameStateV5Schema } from './migrateGameStateV4'
+import { gameStateV6Schema } from './migrateGameStateV5'
 import type { ActivityRun, CollectionCatalog, GameState } from './types'
 import { validateImportedGameState } from './validateImportedGameState'
 
@@ -177,6 +177,13 @@ describe('导入存档与当前收藏目录的一致性', () => {
 
     expect(validateImportedGameState(state, catalog)).toEqual({ ok: true })
 
+    const missingOneOffRecord = structuredClone(state)
+    missingOneOffRecord.tasks.oneOffCompleted = []
+    expect(validateImportedGameState(missingOneOffRecord, catalog)).toMatchObject({
+      ok: false,
+      code: 'TASK_BOARD_INVALID',
+    })
+
     const missingCompletionTime = structuredClone(state)
     missingCompletionTime.tasks.completedAt = null
     expect(validateImportedGameState(missingCompletionTime, catalog)).toMatchObject({
@@ -231,6 +238,45 @@ describe('导入存档与当前收藏目录的一致性', () => {
     expect(validateImportedGameState(state, catalog)).toEqual({ ok: true })
   })
 
+  it('拒绝尚未协调且当前缺少收藏先决条件的未完成任务', () => {
+    const state = createInitialGameState({ now: 1_000, seed: 'unavailable-imported-task' })
+    state.tasks.active = [
+      {
+        instanceId: 'unavailable-first',
+        taskId: 'remember-first',
+        assignedAt: 1_000,
+        progress: 0,
+        target: 1,
+        rewardApples: 2,
+        seenKeys: [],
+      },
+      {
+        instanceId: 'reachable-room',
+        taskId: 'room-stroll',
+        assignedAt: 1_000,
+        progress: 0,
+        target: 2,
+        rewardApples: 2,
+        seenKeys: [],
+      },
+      {
+        instanceId: 'reachable-backpack',
+        taskId: 'open-backpack',
+        assignedAt: 1_000,
+        progress: 0,
+        target: 1,
+        rewardApples: 1,
+        seenKeys: [],
+      },
+    ]
+
+    expect(gameStateV6Schema.safeParse(state).success).toBe(true)
+    expect(validateImportedGameState(state, catalog)).toMatchObject({
+      ok: false,
+      code: 'TASK_BOARD_INVALID',
+    })
+  })
+
   it('拒绝形状合法但进度与 seenKeys 不一致的 crafted V4 任务板', () => {
     const state = createInitialGameState({ now: 1_000, seed: 'crafted-task-progress' })
     const task = state.tasks.active.find((entry) => entry.target === 1)
@@ -238,7 +284,7 @@ describe('导入存档与当前收藏目录的一致性', () => {
     task.progress = 0
     task.seenKeys = ['opened']
 
-    expect(gameStateV5Schema.safeParse(state).success).toBe(true)
+    expect(gameStateV6Schema.safeParse(state).success).toBe(true)
     expect(validateImportedGameState(state, catalog)).toMatchObject({
       ok: false,
       code: 'TASK_BOARD_INVALID',
@@ -277,7 +323,7 @@ describe('导入存档与当前收藏目录的一致性', () => {
       },
     ]
 
-    expect(gameStateV5Schema.safeParse(state).success).toBe(true)
+    expect(gameStateV6Schema.safeParse(state).success).toBe(true)
     expect(validateImportedGameState(state, catalog)).toMatchObject({
       ok: false,
       code: 'TASK_BOARD_INVALID',
@@ -449,7 +495,7 @@ describe('导入存档与当前收藏目录的一致性', () => {
     })
   })
 
-  it('音乐只接受已认识朋友及其固定苹果，旅行仍兼容 legacy 双结果', () => {
+  it('音乐兼容旧赠礼快照并接受新赠礼，旅行兼容旧快照且校验新赠礼', () => {
     const music = stateWithActivity(null, 'music')
     music.friends['signal-dog'] = {
       id: 'signal-dog',
@@ -462,6 +508,16 @@ describe('导入存档与当前收藏目录的一致性', () => {
     music.activeActivity!.rewardPlan.modifierApples = 3
     expect(validateImportedGameState(music, catalog)).toEqual({ ok: true })
 
+    music.activeActivity!.rewardPlan.modifierApples = 6
+    expect(validateImportedGameState(music, catalog)).toEqual({ ok: true })
+
+    music.activeActivity!.rewardPlan.modifierApples = 5
+    expect(validateImportedGameState(music, catalog)).toMatchObject({
+      ok: false,
+      code: 'REWARD_PLAN_MISMATCH',
+    })
+    music.activeActivity!.rewardPlan.modifierApples = 6
+
     delete music.friends['signal-dog']
     expect(validateImportedGameState(music, catalog)).toMatchObject({
       ok: false,
@@ -472,5 +528,26 @@ describe('导入存档与当前收藏目录的一致性', () => {
     legacyTravel.activeActivity!.rewardPlan.friendId = 'signal-dog'
     legacyTravel.activeActivity!.rewardPlan.giftItemId = null
     expect(validateImportedGameState(legacyTravel, catalog)).toEqual({ ok: true })
+
+    const previousTravel = stateWithActivity(null, 'travel')
+    previousTravel.activeActivity!.rewardPlan.friendId = 'signal-dog'
+    previousTravel.activeActivity!.rewardPlan.giftItemId = 'signal-headphones'
+    expect(validateImportedGameState(previousTravel, catalog)).toEqual({ ok: true })
+
+    const currentTravel = structuredClone(previousTravel)
+    currentTravel.activeActivity!.rewardPlan.modifierApples = 1
+    expect(validateImportedGameState(currentTravel, catalog)).toMatchObject({
+      ok: false,
+      code: 'REWARD_PLAN_MISMATCH',
+    })
+
+    currentTravel.activeActivity!.rewardPlan.modifierApples = 3
+    expect(validateImportedGameState(currentTravel, catalog)).toEqual({ ok: true })
+
+    currentTravel.activeActivity!.rewardPlan.modifierApples = 2
+    expect(validateImportedGameState(currentTravel, catalog)).toMatchObject({
+      ok: false,
+      code: 'REWARD_PLAN_MISMATCH',
+    })
   })
 })

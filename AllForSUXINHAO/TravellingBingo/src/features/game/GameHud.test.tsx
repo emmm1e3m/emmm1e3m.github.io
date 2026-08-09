@@ -75,6 +75,20 @@ describe('GameHud', () => {
     )
   })
 
+  it('1200px 以下保持单行流式布局，空间不足时整条顶栏横向浏览', () => {
+    expect(gameV4Styles).toMatch(
+      /@media \(max-width: 1200px\)\s*\{[\s\S]*?\.game-page--v4 \.game-hud--v4\s*\{[^}]*display:\s*flex;[^}]*flex-wrap:\s*nowrap;[^}]*overflow-x:\s*auto;[^}]*overflow-y:\s*hidden;/u,
+    )
+    expect(gameV4Styles).toMatch(
+      /@media \(max-width: 1200px\)\s*\{[\s\S]*?\.game-hud--v4 \.game-hud__center\s*\{[^}]*position:\s*static;[^}]*min-width:\s*max-content;[^}]*flex:\s*0 0 auto;[^}]*transform:\s*none;/u,
+    )
+    expect(gameV4Styles).toMatch(
+      /@media \(max-width: 1200px\)\s*\{[\s\S]*?\.game-hud--v4 \.game-hud__actions\s*\{[^}]*min-width:\s*max-content;[^}]*display:\s*flex;[^}]*flex:\s*0 0 auto;/u,
+    )
+    expect(gameV4Styles).not.toContain("'companion companion buttons'")
+    expect(gameV4Styles).not.toContain("'actions actions actions'")
+  })
+
   it('现实停留计时只由 enteredAt 与传入 now 格式化，回到游戏后隐藏', () => {
     const base = createInitialGameState({ now: 1_000, seed: 'v4-reality-timer' })
     const reality = {

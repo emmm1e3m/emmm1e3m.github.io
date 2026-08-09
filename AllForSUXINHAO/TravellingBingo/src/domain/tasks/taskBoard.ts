@@ -19,12 +19,21 @@ export interface TaskPresentation {
   description: string
 }
 
+export interface TaskAssignmentRequirement {
+  kind: 'owned-collection'
+  /** 未指定类别时，可由任意收藏满足。 */
+  category?: CollectibleCategory
+  minimum: number
+}
+
 export interface TaskTemplate extends TaskPresentation {
   id: TaskId
   triggerGroup: TaskTriggerGroup
   target: number
   rewardApples: number
   oneOff?: boolean
+  /** 只影响新任务的签发；已经签发的任务继续使用自身快照。 */
+  assignmentRequirements?: readonly TaskAssignmentRequirement[]
 }
 
 export const TASK_LIBRARY: Readonly<Record<TaskId, TaskTemplate>> = {
@@ -91,6 +100,7 @@ export const TASK_LIBRARY: Readonly<Record<TaskId, TaskTemplate>> = {
     description: '看看已经收藏的回忆',
     target: 1,
     rewardApples: 1,
+    assignmentRequirements: [{ kind: 'owned-collection', minimum: 1 }],
   },
   'revisit-two': {
     id: 'revisit-two',
@@ -99,6 +109,7 @@ export const TASK_LIBRARY: Readonly<Record<TaskId, TaskTemplate>> = {
     description: '查看两份不同的收藏',
     target: 2,
     rewardApples: 2,
+    assignmentRequirements: [{ kind: 'owned-collection', minimum: 2 }],
   },
   'remember-postcard': {
     id: 'remember-postcard',
@@ -107,6 +118,7 @@ export const TASK_LIBRARY: Readonly<Record<TaskId, TaskTemplate>> = {
     description: '查看一份明信片收藏',
     target: 1,
     rewardApples: 1,
+    assignmentRequirements: [{ kind: 'owned-collection', category: 'postcard', minimum: 1 }],
   },
   'remember-million': {
     id: 'remember-million',
@@ -115,6 +127,7 @@ export const TASK_LIBRARY: Readonly<Record<TaskId, TaskTemplate>> = {
     description: '查看一份百万直拍收藏',
     target: 1,
     rewardApples: 1,
+    assignmentRequirements: [{ kind: 'owned-collection', category: 'million-shot', minimum: 1 }],
   },
   'remember-first': {
     id: 'remember-first',
@@ -123,6 +136,7 @@ export const TASK_LIBRARY: Readonly<Record<TaskId, TaskTemplate>> = {
     description: '查看一份全站第一收藏',
     target: 1,
     rewardApples: 2,
+    assignmentRequirements: [{ kind: 'owned-collection', category: 'site-first', minimum: 1 }],
   },
   'stage-test': {
     id: 'stage-test',
@@ -161,14 +175,17 @@ const EMPTY_CATALOG: CollectionCatalog = {
   siteFirstChronology: [],
 }
 
-interface TaskGenerationInput {
+export interface TaskAvailabilityInput {
+  catalog?: CollectionCatalog
+  collections?: Readonly<Record<string, unknown>>
+  oneOffCompleted?: readonly TaskId[]
+}
+
+interface TaskGenerationInput extends TaskAvailabilityInput {
   seed: string
   sequence: number
   now: number
-  catalog?: CollectionCatalog
-  collections?: Readonly<Record<string, unknown>>
   recentTemplateIds?: readonly TaskId[]
-  oneOffCompleted?: readonly TaskId[]
   completedCount?: number
 }
 
@@ -184,6 +201,17 @@ export interface ReplaceRetiredTaskBoardInput {
   now: number
   catalog?: CollectionCatalog
   collections?: Readonly<Record<string, unknown>>
+}
+
+export interface ReconcileTaskBoardAvailabilityInput extends TaskAvailabilityInput {
+  board: TaskBoard
+  seed: string
+  sequence: number
+}
+
+export interface ReconciledTaskBoard {
+  board: TaskBoard
+  nextSequence: number
 }
 
 export type TaskReachabilityValidation = { ok: true } | { ok: false; message: string }
@@ -226,28 +254,34 @@ export function validateTaskInstanceReachability(
     case 'piano-time': {
       const keyValidation = validateFiniteKeySpace(task, PIANO_PROGRESS_KEYS)
       if (!keyValidation.ok) return keyValidation
-      // 旧版的 `piano` 只能作为已经写入的历史 key 保留，当前版本无法再次产生它。
-      // 因此只有历史进度中已经包含该 key 时，可达上限才会从 36 增至 37。
+      // 旧版的 `piano` 只能作为已经写入的历史 key 保留，当前版本无法再次产生它；
+      // 因此只有历史进度已经包含该 key 时，可达上限才额外增加一项。
       const reachableKeyCount = PIANO_NOTE_IDS.length + (task.seenKeys.includes('piano') ? 1 : 0)
       return task.target <= reachableKeyCount
         ? { ok: true }
         : unreachable(`任务“${task.taskId}”的历史目标超过可产生的独立事件数量。`)
     }
-    case 'record-time':
-      return task.seenKeys.every(
+    case 'record-time': {
+      const keysAreValid = task.seenKeys.every(
         (key) => key === LEGACY_RECORD_PLAYER_PROGRESS_KEY || isVideoProgressKey(key),
       )
+      if (!keysAreValid) return unreachable('唱片机任务包含无效的视频进度 key。')
+      return task.target <= TASK_LIBRARY['record-time'].target
         ? { ok: true }
-        : unreachable('唱片机任务包含无效的视频进度 key。')
-    case 'two-melodies':
-      return task.seenKeys.every(
+        : unreachable('唱片机任务的历史目标超过已发布模板的可达上限。')
+    }
+    case 'two-melodies': {
+      const keysAreValid = task.seenKeys.every(
         (key) =>
           PIANO_PROGRESS_KEYS.has(key) ||
           key === LEGACY_RECORD_PLAYER_PROGRESS_KEY ||
           isVideoProgressKey(key),
       )
+      if (!keysAreValid) return unreachable('音乐任务包含无效的琴键或视频进度 key。')
+      return task.target <= TASK_LIBRARY['two-melodies'].target
         ? { ok: true }
-        : unreachable('音乐任务包含无效的琴键或视频进度 key。')
+        : unreachable('音乐任务的历史目标超过已发布模板的可达上限。')
+    }
     case 'wardrobe-choice':
       return validateFiniteKeySpace(task, new Set(['wardrobe']))
     case 'open-memories':
@@ -268,35 +302,86 @@ export function validateTaskInstanceReachability(
   }
 }
 
-function categoryHasCollection(
-  category: CollectibleCategory,
-  catalog: CollectionCatalog,
-  owned: ReadonlySet<string>,
-): boolean {
-  return catalog[category].some((id) => owned.has(id))
+interface TaskAssignmentContext {
+  ownedCollectionIds: ReadonlySet<string>
+  ownedCollectionIdsByCategory: Readonly<Record<CollectibleCategory, ReadonlySet<string>>>
+  completedOneOff: ReadonlySet<TaskId>
 }
 
-function eligibleTaskIds(input: TaskGenerationInput): TaskId[] {
+function createTaskAssignmentContext(input: TaskAvailabilityInput): TaskAssignmentContext {
   const catalog = input.catalog ?? EMPTY_CATALOG
   const owned = new Set(Object.keys(input.collections ?? {}))
-  const completedOneOff = new Set(input.oneOffCompleted ?? [])
-  const hasAnyCollection = owned.size > 0
+  const ownedCollectionIdsByCategory = {
+    postcard: new Set(catalog.postcard.filter((id) => owned.has(id))),
+    'million-shot': new Set(catalog['million-shot'].filter((id) => owned.has(id))),
+    'site-first': new Set(catalog['site-first'].filter((id) => owned.has(id))),
+  }
+  return {
+    ownedCollectionIds: new Set(
+      Object.values(ownedCollectionIdsByCategory).flatMap((ids) => [...ids]),
+    ),
+    ownedCollectionIdsByCategory,
+    completedOneOff: new Set(input.oneOffCompleted ?? []),
+  }
+}
+
+function meetsAssignmentRequirement(
+  requirement: TaskAssignmentRequirement,
+  context: TaskAssignmentContext,
+): boolean {
+  const owned = requirement.category
+    ? context.ownedCollectionIdsByCategory[requirement.category]
+    : context.ownedCollectionIds
+  return owned.size >= requirement.minimum
+}
+
+function meetsTaskAssignmentRequirementsInContext(
+  taskId: TaskId,
+  context: TaskAssignmentContext,
+): boolean {
+  return (TASK_LIBRARY[taskId].assignmentRequirements ?? []).every((requirement) =>
+    meetsAssignmentRequirement(requirement, context),
+  )
+}
+
+export function meetsTaskAssignmentRequirements(
+  taskId: TaskId,
+  input: TaskAvailabilityInput,
+): boolean {
+  return meetsTaskAssignmentRequirementsInContext(taskId, createTaskAssignmentContext(input))
+}
+
+function meetsTaskInstanceAssignmentRequirementsInContext(
+  task: TaskInstance,
+  context: TaskAssignmentContext,
+): boolean {
+  return (TASK_LIBRARY[task.taskId].assignmentRequirements ?? []).every((requirement) =>
+    meetsAssignmentRequirement(
+      { ...requirement, minimum: Math.max(requirement.minimum, task.target) },
+      context,
+    ),
+  )
+}
+
+export function meetsTaskInstanceAssignmentRequirements(
+  task: TaskInstance,
+  input: TaskAvailabilityInput,
+): boolean {
+  return meetsTaskInstanceAssignmentRequirementsInContext(task, createTaskAssignmentContext(input))
+}
+
+/**
+ * 在随机抽取前建立可签发候选池。收藏只统计当前目录中仍可打开的已拥有项目，
+ * 防止未知或已移除的历史 ID 让任务看似可达。
+ */
+export function getAssignableTaskIds(input: TaskAvailabilityInput): TaskId[] {
+  const context = createTaskAssignmentContext(input)
 
   return TASK_IDS.filter((taskId) => {
     if (RETIRED_TASK_IDS.has(taskId)) return false
-    if (TASK_LIBRARY[taskId].oneOff && completedOneOff.has(taskId)) return false
-    if (taskId === 'open-memories') return hasAnyCollection
-    if (taskId === 'revisit-two') return owned.size >= 2
-    if (taskId === 'remember-postcard') {
-      return categoryHasCollection('postcard', catalog, owned)
-    }
-    if (taskId === 'remember-million') {
-      return categoryHasCollection('million-shot', catalog, owned)
-    }
-    if (taskId === 'remember-first') {
-      return categoryHasCollection('site-first', catalog, owned)
-    }
-    return true
+    const template = TASK_LIBRARY[taskId]
+    if (template.oneOff && context.completedOneOff.has(taskId)) return false
+    return meetsTaskAssignmentRequirementsInContext(taskId, context)
   })
 }
 
@@ -314,8 +399,45 @@ function shuffleTaskIds(
   return { ids: shuffled, cursor: nextCursor }
 }
 
+interface ReplacementSelectionInput {
+  eligible: readonly TaskId[]
+  retained: readonly TaskInstance[]
+  recentTemplateIds: readonly TaskId[]
+  seed: string
+  sequence: number
+  count: number
+}
+
+function chooseReplacementTemplates(input: ReplacementSelectionInput): TaskId[] {
+  const recent = new Set(input.recentTemplateIds)
+  const retainedIds = new Set(input.retained.map((entry) => entry.taskId))
+  const usedGroups = new Set(input.retained.map((entry) => TASK_LIBRARY[entry.taskId].triggerGroup))
+  let cursor = createRandomCursor(`${input.seed}:tasks:${input.sequence}`)
+  const preferred = shuffleTaskIds(
+    input.eligible.filter((taskId) => !recent.has(taskId)),
+    cursor,
+  )
+  cursor = preferred.cursor
+  const fallback = shuffleTaskIds(input.eligible, cursor)
+  const replacements: TaskId[] = []
+
+  for (const candidates of [preferred.ids, fallback.ids]) {
+    for (const taskId of candidates) {
+      const group = TASK_LIBRARY[taskId].triggerGroup
+      if (retainedIds.has(taskId) || replacements.includes(taskId) || usedGroups.has(group)) {
+        continue
+      }
+      replacements.push(taskId)
+      usedGroups.add(group)
+      if (replacements.length === input.count) return replacements
+    }
+  }
+
+  throw new Error('当前任务库无法为任务板选择可达替补')
+}
+
 function chooseTemplates(input: TaskGenerationInput): TaskId[] {
-  const eligible = eligibleTaskIds(input)
+  const eligible = getAssignableTaskIds(input)
   const recent = new Set(input.recentTemplateIds ?? [])
   let cursor = createRandomCursor(`${input.seed}:tasks:${input.sequence}`)
   const preferred = shuffleTaskIds(
@@ -405,35 +527,15 @@ export function replaceRetiredTaskBoard(input: ReplaceRetiredTaskBoardInput): Ge
     oneOffCompleted: input.board.oneOffCompleted,
     completedCount: input.board.completedCount,
   }
-  const eligible = eligibleTaskIds(generationInput)
-  const recent = new Set(input.board.recentTemplateIds)
-  const retainedIds = new Set(retained.map((entry) => entry.taskId))
-  const usedGroups = new Set(retained.map((entry) => TASK_LIBRARY[entry.taskId].triggerGroup))
-  let cursor = createRandomCursor(`${input.seed}:tasks:${input.sequence}`)
-  const preferred = shuffleTaskIds(
-    eligible.filter((taskId) => !recent.has(taskId)),
-    cursor,
-  )
-  cursor = preferred.cursor
-  const fallback = shuffleTaskIds(eligible, cursor)
-  const replacements: TaskId[] = []
-
-  for (const candidates of [preferred.ids, fallback.ids]) {
-    for (const taskId of candidates) {
-      const group = TASK_LIBRARY[taskId].triggerGroup
-      if (retainedIds.has(taskId) || replacements.includes(taskId) || usedGroups.has(group)) {
-        continue
-      }
-      replacements.push(taskId)
-      usedGroups.add(group)
-      if (replacements.length === retiredSlots.length) break
-    }
-    if (replacements.length === retiredSlots.length) break
-  }
-
-  if (replacements.length !== retiredSlots.length) {
-    throw new Error('当前任务库无法替换退役任务')
-  }
+  const eligible = getAssignableTaskIds(generationInput)
+  const replacements = chooseReplacementTemplates({
+    eligible,
+    retained,
+    recentTemplateIds: input.board.recentTemplateIds,
+    seed: input.seed,
+    sequence: input.sequence,
+    count: retiredSlots.length,
+  })
 
   const active = [...input.board.active] as [TaskInstance, TaskInstance, TaskInstance]
   retiredSlots.forEach((slotIndex, replacementIndex) => {
@@ -443,6 +545,104 @@ export function replaceRetiredTaskBoard(input: ReplaceRetiredTaskBoardInput): Ge
       input.sequence,
       slotIndex,
       input.now,
+    )
+  })
+
+  return {
+    board: {
+      ...input.board,
+      active,
+      recentTemplateIds: [...input.board.recentTemplateIds, ...replacements].slice(-6),
+    },
+    nextSequence: incrementSafeCounter(input.sequence),
+  }
+}
+
+function canSafelyReconcileTaskBoard(board: TaskBoard, catalog: CollectionCatalog): boolean {
+  const instanceIds = new Set<string>()
+  const groups = new Set<TaskTriggerGroup>()
+  for (const task of board.active) {
+    const template = TASK_LIBRARY[task.taskId]
+    const group = template.triggerGroup
+    const reachability = validateTaskInstanceReachability(task, catalog)
+    const completed = isTaskCompleted(task)
+    const oneOffRecorded = board.oneOffCompleted.includes(task.taskId)
+    if (
+      instanceIds.has(task.instanceId) ||
+      groups.has(group) ||
+      !Number.isSafeInteger(task.progress) ||
+      task.progress < 0 ||
+      !Number.isSafeInteger(task.target) ||
+      task.target <= 0 ||
+      !Number.isSafeInteger(task.rewardApples) ||
+      task.rewardApples < 0 ||
+      task.progress > task.target ||
+      task.seenKeys.length !== task.progress ||
+      new Set(task.seenKeys).size !== task.seenKeys.length ||
+      !reachability.ok ||
+      (template.oneOff === true && completed !== oneOffRecorded)
+    ) {
+      return false
+    }
+    instanceIds.add(task.instanceId)
+    groups.add(group)
+  }
+  const completed = board.active.every(isTaskCompleted)
+  if (completed !== (board.completedAt !== null)) return false
+  return (
+    board.completedAt === null ||
+    board.completedAt >= Math.max(...board.active.map((task) => task.assignedAt))
+  )
+}
+
+/**
+ * 存档准备或收藏移除后，只替换仍未完成、且当前已失去签发先决条件的槽位。
+ * 已完成任务和仍可达任务保留原对象、进度与奖励快照；畸形任务板留给严格校验拒绝。
+ */
+export function reconcileTaskBoardAvailability(
+  input: ReconcileTaskBoardAvailabilityInput,
+): ReconciledTaskBoard {
+  if (!canSafelyReconcileTaskBoard(input.board, input.catalog ?? EMPTY_CATALOG)) {
+    return { board: input.board, nextSequence: input.sequence }
+  }
+
+  const context = createTaskAssignmentContext({
+    catalog: input.catalog,
+    collections: input.collections,
+    oneOffCompleted: input.board.oneOffCompleted,
+  })
+  const replacementSlots = input.board.active
+    .map((task, index) =>
+      !isTaskCompleted(task) && !meetsTaskInstanceAssignmentRequirementsInContext(task, context)
+        ? index
+        : -1,
+    )
+    .filter((index) => index >= 0)
+  if (replacementSlots.length === 0) {
+    return { board: input.board, nextSequence: input.sequence }
+  }
+
+  const retained = input.board.active.filter((_, index) => !replacementSlots.includes(index))
+  const replacements = chooseReplacementTemplates({
+    eligible: getAssignableTaskIds({
+      catalog: input.catalog,
+      collections: input.collections,
+      oneOffCompleted: input.board.oneOffCompleted,
+    }),
+    retained,
+    recentTemplateIds: input.board.recentTemplateIds,
+    seed: input.seed,
+    sequence: input.sequence,
+    count: replacementSlots.length,
+  })
+  const active = [...input.board.active] as [TaskInstance, TaskInstance, TaskInstance]
+  replacementSlots.forEach((slotIndex, replacementIndex) => {
+    active[slotIndex] = createTaskInstance(
+      replacements[replacementIndex],
+      input.seed,
+      input.sequence,
+      slotIndex,
+      input.board.active[slotIndex].assignedAt,
     )
   })
 

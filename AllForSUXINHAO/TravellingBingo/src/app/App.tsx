@@ -12,7 +12,7 @@ import { PwaUpdatePrompt, type InstallPwaUpdate } from '@/components/PwaUpdatePr
 import { loadContentCatalog, type ContentCatalog } from '@/content'
 import {
   createInitialGameState,
-  migrateStoredGameStateToV5,
+  migrateStoredGameStateToV6,
   normalizeImportedGameBalance,
   reconcileGameStateWithCatalog,
   validateImportedGameState,
@@ -40,7 +40,7 @@ import {
   type BingoSaveSummary,
 } from '@/infrastructure/persistence'
 
-const GAME_VERSION = '0.5.0-demo.1'
+const GAME_VERSION = '0.6.0-demo.1'
 const DEBUG_PASSWORD = 'TravellingBingo'
 const PERIODIC_BACKUP_INTERVAL_MS = 3 * 24 * 60 * 60 * 1_000
 
@@ -140,7 +140,7 @@ function prepareStoredGame(
   catalog: CollectionCatalog,
   now: number,
 ): GameState {
-  const migrated = migrateStoredGameStateToV5(stored, { now, catalog })
+  const migrated = migrateStoredGameStateToV6(stored, { now, catalog })
   const normalized = normalizeImportedGameBalance(migrated)
   const reconciled = reconcileGameStateWithCatalog(normalized, catalog)
   const validation = validateImportedGameState(reconciled, catalog)
@@ -148,17 +148,46 @@ function prepareStoredGame(
   return reconciled
 }
 
+function prepareBrowserCache(
+  rawCache: BrowserGameCache,
+  catalog: CollectionCatalog,
+  now: number,
+): PreparedBrowserCache {
+  const parsedPayload = importableGameStateSchema.safeParse(rawCache.payload)
+  if (!parsedPayload.success) {
+    throw new Error('缓存中的游戏进度没有通过结构校验。', { cause: parsedPayload.error })
+  }
+  const game = prepareStoredGame(parsedPayload.data, catalog, now)
+  const metadataNeedsUpgrade = rawCache.gameVersion !== GAME_VERSION || game !== parsedPayload.data
+  const cache = metadataNeedsUpgrade
+    ? updateBrowserGameCache(rawCache, game, now, GAME_VERSION)
+    : { ...rawCache, payload: game }
+  return { cache, game }
+}
+
 const reloadCurrentPage: InstallPwaUpdate = async () => {
   globalThis.location.reload()
 }
 
-async function checkServiceWorkerForUpdate() {
+async function checkServiceWorkerForUpdate(): Promise<boolean> {
   if (!('serviceWorker' in globalThis.navigator)) {
     throw new Error('当前浏览器不支持离线更新。')
   }
   const registration = await globalThis.navigator.serviceWorker.getRegistration()
   if (!registration) throw new Error('离线行囊还没有准备好，请稍后再检查。')
-  await registration.update()
+  if (registration.waiting || registration.installing) return true
+
+  let updateFound = false
+  const markUpdateFound = () => {
+    updateFound = true
+  }
+  registration.addEventListener('updatefound', markUpdateFound)
+  try {
+    await registration.update()
+    return updateFound || Boolean(registration.waiting || registration.installing)
+  } finally {
+    registration.removeEventListener('updatefound', markUpdateFound)
+  }
 }
 
 function readNotificationPermission(): AppNotificationPermission {
@@ -166,7 +195,7 @@ function readNotificationPermission(): AppNotificationPermission {
 }
 
 interface AppProps {
-  checkForUpdates?: () => Promise<void>
+  checkForUpdates?: () => Promise<boolean | void>
   createAudioContext?: KeepAliveAudioFactory
   reloadPage?: InstallPwaUpdate
 }
@@ -325,17 +354,7 @@ export function App({
           setCacheError(null)
           return
         }
-        const parsedPayload = importableGameStateSchema.safeParse(rawCache.payload)
-        if (!parsedPayload.success) {
-          throw new Error('缓存中的游戏进度没有通过结构校验。', {
-            cause: parsedPayload.error,
-          })
-        }
-        const preparedGame = prepareStoredGame(parsedPayload.data, domainCatalog, Date.now())
-        setCurrentCache({
-          cache: { ...rawCache, payload: preparedGame },
-          game: preparedGame,
-        })
+        setCurrentCache(prepareBrowserCache(rawCache, domainCatalog, Date.now()))
         setCacheError(null)
       } catch (error) {
         setCurrentCache(null)
@@ -480,10 +499,11 @@ export function App({
       return
     }
     setUpdateCheckStatus('checking')
+    setToast(null)
     void checkForUpdates()
-      .then(() => {
+      .then((updateFound) => {
         setUpdateCheckStatus('checked')
-        setToast('铲铲饼屋暂时没有新布置啦')
+        if (!updateFound) setToast('铲铲饼屋暂时没有新布置啦')
       })
       .catch((error: unknown) => {
         setUpdateCheckStatus('error')

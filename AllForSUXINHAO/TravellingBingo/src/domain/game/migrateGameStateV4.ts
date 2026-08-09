@@ -9,8 +9,8 @@ import {
 } from './migrateGameStateV3'
 import { MAX_DATE_TIMESTAMP_MS } from './time'
 import type {
-  GameState,
   GameStateV4,
+  GameStateV5,
   GameStateV5LegacyMusic,
   MusicPlayerState,
   PomodoroSession,
@@ -242,10 +242,12 @@ function refineGameStateV5(value: unknown, context: z.RefinementCtx, legacyMusic
   }
 }
 
-/** 当前 V5 严格载荷，不再持久化自定义播放列表。 */
-export const gameStateV5Schema: z.ZodType<GameState> = z
+/** 冻结的 V5 严格载荷，不再持久化自定义播放列表。 */
+export const gameStateV5Schema: z.ZodType<GameStateV5> = z
   .unknown()
-  .superRefine((value, context) => refineGameStateV5(value, context, false)) as z.ZodType<GameState>
+  .superRefine((value, context) =>
+    refineGameStateV5(value, context, false),
+  ) as z.ZodType<GameStateV5>
 
 /** 仅供读取已发布过的旧 V5 缓存；采用前必须显式移除自定义列表字段。 */
 export const gameStateV5LegacyMusicSchema: z.ZodType<GameStateV5LegacyMusic> = z
@@ -254,7 +256,7 @@ export const gameStateV5LegacyMusicSchema: z.ZodType<GameStateV5LegacyMusic> = z
     refineGameStateV5(value, context, true),
   ) as z.ZodType<GameStateV5LegacyMusic>
 
-export function isStrictGameStateV5(value: unknown): value is GameState {
+export function isStrictGameStateV5(value: unknown): value is GameStateV5 {
   return gameStateV5Schema.safeParse(value).success
 }
 
@@ -287,7 +289,7 @@ function migrateMusicPlayerState(
   }
 }
 
-export function migrateGameStateV4ToV5(state: GameStateV4): GameState {
+export function migrateGameStateV4ToV5(state: GameStateV4): GameStateV5 {
   const cloned = structuredClone(state)
   const tasksCompleted = cloned.tasks.active.every((task) => task.progress >= task.target)
   return {
@@ -310,12 +312,13 @@ export function migrateGameStateV4ToV5(state: GameStateV4): GameState {
   }
 }
 
-export type StoredGameState = StoredGameStateThroughV4 | GameStateV5LegacyMusic | GameState
+export type StoredGameStateThroughV5 =
+  StoredGameStateThroughV4 | GameStateV5LegacyMusic | GameStateV5
 
 export function migrateStoredGameStateToV5(
-  state: StoredGameState,
+  state: StoredGameStateThroughV5,
   options: MigrateGameStateV3Options,
-): GameState {
+): GameStateV5 {
   if (state.schemaVersion === 5) {
     if (!('playlists' in state.musicPlayer)) return state
     return { ...state, musicPlayer: migrateMusicPlayerState(state.musicPlayer) }

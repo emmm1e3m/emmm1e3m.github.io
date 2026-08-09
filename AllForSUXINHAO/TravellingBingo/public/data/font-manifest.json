@@ -4,8 +4,8 @@
   "generatedAt": "2026-08-09",
   "glyphSet": {
     "strategy": "modern-chinese-common-2500-plus-runtime",
-    "codePointCount": 2716,
-    "requiredCustomFontCodePointCount": 2683,
+    "codePointCount": 2717,
+    "requiredCustomFontCodePointCount": 2685,
     "commonCharacters": {
       "standard": "《现代汉语常用字表》常用字部分",
       "authority": "国家语言文字工作委员会、国家教育委员会",
@@ -14,7 +14,7 @@
       "path": "scripts/assets/data/modern-chinese-common-2500.txt",
       "referenceUrl": "https://www.moe.gov.cn/jyb_xwfb/xw_fbh/moe_2069/s7135/s7562/s7569/201308/t20130827_156353.html"
     },
-    "runtimeCodePointCountAtBuild": 1315
+    "runtimeCodePointCountAtBuild": 1326
   },
   "fonts": [
     {
@@ -31,9 +31,9 @@
       },
       "file": {
         "path": "assets/fonts/kehua-lerongrong.woff2",
-        "byteLength": 1079384,
+        "byteLength": 1080344,
         "mime": "font/woff2",
-        "mappedCodePointCount": 2691
+        "mappedCodePointCount": 2693
       }
     },
     {
@@ -50,9 +50,9 @@
       },
       "file": {
         "path": "assets/fonts/kehua-naitang.woff2",
-        "byteLength": 928832,
+        "byteLength": 930008,
         "mime": "font/woff2",
-        "mappedCodePointCount": 2691
+        "mappedCodePointCount": 2693
       }
     }
   ]

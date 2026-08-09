@@ -33,5 +33,16 @@ describe('DimensionDialog', () => {
     expect(gameV4Styles).toContain('@keyframes dimension-scene-in')
     expect(gameV4Styles).toContain('.dimension-transition--out')
     expect(gameV4Styles).toContain('.dimension-transition--in')
+    expect(gameV4Styles).toMatch(/\.dimension-dialog-backdrop\s*\{[^}]*z-index:\s*190;/su)
+    expect(gameV4Styles).toMatch(/\.dimension-transition\s*\{[^}]*z-index:\s*190;/su)
+  })
+
+  it('桌面并排和窄屏堆叠时都为操作按钮保留间距', () => {
+    expect(gameV4Styles).toMatch(
+      /\.dimension-dialog \.dialog-actions\s*\{[^}]*display:\s*flex;[^}]*gap:\s*clamp\(/su,
+    )
+    expect(gameV4Styles).toMatch(
+      /@media \(max-width: 420px\)[\s\S]*?\.dimension-dialog \.dialog-actions\s*\{[^}]*flex-direction:\s*column;/u,
+    )
   })
 })

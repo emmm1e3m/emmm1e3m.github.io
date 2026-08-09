@@ -68,7 +68,7 @@
 }
 
 .reality-data-card__heading h3,
-.reality-group-card h3,
+.reality-group-card h2,
 .reality-work-card__heading h3 {
   margin: 0.16rem 0 0;
   font-size: 1rem;
@@ -169,6 +169,8 @@
 
 .reality-group-card--centered .reality-primary-link {
   align-self: center;
+  width: min(100%, 16rem);
+  margin-inline: auto;
 }
 
 .reality-primary-link,
@@ -216,6 +218,210 @@
 .reality-danger-button:disabled {
   opacity: 0.48;
   cursor: not-allowed;
+}
+
+.reality-stream-panel {
+  display: grid;
+  gap: 0.85rem;
+}
+
+.reality-stream-panel__instruction {
+  margin-top: 0;
+}
+
+.reality-stream-field {
+  display: grid;
+  gap: 0.42rem;
+}
+
+.reality-stream-field > span,
+.reality-stream-modes legend {
+  color: var(--ink, #432c29);
+  font-size: 0.76rem;
+  font-weight: 900;
+}
+
+.reality-stream-field textarea {
+  width: 100%;
+  min-height: 8.5rem;
+  resize: vertical;
+  padding: 0.75rem;
+  border: 1.5px solid #caa181;
+  border-radius: 14px 17px 13px 16px;
+  color: var(--ink, #432c29);
+  background: #fffdf8;
+  font: 700 0.76rem/1.55 var(--body-font, inherit);
+  overflow-wrap: anywhere;
+}
+
+.reality-stream-field textarea:focus-visible {
+  outline: 3px solid color-mix(in srgb, var(--apple, #b63748) 28%, transparent);
+  outline-offset: 2px;
+}
+
+.reality-stream-modes {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 0.55rem;
+  margin: 0;
+  padding: 0;
+  border: 0;
+}
+
+.reality-stream-modes legend {
+  margin-bottom: 0.42rem;
+}
+
+.reality-stream-modes > label {
+  min-height: 4.2rem;
+  display: flex;
+  align-items: center;
+  gap: 0.55rem;
+  padding: 0.62rem;
+  border: 1.5px solid #ddc1a1;
+  border-radius: 14px 16px 13px 15px;
+  background: #fff8ed;
+  cursor: pointer;
+}
+
+.reality-stream-modes input {
+  flex: 0 0 auto;
+  accent-color: var(--apple, #b63748);
+}
+
+.reality-stream-modes label > span {
+  display: grid;
+  gap: 0.08rem;
+}
+
+.reality-stream-modes strong {
+  font-size: 0.75rem;
+}
+
+.reality-stream-modes small {
+  color: var(--muted, #765752);
+  font-size: 0.65rem;
+  line-height: 1.35;
+}
+
+.reality-stream-actions {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 0.55rem;
+}
+
+.reality-stream-actions > :only-child {
+  grid-column: 1 / -1;
+}
+
+.reality-stream-errors {
+  padding: 0.7rem 0.8rem;
+  border: 1.5px solid #c96367;
+  border-radius: 13px;
+  color: #762b35;
+  background: #fff0ef;
+  font-size: 0.72rem;
+}
+
+.reality-stream-errors ul {
+  display: grid;
+  gap: 0.25rem;
+  margin: 0.38rem 0 0;
+  padding-left: 1.15rem;
+}
+
+.reality-stream-status {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 0.5rem;
+  padding: 0.72rem;
+  border: 1.5px solid #ddc1a1;
+  border-radius: 16px 19px 15px 18px;
+  background: #fff8ed;
+}
+
+.reality-stream-status > div {
+  display: grid;
+  gap: 0.08rem;
+  padding: 0.48rem;
+  border-radius: 10px;
+  background: rgb(255 255 255 / 66%);
+}
+
+.reality-stream-status > div > span {
+  color: var(--muted, #765752);
+  font-size: 0.62rem;
+  font-weight: 750;
+}
+
+.reality-stream-status > div > strong {
+  font-size: 0.82rem;
+  overflow-wrap: anywhere;
+}
+
+.reality-stream-status__wide,
+.reality-stream-status__message {
+  grid-column: 1 / -1;
+}
+
+.reality-stream-status__message {
+  margin: 0;
+  color: var(--muted, #765752);
+  font-size: 0.69rem;
+  font-weight: 700;
+  line-height: 1.5;
+}
+
+.reality-stream-history {
+  padding-top: 0.75rem;
+  border-top: 1.5px dashed #d3ae8b;
+}
+
+.reality-stream-history > div {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 0.65rem;
+}
+
+.reality-stream-history h3 {
+  margin: 0;
+  font-size: 0.92rem;
+}
+
+.reality-stream-history > div > span,
+.reality-stream-history > p {
+  color: var(--muted, #765752);
+  font-size: 0.65rem;
+  font-weight: 700;
+}
+
+.reality-stream-history > p {
+  margin: 0.45rem 0 0;
+}
+
+.reality-stream-history ol {
+  display: grid;
+  gap: 0.36rem;
+  margin: 0.55rem 0 0;
+  padding: 0;
+  list-style: none;
+}
+
+.reality-stream-history li {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.65rem;
+  padding: 0.5rem 0.6rem;
+  border-radius: 10px;
+  background: #fff8ed;
+  font-size: 0.7rem;
+}
+
+.reality-stream-history time {
+  color: var(--muted, #765752);
+  font-variant-numeric: tabular-nums;
 }
 
 .reality-work-card {
@@ -1122,6 +1328,10 @@ body:has(.persistent-bilibili-player--focus.is-expanded) .pomodoro-focus__worksp
 }
 
 @media (max-width: 680px) {
+  .reality-stream-modes {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
   .reality-data-grid {
     grid-template-columns: minmax(0, 1fr);
   }

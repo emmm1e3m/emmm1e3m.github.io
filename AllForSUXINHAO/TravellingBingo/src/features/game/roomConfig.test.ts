@@ -34,6 +34,7 @@ const EXPECTED_HOTSPOTS: Record<RoomAreaId, { x: number; y: number }> = {
   fridge: { x: 50, y: 59 },
   recordPlayer: { x: 75, y: 74 },
   album: { x: 81, y: 60 },
+  trendComputer: { x: 72, y: 29 },
   workComputer: { x: 38, y: 82 },
   door: { x: 92, y: 74 },
 }
@@ -47,6 +48,7 @@ const EXPECTED_PET_CENTERS: Record<RoomAreaId, { x: number; y: number }> = {
   fridge: { x: 633, y: 951 },
   recordPlayer: { x: 783, y: 1030 },
   album: { x: 673, y: 1053 },
+  trendComputer: { x: 504, y: 409 },
   workComputer: { x: 420, y: 1172 },
   door: { x: 980, y: 1176 },
 }
@@ -62,16 +64,14 @@ describe('纵向房间配置', () => {
     expect(large.height!).toBeGreaterThan(large.width!)
   })
 
-  it('设施热点保持原坐标，饼狗中心严格使用 1098 × 1433 母版像素', () => {
+  it('设施热点互不重叠，饼狗中心严格使用 1098 × 1433 母版像素', () => {
     const allAreas = [DEFAULT_ROOM_AREA, ...ROOM_AREAS]
     const ids = allAreas.map((area) => area.id)
     const hotspotCoordinates = ROOM_AREAS.map((area) => `${area.hotspot.x},${area.hotspot.y}`)
-    const petCoordinates = allAreas.map((area) => `${area.petCenter.x},${area.petCenter.y}`)
 
     expect(ROOM_CANVAS).toEqual({ width: 1098, height: 1433 })
     expect(new Set(ids).size).toBe(ids.length)
     expect(new Set(hotspotCoordinates).size).toBe(hotspotCoordinates.length)
-    expect(new Set(petCoordinates).size).toBe(petCoordinates.length)
 
     for (const area of allAreas) {
       expect(area.petCenter).toEqual(EXPECTED_PET_CENTERS[area.id])
@@ -92,12 +92,18 @@ describe('纵向房间配置', () => {
     for (const area of ROOM_AREAS) {
       expect(area.hotspot).toEqual(EXPECTED_HOTSPOTS[area.id])
     }
+
+    const streamHotspot = ROOM_AREAS.find((area) => area.id === 'computer')!.hotspot
+    const trendHotspot = ROOM_AREAS.find((area) => area.id === 'trendComputer')!.hotspot
+    expect(streamHotspot.y).toBe(trendHotspot.y)
+    expect(trendHotspot.x - streamHotspot.x).toBeGreaterThanOrEqual(20)
   })
 
-  it('面板、活动和持久化位置都映射回唯一坐标表', () => {
+  it('面板、活动和持久化位置都映射回统一坐标表', () => {
     expect(areaForPanel('fridge').id).toBe('fridge')
     expect(areaForPanel('travel').id).toBe('door')
-    expect(areaForPanel('reality-data').id).toBe('computer')
+    expect(areaForPanel('reality-stream').id).toBe('computer')
+    expect(areaForPanel('reality-trend').id).toBe('trendComputer')
     expect(areaForPanel('reality-work').id).toBe('workComputer')
     expect(areaForPanel('status')).toBe(DEFAULT_ROOM_AREA)
 
@@ -105,8 +111,8 @@ describe('纵向房间配置', () => {
     expect(roomAreaForWorld(computer, 'game')).toBe(computer)
     expect(roomAreaForWorld(computer, 'reality')).toMatchObject({
       id: 'computer',
-      panel: 'reality-data',
-      buttonLabel: '数据',
+      panel: 'reality-stream',
+      buttonLabel: '刷播',
     })
 
     const expectedActivityAreas: Record<ActivityKind, string> = {
@@ -120,14 +126,15 @@ describe('纵向房间配置', () => {
       expect(areaForActivity(kind as ActivityKind).id).toBe(areaId)
     }
 
-    for (const area of ROOM_AREAS) {
+    for (const area of ROOM_AREAS.filter((candidate) => candidate.id !== 'trendComputer')) {
       expect(roomAreaFromLocation(area.petLocation)).toBe(area)
     }
+    expect(roomAreaFromLocation('computer').id).toBe('computer')
     expect(roomAreaFromLocation('work-computer').id).toBe('workComputer')
     expect(roomAreaFromLocation('future-location')).toBe(DEFAULT_ROOM_AREA)
   })
 
-  it('游戏维度保留原设施，现实维度只开放数据、工作与唱片机', () => {
+  it('游戏维度保留原设施，现实维度开放刷播、冲热、工作与唱片机', () => {
     expect(ROOM_AREAS.every((area) => area.worlds && area.worlds.length > 0)).toBe(true)
 
     const visibleAreaIds = (world: 'game' | 'reality') =>
@@ -143,6 +150,11 @@ describe('纵向房间配置', () => {
       'album',
       'door',
     ])
-    expect(visibleAreaIds('reality')).toEqual(['computer', 'recordPlayer', 'workComputer'])
+    expect(visibleAreaIds('reality')).toEqual([
+      'computer',
+      'trendComputer',
+      'recordPlayer',
+      'workComputer',
+    ])
   })
 })

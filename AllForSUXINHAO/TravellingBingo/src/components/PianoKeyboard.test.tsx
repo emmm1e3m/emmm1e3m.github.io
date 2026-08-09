@@ -1,5 +1,6 @@
 import { act, fireEvent, render, screen, waitFor, within } from '@testing-library/react'
 
+import pianoStyles from './PianoKeyboard.css?raw'
 import { PianoKeyboard } from './PianoKeyboard'
 import { PIANO_NOTES } from './pianoNotes'
 
@@ -22,6 +23,16 @@ interface FakeGain {
   connect: ReturnType<typeof vi.fn>
 }
 
+interface FakeCompressor {
+  threshold: { setValueAtTime: ReturnType<typeof vi.fn> }
+  knee: { setValueAtTime: ReturnType<typeof vi.fn> }
+  ratio: { setValueAtTime: ReturnType<typeof vi.fn> }
+  attack: { setValueAtTime: ReturnType<typeof vi.fn> }
+  release: { setValueAtTime: ReturnType<typeof vi.fn> }
+  connect: ReturnType<typeof vi.fn>
+  disconnect: ReturnType<typeof vi.fn>
+}
+
 let initialState: AudioContextState
 let resumeAudio: () => Promise<void>
 let contexts: FakeAudioContext[]
@@ -32,6 +43,7 @@ class FakeAudioContext {
   destination = {} as AudioDestinationNode
   oscillators: FakeOscillator[] = []
   gains: FakeGain[] = []
+  compressors: FakeCompressor[] = []
 
   constructor() {
     contexts.push(this)
@@ -63,6 +75,19 @@ class FakeAudioContext {
     }
     this.gains.push(gain)
     return gain as unknown as GainNode
+  })
+  createDynamicsCompressor = vi.fn(() => {
+    const compressor: FakeCompressor = {
+      threshold: { setValueAtTime: vi.fn() },
+      knee: { setValueAtTime: vi.fn() },
+      ratio: { setValueAtTime: vi.fn() },
+      attack: { setValueAtTime: vi.fn() },
+      release: { setValueAtTime: vi.fn() },
+      connect: vi.fn(),
+      disconnect: vi.fn(),
+    }
+    this.compressors.push(compressor)
+    return compressor as unknown as DynamicsCompressorNode
   })
 }
 
@@ -161,6 +186,12 @@ describe('PianoKeyboard', () => {
     }
   })
 
+  it('标题、说明和八度行保持间距，但同排琴键紧密相接', () => {
+    expect(pianoStyles).toMatch(/\.piano\s*\{[^}]*gap:\s*0\.72rem;/su)
+    expect(pianoStyles).toMatch(/\.piano__rows\s*\{[^}]*gap:\s*0\.62rem;/su)
+    expect(pianoStyles).toMatch(/\.piano__keys\s*\{[^}]*gap:\s*0;/su)
+  })
+
   it('用三组泛音和短起音衰减包络发声，并在 keyup 后停止全部音源', async () => {
     const onNote = vi.fn()
     const { unmount } = render(<PianoKeyboard onNote={onNote} />)
@@ -188,10 +219,20 @@ describe('PianoKeyboard', () => {
     expect(context.gains).toHaveLength(4)
 
     const envelope = context.gains[0]
+    const master = context.compressors[0]
+    expect(context.createDynamicsCompressor).toHaveBeenCalledOnce()
+    expect(context.compressors).toHaveLength(1)
+    expect(master?.threshold.setValueAtTime).toHaveBeenCalledWith(-3, 0)
+    expect(master?.knee.setValueAtTime).toHaveBeenCalledWith(0, 0)
+    expect(master?.ratio.setValueAtTime).toHaveBeenCalledWith(20, 0)
+    expect(master?.attack.setValueAtTime).toHaveBeenCalledWith(0.003, 0)
+    expect(master?.release.setValueAtTime).toHaveBeenCalledWith(0.18, 0)
+    expect(master?.connect).toHaveBeenCalledWith(context.destination)
     expect(envelope?.gain.setValueAtTime).toHaveBeenCalledWith(0.0001, 0)
-    expect(envelope?.gain.exponentialRampToValueAtTime).toHaveBeenNthCalledWith(1, 0.33, 0.008)
-    expect(envelope?.gain.exponentialRampToValueAtTime).toHaveBeenNthCalledWith(2, 0.1125, 0.09)
+    expect(envelope?.gain.exponentialRampToValueAtTime).toHaveBeenNthCalledWith(1, 0.66, 0.008)
+    expect(envelope?.gain.exponentialRampToValueAtTime).toHaveBeenNthCalledWith(2, 0.225, 0.09)
     expect(envelope?.gain.setTargetAtTime).toHaveBeenCalledWith(0.0001, 0.09, 0.32)
+    expect(envelope?.connect).toHaveBeenCalledWith(master)
     expect(
       context.gains.slice(1).map((gain) => gain.gain.setValueAtTime.mock.calls[0]?.[0]),
     ).toEqual([0.72, 0.2, 0.08])
@@ -200,7 +241,44 @@ describe('PianoKeyboard', () => {
     for (const oscillator of context.oscillators) expect(oscillator.stop).toHaveBeenCalledOnce()
     expect(envelope?.gain.cancelScheduledValues).toHaveBeenCalledOnce()
     unmount()
+    expect(master?.disconnect).toHaveBeenCalledOnce()
     expect(context.close).toHaveBeenCalledOnce()
+  })
+
+  it('按八度应用 C3 两倍、C4 一点五倍、C5 原值和 C6 一点二五倍增益', async () => {
+    const onNote = vi.fn()
+    const { unmount } = render(<PianoKeyboard onNote={onNote} />)
+    const octaveCases = [
+      { key: 'z', noteId: 'C3', multiplier: 2 },
+      { key: 'a', noteId: 'C4', multiplier: 1.5 },
+      { key: 'q', noteId: 'C5', multiplier: 1 },
+      { key: '1', noteId: 'C6', multiplier: 1.25 },
+    ] as const
+
+    for (const [index, octaveCase] of octaveCases.entries()) {
+      fireEvent.keyDown(window, { key: octaveCase.key })
+      await waitFor(() => expect(onNote).toHaveBeenCalledWith(octaveCase.noteId))
+
+      const envelope = contexts[0]?.gains[index * 4]
+      const master = contexts[0]?.compressors[0]
+      expect(envelope?.gain.exponentialRampToValueAtTime).toHaveBeenNthCalledWith(
+        1,
+        0.33 * octaveCase.multiplier,
+        0.008,
+      )
+      expect(envelope?.gain.exponentialRampToValueAtTime).toHaveBeenNthCalledWith(
+        2,
+        0.1125 * octaveCase.multiplier,
+        0.09,
+      )
+      expect(envelope?.connect).toHaveBeenCalledWith(master)
+      fireEvent.keyUp(window, { key: octaveCase.key })
+    }
+
+    expect(contexts[0]?.createDynamicsCompressor).toHaveBeenCalledOnce()
+    expect(contexts[0]?.compressors).toHaveLength(1)
+
+    unmount()
   })
 
   it('卸载时停止仍在发声的全部泛音并关闭音频上下文', async () => {
@@ -212,6 +290,7 @@ describe('PianoKeyboard', () => {
     unmount()
 
     for (const oscillator of context.oscillators) expect(oscillator.stop).toHaveBeenCalledOnce()
+    expect(context.compressors[0]?.disconnect).toHaveBeenCalledOnce()
     expect(context.close).toHaveBeenCalledOnce()
   })
 

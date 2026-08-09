@@ -11,6 +11,7 @@ import {
   roomAreaVisibleInWorld,
   roomPointToPercent,
   type RoomArea,
+  type RoomPixelPoint,
 } from './roomConfig'
 import {
   GAME_ROOM_WANDER_HULL,
@@ -126,6 +127,7 @@ interface RoomSceneProps {
   sleeping: boolean
   restDarkness: number
   onArea: (area: RoomArea) => void
+  onPetCenterChange?: (point: RoomPixelPoint) => void
   onReluctantArea?: (area: RoomArea) => void
   onPanel: (panel: PanelId) => void
   onBackgroundActivate: () => void
@@ -151,6 +153,7 @@ export function RoomScene({
   sleeping,
   restDarkness,
   onArea,
+  onPetCenterChange,
   onReluctantArea,
   onPanel,
   onBackgroundActivate,
@@ -190,8 +193,13 @@ export function RoomScene({
   const wanderMoving = wandering && wanderState.phase === 'moving'
   const facingLeft =
     (walking && walkingDirection === 'left') || (wanderMoving && wanderState.facing === 'left')
-  const pose = poseForRoom({ game, area, walking: walking || wanderMoving, sleeping })
-  const petCenter = roomPointToPercent(wandering ? wanderState.point : area.petCenter)
+  const pose = wandering
+    ? wanderMoving
+      ? 'walk'
+      : 'idle'
+    : poseForRoom({ game, area, walking, sleeping })
+  const visiblePetCenter = wandering ? wanderState.point : area.petCenter
+  const petCenter = roomPointToPercent(visiblePetCenter)
 
   useEffect(() => {
     const motionPreference = globalThis.matchMedia?.('(prefers-reduced-motion: reduce)')
@@ -201,6 +209,10 @@ export function RoomScene({
       motionPreference?.removeEventListener('change', followPreference)
     }
   }, [])
+
+  useEffect(() => {
+    onPetCenterChange?.(visiblePetCenter)
+  }, [onPetCenterChange, visiblePetCenter])
 
   useEffect(() => {
     if (!wandering) return
@@ -253,6 +265,14 @@ export function RoomScene({
 
   function closeRoomLayers() {
     closePetMenu()
+    if (panel !== null && panel !== 'status') {
+      setWanderState({
+        phase: 'resting',
+        point: area.petCenter,
+        durationMs: randomRoomWanderDuration('resting', wanderRandom),
+        facing: 'right',
+      })
+    }
     onBackgroundActivate()
   }
 
@@ -315,6 +335,7 @@ export function RoomScene({
               }`}
               data-hotspot={hotspot.label}
               data-interest={hotspot.interest}
+              aria-pressed={panel === hotspot.panel}
               style={
                 {
                   '--x': `${hotspot.hotspot.x}%`,

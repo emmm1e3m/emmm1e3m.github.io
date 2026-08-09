@@ -5,8 +5,10 @@ import {
   APPLE_LUNCHBOX_FRIEND_BONUS,
   FRIEND_GIFT_APPLES_BY_ID,
   FRIEND_GIFT_ITEM_BY_ID,
-  LUCKY_APPLE_COLLECTION_DROP_BONUS,
+  LUCKY_APPLE_COLLECTION_DROP_MULTIPLIER,
+  multiplyProbability,
   REST_COMPLETION_APPLES,
+  TRAVEL_FRIEND_GIFT_APPLES_BY_ID,
 } from '../game/gameBalance'
 import type { ActivityKind, CollectionCatalog } from '../game/types'
 import { planActivityReward } from './planReward'
@@ -87,6 +89,21 @@ function seedWhoseRollIsBelow(limit: number, rollIndex: number): string {
   throw new Error(`没有找到小于 ${limit} 的第 ${rollIndex + 1} 次随机值`)
 }
 
+function seedWhoseRollIsBetween(minimum: number, maximum: number, rollIndex: number): string {
+  for (let index = 0; index < 10_000; index += 1) {
+    const seed = `multiplier-boundary-${rollIndex}-${index}`
+    let cursor = createRandomCursor(seed)
+    let value = 0
+    for (let roll = 0; roll <= rollIndex; roll += 1) {
+      const next = nextRandom(cursor)
+      cursor = next.cursor
+      value = next.value
+    }
+    if (value >= minimum && value < maximum) return seed
+  }
+  throw new Error(`没有找到位于 [${minimum}, ${maximum}) 的第 ${rollIndex + 1} 次随机值`)
+}
+
 describe('收藏奖励无重复规则', () => {
   it.each([['travel', 'postcard'] as const, ['stream', 'million-shot'] as const])(
     '%s 只在尚未拥有的 %s 中随机选择，收齐后停止',
@@ -164,8 +181,8 @@ describe('收藏奖励无重复规则', () => {
     ).toBe('first-new')
   })
 
-  it('幸运苹果把 0% 收藏概率提高 10 个百分点，未使用时仍为 0%', () => {
-    const rewardSeed = seedWhoseRollIsBelow(LUCKY_APPLE_COLLECTION_DROP_BONUS, 0)
+  it('幸运苹果把 10% 收藏概率翻倍到 20%，不再按百分点相加', () => {
+    const rewardSeed = seedWhoseRollIsBetween(0.1, 0.2, 0)
     const input = {
       kind: 'stream' as const,
       rewardSeed,
@@ -174,7 +191,7 @@ describe('收藏奖励无重复规则', () => {
       supplyId: 'signal-headphones' as const,
       probabilities: {
         postcard: 0,
-        millionShot: 0,
+        millionShot: 0.1,
         siteFirst: 0,
         travelFriend: 0,
         musicFriend: 0,
@@ -228,7 +245,14 @@ describe('收藏奖励无重复规则', () => {
     expect(reward.friendId).not.toBeNull()
     expect(reward.collection).toBeNull()
     expect(reward.giftItemId).toBe(FRIEND_GIFT_ITEM_BY_ID[reward.friendId!])
-    expect(reward.modifierApples).toBe(0)
+    expect(reward.modifierApples).toBe(TRAVEL_FRIEND_GIFT_APPLES_BY_ID[reward.friendId!])
+    expect(TRAVEL_FRIEND_GIFT_APPLES_BY_ID).toEqual({
+      'class-representative-bing': 2,
+      'san-hao-rabbit': 3,
+      'xin-hao-rabbit': 4,
+      'signal-dog': 3,
+      'bili-bing': 2,
+    })
   })
 
   it('音乐只会召来已经认识的朋友并按身份固定赠送苹果', () => {
@@ -274,8 +298,49 @@ describe('收藏奖励无重复规则', () => {
     expect(visit.giftItemId).toBeNull()
   })
 
-  it('旅行好友与明信片均为 0% 时，幸运苹果仍可单独带来明信片', () => {
-    const rewardSeed = seedWhoseRollIsBelow(LUCKY_APPLE_COLLECTION_DROP_BONUS, 1)
+  it('音乐遇友概率为每位已认识朋友 15%，按人数累加并封顶', () => {
+    const rewardSeed = seedWhoseRollIsBetween(0.15, 0.3, 0)
+    const input = {
+      kind: 'music' as const,
+      rewardSeed,
+      catalog,
+      ownedCollectionIds: new Set<string>(),
+      supplyId: null,
+      usedLuckyApple: false,
+      probabilities: { ...certainDrop, musicFriend: 0.15 },
+    }
+
+    expect(
+      planActivityReward({ ...input, knownFriendIds: new Set(['signal-dog']) }).friendId,
+    ).toBeNull()
+    expect(
+      planActivityReward({
+        ...input,
+        knownFriendIds: new Set(['signal-dog', 'bili-bing']),
+      }).friendId,
+    ).not.toBeNull()
+    const expectedChances = [0, 0.15, 0.3, 0.45, 0.6, 0.75]
+    expectedChances.forEach((expected, knownFriendCount) => {
+      expect(multiplyProbability(0.15, knownFriendCount)).toBeCloseTo(expected)
+    })
+    expect(multiplyProbability(0.3, 5)).toBe(1)
+  })
+
+  it('音乐好友新赠礼让后期成为主要经济来源，五人目录平均每次期望 4.2 个苹果', () => {
+    const gifts = Object.values(FRIEND_GIFT_APPLES_BY_ID)
+    expect(gifts).toEqual([4, 6, 8, 6, 4])
+    const averageGift = gifts.reduce((total, gift) => total + gift, 0) / gifts.length
+    expect(averageGift).toBe(5.6)
+
+    const expectedApplesByKnownFriendCount = [0, 0.84, 1.68, 2.52, 3.36, 4.2]
+    expectedApplesByKnownFriendCount.forEach((expected, knownFriendCount) => {
+      const encounterChance = multiplyProbability(0.15, knownFriendCount)
+      expect(encounterChance * averageGift).toBeCloseTo(expected)
+    })
+  })
+
+  it('旅行未遇友时，幸运苹果把 10% 明信片概率翻倍到 20%', () => {
+    const rewardSeed = seedWhoseRollIsBetween(0.1, 0.2, 1)
     const reward = planActivityReward({
       kind: 'travel',
       rewardSeed,
@@ -284,7 +349,7 @@ describe('收藏奖励无重复规则', () => {
       supplyId: 'travel-basic',
       usedLuckyApple: true,
       probabilities: {
-        postcard: 0,
+        postcard: 0.1,
         millionShot: 0,
         siteFirst: 0,
         travelFriend: 0,
@@ -315,14 +380,13 @@ describe('收藏奖励无重复规则', () => {
     })
   })
 
-  it('单次概率加成在边界精确相加，并统一封顶为 100%', () => {
+  it('便当仍按百分点相加，幸运苹果改为倍数计算，并统一封顶为 100%', () => {
     expect(addProbabilityBonus(0, 0)).toBe(0)
-    expect(addProbabilityBonus(0, LUCKY_APPLE_COLLECTION_DROP_BONUS)).toBe(0.1)
     expect(addProbabilityBonus(0, APPLE_LUNCHBOX_FRIEND_BONUS)).toBe(0.15)
-    expect(addProbabilityBonus(0.8, LUCKY_APPLE_COLLECTION_DROP_BONUS)).toBeCloseTo(0.9)
-    expect(addProbabilityBonus(0.9, LUCKY_APPLE_COLLECTION_DROP_BONUS)).toBe(1)
-    expect(addProbabilityBonus(0.95, LUCKY_APPLE_COLLECTION_DROP_BONUS)).toBe(1)
     expect(addProbabilityBonus(0.85, APPLE_LUNCHBOX_FRIEND_BONUS)).toBe(1)
     expect(addProbabilityBonus(0.95, APPLE_LUNCHBOX_FRIEND_BONUS)).toBe(1)
+    expect(multiplyProbability(0, LUCKY_APPLE_COLLECTION_DROP_MULTIPLIER)).toBe(0)
+    expect(multiplyProbability(0.3, LUCKY_APPLE_COLLECTION_DROP_MULTIPLIER)).toBe(0.6)
+    expect(multiplyProbability(0.8, LUCKY_APPLE_COLLECTION_DROP_MULTIPLIER)).toBe(1)
   })
 })

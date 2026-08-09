@@ -4,6 +4,7 @@ import { useState } from 'react'
 import type { GameAction, MusicPlayerState } from '@/domain/game/types'
 
 import { BilibiliPlayerProvider } from './BilibiliPlayerProvider'
+import playlistStyles from './BilibiliPlaylistPanel.css?raw'
 import { BilibiliPlaylistPanel } from './BilibiliPlaylistPanel'
 import type { BilibiliPlayerTrack } from './playerModel'
 
@@ -71,5 +72,26 @@ describe('BilibiliPlaylistPanel', () => {
 
     fireEvent.click(screen.getByRole('button', { name: '上一首' }))
     expect(onTrackOpened).toHaveBeenNthCalledWith(3, tracks[0]!.bvid)
+  })
+
+  it('把上一首与下一首收进同一个传输控制组，并保留完整标题提示', () => {
+    render(<Harness />)
+
+    const transport = screen.getByRole('group', { name: '上下首' })
+    expect(transport).toContainElement(screen.getByRole('button', { name: '上一首' }))
+    expect(transport).toContainElement(screen.getByRole('button', { name: '下一首' }))
+    expect(screen.getByRole('button', { name: tracks[0]!.title })).toHaveAttribute(
+      'title',
+      tracks[0]!.title,
+    )
+  })
+
+  it('外层不裁切按钮向外延伸的全局焦点环', () => {
+    const { container } = render(<Harness />)
+
+    expect(container.querySelector('.bilibili-playlist-panel')).toBeInTheDocument()
+    expect(playlistStyles).not.toMatch(
+      /\.bilibili-playlist-panel\s*\{[^}]*overflow:\s*hidden\s*;/su,
+    )
   })
 })

@@ -5,7 +5,7 @@ export const ITEM_COPY: Record<ItemId, { emoji: string; name: string; note: stri
   'travel-apple': { emoji: '🍎', name: '苹果旅行便当', note: '更容易在路上遇见朋友' },
   'signal-headphones': { emoji: '🎧', name: '信号耳机', note: '陪饼狗认真刷播一次' },
   'trend-toolbox': { emoji: '🧰', name: '热度工具箱', note: '陪饼狗向全站第一冲刺' },
-  'lucky-apple': { emoji: '🍀', name: '幸运苹果', note: '对应收藏概率提高 10 个百分点' },
+  'lucky-apple': { emoji: '🍀', name: '幸运苹果', note: '对应收藏概率翻倍' },
   'bottled-speed-magic': {
     emoji: '⚡',
     name: '瓶装速度魔法',
@@ -46,7 +46,7 @@ export const ACTIVITY_COPY: Record<
   music: {
     name: '一起弹琴',
     verb: '音乐时间',
-    note: '在旋律里坐一会儿，也许会有熟悉的朋友循声而来。',
+    note: '认识的朋友越多，琴声越容易唤来熟悉的朋友，也越可能收到更多苹果。',
     supply: null,
     refuse: '饼狗今天想让房间安静一点',
   },

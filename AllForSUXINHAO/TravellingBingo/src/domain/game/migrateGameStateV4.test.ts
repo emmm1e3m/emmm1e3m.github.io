@@ -8,7 +8,7 @@ import {
   migrateGameStateV4ToV5,
   migrateStoredGameStateToV5,
 } from './migrateGameStateV4'
-import type { GameStateV4, PomodoroSessionV4, TaskBoardV4 } from './types'
+import type { GameStateV4, PomodoroSessionV4, RealityStateV4, TaskBoardV4 } from './types'
 
 function initialV4(): GameStateV4 {
   const current = createInitialGameState({ now: 0, seed: 'v4-to-v5-tests' })
@@ -18,14 +18,18 @@ function initialV4(): GameStateV4 {
     recentTemplateIds: current.tasks.recentTemplateIds,
     oneOffCompleted: current.tasks.oneOffCompleted,
   }
+  const reality: RealityStateV4 = {
+    nextStaySequence: current.reality.nextStaySequence,
+    activeStay: current.reality.activeStay,
+    pendingSettlement: current.reality.pendingSettlement,
+    todos: current.reality.todos,
+    pomodoro: { ...current.reality.pomodoro, session: null },
+  }
   const state: GameStateV4 = {
     ...current,
     schemaVersion: 4,
     tasks,
-    reality: {
-      ...current.reality,
-      pomodoro: { ...current.reality.pomodoro, session: null },
-    },
+    reality,
     musicPlayer: {
       playlists: {},
       order: [],

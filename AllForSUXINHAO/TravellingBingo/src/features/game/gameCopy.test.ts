@@ -1,6 +1,6 @@
 import { ITEM_IDS } from '@/domain'
 
-import { ITEM_COPY } from './gameCopy'
+import { ACTIVITY_COPY, ITEM_COPY } from './gameCopy'
 
 describe('ITEM_COPY', () => {
   it('为全部冰箱道具提供稳定且可区分的 emoji', () => {
@@ -18,7 +18,13 @@ describe('ITEM_COPY', () => {
     )
   })
 
-  it('明确说明幸运苹果把对应收藏概率提高 10 个百分点', () => {
-    expect(ITEM_COPY['lucky-apple'].note).toBe('对应收藏概率提高 10 个百分点')
+  it('明确说明幸运苹果把对应收藏概率翻倍', () => {
+    expect(ITEM_COPY['lucky-apple'].note).toBe('对应收藏概率翻倍')
+  })
+
+  it('弹琴说明认识更多朋友会提高来访与苹果收益期望', () => {
+    expect(ACTIVITY_COPY.music.note).toBe(
+      '认识的朋友越多，琴声越容易唤来熟悉的朋友，也越可能收到更多苹果。',
+    )
   })
 })

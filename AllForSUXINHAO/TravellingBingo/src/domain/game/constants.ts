@@ -27,8 +27,8 @@ export const ITEM_PRICES = {
   'signal-headphones': 4,
   'trend-toolbox': 7,
   'lucky-apple': 6,
-  'bottled-speed-magic': 3,
-  'bottled-vitality-magic': 12,
+  'bottled-speed-magic': 2,
+  'bottled-vitality-magic': 7,
 } as const
 
 export const INITIAL_INVENTORY = {

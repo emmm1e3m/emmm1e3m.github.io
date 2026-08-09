@@ -1,13 +1,6 @@
 import type { ReactNode } from 'react'
 
-export interface RealityDataSnapshot {
-  statusLabel: string
-  detail: string
-}
-
 export interface DataPanelProps {
-  stream?: RealityDataSnapshot | null
-  trend?: RealityDataSnapshot | null
   groupUrl?: string
   onGroupLinkClick?: () => void
   className?: string

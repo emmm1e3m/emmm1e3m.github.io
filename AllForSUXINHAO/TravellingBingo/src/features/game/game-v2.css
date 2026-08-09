@@ -647,6 +647,28 @@
   background: #76517e;
 }
 
+.debug-stream-duration > div {
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: end;
+}
+
+.debug-stream-duration label {
+  display: grid;
+  gap: 0.3rem;
+  color: var(--v2-muted);
+  font-size: 0.65rem;
+}
+
+.debug-stream-duration input[type='number'] {
+  width: 100%;
+  min-height: 44px;
+}
+
+.debug-stream-duration small {
+  display: block;
+  margin-top: 0.55rem;
+}
+
 .probability-editor {
   display: grid;
   gap: 0.56rem;

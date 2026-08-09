@@ -8,7 +8,11 @@ import {
 import { hashSeed } from '../rewards/prng'
 import { planActivityReward } from '../rewards/planReward'
 import { getLuckyAppleAvailability } from '../rewards/luckyApple'
-import { applyTaskEvent, refreshCompletedTaskBoard } from '../tasks/taskBoard'
+import {
+  applyTaskEvent,
+  reconcileTaskBoardAvailability,
+  refreshCompletedTaskBoard,
+} from '../tasks/taskBoard'
 import {
   ALL_ACTIVITY_PREFERENCES,
   getVitalityMagicAvailability,
@@ -718,6 +722,28 @@ function findCollectionCategory(
   return CATEGORIES.find((category) => catalog[category].includes(collectionId)) ?? null
 }
 
+function reconcileTasksAfterCollectionRemoval(
+  state: GameState,
+  catalog: CollectionCatalog,
+): GameState {
+  const reconciled = reconcileTaskBoardAvailability({
+    board: state.tasks,
+    seed: state.random.seed,
+    sequence: state.random.sequences.tasks,
+    catalog,
+    collections: state.collections,
+  })
+  if (reconciled.board === state.tasks) return state
+  return {
+    ...state,
+    tasks: reconciled.board,
+    random: {
+      ...state.random,
+      sequences: { ...state.random.sequences, tasks: reconciled.nextSequence },
+    },
+  }
+}
+
 function setDebugCollection(
   state: GameState,
   action: Extract<GameAction, { type: 'debug/collection-set' }>,
@@ -746,26 +772,27 @@ function setDebugCollection(
     !action.owned && state.reality.pomodoro.selectedPostcardId === action.collectionId
   const removedSessionPostcard =
     !action.owned && state.reality.pomodoro.session?.postcardId === action.collectionId
+  const nextState = {
+    ...state,
+    collections: nextCollections,
+    reality:
+      removedSelectedPostcard || removedSessionPostcard
+        ? {
+            ...state.reality,
+            pomodoro: {
+              ...state.reality.pomodoro,
+              selectedPostcardId: removedSelectedPostcard
+                ? null
+                : state.reality.pomodoro.selectedPostcardId,
+              session: removedSessionPostcard
+                ? { ...state.reality.pomodoro.session!, postcardId: null }
+                : state.reality.pomodoro.session,
+            },
+          }
+        : state.reality,
+  }
   return succeed(
-    {
-      ...state,
-      collections: nextCollections,
-      reality:
-        removedSelectedPostcard || removedSessionPostcard
-          ? {
-              ...state.reality,
-              pomodoro: {
-                ...state.reality.pomodoro,
-                selectedPostcardId: removedSelectedPostcard
-                  ? null
-                  : state.reality.pomodoro.selectedPostcardId,
-                session: removedSessionPostcard
-                  ? { ...state.reality.pomodoro.session!, postcardId: null }
-                  : state.reality.pomodoro.session,
-              },
-            }
-          : state.reality,
-    },
+    action.owned ? nextState : reconcileTasksAfterCollectionRemoval(nextState, catalog),
     [{ type: 'debug-applied', action: action.type }],
   )
 }
@@ -818,6 +845,7 @@ function collectAllForDebug(
 function clearAllForDebug(
   state: GameState,
   action: Extract<GameAction, { type: 'debug/clear-all' }>,
+  catalog: CollectionCatalog,
 ): GameTransition {
   const denied = requireDebug(state)
   if (denied !== null) return denied
@@ -828,30 +856,28 @@ function clearAllForDebug(
   const collectionChangedCount = Object.keys(state.collections).length
   const friendChangedCount = Object.keys(state.friends).length
   const session = state.reality.pomodoro.session
-  return succeed(
-    {
-      ...state,
-      collections: {},
-      friends: {},
-      reality: {
-        ...state.reality,
-        pomodoro: {
-          ...state.reality.pomodoro,
-          selectedPostcardId: null,
-          session: session === null ? null : { ...session, postcardId: null },
-        },
+  const clearedState = {
+    ...state,
+    collections: {},
+    friends: {},
+    reality: {
+      ...state.reality,
+      pomodoro: {
+        ...state.reality.pomodoro,
+        selectedPostcardId: null,
+        session: session === null ? null : { ...session, postcardId: null },
       },
     },
-    [
-      {
-        type: 'debug-applied',
-        action: action.type,
-        changedCount: collectionChangedCount + friendChangedCount,
-        collectionChangedCount,
-        friendChangedCount,
-      },
-    ],
-  )
+  }
+  return succeed(reconcileTasksAfterCollectionRemoval(clearedState, catalog), [
+    {
+      type: 'debug-applied',
+      action: action.type,
+      changedCount: collectionChangedCount + friendChangedCount,
+      collectionChangedCount,
+      friendChangedCount,
+    },
+  ])
 }
 
 function completeActivityForDebug(
@@ -938,6 +964,43 @@ function resetDebugTuning(state: GameState): GameTransition {
   ])
 }
 
+function completeStreamRound(
+  state: GameState,
+  action: Extract<GameAction, { type: 'reality/stream-round-complete' }>,
+): GameTransition {
+  if (!isValidTimestamp(action.completedAt)) {
+    return fail(state, 'INVALID_TIME', '刷播完成时间无效')
+  }
+
+  if (action.completedAt < state.profile.createdAt) {
+    return fail(state, 'INVALID_TIME', '刷播完成时间不能早于建档时间')
+  }
+
+  const history = state.reality.streamHistory
+  const latestRound = history.recentRounds[0]
+  if (latestRound && action.completedAt <= latestRound.completedAt) {
+    return fail(state, 'INVALID_TIME', '刷播完成时间必须晚于上一轮')
+  }
+  if (history.completedRounds >= Number.MAX_SAFE_INTEGER) {
+    return fail(state, 'INVALID_AMOUNT', '刷播轮次已经达到安全上限')
+  }
+
+  const round = incrementSafeCounter(history.completedRounds)
+  return succeed({
+    ...state,
+    reality: {
+      ...state.reality,
+      streamHistory: {
+        completedRounds: round,
+        recentRounds: [{ round, completedAt: action.completedAt }, ...history.recentRounds].slice(
+          0,
+          10,
+        ),
+      },
+    },
+  })
+}
+
 function reducePreparedGame(
   state: GameState,
   action: GameAction,
@@ -966,6 +1029,8 @@ function reducePreparedGame(
       return encouragePet(state, action)
     case 'task/event':
       return progressTask(state, action)
+    case 'reality/stream-round-complete':
+      return completeStreamRound(state, action)
     case 'debug/apples-adjust':
       return adjustDebugApples(state, action)
     case 'debug/item-adjust':
@@ -975,7 +1040,7 @@ function reducePreparedGame(
     case 'debug/collect-all':
       return collectAllForDebug(state, action, catalog)
     case 'debug/clear-all':
-      return clearAllForDebug(state, action)
+      return clearAllForDebug(state, action, catalog)
     case 'debug/activity-complete':
       return completeActivityForDebug(state, action)
     case 'debug/activity-clear':

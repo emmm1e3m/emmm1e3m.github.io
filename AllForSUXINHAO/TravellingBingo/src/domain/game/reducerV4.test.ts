@@ -58,8 +58,8 @@ function withActivitySupply(
 }
 
 describe('V4 瓶装速度魔法', () => {
-  it('单价为 3 个苹果，普通活动默认读条为 10 秒', () => {
-    expect(ITEM_PRICES['bottled-speed-magic']).toBe(3)
+  it('单价为 2 个苹果，普通活动默认读条为 10 秒', () => {
+    expect(ITEM_PRICES['bottled-speed-magic']).toBe(2)
     expect(BASE_ACTIVITY_DURATION_MS).toBe(10_000)
   })
 
@@ -188,6 +188,10 @@ describe('V4 四八度电子琴契约', () => {
 })
 
 describe('V4 瓶装活力魔法', () => {
+  it('单价为 7 个苹果', () => {
+    expect(ITEM_PRICES['bottled-vitality-magic']).toBe(7)
+  })
+
   it('立即让全部意愿为真，并在第七次成功领取后精确过期', () => {
     let state: GameState = {
       ...createInitialGameState({ now: 0, seed: 'vitality-seven' }),
@@ -301,6 +305,114 @@ describe('V4 瓶装活力魔法', () => {
 })
 
 describe('V4 调试收集与用户播放列表', () => {
+  it.each([
+    {
+      name: '移除最后一份对应收藏',
+      action: {
+        type: 'debug/collection-set' as const,
+        collectionId: 'first-1',
+        owned: false,
+        now: 200,
+      },
+    },
+    {
+      name: '清空全部收集',
+      action: { type: 'debug/clear-all' as const, now: 200 },
+    },
+  ])('$name 后立即替换失去先决条件的未完成任务', ({ action }) => {
+    const state = createInitialGameState({ now: 0, seed: 'debug-task-reconcile', debug: true })
+    state.collections['first-1'] = {
+      id: 'first-1',
+      firstObtainedAt: 10,
+      duplicateCount: 0,
+    }
+    const unavailableFirst = {
+      instanceId: 'replace-debug-first',
+      taskId: 'remember-first' as const,
+      assignedAt: 10,
+      progress: 0,
+      target: 1,
+      rewardApples: 2,
+      seenKeys: [],
+    }
+    const completedBackpack = {
+      instanceId: 'keep-debug-backpack',
+      taskId: 'open-backpack' as const,
+      assignedAt: 10,
+      progress: 1,
+      target: 1,
+      rewardApples: 1,
+      seenKeys: ['opened'],
+    }
+    const partialRoom = {
+      instanceId: 'keep-debug-room',
+      taskId: 'room-stroll' as const,
+      assignedAt: 10,
+      progress: 1,
+      target: 2,
+      rewardApples: 2,
+      seenKeys: ['bed'],
+    }
+    state.tasks.active = [unavailableFirst, completedBackpack, partialRoom]
+    const originalSequence = state.random.sequences.tasks
+
+    const reconciled = successful(reduceGame(state, action, catalog)).state
+
+    expect(reconciled.collections).toEqual({})
+    expect(reconciled.tasks.active[0]).not.toBe(unavailableFirst)
+    expect(reconciled.tasks.active[0].taskId).not.toBe('remember-first')
+    expect(reconciled.tasks.active[1]).toBe(completedBackpack)
+    expect(reconciled.tasks.active[2]).toBe(partialRoom)
+    expect(reconciled.random.sequences.tasks).toBe(originalSequence + 1)
+  })
+
+  it('清空收集时保留已经完成的收藏任务快照', () => {
+    const state = createInitialGameState({ now: 0, seed: 'debug-keep-completed', debug: true })
+    state.collections['first-1'] = {
+      id: 'first-1',
+      firstObtainedAt: 10,
+      duplicateCount: 0,
+    }
+    const completedFirst = {
+      instanceId: 'keep-completed-first',
+      taskId: 'remember-first' as const,
+      assignedAt: 10,
+      progress: 1,
+      target: 1,
+      rewardApples: 2,
+      seenKeys: ['first-1'],
+    }
+    state.tasks.active = [
+      completedFirst,
+      {
+        instanceId: 'keep-incomplete-room',
+        taskId: 'room-stroll',
+        assignedAt: 10,
+        progress: 0,
+        target: 2,
+        rewardApples: 2,
+        seenKeys: [],
+      },
+      {
+        instanceId: 'keep-incomplete-backpack',
+        taskId: 'open-backpack',
+        assignedAt: 10,
+        progress: 0,
+        target: 1,
+        rewardApples: 1,
+        seenKeys: [],
+      },
+    ]
+    const originalSequence = state.random.sequences.tasks
+
+    const cleared = successful(
+      reduceGame(state, { type: 'debug/clear-all', now: 200 }, catalog),
+    ).state
+
+    expect(cleared.tasks.active[0]).toBe(completedFirst)
+    expect(cleared.random.sequences.tasks).toBe(originalSequence)
+  })
+
   it('一键全收集包含好友，清空收集同时清空且保持其他长期状态', () => {
     const debug = {
       ...createInitialGameState({ now: 0, seed: 'debug-all', debug: true }),

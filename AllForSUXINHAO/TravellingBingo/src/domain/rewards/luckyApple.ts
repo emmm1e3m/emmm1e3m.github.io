@@ -2,6 +2,8 @@ import {
   addProbabilityBonus,
   APPLE_LUNCHBOX_FRIEND_BONUS,
   type GameProbabilities,
+  LUCKY_APPLE_COLLECTION_DROP_MULTIPLIER,
+  multiplyProbability,
 } from '../game/gameBalance'
 import type {
   ActivityKind,
@@ -33,6 +35,7 @@ export type LuckyAppleAvailability =
         | 'activity-not-collectible'
         | 'friend-result-guaranteed'
         | 'drop-already-guaranteed'
+        | 'drop-cannot-increase'
         | 'category-complete'
       message: string
     }
@@ -65,11 +68,21 @@ export function getLuckyAppleAvailability(
     }
   }
   const probabilityKey = PROBABILITY_BY_ACTIVITY[kind]
-  if (state.gameBalance.probabilities[probabilityKey] >= 1) {
+  const baseDropChance = state.gameBalance.probabilities[probabilityKey]
+  if (baseDropChance >= 1) {
     return {
       canUse: false,
       reason: 'drop-already-guaranteed',
       message: '这次收藏概率已经是 100%，幸运苹果留到下次吧。',
+    }
+  }
+  if (
+    multiplyProbability(baseDropChance, LUCKY_APPLE_COLLECTION_DROP_MULTIPLIER) <= baseDropChance
+  ) {
+    return {
+      canUse: false,
+      reason: 'drop-cannot-increase',
+      message: '这次不会发现收藏，幸运苹果留到下次吧。',
     }
   }
 

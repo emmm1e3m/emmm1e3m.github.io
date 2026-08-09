@@ -1,9 +1,11 @@
 .bilibili-playlist-panel {
+  min-width: 0;
   display: grid;
   gap: 0.9rem;
 }
 
 .bilibili-playlist-panel > header {
+  min-width: 0;
   display: grid;
   gap: 0.22rem;
 }
@@ -11,9 +13,11 @@
 .bilibili-playlist-panel h3,
 .bilibili-playlist-panel h4 {
   margin: 0;
+  overflow-wrap: anywhere;
 }
 
 .bilibili-playlist-panel__controls {
+  min-width: 0;
   display: grid;
   gap: 0.45rem;
 }
@@ -36,8 +40,15 @@
 
 .bilibili-playlist-panel__modes {
   display: grid;
-  grid-template-columns: repeat(3, 1fr);
+  grid-template-columns: repeat(3, minmax(0, 1fr));
   gap: 0.4rem;
+}
+
+.bilibili-playlist-panel__transport {
+  min-width: 0;
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 0.45rem;
 }
 
 .bilibili-playlist-panel__modes button[aria-pressed='true'] {
@@ -47,11 +58,13 @@
 }
 
 .bilibili-playlist-panel__tracks {
+  min-width: 0;
   display: grid;
   gap: 0.42rem;
 }
 
 .bilibili-playlist-panel__tracks ol {
+  min-width: 0;
   display: grid;
   gap: 0.35rem;
   max-height: 17rem;
@@ -67,12 +80,16 @@
 }
 
 .bilibili-playlist-panel__tracks li {
+  min-width: 0;
   display: grid;
 }
 
 .bilibili-playlist-panel__tracks button {
+  min-width: 0;
+  max-width: 100%;
   display: block;
   width: 100%;
+  overflow: hidden;
   text-align: left;
 }
 
@@ -83,6 +100,7 @@
 
 .bilibili-playlist-panel__tracks strong {
   display: block;
+  max-width: 100%;
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;

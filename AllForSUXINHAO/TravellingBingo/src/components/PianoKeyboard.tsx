@@ -14,6 +14,10 @@ interface ActiveVoice {
   envelope: GainNode
 }
 
+interface PianoMasterBus {
+  compressor: DynamicsCompressorNode
+}
+
 interface PianoKeyboardProps {
   disabled?: boolean
   onNote?: (noteId: PianoNoteId) => void
@@ -31,9 +35,28 @@ const PIANO_HARMONICS = [
   type: OscillatorType
 }[]
 
-/** 相比原音量整体提高二分之一。 */
-const PIANO_ATTACK_GAIN = 0.33
-const PIANO_DECAY_GAIN = 0.1125
+/** C5 保留当前响度，其余八度按听感需求调整相对增益。 */
+const PIANO_OCTAVE_GAIN = {
+  3: 2,
+  4: 1.5,
+  5: 1,
+  6: 1.25,
+} as const
+
+const PIANO_BASE_ATTACK_GAIN = 0.33
+const PIANO_BASE_DECAY_GAIN = 0.1125
+
+/** 单个最响音符不会触发压缩；和弦叠加时收住到达扬声器前的峰值。 */
+function createPianoMasterBus(context: AudioContext, now: number): PianoMasterBus {
+  const compressor = context.createDynamicsCompressor()
+  compressor.threshold.setValueAtTime(-3, now)
+  compressor.knee.setValueAtTime(0, now)
+  compressor.ratio.setValueAtTime(20, now)
+  compressor.attack.setValueAtTime(0.003, now)
+  compressor.release.setValueAtTime(0.18, now)
+  compressor.connect(context.destination)
+  return { compressor }
+}
 
 function audioContextConstructor(): AudioContextConstructor | undefined {
   const audioGlobal = globalThis as typeof globalThis & {
@@ -69,6 +92,7 @@ function isKeyboardAvailable(root: HTMLElement | null) {
 export function PianoKeyboard({ disabled = false, onNote }: PianoKeyboardProps) {
   const rootRef = useRef<HTMLElement | null>(null)
   const contextRef = useRef<AudioContext | null>(null)
+  const masterBusRef = useRef<PianoMasterBus | null>(null)
   const voicesRef = useRef(new Map<string, ActiveVoice>())
   const requestedRef = useRef(new Set<string>())
   const pointersRef = useRef(new Map<number, string>())
@@ -136,12 +160,15 @@ export function PianoKeyboard({ disabled = false, onNote }: PianoKeyboardProps) 
         }
 
         const now = context.currentTime
+        const octaveGain = PIANO_OCTAVE_GAIN[note.octave]
+        const masterBus = masterBusRef.current ?? createPianoMasterBus(context, now)
+        masterBusRef.current = masterBus
         const envelope = context.createGain()
         envelope.gain.setValueAtTime(0.0001, now)
-        envelope.gain.exponentialRampToValueAtTime(PIANO_ATTACK_GAIN, now + 0.008)
-        envelope.gain.exponentialRampToValueAtTime(PIANO_DECAY_GAIN, now + 0.09)
+        envelope.gain.exponentialRampToValueAtTime(PIANO_BASE_ATTACK_GAIN * octaveGain, now + 0.008)
+        envelope.gain.exponentialRampToValueAtTime(PIANO_BASE_DECAY_GAIN * octaveGain, now + 0.09)
         envelope.gain.setTargetAtTime(0.0001, now + 0.09, 0.32)
-        envelope.connect(context.destination)
+        envelope.connect(masterBus.compressor)
 
         const oscillators = PIANO_HARMONICS.map(({ multiplier, level, type }) => {
           const oscillator = context.createOscillator()
@@ -211,6 +238,10 @@ export function PianoKeyboard({ disabled = false, onNote }: PianoKeyboardProps) 
         }
       }
       voices.clear()
+
+      const masterBus = masterBusRef.current
+      masterBusRef.current = null
+      masterBus?.compressor.disconnect()
 
       const context = contextRef.current
       contextRef.current = null

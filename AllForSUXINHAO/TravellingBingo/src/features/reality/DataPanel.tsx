@@ -1,45 +1,11 @@
 import { useId } from 'react'
 
-import type { DataPanelProps, RealityDataSnapshot } from './types'
+import type { DataPanelProps } from './types'
 import './reality.css'
 
 const DEFAULT_GROUP_URL = 'https://www.weibo.com/u/7878664767'
 
-interface DataCardProps {
-  title: string
-  badge: string
-  placeholder: string
-  snapshot?: RealityDataSnapshot | null
-}
-
-function DataCard({ title, badge, placeholder, snapshot }: DataCardProps) {
-  return (
-    <article className="reality-data-card">
-      <div className="reality-data-card__heading">
-        <div>
-          <span>{badge}</span>
-          <h3>{title}</h3>
-        </div>
-        {snapshot && <span className="reality-placeholder-tag">当前状态</span>}
-      </div>
-      {snapshot && (
-        <>
-          <strong className="reality-data-card__status">{snapshot.statusLabel}</strong>
-          <p>{snapshot.detail}</p>
-        </>
-      )}
-      <p className="reality-data-card__summary">{placeholder}</p>
-      <div className="reality-data-card__method">
-        <strong>使用方法</strong>
-        <p>具体步骤很快会补到这里。</p>
-      </div>
-    </article>
-  )
-}
-
 export function DataPanel({
-  stream,
-  trend,
   groupUrl = DEFAULT_GROUP_URL,
   onGroupLinkClick,
   className = '',
@@ -51,39 +17,10 @@ export function DataPanel({
       className={`reality-panel reality-data-panel ${className}`.trim()}
       aria-labelledby={headingId}
     >
-      <div className="reality-panel__heading">
+      <aside className="reality-group-card reality-group-card--centered">
         <div>
-          <span className="paper-tag">数据</span>
-          <h2 id={headingId}>刷播与冲热（开发中）</h2>
-        </div>
-      </div>
-      <p className="reality-panel__intro">
-        电脑上放着两张行动卡，选一项想做的事，和饼狗一起为喜欢的人认真努力吧。
-      </p>
-
-      <div className="reality-data-grid">
-        <DataCard
-          title="认真刷播"
-          badge="STREAM"
-          snapshot={stream}
-          placeholder="在该页面中直接开始刷播（无需但是建议加入运行组）"
-        />
-        <DataCard
-          title="全力冲热"
-          badge="TREND"
-          snapshot={trend}
-          placeholder="在该页面中启动冲热任务（需要加入运行组，与最新版插件配合使用）"
-        />
-      </div>
-
-      <aside
-        className="reality-group-card reality-group-card--centered"
-        aria-labelledby={`${headingId}-group-title`}
-      >
-        <div>
-          <span aria-hidden="true">📡</span>
           <div>
-            <h3 id={`${headingId}-group-title`}>冲热刷播，奖品多多</h3>
+            <h2 id={headingId}>冲热刷播，奖品多多</h2>
           </div>
         </div>
         <a

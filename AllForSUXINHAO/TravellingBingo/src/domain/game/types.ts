@@ -375,6 +375,23 @@ export interface RealityState {
   pomodoro: PomodoroState
 }
 
+/** 已完成的一轮刷播；recentRounds 按最新到最旧保存。 */
+export interface StreamRoundRecord {
+  round: number
+  /** 该轮实际完成时间。 */
+  completedAt: number
+}
+
+export interface StreamHistory {
+  completedRounds: number
+  /** 最近十轮，索引 0 始终是最新一轮。 */
+  recentRounds: StreamRoundRecord[]
+}
+
+export interface RealityStateV6 extends RealityState {
+  streamHistory: StreamHistory
+}
+
 export type MusicLoopMode = 'list' | 'single' | 'shuffle'
 
 /** 冻结 V4/旧 V5 存档校验专用，不属于当前播放器业务状态。 */
@@ -509,7 +526,12 @@ export interface GameStateV5LegacyMusic extends Omit<GameStateV5, 'musicPlayer'>
     Pick<MusicPlayerStateV4, 'playlists' | 'order' | 'activePlaylistId'>
 }
 
-export type GameState = GameStateV5
+export interface GameStateV6 extends Omit<GameStateV5, 'schemaVersion' | 'reality'> {
+  schemaVersion: 6
+  reality: RealityStateV6
+}
+
+export type GameState = GameStateV6
 
 export interface ActivityTiming {
   phase: ActivityPhase
@@ -597,6 +619,7 @@ export type GameAction =
   | { type: 'task/event'; event: TaskEvent; now: number }
   | { type: 'reality/enter'; now: number }
   | { type: 'reality/leave'; now: number }
+  | { type: 'reality/stream-round-complete'; completedAt: number }
   | {
       type: 'reality/settle'
       stayId: string

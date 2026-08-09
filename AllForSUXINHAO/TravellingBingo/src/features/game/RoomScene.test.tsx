@@ -50,6 +50,7 @@ function renderRoom({
   area = DEFAULT_ROOM_AREA,
   panel = null,
   onArea = vi.fn(),
+  onPetCenterChange,
   onReluctantArea,
   onPanel = vi.fn(),
   onBackgroundActivate = vi.fn(),
@@ -64,6 +65,7 @@ function renderRoom({
   area?: RoomArea
   panel?: Parameters<typeof RoomScene>[0]['panel']
   onArea?: Parameters<typeof RoomScene>[0]['onArea']
+  onPetCenterChange?: Parameters<typeof RoomScene>[0]['onPetCenterChange']
   onReluctantArea?: Parameters<typeof RoomScene>[0]['onReluctantArea']
   onPanel?: Parameters<typeof RoomScene>[0]['onPanel']
   onBackgroundActivate?: Parameters<typeof RoomScene>[0]['onBackgroundActivate']
@@ -84,6 +86,7 @@ function renderRoom({
       sleeping={false}
       restDarkness={0}
       onArea={onArea}
+      onPetCenterChange={onPetCenterChange}
       onReluctantArea={onReluctantArea}
       onPanel={onPanel}
       onBackgroundActivate={onBackgroundActivate}
@@ -261,6 +264,48 @@ describe('房屋场景定位与返回交互', () => {
     )
   })
 
+  it('从设施返回待机时留在当前落点，停下休息只显示待机姿态', () => {
+    vi.useFakeTimers()
+    const fridge = ROOM_AREAS.find((candidate) => candidate.id === 'fridge')!
+
+    try {
+      const game = createInitialGameState({ now: 1_000, seed: 'room-scene-return-idle' })
+      const commonProps = {
+        game,
+        area: fridge,
+        walking: false,
+        walkingDirection: 'right' as const,
+        sleeping: false,
+        restDarkness: 0,
+        onArea: vi.fn(),
+        onPanel: vi.fn(),
+        onBackgroundActivate: vi.fn(),
+        onHelp: vi.fn(),
+        onTaskEvent: vi.fn(),
+        wanderRandom: vi.fn(() => 0),
+      }
+      const { rerender } = render(<RoomScene {...commonProps} panel="fridge" />)
+      const mascot = screen.getByRole('button', { name: '饼狗，打开行动菜单' })
+
+      fireEvent.click(screen.getByRole('img', { name: /纵向展开的两层铲铲饼屋/u }))
+      rerender(<RoomScene {...commonProps} panel="status" />)
+
+      expect(mascot).toHaveClass('is-wandering', 'is-wander-resting')
+      expect(mascot).not.toHaveClass('is-wander-moving')
+      expect(mascot.querySelector('.mascot-sprite')).toHaveClass('mascot-sprite--idle')
+      expect(Number.parseFloat(mascot.style.getPropertyValue('--pet-x'))).toBeCloseTo(
+        (fridge.petCenter.x / ROOM_CANVAS.width) * 100,
+        12,
+      )
+      expect(Number.parseFloat(mascot.style.getPropertyValue('--pet-y'))).toBeCloseTo(
+        (fridge.petCenter.y / ROOM_CANVAS.height) * 100,
+        12,
+      )
+    } finally {
+      vi.useRealTimers()
+    }
+  })
+
   it('纯函数生成的任意漫步点都在最大凸包内部且不只取设施落点', () => {
     let state = 7
     const random = () => {
@@ -371,6 +416,16 @@ describe('房屋场景定位与返回交互', () => {
     expect(onBackgroundActivate).toHaveBeenCalledOnce()
   })
 
+  it('通过按下状态向辅助技术标明当前打开的设施面板', () => {
+    renderRoom({ panel: 'fridge' })
+
+    expect(screen.getByRole('button', { name: '打开冰箱' })).toHaveAttribute('aria-pressed', 'true')
+    expect(screen.getByRole('button', { name: '去电脑前' })).toHaveAttribute(
+      'aria-pressed',
+      'false',
+    )
+  })
+
   it('灰态热点额外发出一次活力提示请求，愿意态与现实维度不发出', () => {
     const base = createInitialGameState({ now: 1_000, seed: 'room-vitality-hotspot' })
     const reluctantGame: GameState = {
@@ -410,9 +465,9 @@ describe('房屋场景定位与返回交互', () => {
         onTaskEvent={vi.fn()}
       />,
     )
-    fireEvent.click(screen.getByRole('button', { name: '数据' }))
+    fireEvent.click(screen.getByRole('button', { name: '刷播' }))
     expect(onReluctantArea).toHaveBeenCalledOnce()
-    expect(screen.getByRole('button', { name: '数据' })).not.toHaveClass('is-reluctant')
+    expect(screen.getByRole('button', { name: '刷播' })).not.toHaveClass('is-reluctant')
   })
 
   it('冰箱落点重叠时设施热点优先可点，饼狗其余区域仍能打开菜单', () => {
@@ -449,7 +504,7 @@ describe('房屋场景定位与返回交互', () => {
     )
   })
 
-  it('现实维度只显示数据、工作与唱片机三个设施入口', () => {
+  it('现实维度显示刷播、冲热、工作与唱片机四个设施入口', () => {
     const onArea = vi.fn()
     const game = {
       ...createInitialGameState({ now: 1_000, seed: 'room-scene-reality' }),
@@ -457,12 +512,26 @@ describe('房屋场景定位与返回交互', () => {
     }
     renderRoom({ game, onArea })
 
-    fireEvent.click(screen.getByRole('button', { name: '数据' }))
+    fireEvent.click(screen.getByRole('button', { name: '刷播' }))
     expect(onArea).toHaveBeenLastCalledWith(
       expect.objectContaining({
         id: 'computer',
-        panel: 'reality-data',
+        panel: 'reality-stream',
         petCenter: { x: 504, y: 409 },
+      }),
+    )
+
+    fireEvent.click(screen.getByRole('button', { name: '冲热（开发中）' }))
+    expect(screen.getByRole('button', { name: '冲热（开发中）' })).toHaveStyle({
+      '--x': '72%',
+      '--y': '29%',
+    })
+    expect(onArea).toHaveBeenLastCalledWith(
+      expect.objectContaining({
+        id: 'trendComputer',
+        panel: 'reality-trend',
+        petCenter: { x: 504, y: 409 },
+        petLocation: 'computer',
       }),
     )
 
@@ -494,7 +563,8 @@ describe('房屋场景定位与返回交互', () => {
     renderRoom()
 
     expect(screen.queryByRole('button', { name: '工作' })).not.toBeInTheDocument()
-    expect(screen.queryByRole('button', { name: '数据' })).not.toBeInTheDocument()
+    expect(screen.queryByRole('button', { name: '刷播' })).not.toBeInTheDocument()
+    expect(screen.queryByRole('button', { name: '冲热（开发中）' })).not.toBeInTheDocument()
     for (const visibleLabel of [
       '去床上',
       '去电脑前',

@@ -2,10 +2,17 @@ import { FRIEND_EVENT_IDS } from './constants'
 import {
   FRIEND_GIFT_APPLES_BY_ID,
   FRIEND_GIFT_ITEM_BY_ID,
+  LEGACY_FRIEND_GIFT_APPLES_BY_ID,
   REST_COMPLETION_APPLES,
+  TRAVEL_FRIEND_GIFT_APPLES_BY_ID,
 } from './gameBalance'
 import { isPetTired } from '../pet/preferences'
-import { hasRetiredTask, TASK_LIBRARY, validateTaskInstanceReachability } from '../tasks/taskBoard'
+import {
+  hasRetiredTask,
+  meetsTaskInstanceAssignmentRequirements,
+  TASK_LIBRARY,
+  validateTaskInstanceReachability,
+} from '../tasks/taskBoard'
 import type {
   CollectionCatalog,
   CollectibleActivityKind,
@@ -62,6 +69,8 @@ function validateRewardPlan(state: GameState): ImportedGameStateValidation {
   const plan = activity.rewardPlan
   const mismatch = (message: string): ImportedGameStateValidation =>
     invalid('REWARD_PLAN_MISMATCH', message)
+  const hasCompatibleTravelGiftApples = (friendId: FriendId): boolean =>
+    plan.modifierApples === 0 || plan.modifierApples === TRAVEL_FRIEND_GIFT_APPLES_BY_ID[friendId]
 
   if (activity.kind === 'music' || activity.kind === 'rest') {
     if (activity.legacySource !== undefined) {
@@ -105,14 +114,24 @@ function validateRewardPlan(state: GameState): ImportedGameStateValidation {
     if (state.friends[plan.friendId] === undefined) {
       return mismatch('电子琴只能召来已经认识的朋友。')
     }
-    return plan.modifierApples === FRIEND_GIFT_APPLES_BY_ID[plan.friendId]
+    return plan.modifierApples === FRIEND_GIFT_APPLES_BY_ID[plan.friendId] ||
+      plan.modifierApples === LEGACY_FRIEND_GIFT_APPLES_BY_ID[plan.friendId]
       ? { ok: true }
       : mismatch('好友赠送的🍎数量与当前好友不一致。')
   }
 
   // V1 的普通活动曾冻结苹果与保底展示信息；迁移写入显式来源。
   // 计划只兑现，不再继续旧保底计数。
-  const hasLegacyAppleReward = plan.baseApples !== 0 || plan.modifierApples !== 0
+  const hasCurrentOrPreviousTravelGift =
+    activity.kind === 'travel' &&
+    activity.legacySource === undefined &&
+    plan.baseApples === 0 &&
+    plan.friendId !== null &&
+    plan.collection === null &&
+    plan.giftItemId === FRIEND_GIFT_ITEM_BY_ID[plan.friendId] &&
+    hasCompatibleTravelGiftApples(plan.friendId)
+  const hasLegacyAppleReward =
+    plan.baseApples !== 0 || (plan.modifierApples !== 0 && !hasCurrentOrPreviousTravelGift)
   const hasLegacyPitySnapshot = plan.guaranteedByPity || plan.pityAfterClaim !== null
   if ((hasLegacyAppleReward || hasLegacyPitySnapshot) && activity.legacySource !== 'v1') {
     return mismatch('只有显式迁移的 V1 活动才能携带旧版苹果或保底计划。')
@@ -134,7 +153,9 @@ function validateRewardPlan(state: GameState): ImportedGameStateValidation {
   // 新 V3 旅行遇友必须与明信片互斥并匹配固定礼物；旧 V1/V2 活动允许
   // collection + friend 双结果，但迁移后 giftItemId 固定为 null。
   if (plan.giftItemId === null) return { ok: true }
-  return plan.collection === null && plan.giftItemId === FRIEND_GIFT_ITEM_BY_ID[plan.friendId]
+  return plan.collection === null &&
+    plan.giftItemId === FRIEND_GIFT_ITEM_BY_ID[plan.friendId] &&
+    hasCompatibleTravelGiftApples(plan.friendId)
     ? { ok: true }
     : mismatch('旅行好友、明信片与好友礼物的计划组合不一致。')
 }
@@ -163,6 +184,16 @@ export function validateImportedGameState(
       return invalid('TASK_BOARD_INVALID', '任务板中的任务实例 ID 必须互不重复。')
     }
     taskInstanceIds.add(task.instanceId)
+    if (
+      !Number.isSafeInteger(task.progress) ||
+      task.progress < 0 ||
+      !Number.isSafeInteger(task.target) ||
+      task.target <= 0 ||
+      !Number.isSafeInteger(task.rewardApples) ||
+      task.rewardApples < 0
+    ) {
+      return invalid('TASK_BOARD_INVALID', '任务目标、进度与奖励必须是有效的安全整数。')
+    }
     if (task.progress > task.target) {
       return invalid('TASK_BOARD_INVALID', '任务进度不能超过任务目标。')
     }
@@ -177,11 +208,23 @@ export function validateImportedGameState(
       return invalid('TASK_BOARD_INVALID', reachability.message)
     }
     if (
-      task.taskId === 'stage-test' &&
       task.progress < task.target &&
-      state.tasks.oneOffCompleted.includes('stage-test')
+      !meetsTaskInstanceAssignmentRequirements(task, {
+        catalog,
+        collections: state.collections,
+        oneOffCompleted: state.tasks.oneOffCompleted,
+      })
     ) {
-      return invalid('TASK_BOARD_INVALID', '已经完成过的单次舞台测试不能再次出现在任务板。')
+      return invalid('TASK_BOARD_INVALID', '任务板包含当前没有完成条件的未完成任务。')
+    }
+    if (template.oneOff) {
+      const recorded = state.tasks.oneOffCompleted.includes(task.taskId)
+      if (task.progress < task.target && recorded) {
+        return invalid('TASK_BOARD_INVALID', '已经完成过的一次性任务不能再次出现在任务板。')
+      }
+      if (task.progress >= task.target && !recorded) {
+        return invalid('TASK_BOARD_INVALID', '已经完成的一次性任务必须记录在完成列表中。')
+      }
     }
     if (taskTriggerGroups.has(template.triggerGroup)) {
       return invalid('TASK_BOARD_INVALID', '同一任务板的三项任务必须来自不同触发组。')

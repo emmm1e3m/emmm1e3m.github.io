@@ -61,6 +61,18 @@ async function installAudioContextProbe(page: Page) {
       disconnect() {}
     }
 
+    class FakeDynamicsCompressor {
+      threshold = new FakeAudioParam()
+      knee = new FakeAudioParam()
+      ratio = new FakeAudioParam()
+      attack = new FakeAudioParam()
+      release = new FakeAudioParam()
+      connect() {
+        return this
+      }
+      disconnect() {}
+    }
+
     class FakeAudioContext {
       state = 'running'
       currentTime = 0
@@ -86,6 +98,9 @@ async function installAudioContextProbe(page: Page) {
       }
       createGain() {
         return new FakeGain(this)
+      }
+      createDynamicsCompressor() {
+        return new FakeDynamicsCompressor()
       }
       close() {
         stats.closes += 1

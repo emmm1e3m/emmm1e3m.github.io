@@ -7,7 +7,7 @@ const PROBABILITY_COPY: Record<ProbabilityKey, string> = {
   millionShot: '百万直拍',
   siteFirst: '全站第一',
   travelFriend: '旅行遇见朋友',
-  musicFriend: '音乐遇见朋友',
+  musicFriend: '音乐遇见朋友（每位朋友）',
 }
 
 const DURATION_CHOICES = [
@@ -16,18 +16,37 @@ const DURATION_CHOICES = [
   { value: 72_000, label: '1 分 12 秒' },
 ] as const
 
+const STREAM_DURATION_MIN_SECONDS = 1
+const STREAM_DURATION_MAX_SECONDS = 3_600
+
 interface DebugPanelProps {
   game: GameState
   onAction: (action: GameAction) => void
   onBackup: () => void
+  streamRoundDurationSeconds: number
+  onStreamRoundDurationChange: (seconds: number) => void
 }
 
-export function DebugPanel({ game, onAction, onBackup }: DebugPanelProps) {
+export function DebugPanel({
+  game,
+  onAction,
+  onBackup,
+  streamRoundDurationSeconds,
+  onStreamRoundDurationChange,
+}: DebugPanelProps) {
   const [pendingBulkAction, setPendingBulkAction] = useState<'collect-all' | 'clear-all' | null>(
     null,
   )
+  const [streamDurationDraft, setStreamDurationDraft] = useState(() =>
+    String(streamRoundDurationSeconds),
+  )
   const duration = game.gameBalance.activityDurationMs
   const probabilities = game.gameBalance.probabilities
+  const parsedStreamDuration = Number(streamDurationDraft)
+  const streamDurationValid =
+    Number.isSafeInteger(parsedStreamDuration) &&
+    parsedStreamDuration >= STREAM_DURATION_MIN_SECONDS &&
+    parsedStreamDuration <= STREAM_DURATION_MAX_SECONDS
 
   function setDuration(value: number) {
     onAction({ type: 'debug/duration-set', durationMs: value })
@@ -37,11 +56,15 @@ export function DebugPanel({ game, onAction, onBackup }: DebugPanelProps) {
     onAction({ type: 'debug/probability-set', key, value })
   }
 
+  if (!game.profile.debug) return null
+
   return (
     <div className="context-content debug-panel debug-panel--v4">
       <span className="paper-tag paper-tag--debug">DEBUG 门牌</span>
       <h2>调试房间规则</h2>
-      <p className="panel-intro">这里的设置会跟着调试存档一起保存。</p>
+      <p className="panel-intro">
+        活动规则会跟着调试存档保存；刷播轮次时长只在本次打开页面时有效。
+      </p>
 
       <fieldset className="debug-choice-group">
         <legend>下一次活动时长</legend>
@@ -57,6 +80,35 @@ export function DebugPanel({ game, onAction, onBackup }: DebugPanelProps) {
             </button>
           ))}
         </div>
+      </fieldset>
+
+      <fieldset className="debug-choice-group debug-stream-duration">
+        <legend>刷播轮次时长</legend>
+        <div>
+          <label htmlFor="debug-stream-duration-seconds">
+            刷播轮次时长（秒）
+            <input
+              id="debug-stream-duration-seconds"
+              type="number"
+              min={STREAM_DURATION_MIN_SECONDS}
+              max={STREAM_DURATION_MAX_SECONDS}
+              step="1"
+              value={streamDurationDraft}
+              onChange={(event) => setStreamDurationDraft(event.currentTarget.value)}
+            />
+          </label>
+          <button
+            type="button"
+            disabled={!streamDurationValid}
+            onClick={() => onStreamRoundDurationChange(parsedStreamDuration)}
+          >
+            应用刷播时长
+          </button>
+        </div>
+        <small>
+          可设 1 到 3600 秒。当前为 {streamRoundDurationSeconds}{' '}
+          秒；当前轮保持原时长，从下一轮开始使用新设置。
+        </small>
       </fieldset>
 
       <fieldset className="probability-editor">

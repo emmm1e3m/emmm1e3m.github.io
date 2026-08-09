@@ -6,6 +6,7 @@ import { createInitialGameState, type GameState } from '@/domain'
 
 import { ACTIVITY_COPY, STAGE_TEST_URL } from './gameCopy'
 import { GameHome, type PanelId } from './GameHome'
+import { ROOM_AREAS, ROOM_CANVAS } from './roomConfig'
 
 const postcard = {
   id: 'postcard-2025-01-0001',
@@ -116,11 +117,11 @@ function GameHarness() {
   )
 }
 
-function RoomPanelHarness() {
+function RoomPanelHarness({ game = collectedGame() }: { game?: GameState }) {
   const [panel, setPanel] = useState<PanelId | null>(null)
   return (
     <GameHome
-      game={collectedGame()}
+      game={game}
       catalog={catalog}
       now={1_000}
       panel={panel}
@@ -131,6 +132,35 @@ function RoomPanelHarness() {
       onExit={vi.fn()}
       onBackup={vi.fn()}
       onDismissReward={vi.fn()}
+    />
+  )
+}
+
+function RealityStreamHarness() {
+  const [panel, setPanel] = useState<PanelId | null>('reality-stream')
+  const base = createInitialGameState({ now: 1_000, seed: 'reality-stream-stability' })
+  const game: GameState = {
+    ...base,
+    world: 'reality',
+    reality: {
+      ...base.reality,
+      activeStay: { stayId: 'reality-stream-stay', enteredAt: 1_000 },
+    },
+  }
+  return (
+    <GameHome
+      game={game}
+      catalog={catalog}
+      now={2_000}
+      panel={panel}
+      dirty={false}
+      reward={null}
+      onPanel={setPanel}
+      onAction={vi.fn()}
+      onExit={vi.fn()}
+      onBackup={vi.fn()}
+      onDismissReward={vi.fn()}
+      canEnterReality={() => true}
     />
   )
 }
@@ -258,7 +288,7 @@ describe('收藏墙模态框', () => {
     expect(within(dialog).queryByText('???')).not.toBeInTheDocument()
   })
 
-  it('收藏播放器桥接事件携带收藏 ID 与 BV，且跨面板和苹果钟保持同一 iframe', () => {
+  it('收藏播放器桥接事件携带收藏 ID 与 BV，且跨面板、维度过场和苹果钟保持同一 iframe', async () => {
     const onAction = vi.fn()
     const commonProps = {
       catalog: videoCatalog,
@@ -270,6 +300,7 @@ describe('收藏墙模态框', () => {
       onExit: vi.fn(),
       onBackup: vi.fn(),
       onDismissReward: vi.fn(),
+      canEnterReality: () => true,
     } as const
     const { rerender } = render(
       <GameHome {...commonProps} game={videoCollectedGame()} panel="album" />,
@@ -284,9 +315,8 @@ describe('收藏墙模态框', () => {
     expect(detail).not.toContainElement(dock)
     expect(dock.closest('[inert]')).toBeNull()
 
-    const lastPlayerControl = within(dock).getByRole('button', { name: '取消播放' })
-    lastPlayerControl.focus()
-    fireEvent.keyDown(lastPlayerControl, { key: 'Tab' })
+    iframe.focus()
+    fireEvent.keyDown(iframe, { key: 'Tab' })
     expect(within(detail).getByRole('button', { name: '关闭详情' })).toHaveFocus()
 
     expect(onAction).toHaveBeenCalledWith({
@@ -303,6 +333,30 @@ describe('收藏墙模态框', () => {
     expect(screen.getByTitle('Bilibili 外链播放器：收藏播放器桥接测试')).toBe(iframe)
 
     rerender(<GameHome {...commonProps} game={videoCollectedGame()} panel={null} />)
+    expect(screen.getByTitle('Bilibili 外链播放器：收藏播放器桥接测试')).toBe(iframe)
+
+    fireEvent.click(screen.getByRole('button', { name: '切换到现实生活维度' }))
+    fireEvent.click(screen.getByRole('button', { name: '进入现实维度' }))
+    expect(dock).toHaveAttribute('aria-hidden', 'true')
+    expect(dock).toHaveAttribute('data-interaction-state', 'disabled')
+    expect(iframe).toHaveAttribute('tabindex', '-1')
+    for (const control of within(dock).getAllByRole('button', { hidden: true })) {
+      expect(control).toBeDisabled()
+    }
+    expect(screen.getByRole('status', { name: '正在进入现实维度' })).toBeInTheDocument()
+
+    await waitFor(
+      () => {
+        expect(screen.queryByRole('status', { name: '正在进入现实维度' })).not.toBeInTheDocument()
+      },
+      { timeout: 1_000 },
+    )
+    expect(dock).not.toHaveAttribute('aria-hidden')
+    expect(dock).toHaveAttribute('data-interaction-state', 'enabled')
+    expect(iframe).not.toHaveAttribute('tabindex')
+    for (const control of within(dock).getAllByRole('button')) {
+      expect(control).toBeEnabled()
+    }
     expect(screen.getByTitle('Bilibili 外链播放器：收藏播放器桥接测试')).toBe(iframe)
 
     rerender(<GameHome {...commonProps} game={videoCollectedGame()} panel="record-player" />)
@@ -338,8 +392,41 @@ describe('收藏墙模态框', () => {
 
     expect(screen.getByRole('dialog', { name: '和饼狗一起专注' })).toBeInTheDocument()
     expect(screen.getByTitle('Bilibili 外链播放器：收藏播放器桥接测试')).toBe(iframe)
-    expect(iframe).toHaveAttribute('inert')
+    expect(iframe).not.toHaveAttribute('inert')
     expect(dock.closest('[inert]')).toBeNull()
+  })
+})
+
+describe('现实刷播运行时', () => {
+  it('切换信息面板时保留正在运行的窗口与轮次状态', async () => {
+    const openedWindow = {
+      closed: false,
+      close: vi.fn(),
+      opener: window,
+    } as unknown as Window
+    const openSpy = vi.spyOn(window, 'open').mockReturnValue(openedWindow)
+
+    const { unmount } = render(<RealityStreamHarness />)
+    fireEvent.change(screen.getByRole('textbox', { name: '视频BV号或链接列表' }), {
+      target: { value: 'BV1xx411c7mD' },
+    })
+    fireEvent.click(screen.getByRole('button', { name: '开始刷播' }))
+
+    await waitFor(() => expect(openSpy).toHaveBeenCalledOnce())
+    expect(screen.getByText('本轮播放中')).toBeVisible()
+
+    fireEvent.click(screen.getByRole('button', { name: '工作' }))
+    expect(screen.getByRole('heading', { name: '苹果钟与待办' })).toBeVisible()
+
+    fireEvent.click(screen.getByRole('button', { name: '刷播' }))
+    expect(screen.getByText('本轮播放中')).toBeVisible()
+    expect(screen.getByRole('textbox', { name: '视频BV号或链接列表' })).toBeDisabled()
+    expect(screen.getByRole('textbox', { name: '视频BV号或链接列表' })).toHaveValue('BV1xx411c7mD')
+    expect(openSpy).toHaveBeenCalledOnce()
+
+    unmount()
+    expect(openedWindow.close).toHaveBeenCalledOnce()
+    openSpy.mockRestore()
   })
 })
 
@@ -369,6 +456,38 @@ describe('房间互动', () => {
       unmount()
       expect(vi.getTimerCount()).toBe(0)
     } finally {
+      vi.useRealTimers()
+    }
+  })
+
+  it('待机漫步后再次前往持久位置相同的设施时仍播放走路动画', () => {
+    vi.useFakeTimers()
+    const randomSpy = vi.spyOn(Math, 'random').mockReturnValue(0)
+    const base = collectedGame()
+    const game: GameState = {
+      ...base,
+      pet: { ...base.pet, location: 'fridge' },
+    }
+
+    try {
+      const { unmount } = render(<RoomPanelHarness game={game} />)
+      const mascot = screen.getByRole('button', { name: '饼狗，打开行动菜单' })
+      const fridge = ROOM_AREAS.find((area) => area.id === 'fridge')!
+      const visibleX = Number.parseFloat(mascot.style.getPropertyValue('--pet-x'))
+      const fridgeX = (fridge.petCenter.x / ROOM_CANVAS.width) * 100
+      expect(visibleX).not.toBeCloseTo(fridgeX, 5)
+
+      fireEvent.click(screen.getByRole('button', { name: '打开冰箱' }))
+
+      expect(mascot).toHaveClass('is-walking')
+      expect(mascot.classList.contains('is-facing-left')).toBe(fridgeX < visibleX)
+      expect(mascot.querySelector('.mascot-sprite')).toHaveClass('mascot-sprite--walk')
+      act(() => vi.advanceTimersByTime(620))
+      expect(mascot).not.toHaveClass('is-walking')
+      unmount()
+      expect(vi.getTimerCount()).toBe(0)
+    } finally {
+      randomSpy.mockRestore()
       vi.useRealTimers()
     }
   })
@@ -999,6 +1118,23 @@ describe('V4 壳层接线', () => {
       reality: {
         ...base.reality,
         activeStay: { stayId: 'restored-reality-stay', enteredAt: 500 },
+        pomodoro: {
+          ...base.reality.pomodoro,
+          session: {
+            sessionId: 'restored-reality-pomodoro',
+            status: 'focus',
+            startedAt: 500,
+            focusEndsAt: 1_500_500,
+            cycleEndsAt: 1_800_500,
+            focusDurationMs: 25 * 60_000,
+            breakDurationMs: 5 * 60_000,
+            completedAt: null,
+            focusNotificationIssuedAt: null,
+            completionNotificationIssuedAt: null,
+            todoId: null,
+            postcardId: null,
+          },
+        },
       },
     }
     render(
@@ -1019,13 +1155,17 @@ describe('V4 壳层接线', () => {
     )
 
     const dialog = screen.getByRole('dialog', { name: '先回到饼屋' })
+    const focusDialog = screen.getByRole('dialog', { name: '和饼狗一起专注' })
+    const returnButton = screen.getByRole('button', { name: '返回饼屋' })
     expect(dialog).toHaveTextContent('当前浏览器不支持继续')
+    expect(focusDialog.closest('[inert]')).not.toBeNull()
+    await waitFor(() => expect(returnButton).toHaveFocus())
     expect(onAction).not.toHaveBeenCalledWith(expect.objectContaining({ type: 'reality/leave' }))
 
     fireEvent.keyDown(document, { key: 'Escape' })
     expect(screen.getByRole('dialog', { name: '先回到饼屋' })).toBeInTheDocument()
 
-    fireEvent.click(screen.getByRole('button', { name: '返回饼屋' }))
+    fireEvent.click(returnButton)
     expect(screen.getByRole('status', { name: '正在回到饼屋' })).toBeInTheDocument()
     await waitFor(() => {
       expect(onPanel).toHaveBeenCalledWith(null)
@@ -1158,6 +1298,7 @@ describe('V4 壳层接线', () => {
       onExit: vi.fn(),
       onBackup: vi.fn(),
       onDismissReward: vi.fn(),
+      canEnterReality: () => true,
     } as const
     const { rerender } = render(<GameHome {...commonFocusProps} game={focusGame} now={2_000} />)
 
@@ -1211,15 +1352,17 @@ describe('V4 壳层接线', () => {
 
     fireEvent.click(screen.getByRole('button', { name: '播放全站第一' }))
     const player = await screen.findByRole('complementary', { name: '持久播放器' })
-    expect(screen.getByTitle('Bilibili 外链播放器：收藏播放器桥接测试')).toHaveAttribute('inert')
+    expect(screen.getByTitle('Bilibili 外链播放器：收藏播放器桥接测试')).not.toHaveAttribute(
+      'inert',
+    )
     expect(focusDialog).not.toContainElement(player)
     expect(screen.getAllByTestId('persistent-bilibili-player')).toHaveLength(1)
     expect(player.closest('[inert]')).toBeNull()
     expect(focusDialog.querySelector('.pomodoro-focus__info')).toHaveClass('is-compact')
 
-    const lastPlayerControl = within(player).getByRole('button', { name: '取消播放' })
-    lastPlayerControl.focus()
-    fireEvent.keyDown(lastPlayerControl, { key: 'Tab' })
+    const focusIframe = screen.getByTitle('Bilibili 外链播放器：收藏播放器桥接测试')
+    focusIframe.focus()
+    fireEvent.keyDown(focusIframe, { key: 'Tab' })
     expect(focusDialog.querySelector('.pomodoro-focus__info')).toHaveFocus()
 
     fireEvent.click(screen.getByRole('button', { name: '隐藏画面' }))

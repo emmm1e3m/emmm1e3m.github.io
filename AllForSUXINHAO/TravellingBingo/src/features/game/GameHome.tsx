@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef, useState } from 'react'
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 
 import type { BilibiliVideoMetadata, ContentCatalog } from '@/content'
 import {
@@ -23,9 +23,11 @@ import {
   PomodoroFocusOverlay,
   RealityReturnDialog,
   RealitySettlementResultDialog,
+  STREAM_ROUND_DURATION_MS,
   buildRealityTodoViews,
   buildUnlockedPostcardBackgrounds,
   type RealityNotificationPermission,
+  useStreamPlayback,
 } from '@/features/reality'
 import { RewardDialog } from '@/features/rewards/RewardDialog'
 
@@ -40,7 +42,13 @@ import { ACTIVITY_COPY, formatCountdown } from './gameCopy'
 import { GameHud } from './GameHud'
 import { HelpDialog } from './HelpDialog'
 import { RoomScene, type RoomWalkingDirection } from './RoomScene'
-import { areaForActivity, areaForPanel, roomAreaFromLocation, type RoomArea } from './roomConfig'
+import {
+  areaForActivity,
+  areaForPanel,
+  roomAreaFromLocation,
+  type RoomArea,
+  type RoomPixelPoint,
+} from './roomConfig'
 
 export type PanelId =
   | 'status'
@@ -53,7 +61,8 @@ export type PanelId =
   | 'piano'
   | 'record-player'
   | 'rest'
-  | 'reality-data'
+  | 'reality-stream'
+  | 'reality-trend'
   | 'reality-work'
   | 'debug'
 
@@ -230,7 +239,9 @@ export function GameHome({
   const [vitalityPromptRequest, setVitalityPromptRequest] = useState<VitalityPromptRequest | null>(
     null,
   )
+  const [streamRoundDurationMs, setStreamRoundDurationMs] = useState(STREAM_ROUND_DURATION_MS)
   const walkTimerRef = useRef<ReturnType<typeof globalThis.setTimeout> | null>(null)
+  const visiblePetCenterRef = useRef<RoomPixelPoint | null>(null)
   const sleepTimerRef = useRef<ReturnType<typeof globalThis.setTimeout> | null>(null)
   const cancelRequestSequenceRef = useRef(0)
   const pomodoroCancelRequestSequenceRef = useRef(0)
@@ -242,6 +253,20 @@ export function GameHome({
     () => catalog.recordPlayerVideos.map(toPlayerTrack),
     [catalog.recordPlayerVideos],
   )
+  const handleStreamRoundCompleted = useCallback(
+    ({ completedAt }: { completedAt: number }) => {
+      onAction({ type: 'reality/stream-round-complete', completedAt })
+    },
+    [onAction],
+  )
+  const streamPlayback = useStreamPlayback({
+    completedRounds: game.reality.streamHistory.completedRounds,
+    roundDurationMs: streamRoundDurationMs,
+    onRoundCompleted: handleStreamRoundCompleted,
+  })
+  const handlePetCenterChange = useCallback((point: RoomPixelPoint) => {
+    visiblePetCenterRef.current = point
+  }, [])
 
   useEffect(() => {
     return () => {
@@ -301,13 +326,16 @@ export function GameHome({
     onPanel(area.panel)
     if (activity) return
 
-    const changed = roomArea.id !== area.id
+    const visiblePetCenter = visiblePetCenterRef.current ?? roomArea.petCenter
+    const changed =
+      visiblePetCenter.x !== area.petCenter.x || visiblePetCenter.y !== area.petCenter.y
     if (changed) {
-      setWalkingDirection(area.petCenter.x < roomArea.petCenter.x ? 'left' : 'right')
+      setWalkingDirection(area.petCenter.x < visiblePetCenter.x ? 'left' : 'right')
       setWalking(true)
       if (walkTimerRef.current !== null) globalThis.clearTimeout(walkTimerRef.current)
       walkTimerRef.current = globalThis.setTimeout(() => setWalking(false), 620)
     }
+    visiblePetCenterRef.current = area.petCenter
 
     if (area.petLocation !== 'center') {
       onAction({ type: 'room/interact', area: area.petLocation, now: Date.now() })
@@ -453,6 +481,7 @@ export function GameHome({
               activity?.kind === 'rest' ? Math.min(0.84, 0.16 + timing.progress * 0.68) : 0
             }
             onArea={moveTo}
+            onPetCenterChange={handlePetCenterChange}
             onReluctantArea={requestVitalityPrompt}
             onPanel={(nextPanel) => navigate(nextPanel)}
             onBackgroundActivate={() => onPanel('status')}
@@ -511,6 +540,11 @@ export function GameHome({
                   }}
                   notificationPermission={notificationPermission}
                   onRequestNotificationPermission={onRequestNotificationPermission}
+                  streamPlayback={streamPlayback}
+                  streamRoundDurationSeconds={streamRoundDurationMs / 1_000}
+                  onStreamRoundDurationChange={(seconds) =>
+                    setStreamRoundDurationMs(seconds * 1_000)
+                  }
                 />
               </aside>
             </div>
@@ -536,33 +570,6 @@ export function GameHome({
         )}
 
         <HelpDialog open={helpOpen} world={game.world} onClose={() => setHelpOpen(false)} />
-        {visibleDimensionDialog && (
-          <DimensionDialog
-            mode={visibleDimensionDialog}
-            onCancel={() => setDimensionDialog(null)}
-            onConfirm={() => {
-              if (visibleDimensionDialog === 'pc-required') {
-                setDimensionDialog(null)
-                return
-              }
-
-              if (
-                visibleDimensionDialog === 'confirm-leave' ||
-                visibleDimensionDialog === 'return-required'
-              ) {
-                startDimensionTransition('game')
-                return
-              }
-
-              if (!canEnterReality()) {
-                setDimensionDialog('pc-required')
-                return
-              }
-
-              startDimensionTransition('reality')
-            }}
-          />
-        )}
         {dimensionTransition && (
           <div
             className={`dimension-transition dimension-transition--${dimensionTransition.phase} dimension-transition--to-${dimensionTransition.target}`}
@@ -603,6 +610,7 @@ export function GameHome({
         />
         <PersistentPlayerDock
           compact={!(hasSidePanel || panel === 'album' || pomodoroActive)}
+          interactionDisabled={dimensionTransition !== null}
           className={
             pomodoroActive
               ? 'persistent-bilibili-player--focus'
@@ -616,13 +624,40 @@ export function GameHome({
             pomodoroActive || panel === 'album' ? undefined : () => navigate('record-player')
           }
         />
-        {pomodoroActive && (
+        {pomodoroActive && dimensionTransition === null && (
           <ActivePomodoroOverlay
             game={game}
             catalog={catalog}
             now={now}
             onAction={onAction}
             onTaskEvent={taskEvent}
+          />
+        )}
+        {visibleDimensionDialog && (
+          <DimensionDialog
+            mode={visibleDimensionDialog}
+            onCancel={() => setDimensionDialog(null)}
+            onConfirm={() => {
+              if (visibleDimensionDialog === 'pc-required') {
+                setDimensionDialog(null)
+                return
+              }
+
+              if (
+                visibleDimensionDialog === 'confirm-leave' ||
+                visibleDimensionDialog === 'return-required'
+              ) {
+                startDimensionTransition('game')
+                return
+              }
+
+              if (!canEnterReality()) {
+                setDimensionDialog('pc-required')
+                return
+              }
+
+              startDimensionTransition('reality')
+            }}
           />
         )}
       </main>

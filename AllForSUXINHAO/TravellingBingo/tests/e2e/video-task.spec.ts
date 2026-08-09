@@ -157,7 +157,10 @@ test('唱片机只有八首全站第一，并跨维度保留选曲与切歌模�
   await page.route('https://player.bilibili.com/**', async (route) =>
     route.fulfill({
       contentType: 'text/html; charset=utf-8',
-      body: '<!doctype html><title>播放器替身</title>',
+      body: `<!doctype html>
+        <title>播放器替身</title>
+        <button type="button" data-testid="embedded-control" onclick="const output = document.querySelector('output'); output.value = output.value ? '键盘已操作' : '鼠标已操作'">播放器内部操作</button>
+        <output data-testid="embedded-result"></output>`,
     }),
   )
   await page.locator('[data-hotspot="唱片机"]').click()
@@ -181,9 +184,32 @@ test('唱片机只有八首全站第一，并跨维度保留选曲与切歌模�
   expect(playerUrl.searchParams.get('bvid')).toBe(first!.bvid)
   expect(playerUrl.searchParams.get('autoplay')).toBe('1')
   expect(playerUrl.searchParams.get('t')).toBe('0')
-  await expect(iframe).toHaveAttribute('tabindex', '-1')
-  await expect(iframe).toHaveAttribute('inert', '')
-  expect(await iframe.evaluate((element) => getComputedStyle(element).pointerEvents)).toBe('none')
+  expect(await iframe.getAttribute('tabindex')).toBeNull()
+  expect(await iframe.getAttribute('inert')).toBeNull()
+  expect(await iframe.getAttribute('aria-hidden')).toBeNull()
+  expect(await iframe.evaluate((element) => getComputedStyle(element).pointerEvents)).toBe('auto')
+
+  const embeddedPlayer = persistentPlayer.frameLocator('iframe[title^="Bilibili 外链播放器："]')
+  const embeddedControl = embeddedPlayer.getByRole('button', { name: '播放器内部操作' })
+  await embeddedControl.click()
+  await expect(embeddedPlayer.getByTestId('embedded-result')).toHaveText('鼠标已操作')
+  await embeddedControl.focus()
+  await expect(iframe).toBeFocused()
+  await embeddedControl.press('Enter')
+  await expect(embeddedPlayer.getByTestId('embedded-result')).toHaveText('键盘已操作')
+
+  const iframeHandle = await iframe.elementHandle()
+  const frameContainer = persistentPlayer.locator('.persistent-bilibili-player__frame')
+  await persistentPlayer.getByRole('button', { name: '隐藏画面' }).click()
+  await expect(frameContainer).toHaveAttribute('inert', '')
+  await expect(frameContainer).toHaveAttribute('aria-hidden', 'true')
+  expect(await frameContainer.evaluate((element) => getComputedStyle(element).pointerEvents)).toBe(
+    'none',
+  )
+  await persistentPlayer.getByRole('button', { name: '显示画面' }).click()
+  expect(
+    await iframe.evaluate((element, original) => element.isSameNode(original), iframeHandle!),
+  ).toBe(true)
 
   await page.waitForTimeout(1_200)
   await persistentPlayer.getByRole('button', { name: '暂停播放' }).click()

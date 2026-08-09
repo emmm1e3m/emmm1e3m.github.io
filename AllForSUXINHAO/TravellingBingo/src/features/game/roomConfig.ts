@@ -16,6 +16,7 @@ export type RoomAreaId =
   | 'fridge'
   | 'recordPlayer'
   | 'album'
+  | 'trendComputer'
   | 'workComputer'
   | 'door'
 
@@ -76,9 +77,19 @@ export const ROOM_AREAS: readonly RoomArea[] = [
     petCenter: { x: 504, y: 409 },
     activityKinds: ['stream', 'trend'],
     interest: 'computer',
-    realityButtonLabel: '数据',
-    realityPanel: 'reality-data',
+    realityButtonLabel: '刷播',
+    realityPanel: 'reality-stream',
     worlds: ['game', 'reality'],
+    petLocation: 'computer',
+  },
+  {
+    id: 'trendComputer',
+    panel: 'reality-trend',
+    label: '二楼电脑·冲热',
+    buttonLabel: '冲热（开发中）',
+    hotspot: { x: 72, y: 29 },
+    petCenter: { x: 504, y: 409 },
+    worlds: ['reality'],
     petLocation: 'computer',
   },
   {

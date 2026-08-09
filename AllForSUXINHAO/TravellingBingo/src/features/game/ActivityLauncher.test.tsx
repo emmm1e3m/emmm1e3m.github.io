@@ -9,6 +9,7 @@ import {
   type GameAction,
   type GameState,
 } from '@/domain'
+import type { StreamPlaybackController } from '@/features/reality'
 
 import { ActivityLauncher } from './ActivityLauncher'
 import { ContextPanel } from './ContextPanel'
@@ -46,6 +47,25 @@ const contentCatalog: ContentCatalog = {
   friendById: {},
   videosByBvid: {},
   recordPlayerVideos: [],
+}
+
+function idleStreamPlayback(): StreamPlaybackController {
+  return {
+    state: {
+      status: 'idle',
+      round: 0,
+      mode: null,
+      sourceInput: '',
+      parsedBvids: [],
+      openedCount: 0,
+      message: '尚未开始刷播',
+      errors: [],
+    },
+    start: vi.fn(() => ({ ok: true as const, bvids: [], errors: [] as const })),
+    resume: vi.fn(() => true),
+    stop: vi.fn(),
+    getRemainingMs: vi.fn(() => null),
+  }
 }
 
 function playableGame(): GameState {
@@ -119,6 +139,9 @@ describe('活动场景标题', () => {
         onAction={vi.fn()}
         onBackup={vi.fn()}
         onTaskEvent={vi.fn()}
+        streamPlayback={idleStreamPlayback()}
+        streamRoundDurationSeconds={310}
+        onStreamRoundDurationChange={vi.fn()}
       />,
     )
 
@@ -330,6 +353,20 @@ describe('幸运苹果活动边界', () => {
     )
   })
 
+  it('对应收藏概率为 0% 时禁用幸运苹果并说明这次不会发现收藏', () => {
+    const game = playableGame()
+    renderLauncher('stream', {
+      ...game,
+      gameBalance: {
+        ...game.gameBalance,
+        probabilities: { ...game.gameBalance.probabilities, millionShot: 0 },
+      },
+    })
+
+    expect(screen.getByRole('button', { name: /带上幸运苹果/u })).toBeDisabled()
+    expect(screen.getByRole('note')).toHaveTextContent('这次不会发现收藏，幸运苹果留到下次吧。')
+  })
+
   it('仍有新收藏时可以带上，并在活动开始时提交统一领域参数', () => {
     const { onAction } = renderLauncher('stream', playableGame())
     const luckyButton = screen.getByRole('button', { name: /带上幸运苹果/u })
@@ -441,6 +478,9 @@ describe('活动面板目录复用', () => {
       onBackup: vi.fn(),
       onTaskEvent: vi.fn(),
       onClose: vi.fn(),
+      streamPlayback: idleStreamPlayback(),
+      streamRoundDurationSeconds: 310,
+      onStreamRoundDurationChange: vi.fn(),
     }
     const { rerender } = render(<ContextPanel {...commonProps} now={Date.now()} />)
     const luckyButton = screen.getAllByRole('button', { name: /带上幸运苹果/u })[0]

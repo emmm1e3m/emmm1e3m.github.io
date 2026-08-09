@@ -30,6 +30,18 @@ function expectNear(actual: number, expected: number, tolerance = 2) {
   expect(Math.abs(actual - expected)).toBeLessThanOrEqual(tolerance)
 }
 
+function boxesOverlap(
+  left: { x: number; y: number; width: number; height: number },
+  right: { x: number; y: number; width: number; height: number },
+) {
+  return !(
+    left.x + left.width <= right.x ||
+    right.x + right.width <= left.x ||
+    left.y + left.height <= right.y ||
+    right.y + right.height <= left.y
+  )
+}
+
 for (const viewport of [
   { width: 1440, height: 900, name: '1440x900' },
   { width: 1975, height: 1536, name: '1975x1536' },
@@ -102,6 +114,75 @@ for (const viewport of [
     await saveScreenshot(page, `desktop-${viewport.name}.png`, false)
   })
 }
+
+test('1024px 长称呼进入现实维度后顶栏仍保持单行且互不重叠', async ({ page }, testInfo) => {
+  test.skip(testInfo.project.name !== 'chromium', '精确桌面布局仅在 Desktop Chromium 验证')
+  await page.setViewportSize({ width: 1024, height: 768 })
+  await startGame(page, {
+    seed: 'hud-medium-width',
+    displayName: '这是十六个字的超级超长测试称呼呀',
+    debug: true,
+  })
+  await enterReality(page)
+
+  const segments = [
+    page.locator('.game-hud__leading'),
+    page.locator('.game-hud__center'),
+    page.locator('.reality-stay-timer'),
+    page.locator('.pet-status-bar'),
+    page.locator('.game-hud__buttons'),
+  ]
+  const boxes = await Promise.all(segments.map((segment) => segment.boundingBox()))
+  expect(boxes.every(Boolean)).toBe(true)
+  for (let leftIndex = 0; leftIndex < boxes.length; leftIndex += 1) {
+    for (let rightIndex = leftIndex + 1; rightIndex < boxes.length; rightIndex += 1) {
+      expect(boxesOverlap(boxes[leftIndex]!, boxes[rightIndex]!)).toBe(false)
+    }
+  }
+  const verticalCenters = boxes.map((box) => box!.y + box!.height / 2)
+  expect(Math.max(...verticalCenters) - Math.min(...verticalCenters)).toBeLessThanOrEqual(2)
+  await expect(page.locator('.game-hud__center')).toHaveCSS('white-space', 'nowrap')
+  await expect(page.locator('.reality-stay-timer')).toHaveCSS('white-space', 'nowrap')
+  await expect(page.locator('.pet-status-bar')).toHaveCSS('white-space', 'nowrap')
+  await expect(page.locator('.hud-companion')).toContainText(
+    '这是十六个字的超级超长测试称呼呀陪伴饼狗已经',
+  )
+})
+
+test('390px 顶栏保持同一行并可横向查看全部入口', async ({ page }, testInfo) => {
+  test.skip(testInfo.project.name !== 'chromium', '精确顶栏布局仅在 Desktop Chromium 验证')
+  await page.setViewportSize({ width: 390, height: 844 })
+  await startGame(page, {
+    seed: 'hud-mobile-width',
+    displayName: '这是十六个字的超级超长测试称呼呀',
+    debug: true,
+  })
+
+  const hud = page.locator('.game-hud--v4')
+  const segments = [
+    page.locator('.game-hud__leading'),
+    page.locator('.game-hud__center'),
+    page.locator('.pet-status-bar'),
+    page.locator('.game-hud__buttons'),
+  ]
+  const boxes = await Promise.all(segments.map((segment) => segment.boundingBox()))
+  expect(boxes.every(Boolean)).toBe(true)
+  const verticalCenters = boxes.map((box) => box!.y + box!.height / 2)
+  expect(Math.max(...verticalCenters) - Math.min(...verticalCenters)).toBeLessThanOrEqual(2)
+  for (let leftIndex = 0; leftIndex < boxes.length; leftIndex += 1) {
+    for (let rightIndex = leftIndex + 1; rightIndex < boxes.length; rightIndex += 1) {
+      expect(boxesOverlap(boxes[leftIndex]!, boxes[rightIndex]!)).toBe(false)
+    }
+  }
+
+  const scrollMetrics = await hud.evaluate((element) => ({
+    clientWidth: element.clientWidth,
+    scrollWidth: element.scrollWidth,
+  }))
+  expect(scrollMetrics.scrollWidth).toBeGreaterThan(scrollMetrics.clientWidth)
+  await hud.evaluate((element) => element.scrollTo({ left: element.scrollWidth }))
+  await expect(page.getByRole('button', { name: '打开调试面板' })).toBeInViewport()
+})
 
 test('房间等比图层、热点与饼狗落点共用同一套母版坐标', async ({ page }, testInfo) => {
   test.skip(testInfo.project.name !== 'chromium', 'portrait 坐标只需在桌面验证一次')
@@ -186,7 +267,12 @@ test('房间等比图层、热点与饼狗落点共用同一套母版坐标', as
   }
 
   await enterReality(page)
-  await expect(room.locator('.room-hotspot')).toHaveText(['数据', '放张唱片', '工作'])
+  await expect(room.locator('.room-hotspot')).toHaveText([
+    '刷播',
+    '冲热（开发中）',
+    '放张唱片',
+    '工作',
+  ])
   for (const hiddenLabel of [
     '去床上',
     '去电脑前',
@@ -210,6 +296,27 @@ test('房间等比图层、热点与饼狗落点共用同一套母版坐标', as
   })
   expect(workPosition.x).toBeCloseTo((420 / 1098) * 100, 5)
   expect(workPosition.y).toBeCloseTo((1172 / 1433) * 100, 5)
+})
+
+test('1024px 房间中刷播与冲热在悬停放大后仍保持分离', async ({ page }, testInfo) => {
+  test.skip(testInfo.project.name !== 'chromium', '热点悬停几何只在 Desktop Chromium 验证')
+  await page.setViewportSize({ width: 1024, height: 768 })
+  await startGame(page, { seed: 'reality-hotspot-gap', displayName: '热点测试' })
+  await enterReality(page)
+
+  const room = page.getByRole('region', { name: '铲铲饼屋互动场景' })
+  const stream = room.getByRole('button', { name: '刷播', exact: true })
+  const trend = room.getByRole('button', { name: '冲热（开发中）', exact: true })
+
+  await stream.hover()
+  let [streamBox, trendBox] = await Promise.all([stream.boundingBox(), trend.boundingBox()])
+  expect(streamBox && trendBox).toBeTruthy()
+  expect(boxesOverlap(streamBox!, trendBox!)).toBe(false)
+
+  await trend.hover()
+  ;[streamBox, trendBox] = await Promise.all([stream.boundingBox(), trend.boundingBox()])
+  expect(streamBox && trendBox).toBeTruthy()
+  expect(boxesOverlap(streamBox!, trendBox!)).toBe(false)
 })
 
 test('信息栏下方播放器在展开和收起时都复用房间侧边间距', async ({ page }, testInfo) => {

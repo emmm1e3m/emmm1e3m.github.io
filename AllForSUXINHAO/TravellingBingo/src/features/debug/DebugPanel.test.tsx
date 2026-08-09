@@ -13,6 +13,8 @@ describe('DebugPanel', () => {
         game={createInitialGameState({ now: 1_000, seed: 'debug-duration', debug: true })}
         onAction={onAction}
         onBackup={vi.fn()}
+        streamRoundDurationSeconds={310}
+        onStreamRoundDurationChange={vi.fn()}
       />,
     )
 
@@ -32,6 +34,8 @@ describe('DebugPanel', () => {
         game={createInitialGameState({ now: 1_000, seed: 'debug-collect-all', debug: true })}
         onAction={onAction}
         onBackup={vi.fn()}
+        streamRoundDurationSeconds={310}
+        onStreamRoundDurationChange={vi.fn()}
       />,
     )
 
@@ -57,6 +61,8 @@ describe('DebugPanel', () => {
         game={createInitialGameState({ now: 1_000, seed: 'debug-clear-all', debug: true })}
         onAction={onAction}
         onBackup={vi.fn()}
+        streamRoundDurationSeconds={310}
+        onStreamRoundDurationChange={vi.fn()}
       />,
     )
 
@@ -72,5 +78,52 @@ describe('DebugPanel', () => {
       type: 'debug/clear-all',
       now: expect.any(Number),
     })
+  })
+
+  it('刷播轮次时长只通过运行时回调应用，并限制为 1 到 3600 秒整数', () => {
+    const onAction = vi.fn()
+    const onStreamRoundDurationChange = vi.fn()
+    render(
+      <DebugPanel
+        game={createInitialGameState({ now: 1_000, seed: 'debug-stream', debug: true })}
+        onAction={onAction}
+        onBackup={vi.fn()}
+        streamRoundDurationSeconds={310}
+        onStreamRoundDurationChange={onStreamRoundDurationChange}
+      />,
+    )
+
+    const input = screen.getByRole('spinbutton', { name: '刷播轮次时长（秒）' })
+    const apply = screen.getByRole('button', { name: '应用刷播时长' })
+    expect(input).toHaveValue(310)
+    expect(screen.getByText(/当前为 310 秒/u)).toBeVisible()
+
+    fireEvent.change(input, { target: { value: '2' } })
+    expect(onStreamRoundDurationChange).not.toHaveBeenCalled()
+    fireEvent.click(apply)
+    expect(onStreamRoundDurationChange).toHaveBeenCalledWith(2)
+    expect(onAction).not.toHaveBeenCalled()
+
+    fireEvent.change(input, { target: { value: '0' } })
+    expect(apply).toBeDisabled()
+    fireEvent.change(input, { target: { value: '1.5' } })
+    expect(apply).toBeDisabled()
+    fireEvent.change(input, { target: { value: '3601' } })
+    expect(apply).toBeDisabled()
+  })
+
+  it('非调试存档不显示调试控件', () => {
+    render(
+      <DebugPanel
+        game={createInitialGameState({ now: 1_000, seed: 'non-debug-stream', debug: false })}
+        onAction={vi.fn()}
+        onBackup={vi.fn()}
+        streamRoundDurationSeconds={310}
+        onStreamRoundDurationChange={vi.fn()}
+      />,
+    )
+
+    expect(screen.queryByRole('heading', { name: '调试房间规则' })).not.toBeInTheDocument()
+    expect(screen.queryByRole('spinbutton', { name: '刷播轮次时长（秒）' })).not.toBeInTheDocument()
   })
 })

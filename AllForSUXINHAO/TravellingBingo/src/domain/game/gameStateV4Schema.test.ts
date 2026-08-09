@@ -9,7 +9,13 @@ import {
 } from './constants'
 import { createInitialGameState } from './createGameState'
 import { gameStateV4Schema, isStrictGameStateV4 } from './migrateGameStateV3'
-import type { GameStateV4, MusicPlaylist, PomodoroSessionV4, TodoItem } from './types'
+import type {
+  GameStateV4,
+  MusicPlaylist,
+  PomodoroSessionV4,
+  RealityStateV4,
+  TodoItem,
+} from './types'
 import { MAX_DATE_TIMESTAMP_MS } from './time'
 
 const FIRST_BVID = 'BV1234567890'
@@ -27,14 +33,18 @@ function initialState(): GameStateV4 {
     recentTemplateIds: current.tasks.recentTemplateIds,
     oneOffCompleted: current.tasks.oneOffCompleted,
   }
+  const reality: RealityStateV4 = {
+    nextStaySequence: current.reality.nextStaySequence,
+    activeStay: current.reality.activeStay,
+    pendingSettlement: current.reality.pendingSettlement,
+    todos: current.reality.todos,
+    pomodoro: { ...current.reality.pomodoro, session: null },
+  }
   return {
     ...current,
     schemaVersion: 4,
     tasks,
-    reality: {
-      ...current.reality,
-      pomodoro: { ...current.reality.pomodoro, session: null },
-    },
+    reality,
     musicPlayer: {
       ...current.musicPlayer,
       playlists: {},

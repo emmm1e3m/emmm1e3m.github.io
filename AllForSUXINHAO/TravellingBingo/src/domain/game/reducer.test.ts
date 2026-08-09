@@ -14,8 +14,13 @@ import {
   POMODORO_PRESETS,
 } from './constants'
 import { createInitialGameState } from './createGameState'
-import { DEFAULT_GAME_BALANCE, LUCKY_APPLE_COLLECTION_DROP_BONUS } from './gameBalance'
-import { gameStateV5Schema } from './migrateGameStateV4'
+import {
+  DEFAULT_GAME_BALANCE,
+  LUCKY_APPLE_COLLECTION_DROP_MULTIPLIER,
+  multiplyProbability,
+  TRAVEL_FRIEND_GIFT_APPLES_BY_ID,
+} from './gameBalance'
+import { gameStateV6Schema } from './migrateGameStateV5'
 import { reduceGame } from './reducer'
 import { MAX_DATE_TIMESTAMP_MS } from './time'
 import type { ActivityKind, CollectionCatalog, GameState, GameTransition, ItemId } from './types'
@@ -79,9 +84,9 @@ function withCompletedTaskBoard(state: GameState, completedAt: number): GameStat
   }
 }
 
-function seedWhoseRewardRollIsBelow(limit: number, rollIndex: number): string {
+function seedWhoseRewardRollIsBetween(minimum: number, maximum: number, rollIndex: number): string {
   for (let index = 0; index < 10_000; index += 1) {
-    const seed = `game-reward-boundary-${rollIndex}-${index}`
+    const seed = `game-reward-range-${rollIndex}-${index}`
     let cursor = createRandomCursor(`${seed}:reward:0`)
     let value = 0
     for (let roll = 0; roll <= rollIndex; roll += 1) {
@@ -89,16 +94,17 @@ function seedWhoseRewardRollIsBelow(limit: number, rollIndex: number): string {
       cursor = next.cursor
       value = next.value
     }
-    if (value < limit) return seed
+    if (value >= minimum && value < maximum) return seed
   }
-  throw new Error(`没有找到小于 ${limit} 的第 ${rollIndex + 1} 次奖励随机值`)
+  throw new Error(`没有找到位于 [${minimum}, ${maximum}) 的第 ${rollIndex + 1} 次奖励随机值`)
 }
 
-describe('旅行饼狗 v5 领域状态', () => {
-  it('新游戏使用 schema v5、用户名、零天陪伴、10 秒活动与独立随机序列', () => {
+describe('旅行饼狗 v6 领域状态', () => {
+  it('新游戏使用 schema v6、用户名、零天陪伴、10 秒活动与独立随机序列', () => {
     const state = createInitialGameState({ now: 1_000, seed: 'save-seed' })
 
-    expect(state.schemaVersion).toBe(5)
+    expect(state.schemaVersion).toBe(6)
+    expect(state.reality.streamHistory).toEqual({ completedRounds: 0, recentRounds: [] })
     expect(state.profile).toMatchObject({ displayName: '你', companionDays: 0 })
     expect(state.friends).toEqual({})
     expect(state.economy.apples).toBe(INITIAL_APPLES)
@@ -108,9 +114,9 @@ describe('旅行饼狗 v5 领域状态', () => {
       probabilities: {
         postcard: 0.65,
         millionShot: 0.3,
-        siteFirst: 0.1,
-        travelFriend: 0.2,
-        musicFriend: 0.2,
+        siteFirst: 0.15,
+        travelFriend: 0.1,
+        musicFriend: 0.15,
       },
     })
     expect(ITEM_PRICES).toEqual({
@@ -119,8 +125,8 @@ describe('旅行饼狗 v5 领域状态', () => {
       'signal-headphones': 4,
       'trend-toolbox': 7,
       'lucky-apple': 6,
-      'bottled-speed-magic': 3,
-      'bottled-vitality-magic': 12,
+      'bottled-speed-magic': 2,
+      'bottled-vitality-magic': 7,
     })
     expect(PET_ENCOURAGEMENT_APPLE_COST).toBe(2)
     expect(state.tasks.active).toHaveLength(3)
@@ -214,7 +220,7 @@ describe('旅行饼狗 v5 领域状态', () => {
     expect(trend.pet.location).toBe('computer')
   })
 
-  it('活动命中、未命中与重复收藏均不产生苹果', () => {
+  it('收藏命中、未命中与重复收藏本身均不产生苹果', () => {
     const cases = [
       { kind: 'travel' as const, item: 'travel-basic' as const, key: 'postcard' as const },
       { kind: 'stream' as const, item: 'signal-headphones' as const, key: 'millionShot' as const },
@@ -226,6 +232,7 @@ describe('旅行饼狗 v5 领域状态', () => {
       state = withItem(state, testCase.item)
       state = willing(state, testCase.kind)
       state = withProbability(state, testCase.key, index === 1 ? 0 : 1)
+      if (testCase.kind === 'travel') state = withProbability(state, 'travelFriend', 0)
       if (index === 2) {
         state = {
           ...state,
@@ -442,11 +449,13 @@ describe('旅行饼狗 v5 领域状态', () => {
     expect(started.activeActivity?.usedLuckyApple).toBe(true)
   })
 
-  it('旅行 0% 遇友和明信片时，幸运苹果加成会实际写入明信片计划', () => {
-    const seed = seedWhoseRewardRollIsBelow(LUCKY_APPLE_COLLECTION_DROP_BONUS, 1)
+  it('旅行未遇友时，幸运苹果会把 10% 明信片概率翻倍并写入计划', () => {
+    const baseChance = 0.1
+    const doubledChance = multiplyProbability(baseChance, LUCKY_APPLE_COLLECTION_DROP_MULTIPLIER)
+    const seed = seedWhoseRewardRollIsBetween(baseChance, doubledChance, 1)
     let state = willing(createInitialGameState({ now: 0, seed, debug: true }), 'travel')
     state = withItem(state, 'lucky-apple')
-    state = withProbability(withProbability(state, 'travelFriend', 0), 'postcard', 0)
+    state = withProbability(withProbability(state, 'travelFriend', 0), 'postcard', baseChance)
 
     const started = successful(
       reduceGame(
@@ -459,6 +468,27 @@ describe('旅行饼狗 v5 领域状态', () => {
       friendId: null,
       collection: { category: 'postcard' },
     })
+  })
+
+  it('收藏概率为 0% 时拒绝浪费幸运苹果', () => {
+    let state = willing(
+      createInitialGameState({ now: 0, seed: 'lucky-zero', debug: true }),
+      'stream',
+    )
+    state = withItem(withItem(state, 'signal-headphones'), 'lucky-apple')
+    state = withProbability(state, 'millionShot', 0)
+
+    expect(getLuckyAppleAvailability(state, 'stream', catalog)).toMatchObject({
+      canUse: false,
+      reason: 'drop-cannot-increase',
+    })
+    const result = reduceGame(
+      state,
+      { type: 'activity/start', kind: 'stream', now: 100, useLuckyApple: true },
+      catalog,
+    )
+    expect(result).toMatchObject({ ok: false, error: { code: 'LUCKY_APPLE_NOT_USEFUL' } })
+    expect(result.state).toBe(state)
   })
 
   it.each(['music', 'rest'] as const)('%s 不接受幸运苹果且不会推进状态', (kind) => {
@@ -792,7 +822,7 @@ describe('旅行饼狗 v5 领域状态', () => {
     ).toMatchObject({ ok: false, error: { code: 'ACTIVITY_REFUSED' } })
   })
 
-  it('旅行朋友与明信片互斥，领取后更新好友图鉴并发放确定性道具', () => {
+  it('旅行朋友与明信片互斥，领取后发放确定性道具与身份苹果', () => {
     let state = willing(createInitialGameState({ now: 0, seed: 'travel-friend-book' }), 'travel')
     state = withProbability(withProbability(state, 'travelFriend', 1), 'postcard', 1)
     const started = successful(
@@ -802,7 +832,9 @@ describe('旅行饼狗 v5 领域状态', () => {
     expect(plan.friendId).not.toBeNull()
     expect(plan.collection).toBeNull()
     expect(plan.giftItemId).not.toBeNull()
+    expect(plan.modifierApples).toBe(TRAVEL_FRIEND_GIFT_APPLES_BY_ID[plan.friendId!])
     const giftBefore = started.inventory[plan.giftItemId!]
+    const applesBefore = started.economy.apples
 
     const claimed = successful(
       reduceGame(
@@ -818,14 +850,77 @@ describe('旅行饼狗 v5 领域状态', () => {
     expect(claimed.state.friends[plan.friendId!]).toMatchObject({
       id: plan.friendId,
       encounterCount: 1,
-      totalGiftApples: 0,
+      totalGiftApples: plan.modifierApples,
     })
     expect(claimed.state.inventory[plan.giftItemId!]).toBe(giftBefore + 1)
+    expect(claimed.state.economy.apples).toBe(applesBefore + plan.modifierApples)
     expect(claimed.state.profile.companionDays).toBe(1)
     expect(claimed.effects[0]).toMatchObject({
       type: 'activity-claimed',
-      summary: { friendId: plan.friendId, giftItemId: plan.giftItemId, giftApples: 0 },
+      summary: {
+        friendId: plan.friendId,
+        giftItemId: plan.giftItemId,
+        giftApples: plan.modifierApples,
+      },
     })
+  })
+
+  it('旅行可以再次遇见已认识的课代饼，并重复收到对应道具与身份苹果', () => {
+    let state = willing(createInitialGameState({ now: 0, seed: 'travel-repeat-friend' }), 'travel')
+    state = withProbability(state, 'travelFriend', 1)
+    state = {
+      ...state,
+      friends: {
+        'class-representative-bing': {
+          id: 'class-representative-bing',
+          firstMetAt: 10,
+          lastMetAt: 50,
+          encounterCount: 2,
+          totalGiftApples: 5,
+        },
+      },
+    }
+    const started = successful(
+      reduceGame(state, { type: 'activity/start', kind: 'travel', now: 100 }, catalog),
+    ).state
+    const plan = started.activeActivity!.rewardPlan
+    expect(plan).toMatchObject({
+      friendId: 'class-representative-bing',
+      giftItemId: 'travel-basic',
+      modifierApples: 2,
+      collection: null,
+    })
+    const itemBeforeClaim = started.inventory['travel-basic']
+    const applesBeforeClaim = started.economy.apples
+
+    const claimed = successful(
+      reduceGame(
+        started,
+        {
+          type: 'activity/claim',
+          runId: started.activeActivity!.runId,
+          now: started.activeActivity!.endsAt,
+        },
+        catalog,
+      ),
+    )
+    expect(claimed.state.friends['class-representative-bing']).toMatchObject({
+      firstMetAt: 10,
+      lastMetAt: started.activeActivity!.endsAt,
+      encounterCount: 3,
+      totalGiftApples: 7,
+    })
+    expect(claimed.state.inventory['travel-basic']).toBe(itemBeforeClaim + 1)
+    expect(claimed.state.economy.apples).toBe(applesBeforeClaim + 2)
+    expect(claimed.effects[0]).toMatchObject({
+      type: 'activity-claimed',
+      summary: {
+        friendId: 'class-representative-bing',
+        giftItemId: 'travel-basic',
+        giftApples: 2,
+      },
+    })
+    expect(gameStateV6Schema.safeParse(claimed.state).success).toBe(true)
   })
 
   it('电子琴只召来已认识朋友，领取后赠苹果并累计好友赠礼', () => {
@@ -861,15 +956,15 @@ describe('旅行饼狗 v5 领域状态', () => {
         catalog,
       ),
     )
-    expect(claimed.state.economy.apples).toBe(applesBefore + 3)
+    expect(claimed.state.economy.apples).toBe(applesBefore + 6)
     expect(claimed.state.friends['signal-dog']).toMatchObject({
       firstMetAt: 10,
       lastMetAt: started.activeActivity!.endsAt,
       encounterCount: 2,
-      totalGiftApples: 3,
+      totalGiftApples: 6,
     })
     expect(claimed.effects[0]).toMatchObject({
-      summary: { friendId: 'signal-dog', giftItemId: null, giftApples: 3 },
+      summary: { friendId: 'signal-dog', giftItemId: null, giftApples: 6 },
     })
   })
 
@@ -1082,7 +1177,7 @@ describe('旅行饼狗 v5 领域状态', () => {
     expect(restClaimed.statistics.started.rest).toBe(Number.MAX_SAFE_INTEGER)
     expect(restClaimed.statistics.claimed.rest).toBe(Number.MAX_SAFE_INTEGER)
     expect(restClaimed.statistics.applesEarned).toBe(Number.MAX_SAFE_INTEGER)
-    expect(gameStateV5Schema.safeParse(restClaimed).success).toBe(true)
+    expect(gameStateV6Schema.safeParse(restClaimed).success).toBe(true)
   })
 
   it('活动统计达到上限后饱和，仍可生成可导出的活动状态', () => {
@@ -1100,7 +1195,7 @@ describe('旅行饼狗 v5 领域状态', () => {
     ).state
     expect(started.statistics.started.travel).toBe(Number.MAX_SAFE_INTEGER)
     expect(started.random.sequences.reward).toBe(1)
-    expect(gameStateV5Schema.safeParse(started).success).toBe(true)
+    expect(gameStateV6Schema.safeParse(started).success).toBe(true)
   })
 
   it('结束时间超出 Date 上限时在扣补给与推进随机序列前拒绝开始', () => {

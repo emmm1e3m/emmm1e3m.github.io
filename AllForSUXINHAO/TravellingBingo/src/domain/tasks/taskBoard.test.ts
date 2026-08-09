@@ -2,7 +2,7 @@ import { describe, expect, it } from 'vitest'
 
 import { MAX_APPLES } from '../game/constants'
 import { createInitialGameState } from '../game/createGameState'
-import { gameStateV5Schema } from '../game/migrateGameStateV4'
+import { gameStateV6Schema } from '../game/migrateGameStateV5'
 import { reduceGame } from '../game/reducer'
 import type {
   CollectionCatalog,
@@ -13,10 +13,13 @@ import type {
 } from '../game/types'
 import {
   generateTaskBoard,
+  getAssignableTaskIds,
   getTaskPresentation,
   getTaskProgressLabel,
   hasRetiredTask,
   isTaskCompleted,
+  meetsTaskInstanceAssignmentRequirements,
+  reconcileTaskBoardAvailability,
   refreshCompletedTaskBoard,
   replaceRetiredTaskBoard,
   TASK_LIBRARY,
@@ -97,6 +100,14 @@ describe('今日 Bingo 任务板', () => {
         task('stage-test'),
       ],
     )
+    const invalidTimestamp = reduceGame(
+      state,
+      { type: 'task/event', event: { type: 'stage-test-opened' }, now: -1 },
+      catalog,
+    )
+    expect(invalidTimestamp).toMatchObject({ ok: false, error: { code: 'INVALID_TIME' } })
+    expect(invalidTimestamp.state).toBe(state)
+
     const completed = successful(
       reduceGame(
         state,
@@ -111,7 +122,7 @@ describe('今日 Bingo 任务板', () => {
     expect(completed.state.tasks.completedAt).toBe(1_000)
     expect(completed.state.tasks.active.every(isTaskCompleted)).toBe(true)
     expect(completed.effects[0]).toMatchObject({ completed: true })
-    expect(gameStateV5Schema.safeParse(completed.state).success).toBe(true)
+    expect(gameStateV6Schema.safeParse(completed.state).success).toBe(true)
   })
 
   it('最近六项会优先避开，直到候选触发组不足', () => {
@@ -127,6 +138,316 @@ describe('今日 Bingo 任务板', () => {
     const freshCount = second.board.active.filter((entry) => !firstIds.has(entry.taskId)).length
     expect(freshCount).toBeGreaterThanOrEqual(2)
     expect(second.board.recentTemplateIds).toHaveLength(6)
+  })
+
+  it('在抽取前按已拥有且仍在目录中的收藏建立可达候选池', () => {
+    const collectionTasks = [
+      'open-memories',
+      'revisit-two',
+      'remember-postcard',
+      'remember-million',
+      'remember-first',
+    ] satisfies TaskId[]
+
+    const empty = getAssignableTaskIds({ catalog, collections: {} })
+    expect(empty).toEqual(expect.not.arrayContaining(collectionTasks))
+
+    const postcardOnly = getAssignableTaskIds({
+      catalog,
+      collections: { 'postcard-1': {} },
+    })
+    expect(postcardOnly).toEqual(expect.arrayContaining(['open-memories', 'remember-postcard']))
+    expect(postcardOnly).toEqual(
+      expect.not.arrayContaining(['revisit-two', 'remember-million', 'remember-first']),
+    )
+
+    const postcardAndMillion = getAssignableTaskIds({
+      catalog,
+      collections: { 'postcard-1': {}, 'million-1': {} },
+    })
+    expect(postcardAndMillion).toEqual(
+      expect.arrayContaining([
+        'open-memories',
+        'revisit-two',
+        'remember-postcard',
+        'remember-million',
+      ]),
+    )
+    expect(postcardAndMillion).not.toContain('remember-first')
+
+    const firstOnly = getAssignableTaskIds({
+      catalog,
+      collections: { 'first-1': {} },
+    })
+    expect(firstOnly).toEqual(expect.arrayContaining(['open-memories', 'remember-first']))
+    expect(firstOnly).toEqual(
+      expect.not.arrayContaining(['revisit-two', 'remember-postcard', 'remember-million']),
+    )
+
+    const allCategories = getAssignableTaskIds({
+      catalog,
+      collections: { 'postcard-1': {}, 'million-1': {}, 'first-1': {} },
+    })
+    expect(allCategories).toEqual(expect.arrayContaining(collectionTasks))
+  })
+
+  it('未知收藏 ID 不会伪造任务先决条件，完成过的一次性能力也不再签发', () => {
+    const unknownOnly = getAssignableTaskIds({
+      catalog,
+      collections: { 'removed-postcard': {}, 'removed-first': {} },
+    })
+    expect(unknownOnly).toEqual(
+      expect.not.arrayContaining([
+        'open-memories',
+        'revisit-two',
+        'remember-postcard',
+        'remember-million',
+        'remember-first',
+      ]),
+    )
+
+    const oneKnownAndOneUnknown = getAssignableTaskIds({
+      catalog,
+      collections: { 'postcard-1': {}, 'removed-first': {} },
+      oneOffCompleted: ['stage-test'],
+    })
+    expect(oneKnownAndOneUnknown).not.toContain('revisit-two')
+    expect(oneKnownAndOneUnknown).not.toContain('remember-first')
+    expect(oneKnownAndOneUnknown).not.toContain('stage-test')
+    expect(oneKnownAndOneUnknown).not.toContain('greet-bingo')
+  })
+
+  it('历史收藏任务按实例 target 判断所需的不同收藏数量', () => {
+    const expandedCatalog: CollectionCatalog = {
+      postcard: ['postcard-1', 'postcard-2'],
+      'million-shot': ['million-1', 'million-2'],
+      'site-first': ['first-1', 'first-2'],
+      siteFirstChronology: ['first-1', 'first-2'],
+    }
+    const historicalFirst = { ...task('remember-first'), target: 2 }
+    const historicalRevisit = { ...task('revisit-two'), target: 3 }
+
+    expect(
+      meetsTaskInstanceAssignmentRequirements(historicalFirst, {
+        catalog: expandedCatalog,
+        collections: { 'first-1': {} },
+      }),
+    ).toBe(false)
+    expect(
+      meetsTaskInstanceAssignmentRequirements(historicalFirst, {
+        catalog: expandedCatalog,
+        collections: { 'first-1': {}, 'first-2': {} },
+      }),
+    ).toBe(true)
+    expect(
+      meetsTaskInstanceAssignmentRequirements(historicalRevisit, {
+        catalog: expandedCatalog,
+        collections: { 'postcard-1': {}, 'million-1': {} },
+      }),
+    ).toBe(false)
+    expect(
+      meetsTaskInstanceAssignmentRequirements(historicalRevisit, {
+        catalog: expandedCatalog,
+        collections: { 'postcard-1': {}, 'million-1': {}, 'first-1': {} },
+      }),
+    ).toBe(true)
+  })
+
+  it('先决条件过滤后仍保持三条任务的触发组多样性与确定性', () => {
+    const input = {
+      seed: 'reachable-deterministic-board',
+      sequence: 7,
+      now: 100,
+      catalog,
+      collections: { 'postcard-1': {} },
+    }
+    const first = generateTaskBoard(input)
+    const repeated = generateTaskBoard(input)
+    const groups = first.board.active.map((entry) => TASK_LIBRARY[entry.taskId].triggerGroup)
+
+    expect(repeated).toEqual(first)
+    expect(first.board.active).toHaveLength(3)
+    expect(new Set(groups).size).toBe(3)
+    expect(first.board.active.map((entry) => entry.taskId)).toEqual(
+      expect.not.arrayContaining(['revisit-two', 'remember-million', 'remember-first']),
+    )
+
+    for (let sequence = 0; sequence < 20; sequence += 1) {
+      const withoutCollectionsOrOneOff = generateTaskBoard({
+        seed: 'minimum-reachable-groups',
+        sequence,
+        now: 100,
+        catalog,
+        collections: {},
+        oneOffCompleted: ['stage-test'],
+      })
+      const ids = withoutCollectionsOrOneOff.board.active.map((entry) => entry.taskId)
+      const triggerGroups = ids.map((taskId) => TASK_LIBRARY[taskId].triggerGroup)
+      expect(ids).not.toContain('stage-test')
+      expect(new Set(triggerGroups).size).toBe(3)
+    }
+  })
+
+  it('导入协调只替换失去先决条件的未完成槽位，并保留其余任务完整进度', () => {
+    const base = createInitialGameState({ now: 0, seed: 'reconcile-unreachable-task' })
+    const completedBackpack = { ...task('open-backpack', 1), seenKeys: ['opened'] }
+    const partialRoom = { ...task('room-stroll', 1), seenKeys: ['bed'] }
+    const unavailableFirst = task('remember-first')
+    const board = {
+      ...base.tasks,
+      active: [completedBackpack, partialRoom, unavailableFirst] as [
+        TaskInstance,
+        TaskInstance,
+        TaskInstance,
+      ],
+      recentTemplateIds: ['open-backpack', 'room-stroll', 'remember-first'] as TaskId[],
+    }
+    const input = {
+      board,
+      seed: base.random.seed,
+      sequence: base.random.sequences.tasks,
+      catalog,
+      collections: {},
+    }
+
+    const reconciled = reconcileTaskBoardAvailability(input)
+    const repeated = reconcileTaskBoardAvailability(input)
+    const replacement = reconciled.board.active[2]
+
+    expect(reconciled).toEqual(repeated)
+    expect(reconciled.board).not.toBe(board)
+    expect(reconciled.board.active[0]).toBe(completedBackpack)
+    expect(reconciled.board.active[1]).toBe(partialRoom)
+    expect(replacement.taskId).not.toBe('remember-first')
+    expect(replacement).toMatchObject({
+      assignedAt: unavailableFirst.assignedAt,
+      progress: 0,
+      seenKeys: [],
+    })
+    expect(
+      getAssignableTaskIds({
+        catalog,
+        collections: {},
+        oneOffCompleted: board.oneOffCompleted,
+      }),
+    ).toContain(replacement.taskId)
+    expect(
+      new Set(reconciled.board.active.map((entry) => TASK_LIBRARY[entry.taskId].triggerGroup)).size,
+    ).toBe(3)
+    expect(reconciled.nextSequence).toBe(input.sequence + 1)
+  })
+
+  it('已完成的收藏任务与仍满足条件的未完成任务都不会被协调器重签', () => {
+    const base = createInitialGameState({ now: 0, seed: 'keep-valid-task-snapshots' })
+    const completedFirst = {
+      ...task('remember-first', 1),
+      seenKeys: ['first-1'],
+    }
+    const partialRoom = { ...task('room-stroll', 1), seenKeys: ['bed'] }
+    const openBackpack = task('open-backpack')
+    const board = {
+      ...base.tasks,
+      active: [completedFirst, partialRoom, openBackpack] as [
+        TaskInstance,
+        TaskInstance,
+        TaskInstance,
+      ],
+    }
+
+    const completedRequirementLost = reconcileTaskBoardAvailability({
+      board,
+      seed: base.random.seed,
+      sequence: base.random.sequences.tasks,
+      catalog,
+      collections: {},
+    })
+    expect(completedRequirementLost.board).toBe(board)
+    expect(completedRequirementLost.nextSequence).toBe(base.random.sequences.tasks)
+
+    const unfinishedFirst = { ...completedFirst, progress: 0, seenKeys: [] }
+    const reachableBoard = {
+      ...board,
+      active: [unfinishedFirst, partialRoom, openBackpack] as [
+        TaskInstance,
+        TaskInstance,
+        TaskInstance,
+      ],
+    }
+    const requirementMet = reconcileTaskBoardAvailability({
+      board: reachableBoard,
+      seed: base.random.seed,
+      sequence: base.random.sequences.tasks,
+      catalog,
+      collections: { 'first-1': {} },
+    })
+    expect(requirementMet.board).toBe(reachableBoard)
+    expect(requirementMet.nextSequence).toBe(base.random.sequences.tasks)
+  })
+
+  it('协调器不通过覆盖槽位掩盖畸形任务板', () => {
+    const base = createInitialGameState({ now: 0, seed: 'reject-malformed-before-reconcile' })
+    const unavailable = {
+      ...task('remember-first'),
+      progress: 1,
+      target: 999,
+      seenKeys: ['not-in-catalog'],
+    }
+    const board = {
+      ...base.tasks,
+      active: [unavailable, task('room-stroll'), task('open-backpack')] as [
+        TaskInstance,
+        TaskInstance,
+        TaskInstance,
+      ],
+    }
+    const reconciled = reconcileTaskBoardAvailability({
+      board,
+      seed: base.random.seed,
+      sequence: base.random.sequences.tasks,
+      catalog,
+      collections: {},
+    })
+
+    expect(reconciled.board).toBe(board)
+    expect(reconciled.nextSequence).toBe(base.random.sequences.tasks)
+
+    const oneOffConflictBoard = {
+      ...base.tasks,
+      active: [task('remember-first'), task('stage-test'), task('room-stroll')] as [
+        TaskInstance,
+        TaskInstance,
+        TaskInstance,
+      ],
+      oneOffCompleted: ['stage-test'] as TaskId[],
+    }
+    const oneOffConflict = reconcileTaskBoardAvailability({
+      board: oneOffConflictBoard,
+      seed: base.random.seed,
+      sequence: base.random.sequences.tasks,
+      catalog,
+      collections: {},
+    })
+    expect(oneOffConflict.board).toBe(oneOffConflictBoard)
+    expect(oneOffConflict.nextSequence).toBe(base.random.sequences.tasks)
+
+    const completedOneOffMissingBoard = {
+      ...base.tasks,
+      active: [
+        task('remember-first'),
+        { ...task('stage-test', 1), seenKeys: ['opened'] },
+        task('room-stroll'),
+      ] as [TaskInstance, TaskInstance, TaskInstance],
+      oneOffCompleted: [] as TaskId[],
+    }
+    const completedOneOffMissing = reconcileTaskBoardAvailability({
+      board: completedOneOffMissingBoard,
+      seed: base.random.seed,
+      sequence: base.random.sequences.tasks,
+      catalog,
+      collections: {},
+    })
+    expect(completedOneOffMissing.board).toBe(completedOneOffMissingBoard)
+    expect(completedOneOffMissing.nextSequence).toBe(base.random.sequences.tasks)
   })
 
   it('退役任务仅保留旧模板兼容，并使用 tasks 序列确定性替换旧槽位', () => {
@@ -249,7 +570,9 @@ describe('今日 Bingo 任务板', () => {
       { ...task('piano-time'), target: 49 },
       { ...task('piano-time', 1), seenKeys: ['piano:C2'] },
       { ...task('record-time', 1), seenKeys: ['video:not-a-bvid'] },
+      { ...task('record-time'), target: 2 },
       { ...task('two-melodies', 1), seenKeys: ['audio:C4'] },
+      { ...task('two-melodies'), target: 3 },
       { ...task('revisit-two', 1), seenKeys: ['removed-collection'] },
       { ...task('remember-postcard', 1), seenKeys: ['million-1'] },
       { ...task('remember-postcard'), target: 2 },

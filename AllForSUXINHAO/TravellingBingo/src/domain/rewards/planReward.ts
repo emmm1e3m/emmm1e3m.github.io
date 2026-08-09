@@ -5,8 +5,10 @@ import {
   DEFAULT_GAME_BALANCE,
   FRIEND_GIFT_APPLES_BY_ID,
   FRIEND_GIFT_ITEM_BY_ID,
-  LUCKY_APPLE_COLLECTION_DROP_BONUS,
+  LUCKY_APPLE_COLLECTION_DROP_MULTIPLIER,
+  multiplyProbability,
   REST_COMPLETION_APPLES,
+  TRAVEL_FRIEND_GIFT_APPLES_BY_ID,
   type GameProbabilities,
 } from '../game/gameBalance'
 import type {
@@ -115,7 +117,8 @@ export function planActivityReward(input: RewardPlanningInput): RewardPlan {
     if (knownFriends.length > 0) {
       const friendRoll = nextRandom(cursor)
       cursor = friendRoll.cursor
-      if (friendRoll.value < probabilities.musicFriend) {
+      const friendChance = multiplyProbability(probabilities.musicFriend, knownFriends.length)
+      if (friendRoll.value < friendChance) {
         const selected = chooseFriend(cursor, knownFriends)
         if (selected !== null) {
           friendId = selected.id
@@ -138,6 +141,7 @@ export function planActivityReward(input: RewardPlanningInput): RewardPlan {
       if (selected !== null) {
         friendId = selected.id
         giftItemId = FRIEND_GIFT_ITEM_BY_ID[selected.id]
+        modifierApples = TRAVEL_FRIEND_GIFT_APPLES_BY_ID[selected.id]
         cursor = selected.cursor
       }
     }
@@ -148,11 +152,11 @@ export function planActivityReward(input: RewardPlanningInput): RewardPlan {
     const category = COLLECTION_CATEGORY_BY_ACTIVITY[input.kind]
     const drop = nextRandom(cursor)
     cursor = drop.cursor
-    // 幸运苹果只叠加当前活动对应的收藏概率，不改变遇友概率。
-    const dropChance = addProbabilityBonus(
-      probabilities[PROBABILITY_BY_ACTIVITY[input.kind]],
-      input.usedLuckyApple ? LUCKY_APPLE_COLLECTION_DROP_BONUS : 0,
-    )
+    // 幸运苹果只把当前活动对应的收藏概率翻倍，不改变遇友概率。
+    const baseDropChance = probabilities[PROBABILITY_BY_ACTIVITY[input.kind]]
+    const dropChance = input.usedLuckyApple
+      ? multiplyProbability(baseDropChance, LUCKY_APPLE_COLLECTION_DROP_MULTIPLIER)
+      : baseDropChance
     if (drop.value < dropChance) {
       const selected = planCollection(cursor, category, input.catalog, input.ownedCollectionIds)
       collection = selected.collection

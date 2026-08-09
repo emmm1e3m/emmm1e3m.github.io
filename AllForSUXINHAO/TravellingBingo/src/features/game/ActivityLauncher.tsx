@@ -94,7 +94,9 @@ export function ActivityLauncher({
       ? '这一类回忆已经收齐啦，把幸运苹果留给下一次惊喜吧。'
       : luckyAvailability.reason === 'friend-result-guaranteed'
         ? '这份便当已经把朋友稳稳约来啦，幸运苹果留给下一次吧。'
-        : '这次的回忆已经稳稳在路上了，幸运苹果先留在冰箱里吧。'
+        : luckyAvailability.reason === 'drop-cannot-increase'
+          ? '这次不会发现收藏，幸运苹果留到下次吧。'
+          : '这次的回忆已经稳稳在路上了，幸运苹果先留在冰箱里吧。'
 
   useEffect(() => {
     if (confirmation !== null) {

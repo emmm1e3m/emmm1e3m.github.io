@@ -3,6 +3,7 @@ import { describe, expect, it } from 'vitest'
 import { createInitialGameState } from './createGameState'
 import { reconcileGameStateWithCatalog } from './reconcileGameStateWithCatalog'
 import type { CollectionCatalog, GameState } from './types'
+import { validateImportedGameState } from './validateImportedGameState'
 
 const catalog: CollectionCatalog = {
   postcard: ['postcard-owned', 'postcard-new'],
@@ -36,7 +37,131 @@ function stateWithPlannedPostcard(id: string): GameState {
   }
 }
 
-describe('早期 v2 存档目录协调', () => {
+describe('存档目录与任务可达性协调', () => {
+  it('替换导入任务板中已经失去收藏条件的未完成槽位并只推进任务序列', () => {
+    const state = createInitialGameState({ now: 0, seed: 'reconcile-task-board' })
+    const completedBackpack = {
+      instanceId: 'keep-completed-backpack',
+      taskId: 'open-backpack' as const,
+      assignedAt: 10,
+      progress: 1,
+      target: 1,
+      rewardApples: 1,
+      seenKeys: ['opened'],
+    }
+    const partialRoom = {
+      instanceId: 'keep-partial-room',
+      taskId: 'room-stroll' as const,
+      assignedAt: 10,
+      progress: 1,
+      target: 2,
+      rewardApples: 2,
+      seenKeys: ['bed'],
+    }
+    const unavailableFirst = {
+      instanceId: 'replace-unavailable-first',
+      taskId: 'remember-first' as const,
+      assignedAt: 10,
+      progress: 0,
+      target: 1,
+      rewardApples: 2,
+      seenKeys: [],
+    }
+    state.tasks.active = [completedBackpack, partialRoom, unavailableFirst]
+    const beforeSequence = state.random.sequences.tasks
+
+    const reconciled = reconcileGameStateWithCatalog(state, catalog)
+
+    expect(reconciled).not.toBe(state)
+    expect(reconciled.tasks.active[0]).toBe(completedBackpack)
+    expect(reconciled.tasks.active[1]).toBe(partialRoom)
+    expect(reconciled.tasks.active[2]).not.toBe(unavailableFirst)
+    expect(reconciled.tasks.active[2]).toMatchObject({ assignedAt: 10, progress: 0, seenKeys: [] })
+    expect(reconciled.tasks.active[2].taskId).not.toBe('remember-first')
+    expect(reconciled.random.sequences).toEqual({
+      ...state.random.sequences,
+      tasks: beforeSequence + 1,
+    })
+  })
+
+  it('不通过替换不可达槽位掩盖 target 或进度 key 被篡改的任务', () => {
+    const state = createInitialGameState({ now: 0, seed: 'do-not-mask-crafted-task' })
+    state.tasks.active = [
+      {
+        instanceId: 'crafted-unavailable-first',
+        taskId: 'remember-first',
+        assignedAt: 0,
+        progress: 1,
+        target: 999,
+        rewardApples: 2,
+        seenKeys: ['not-in-catalog'],
+      },
+      {
+        instanceId: 'valid-room',
+        taskId: 'room-stroll',
+        assignedAt: 0,
+        progress: 0,
+        target: 2,
+        rewardApples: 2,
+        seenKeys: [],
+      },
+      {
+        instanceId: 'valid-backpack',
+        taskId: 'open-backpack',
+        assignedAt: 0,
+        progress: 0,
+        target: 1,
+        rewardApples: 1,
+        seenKeys: [],
+      },
+    ]
+
+    const reconciled = reconcileGameStateWithCatalog(state, catalog)
+
+    expect(reconciled).toBe(state)
+    expect(validateImportedGameState(reconciled, catalog)).toMatchObject({
+      ok: false,
+      code: 'TASK_BOARD_INVALID',
+    })
+
+    const invalidReward = createInitialGameState({ now: 0, seed: 'do-not-mask-task-reward' })
+    invalidReward.tasks.active = [
+      {
+        instanceId: 'crafted-reward-first',
+        taskId: 'remember-first',
+        assignedAt: 0,
+        progress: 0,
+        target: 1,
+        rewardApples: -1,
+        seenKeys: [],
+      },
+      {
+        instanceId: 'valid-reward-room',
+        taskId: 'room-stroll',
+        assignedAt: 0,
+        progress: 0,
+        target: 2,
+        rewardApples: 2,
+        seenKeys: [],
+      },
+      {
+        instanceId: 'valid-reward-backpack',
+        taskId: 'open-backpack',
+        assignedAt: 0,
+        progress: 0,
+        target: 1,
+        rewardApples: 1,
+        seenKeys: [],
+      },
+    ]
+    const rewardReconciled = reconcileGameStateWithCatalog(invalidReward, catalog)
+    expect(rewardReconciled).toBe(invalidReward)
+    expect(validateImportedGameState(rewardReconciled, catalog)).toMatchObject({
+      ok: false,
+      code: 'TASK_BOARD_INVALID',
+    })
+  })
+
   it('清除尚未领取的重复收藏计划且不修改原对象', () => {
     const state = stateWithPlannedPostcard('postcard-owned')
     state.collections['postcard-owned'] = {

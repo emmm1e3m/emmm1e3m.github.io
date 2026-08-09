@@ -1,4 +1,5 @@
 import type { ActivityRun, CollectionCatalog, CollectibleCategory, GameState } from './types'
+import { reconcileTaskBoardAvailability } from '../tasks/taskBoard'
 
 const COLLECTION_CATEGORY_BY_ACTIVITY: Partial<Record<ActivityRun['kind'], CollectibleCategory>> = {
   travel: 'postcard',
@@ -26,13 +27,21 @@ function canClearDuplicatePlan(activity: ActivityRun): boolean {
 }
 
 /**
- * 兼容早期 v2 在活动开始时计划了重复收藏的存档。只清除尚未领取的重复结果，
- * 不保存目录总数、解锁类别或下一个索引，也不会改动已经拥有的历史记录。
+ * 在所有版本迁移汇合后统一协调依赖当前目录的安全旧引用：只清除尚未领取的
+ * 重复结果、失效明信片，并重签合法但已失去收藏条件的未完成任务槽位。
  */
 export function reconcileGameStateWithCatalog(
   state: GameState,
   catalog: CollectionCatalog,
 ): GameState {
+  const reconciledTasks = reconcileTaskBoardAvailability({
+    board: state.tasks,
+    seed: state.random.seed,
+    sequence: state.random.sequences.tasks,
+    catalog,
+    collections: state.collections,
+  })
+  const repairsTaskBoard = reconciledTasks.board !== state.tasks
   const plannedCollection = state.activeActivity?.rewardPlan.collection
   const clearsPlannedCollection =
     state.activeActivity !== null &&
@@ -48,10 +57,24 @@ export function reconcileGameStateWithCatalog(
     id === null || (catalog.postcard.includes(id) && state.collections[id] !== undefined)
   const clearsSelectedPostcard = !isUsablePostcard(selectedPostcardId)
   const clearsSessionPostcard = !isUsablePostcard(sessionPostcardId)
-  if (!clearsPlannedCollection && !clearsSelectedPostcard && !clearsSessionPostcard) return state
+  if (
+    !repairsTaskBoard &&
+    !clearsPlannedCollection &&
+    !clearsSelectedPostcard &&
+    !clearsSessionPostcard
+  ) {
+    return state
+  }
 
   return {
     ...state,
+    tasks: reconciledTasks.board,
+    random: repairsTaskBoard
+      ? {
+          ...state.random,
+          sequences: { ...state.random.sequences, tasks: reconciledTasks.nextSequence },
+        }
+      : state.random,
     activeActivity: clearsPlannedCollection
       ? {
           ...state.activeActivity!,

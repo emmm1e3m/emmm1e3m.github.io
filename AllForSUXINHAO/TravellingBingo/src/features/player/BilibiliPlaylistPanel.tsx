@@ -44,20 +44,22 @@ export function BilibiliPlaylistPanel({
             </button>
           ))}
         </div>
-        <button
-          type="button"
-          disabled={controller.state.tracks.length === 0}
-          onClick={() => reportRequest(controller.previous())}
-        >
-          上一首
-        </button>
-        <button
-          type="button"
-          disabled={controller.state.tracks.length === 0}
-          onClick={() => reportRequest(controller.next())}
-        >
-          下一首
-        </button>
+        <div className="bilibili-playlist-panel__transport" role="group" aria-label="上下首">
+          <button
+            type="button"
+            disabled={controller.state.tracks.length === 0}
+            onClick={() => reportRequest(controller.previous())}
+          >
+            上一首
+          </button>
+          <button
+            type="button"
+            disabled={controller.state.tracks.length === 0}
+            onClick={() => reportRequest(controller.next())}
+          >
+            下一首
+          </button>
+        </div>
       </div>
 
       <div className="bilibili-playlist-panel__tracks">
@@ -68,6 +70,7 @@ export function BilibiliPlaylistPanel({
               <button
                 type="button"
                 aria-pressed={controller.state.selectedBvid === track.bvid}
+                title={track.title}
                 onClick={() => reportRequest(controller.selectTrack(track.bvid))}
               >
                 <strong>{track.title}</strong>

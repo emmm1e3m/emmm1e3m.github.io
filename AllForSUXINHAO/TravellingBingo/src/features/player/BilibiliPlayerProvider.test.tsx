@@ -130,13 +130,16 @@ function Probe() {
 }
 
 describe('持久播放器样式', () => {
-  it('按钮保留触控尺寸，iframe 是不可点击的纯展示层', () => {
+  it('按钮保留触控尺寸，展开的 iframe 可交互且收起容器不接收指针', () => {
     expect(playerStyles).toContain(
       '.persistent-bilibili-player button {\n  min-width: 44px;\n  min-height: 44px;',
     )
     expect(playerStyles).toContain('z-index: 105;')
+    expect(playerStyles).not.toMatch(
+      /\.persistent-bilibili-player__frame iframe\s*\{[^}]*pointer-events:\s*none;/su,
+    )
     expect(playerStyles).toMatch(
-      /\.persistent-bilibili-player__frame iframe \{[^}]*pointer-events: none;/su,
+      /\.persistent-bilibili-player\.is-collapsed \.persistent-bilibili-player__frame\s*\{[^}]*pointer-events:\s*none;/su,
     )
     expect(playerStyles).not.toMatch(
       /\.persistent-bilibili-player\.is-collapsed\s*\{[^}]*\bwidth:/su,
@@ -177,9 +180,12 @@ describe('BilibiliPlayerProvider', () => {
     const dock = screen.getByTestId('persistent-bilibili-player')
     const iframe = screen.getByTitle<HTMLIFrameElement>('Bilibili 外链播放器：曲目 1')
     expect(new URL(iframe.src).searchParams.get('t')).toBe('0')
-    expect(iframe).toHaveAttribute('tabindex', '-1')
-    expect(iframe).toHaveAttribute('inert')
-    expect(iframe).toHaveAttribute('aria-hidden', 'true')
+    expect(iframe).not.toHaveAttribute('tabindex')
+    expect(iframe).not.toHaveAttribute('inert')
+    expect(iframe).not.toHaveAttribute('aria-hidden')
+    const frame = iframe.closest('.persistent-bilibili-player__frame')
+    expect(frame).toHaveAttribute('data-interaction-state', 'enabled')
+    expect(frame).not.toHaveAttribute('inert')
 
     const barButtons = within(dock).getAllByRole('button')
     expect(barButtons.map((button) => button.getAttribute('aria-label'))).toEqual([
@@ -194,10 +200,16 @@ describe('BilibiliPlayerProvider', () => {
     fireEvent.click(screen.getByRole('button', { name: '隐藏画面' }))
     expect(screen.getByTitle('Bilibili 外链播放器：曲目 1')).toBe(iframe)
     expect(screen.getByRole('button', { name: '显示画面' })).toHaveTextContent('⏫')
+    expect(frame).toHaveAttribute('data-interaction-state', 'disabled')
+    expect(frame).toHaveAttribute('inert')
+    expect(frame).toHaveAttribute('aria-hidden', 'true')
 
     fireEvent.click(screen.getByRole('button', { name: '显示画面' }))
     expect(onExpandRequest).toHaveBeenCalledOnce()
     expect(screen.getByTitle('Bilibili 外链播放器：曲目 1')).toBe(iframe)
+    expect(frame).toHaveAttribute('data-interaction-state', 'enabled')
+    expect(frame).not.toHaveAttribute('inert')
+    expect(frame).not.toHaveAttribute('aria-hidden')
 
     fireEvent.click(screen.getByRole('button', { name: '取消播放' }))
     expect(screen.queryByTitle(/Bilibili 外链播放器/u)).not.toBeInTheDocument()

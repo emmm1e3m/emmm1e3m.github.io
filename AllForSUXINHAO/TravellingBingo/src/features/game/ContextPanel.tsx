@@ -18,10 +18,12 @@ import { DebugPanel } from '@/features/debug/DebugPanel'
 import { BilibiliPlaylistPanel } from '@/features/player'
 import {
   DataPanel,
+  StreamPanel,
   WorkPanel,
   buildRealityTodoViews,
   buildUnlockedPostcardBackgrounds,
   type RealityNotificationPermission,
+  type StreamPlaybackController,
 } from '@/features/reality'
 import { TaskBoard } from '@/features/tasks/TaskBoard'
 
@@ -49,6 +51,9 @@ interface ContextPanelProps {
   onVitalityPromptRequestHandled?: (token: number) => void
   notificationPermission?: RealityNotificationPermission
   onRequestNotificationPermission?: () => void
+  streamPlayback: StreamPlaybackController
+  streamRoundDurationSeconds: number
+  onStreamRoundDurationChange: (seconds: number) => void
 }
 
 function toDomainCatalog(catalog: ContentCatalog): CollectionCatalog {
@@ -141,8 +146,9 @@ function RealityPanel({
   onRequestNotificationPermission,
   pomodoroCancelRequestToken,
   onPomodoroCancelRequestHandled,
+  streamPlayback,
 }: {
-  panel: Extract<PanelId, 'reality-data' | 'reality-work'>
+  panel: Extract<PanelId, 'reality-stream' | 'reality-trend' | 'reality-work'>
   game: GameState
   catalog: ContentCatalog
   now: number
@@ -151,6 +157,7 @@ function RealityPanel({
   onRequestNotificationPermission?: () => void
   pomodoroCancelRequestToken?: number | null
   onPomodoroCancelRequestHandled?: (token: number) => void
+  streamPlayback: StreamPlaybackController
 }) {
   const [selectedDurationMs, setSelectedDurationMs] = useState(25 * 60_000)
   const todoSequenceRef = useRef(0)
@@ -175,7 +182,22 @@ function RealityPanel({
     return candidate
   }
 
-  if (panel === 'reality-data') return <DataPanel />
+  if (panel === 'reality-stream') {
+    return (
+      <StreamPanel
+        now={now}
+        completedRounds={game.reality.streamHistory.completedRounds}
+        recentRounds={game.reality.streamHistory.recentRounds}
+        playback={streamPlayback.state}
+        getRemainingMs={streamPlayback.getRemainingMs}
+        onStart={streamPlayback.start}
+        onResume={streamPlayback.resume}
+        onStop={streamPlayback.stop}
+      />
+    )
+  }
+
+  if (panel === 'reality-trend') return <DataPanel />
 
   const activeDeadline =
     session?.status === 'focus'
@@ -250,6 +272,9 @@ export function ContextPanel({
   onVitalityPromptRequestHandled,
   notificationPermission,
   onRequestNotificationPermission,
+  streamPlayback,
+  streamRoundDurationSeconds,
+  onStreamRoundDurationChange,
 }: ContextPanelProps) {
   const [popupBlocked, setPopupBlocked] = useState(false)
   const [cancelRunId, setCancelRunId] = useState<string | null>(null)
@@ -535,7 +560,7 @@ export function ContextPanel({
   if (panel === 'record-player') {
     return (
       <PanelFrame key={panel} panel={panel} tag="唱片机旁" className="record-panel">
-        <h2>为房间添加一点音乐</h2>
+        <h2>放点音乐</h2>
 
         <RecordPlayerContent onTaskEvent={onTaskEvent} />
       </PanelFrame>
@@ -683,7 +708,7 @@ export function ContextPanel({
     )
   }
 
-  if (panel === 'reality-data' || panel === 'reality-work') {
+  if (panel === 'reality-stream' || panel === 'reality-trend' || panel === 'reality-work') {
     return (
       <PanelFrame
         key={panel}
@@ -701,6 +726,7 @@ export function ContextPanel({
           onRequestNotificationPermission={onRequestNotificationPermission}
           pomodoroCancelRequestToken={pomodoroCancelRequestToken}
           onPomodoroCancelRequestHandled={onPomodoroCancelRequestHandled}
+          streamPlayback={streamPlayback}
         />
       </PanelFrame>
     )
@@ -709,7 +735,13 @@ export function ContextPanel({
   if (panel === 'debug') {
     return (
       <PanelFrame key={panel} panel={panel} tag="调试门牌" className="debug-panel-shell">
-        <DebugPanel game={game} onAction={onAction} onBackup={onBackup} />
+        <DebugPanel
+          game={game}
+          onAction={onAction}
+          onBackup={onBackup}
+          streamRoundDurationSeconds={streamRoundDurationSeconds}
+          onStreamRoundDurationChange={onStreamRoundDurationChange}
+        />
       </PanelFrame>
     )
   }

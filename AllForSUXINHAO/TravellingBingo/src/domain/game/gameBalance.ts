@@ -41,16 +41,16 @@ export interface GameBalanceV2 {
   }
 }
 
-/** 幸运苹果把当次对应收藏的掉落概率提高 10 个百分点，不写入存档平衡配置。 */
-export const LUCKY_APPLE_COLLECTION_DROP_BONUS = 0.1
+/** 幸运苹果把当次对应收藏的掉落概率翻倍，不写入存档平衡配置。 */
+export const LUCKY_APPLE_COLLECTION_DROP_MULTIPLIER = 2
 
 /** 苹果旅行便当只影响当次旅行遇见朋友，不写入存档平衡配置。 */
 export const APPLE_LUNCHBOX_FRIEND_BONUS = 0.15
 
 export const REST_COMPLETION_APPLES = 1
 
-/** 钢琴召来的已认识朋友会按身份固定赠送苹果，避免额外随机序列。 */
-export const FRIEND_GIFT_APPLES_BY_ID: Readonly<Record<FriendId, number>> = Object.freeze({
+/** 旧活动已经固化的音乐好友赠礼；导入时只用于兼容校验，绝不重算。 */
+export const LEGACY_FRIEND_GIFT_APPLES_BY_ID: Readonly<Record<FriendId, number>> = Object.freeze({
   'class-representative-bing': 2,
   'san-hao-rabbit': 3,
   'xin-hao-rabbit': 4,
@@ -58,7 +58,24 @@ export const FRIEND_GIFT_APPLES_BY_ID: Readonly<Record<FriendId, number>> = Obje
   'bili-bing': 2,
 })
 
-/** 旅行遇友只赠送道具，不形成“花苹果又赚苹果”的活动闭环。 */
+/** 钢琴召来的已认识朋友会按身份固定赠送苹果，避免额外随机序列。 */
+export const FRIEND_GIFT_APPLES_BY_ID: Readonly<Record<FriendId, number>> = Object.freeze({
+  'class-representative-bing': 4,
+  'san-hao-rabbit': 6,
+  'xin-hao-rabbit': 8,
+  'signal-dog': 6,
+  'bili-bing': 4,
+})
+
+/** 旅行遇友除固定道具外，还会按身份固定赠送苹果，避免额外随机序列。 */
+export const TRAVEL_FRIEND_GIFT_APPLES_BY_ID: Readonly<Record<FriendId, number>> = Object.freeze({
+  'class-representative-bing': 2,
+  'san-hao-rabbit': 3,
+  'xin-hao-rabbit': 4,
+  'signal-dog': 3,
+  'bili-bing': 2,
+})
+
 export const FRIEND_GIFT_ITEM_BY_ID: Readonly<Record<FriendId, LegacyItemId>> = Object.freeze({
   'class-representative-bing': 'travel-basic',
   'san-hao-rabbit': 'travel-apple',
@@ -94,9 +111,10 @@ export const DEFAULT_GAME_BALANCE: Readonly<GameBalance> = Object.freeze({
   probabilities: Object.freeze({
     postcard: 0.65,
     millionShot: 0.3,
-    siteFirst: 0.1,
-    travelFriend: 0.2,
-    musicFriend: 0.2,
+    siteFirst: 0.15,
+    travelFriend: 0.1,
+    /** 每位已经认识的朋友各提供 15% 来访概率，实际概率在奖励规划时统一封顶。 */
+    musicFriend: 0.15,
   }),
 })
 
@@ -140,6 +158,14 @@ export function addProbabilityBonus(base: number, bonus: number): number {
     throw new RangeError('概率与概率加成必须是有效的非负数')
   }
   return Math.min(1, base + bonus)
+}
+
+/** 为单次事件按倍数放大概率，并统一封顶为 1。 */
+export function multiplyProbability(base: number, multiplier: number): number {
+  if (!isValidProbability(base) || !Number.isFinite(multiplier) || multiplier < 0) {
+    throw new RangeError('概率与概率倍数必须是有效的非负数')
+  }
+  return Math.min(1, base * multiplier)
 }
 
 export function isValidActivityDuration(value: number): boolean {

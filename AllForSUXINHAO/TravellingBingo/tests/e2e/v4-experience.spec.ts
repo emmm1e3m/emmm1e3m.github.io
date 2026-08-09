@@ -14,11 +14,11 @@ import {
   startGame,
 } from './support/game'
 
-test.describe('V5 房间契约', () => {
+test.describe('V6 房间契约', () => {
   test.beforeEach(({ browserName }, testInfo) => {
     test.skip(
       browserName !== 'chromium' || testInfo.project.name !== 'chromium',
-      'V5 桌面主流程只在 Chromium 验证',
+      'V6 桌面主流程只在 Chromium 验证',
     )
   })
 
@@ -126,7 +126,7 @@ test.describe('V5 房间契约', () => {
     await saveScreenshot(page, 'vitality-magic-seven-days.png', false)
   })
 
-  test('现实维度提供数据与工作入口，待办持久且满十分钟按选择结算', async ({ page }) => {
+  test('现实维度提供刷播、冲热与工作入口，待办持久且满十分钟按选择结算', async ({ page }) => {
     const enteredAt = new Date('2026-08-09T08:00:00+08:00')
     await page.clock.install({ time: enteredAt })
     await startGame(page, { displayName: '现实测试', seed: 'v4-reality' })
@@ -134,16 +134,22 @@ test.describe('V5 房间契约', () => {
 
     await enterReality(page)
     const room = page.getByRole('region', { name: '铲铲饼屋互动场景' })
-    await expect(room.locator('[data-hotspot="电脑"]')).toHaveText('数据')
+    await expect(room.locator('[data-hotspot="电脑"]')).toHaveText('刷播')
+    await expect(room.locator('[data-hotspot="二楼电脑·冲热"]')).toHaveText('冲热（开发中）')
     await expect(room.locator('[data-hotspot="一楼电脑"]')).toHaveText('工作')
 
     await room.locator('[data-hotspot="电脑"]').click()
-    const dataPanel = page.locator('.context-panel--reality-data')
-    await expect(dataPanel).toContainText('在该页面中直接开始刷播（无需但是建议加入运行组）')
-    await expect(dataPanel).toContainText(
-      '在该页面中启动冲热任务（需要加入运行组，与最新版插件配合使用）',
+    const streamPanel = page.locator('.context-panel--reality-stream')
+    await expect(streamPanel.getByRole('heading', { name: '视频刷播' })).toBeVisible()
+    await expect(streamPanel).toContainText(
+      '输入视频BV号或链接列表，可以包含自测视频。并允许网站弹出窗口的权限。',
     )
-    await expect(dataPanel.getByRole('link', { name: /前往/u })).toHaveAttribute(
+
+    await room.locator('[data-hotspot="二楼电脑·冲热"]').click()
+    const trendPanel = page.locator('.context-panel--reality-trend')
+    await expect(trendPanel.getByRole('heading', { name: '冲热刷播，奖品多多' })).toBeVisible()
+    await expect(trendPanel).not.toContainText('需要参与实际运行时')
+    await expect(trendPanel.getByRole('link', { name: /前往字母建设站/u })).toHaveAttribute(
       'href',
       'https://www.weibo.com/u/7878664767',
     )
@@ -151,18 +157,18 @@ test.describe('V5 房间契约', () => {
     await room.locator('[data-hotspot="一楼电脑"]').click()
     const workPanel = page.locator('.context-panel--reality-work')
     await expect(workPanel.getByRole('heading', { name: '苹果钟与待办' })).toBeVisible()
-    await workPanel.getByLabel('新待办').fill('完成 V5 验收')
+    await workPanel.getByLabel('新待办').fill('完成 V6 验收')
     await workPanel.getByRole('button', { name: '添加' }).click()
     const todo = workPanel.getByRole('list', { name: '现实生活待办' }).getByRole('listitem')
-    await expect(todo).toContainText('完成 V5 验收')
-    await todo.getByRole('checkbox', { name: '标记为已完成：完成 V5 验收' }).check()
+    await expect(todo).toContainText('完成 V6 验收')
+    await todo.getByRole('checkbox', { name: '标记为已完成：完成 V6 验收' }).check()
     await todo.getByRole('button', { name: '编辑' }).click()
-    await todo.getByLabel('待办标题').fill('完成 V5 桌面验收')
+    await todo.getByLabel('待办标题').fill('完成 V6 桌面验收')
     await todo.getByRole('button', { name: '保存' }).click()
 
     await room.locator('[data-hotspot="电脑"]').click()
     await room.locator('[data-hotspot="一楼电脑"]').click()
-    await expect(page.getByRole('list', { name: '现实生活待办' })).toContainText('完成 V5 桌面验收')
+    await expect(page.getByRole('list', { name: '现实生活待办' })).toContainText('完成 V6 桌面验收')
     await saveScreenshot(page, 'reality-work-todos.png', false)
 
     await page.clock.fastForward(10 * 60_000 + 1_000)
@@ -174,6 +180,10 @@ test.describe('V5 房间契约', () => {
     await expect(returnDialog).toContainText('这段时间一共攒下 1🍎')
     await returnDialog.getByRole('button', { name: '是的🥰' }).click()
     const resultDialog = page.getByRole('dialog', { name: '认真完成，全部带回来啦' })
+    await expect(resultDialog).toBeVisible()
+    await page.clock.resume()
+    await expect(page.locator('.reality-settlement-result-backdrop')).toHaveCSS('opacity', '1')
+    await page.clock.runFor(400)
     await expect(resultDialog).toContainText('收好 1🍎')
     await expect(resultDialog.getByRole('button', { name: '收好啦' })).toBeFocused()
     await expect.poll(() => readAppleCount(page)).toBe(applesBefore + 1)

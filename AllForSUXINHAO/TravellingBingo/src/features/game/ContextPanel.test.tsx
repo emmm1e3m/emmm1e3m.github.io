@@ -4,6 +4,7 @@ import type { ReactNode } from 'react'
 import type { BilibiliVideo, ContentCatalog } from '@/content'
 import { createInitialGameState, type GameAction, type GameState } from '@/domain'
 import { BilibiliPlayerProvider, PersistentPlayerDock } from '@/features/player'
+import type { StreamPlaybackController } from '@/features/reality'
 
 import { ContextPanel } from './ContextPanel'
 
@@ -108,6 +109,25 @@ function gameInReality(): GameState {
   }
 }
 
+function idleStreamPlayback(): StreamPlaybackController {
+  return {
+    state: {
+      status: 'idle',
+      round: 0,
+      mode: null,
+      sourceInput: '',
+      parsedBvids: [],
+      openedCount: 0,
+      message: '尚未开始刷播',
+      errors: [],
+    },
+    start: vi.fn(() => ({ ok: true as const, bvids: [], errors: [] as const })),
+    resume: vi.fn(() => true),
+    stop: vi.fn(),
+    getRemainingMs: vi.fn(() => null),
+  }
+}
+
 const commonProps = {
   catalog: contentCatalog,
   now: 2_000,
@@ -116,6 +136,9 @@ const commonProps = {
   onAction: vi.fn(),
   onBackup: vi.fn(),
   onTaskEvent: vi.fn(),
+  streamPlayback: idleStreamPlayback(),
+  streamRoundDurationSeconds: 310,
+  onStreamRoundDurationChange: vi.fn(),
 }
 
 function PlayerHarness({ children }: { children: ReactNode }) {
@@ -427,25 +450,40 @@ describe('ContextPanel 信息栏交互', () => {
       </ControlledPlayerHarness>,
     )
 
+    expect(screen.getByRole('heading', { name: '放点音乐' })).toBeVisible()
+    expect(screen.queryByRole('heading', { name: '为房间添加一点音乐' })).not.toBeInTheDocument()
     expect(screen.getByRole('heading', { name: '八首全站第一' })).toBeVisible()
     expect(screen.queryByRole('textbox')).not.toBeInTheDocument()
   })
 
-  it('现实数据和工作入口直接展示对应内容，不再嵌套 Dashboard 标签页', () => {
+  it('现实刷播、冲热和工作入口直接展示各自内容，不再嵌套 Dashboard 标签页', () => {
     const onNavigate = vi.fn()
     const dataGame = gameInReality()
+    const streamPlayback = idleStreamPlayback()
     const { container, rerender } = render(
       <ContextPanel
         {...commonProps}
-        panel="reality-data"
+        panel="reality-stream"
         game={dataGame}
         onNavigate={onNavigate}
+        streamPlayback={streamPlayback}
       />,
     )
 
-    expect(screen.getByRole('heading', { name: '刷播与冲热（开发中）' })).toBeInTheDocument()
+    expect(screen.getByRole('heading', { name: '视频刷播' })).toBeInTheDocument()
     expect(screen.queryByRole('tab')).not.toBeInTheDocument()
     expect(container.querySelector('.context-panel__topline')).not.toBeInTheDocument()
+
+    rerender(
+      <ContextPanel
+        {...commonProps}
+        panel="reality-trend"
+        game={dataGame}
+        onNavigate={onNavigate}
+        streamPlayback={streamPlayback}
+      />,
+    )
+    expect(screen.getByRole('heading', { name: '冲热刷播，奖品多多' })).toBeInTheDocument()
 
     rerender(
       <ContextPanel
@@ -453,6 +491,7 @@ describe('ContextPanel 信息栏交互', () => {
         panel="reality-work"
         game={dataGame}
         onNavigate={onNavigate}
+        streamPlayback={streamPlayback}
       />,
     )
     expect(screen.getByRole('heading', { name: '苹果钟与待办' })).toBeInTheDocument()

@@ -17,6 +17,7 @@ import {
   migrateStoredGameStateToV4,
 } from './migrateGameStateV3'
 import { migrateGameStateV4ToV5 } from './migrateGameStateV4'
+import { gameStateV6Schema, migrateGameStateV5ToV6 } from './migrateGameStateV5'
 import type { CollectionCatalog, GameStateV1, GameStateV3 } from './types'
 import { MAX_DATE_TIMESTAMP_MS } from './time'
 import { validateImportedGameState } from './validateImportedGameState'
@@ -235,6 +236,7 @@ describe('schemaVersion 3 -> 4 显式迁移', () => {
       label: '睡觉固定苹果',
       kind: 'rest' as const,
       location: 'bed' as const,
+      supplyId: null,
       rewardPlan: {
         baseApples: 1,
         modifierApples: 0,
@@ -249,6 +251,7 @@ describe('schemaVersion 3 -> 4 显式迁移', () => {
       label: '电子琴好友苹果',
       kind: 'music' as const,
       location: 'piano' as const,
+      supplyId: null,
       rewardPlan: {
         baseApples: 0,
         modifierApples: 3,
@@ -259,27 +262,48 @@ describe('schemaVersion 3 -> 4 显式迁移', () => {
         pityAfterClaim: null,
       },
     },
-  ])('严格 V3 $label活动不被误判为 V1 来源', ({ kind, location, rewardPlan }) => {
-    const state = v3Fixture()
-    state.activeActivity = {
-      ...state.activeActivity!,
-      kind,
-      rewardPlan,
-      supplyId: null,
-      usedLuckyApple: false,
-    }
-    state.pet.location = location
+    {
+      label: '旅行旧 0 苹果赠礼',
+      kind: 'travel' as const,
+      location: 'outside' as const,
+      supplyId: 'travel-basic' as const,
+      rewardPlan: {
+        baseApples: 0,
+        modifierApples: 0,
+        collection: null,
+        friendId: 'signal-dog' as const,
+        giftItemId: 'signal-headphones' as const,
+        guaranteedByPity: false,
+        pityAfterClaim: null,
+      },
+    },
+  ])(
+    '严格 V3 $label活动不被误判为 V1 来源且奖励快照不重算',
+    ({ kind, location, supplyId, rewardPlan }) => {
+      const state = v3Fixture()
+      state.activeActivity = {
+        ...state.activeActivity!,
+        kind,
+        rewardPlan,
+        supplyId,
+        usedLuckyApple: false,
+      }
+      state.pet.location = location
 
-    expect(gameStateV3Schema.safeParse(state).success).toBe(true)
-    const migrated = migrateGameStateV3ToV4(state, migrationOptions)
+      expect(gameStateV3Schema.safeParse(state).success).toBe(true)
+      const migrated = migrateGameStateV3ToV4(state, migrationOptions)
 
-    expect(migrated.activeActivity).toEqual(state.activeActivity)
-    expect(migrated.activeActivity?.legacySource).toBeUndefined()
-    expect(gameStateV4Schema.safeParse(migrated).success).toBe(true)
-    expect(validateImportedGameState(migrateGameStateV4ToV5(migrated), catalog)).toEqual({
-      ok: true,
-    })
-  })
+      expect(migrated.activeActivity).toEqual(state.activeActivity)
+      expect(migrated.activeActivity?.legacySource).toBeUndefined()
+      expect(gameStateV4Schema.safeParse(migrated).success).toBe(true)
+      const v5 = migrateGameStateV4ToV5(migrated)
+      const v6 = migrateGameStateV5ToV6(v5)
+      expect(v5.activeActivity?.rewardPlan).toEqual(rewardPlan)
+      expect(v6.activeActivity?.rewardPlan).toEqual(rewardPlan)
+      expect(gameStateV6Schema.safeParse(v6).success).toBe(true)
+      expect(validateImportedGameState(v6, catalog)).toEqual({ ok: true })
+    },
+  )
 
   it('迁移时确定性替换已删除的打招呼任务，且只推进 tasks 随机序列', () => {
     const state = v3Fixture({ active: false })
@@ -324,7 +348,9 @@ describe('schemaVersion 3 -> 4 显式迁移', () => {
     expect(migrated.tasks.active.map((task) => task.taskId)).not.toContain('greet-bingo')
     expect(migrated.random.sequences.tasks).toBe(Number.MAX_SAFE_INTEGER)
     expect(gameStateV4Schema.safeParse(migrated).success).toBe(true)
-    expect(validateImportedGameState(migrateGameStateV4ToV5(migrated), catalog)).toEqual({
+    expect(
+      validateImportedGameState(migrateGameStateV5ToV6(migrateGameStateV4ToV5(migrated)), catalog),
+    ).toEqual({
       ok: true,
     })
   })

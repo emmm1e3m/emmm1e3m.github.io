@@ -28,6 +28,7 @@ export interface BilibiliPlayerProviderProps extends PropsWithChildren {
 interface PersistentPlayerDockProps {
   compact?: boolean
   className?: string
+  interactionDisabled?: boolean
   onExpandRequest?: () => void
 }
 
@@ -56,6 +57,7 @@ function initialTimeline(): PlaybackTimeline {
 export function PersistentPlayerDock({
   compact = false,
   className = '',
+  interactionDisabled = false,
   onExpandRequest,
 }: PersistentPlayerDockProps) {
   const controller = useBilibiliPlayerController()
@@ -136,6 +138,7 @@ export function PersistentPlayerDock({
     if (activeTimeline.loadedRevision === playbackRevision) return
     activeTimeline.loadedRevision = playbackRevision
     // iframe 的 t 只使用整秒；结束计时同步回同一个整秒起点，避免两条进度漂移。
+    // 用户在跨域 iframe 内暂停或拖动时，父页无法同步读取真实进度；这份计时只跟随游戏控件。
     activeTimeline.playedMs = resumeAtSeconds * 1000
     const remainingMs = Math.max(0, activeTimeline.durationMs - activeTimeline.playedMs)
     if (remainingMs === 0) {
@@ -164,8 +167,10 @@ export function PersistentPlayerDock({
     <aside
       className={`persistent-bilibili-player ${displayExpanded ? 'is-expanded' : 'is-collapsed'} ${className}`.trim()}
       aria-label="持久播放器"
+      aria-hidden={interactionDisabled ? true : undefined}
       data-testid="persistent-bilibili-player"
       data-dock-state={displayExpanded ? 'expanded' : 'collapsed'}
+      data-interaction-state={interactionDisabled ? 'disabled' : 'enabled'}
       data-playback-state={playing ? 'playing' : 'paused'}
       data-modal-focus-peer="persistent-player"
     >
@@ -176,6 +181,7 @@ export function PersistentPlayerDock({
         <button
           type="button"
           aria-label={displayExpanded ? '隐藏画面' : '显示画面'}
+          disabled={interactionDisabled}
           onClick={() => {
             if (displayExpanded) {
               controller.hideDock()
@@ -190,6 +196,7 @@ export function PersistentPlayerDock({
         <button
           type="button"
           aria-label={playing ? '暂停播放' : '继续播放'}
+          disabled={interactionDisabled}
           onClick={() => {
             if (playing) {
               const frozenAtSeconds = Math.floor(freezeTimeline() / 1000)
@@ -205,6 +212,7 @@ export function PersistentPlayerDock({
         <button
           type="button"
           aria-label="取消播放"
+          disabled={interactionDisabled}
           onClick={() => {
             clearEndTimer()
             controller.stop()
@@ -215,9 +223,9 @@ export function PersistentPlayerDock({
       </div>
       <div
         className="persistent-bilibili-player__frame"
-        role="img"
-        aria-hidden={displayExpanded ? undefined : true}
-        aria-label="视频画面，请使用上方按钮控制播放"
+        aria-hidden={displayExpanded && !interactionDisabled ? undefined : true}
+        inert={displayExpanded && !interactionDisabled ? undefined : true}
+        data-interaction-state={displayExpanded && !interactionDisabled ? 'enabled' : 'disabled'}
       >
         {playing && (
           <iframe
@@ -227,9 +235,7 @@ export function PersistentPlayerDock({
             allow="autoplay; fullscreen; picture-in-picture"
             allowFullScreen
             referrerPolicy="strict-origin-when-cross-origin"
-            tabIndex={-1}
-            inert
-            aria-hidden="true"
+            tabIndex={interactionDisabled ? -1 : undefined}
             data-request-id={request.requestId}
             data-playback-revision={playbackRevision}
             onLoad={startEndTimer}

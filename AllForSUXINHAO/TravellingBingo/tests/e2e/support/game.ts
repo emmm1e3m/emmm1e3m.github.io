@@ -5,7 +5,8 @@ import { expect, type Locator, type Page } from '@playwright/test'
 
 export const TEST_PLAYER_NAME = '小苹果'
 
-export type ProbabilityLabel = '明信片' | '百万直拍' | '全站第一' | '旅行遇见朋友' | '音乐遇见朋友'
+export type ProbabilityLabel =
+  '明信片' | '百万直拍' | '全站第一' | '旅行遇见朋友' | '音乐遇见朋友（每位朋友）'
 
 interface StartGameOptions {
   seed?: string
