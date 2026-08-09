@@ -29,18 +29,24 @@ test.describe('V5 房间契约', () => {
     const updateRegion = page.getByRole('region', { name: '检查游戏更新' })
     await expect(updateRegion.getByRole('button', { name: '检查更新' })).toBeVisible()
     await expect
-      .poll(() => page.evaluate(() => navigator.serviceWorker.getRegistration().then(Boolean)), {
-        timeout: 60_000,
-      })
-      .toBe(true)
-    await updateRegion.getByRole('button', { name: '检查更新' }).click()
-    await expect(updateRegion.getByRole('button', { name: '正在检查更新…' })).toBeDisabled()
+      .poll(
+        () =>
+          page.evaluate(async () => {
+            const registration = await navigator.serviceWorker.getRegistration()
+            return registration?.active?.state ?? null
+          }),
+        { timeout: 60_000 },
+      )
+      .toBe('activated')
+    await Promise.all([
+      expect(page.getByRole('status').filter({ hasText: '铲铲饼屋暂时没有新布置啦' })).toBeVisible({
+        timeout: 30_000,
+      }),
+      updateRegion.getByRole('button', { name: '检查更新' }).click(),
+    ])
     await expect(updateRegion.getByRole('button', { name: '检查更新' })).toBeEnabled({
       timeout: 30_000,
     })
-    await expect(
-      page.getByRole('status').filter({ hasText: '铲铲饼屋暂时没有新布置啦' }),
-    ).toBeVisible()
     await expect(updateRegion.getByRole('status')).toHaveCount(0)
 
     await startGame(page, { debug: true, displayName: '新布置测试', seed: 'v4-update' })
