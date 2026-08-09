@@ -12,7 +12,6 @@ import { PwaUpdatePrompt, type InstallPwaUpdate } from '@/components/PwaUpdatePr
 import { loadContentCatalog, type ContentCatalog } from '@/content'
 import {
   createInitialGameState,
-  getTaskBoardRefreshDeadline,
   migrateStoredGameStateToV5,
   normalizeImportedGameBalance,
   reconcileGameStateWithCatalog,
@@ -102,8 +101,6 @@ function nextClockDeadline(game: GameState | null): number | null {
   } else if (session?.status === 'break' && session.completionNotificationIssuedAt === null) {
     deadlines.push(session.cycleEndsAt)
   }
-  const taskBoardDeadline = getTaskBoardRefreshDeadline(game.tasks)
-  if (taskBoardDeadline !== null) deadlines.push(taskBoardDeadline)
   return deadlines.length > 0 ? Math.min(...deadlines) : null
 }
 

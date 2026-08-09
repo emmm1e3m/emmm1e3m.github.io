@@ -369,12 +369,17 @@
   z-index: 9;
 }
 
-.game-page--v4 .room-mascot--actor.is-wandering {
+.game-page--v4 .room-mascot--actor.is-wander-moving {
   will-change: left, top;
   transition:
-    left 6.4s ease-in-out,
-    top 6.4s ease-in-out,
+    left var(--pet-wander-duration, 6.4s) ease-in-out,
+    top var(--pet-wander-duration, 6.4s) ease-in-out,
     transform 180ms ease;
+}
+
+/* 只镜像走路图层，保留演员外层的定位与悬停变换。 */
+.game-page--v4 .room-mascot--actor.is-facing-left > .mascot-sprite--walk {
+  transform: scaleX(-1);
 }
 
 .room-card--v4 button.travel-note--v2 {

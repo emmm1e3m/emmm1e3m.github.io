@@ -1,4 +1,4 @@
-import { fireEvent, render, screen, waitFor, within } from '@testing-library/react'
+import { act, fireEvent, render, screen, waitFor, within } from '@testing-library/react'
 import { useState } from 'react'
 
 import type { BilibiliVideo, CollectibleItem, ContentCatalog } from '@/content'
@@ -344,6 +344,35 @@ describe('收藏墙模态框', () => {
 })
 
 describe('房间互动', () => {
+  it('手动前往左右两侧设施时只在走动期间镜像对应方向', () => {
+    vi.useFakeTimers()
+
+    try {
+      const { unmount } = render(<RoomPanelHarness />)
+      const mascot = screen.getByRole('button', { name: '饼狗，打开行动菜单' })
+
+      fireEvent.click(screen.getByRole('button', { name: '去床上' }))
+      expect(mascot).toHaveClass('is-walking', 'is-facing-left')
+      expect(mascot.querySelector('.mascot-sprite')).toHaveClass('mascot-sprite--walk')
+
+      act(() => vi.advanceTimersByTime(619))
+      expect(mascot).toHaveClass('is-walking', 'is-facing-left')
+      act(() => vi.advanceTimersByTime(1))
+      expect(mascot).not.toHaveClass('is-walking', 'is-facing-left')
+
+      fireEvent.click(screen.getByRole('button', { name: '去门口' }))
+      expect(mascot).toHaveClass('is-walking')
+      expect(mascot).not.toHaveClass('is-facing-left')
+
+      act(() => vi.advanceTimersByTime(620))
+      expect(mascot).not.toHaveClass('is-walking', 'is-facing-left')
+      unmount()
+      expect(vi.getTimerCount()).toBe(0)
+    } finally {
+      vi.useRealTimers()
+    }
+  })
+
   it('待机时始终展示信息栏，设施展开后点房间空白回到任务与兴趣概览', () => {
     render(<RoomPanelHarness />)
 

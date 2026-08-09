@@ -9,7 +9,12 @@ import {
   assertVideoCatalog,
   buildPublicVideoCatalog,
 } from '../research/bilibili-video-catalog-core.mjs'
-import { collectInterfaceGlyphs } from './build-fonts.mjs'
+import { collectFontGlyphs } from './build-fonts.mjs'
+import {
+  findMissingCodePoints,
+  inspectFontCodePoints,
+  summarizeCharacters,
+} from './font-metadata.mjs'
 
 const workspaceRoot = resolve(fileURLToPath(new URL('../..', import.meta.url)))
 const publicRoot = resolve(workspaceRoot, 'AllForSUXINHAO/TravellingBingo/public')
@@ -322,21 +327,28 @@ async function verifyPngSourceEntry(
   return digest
 }
 
-async function verifyWoff2Entry(entry, label) {
+async function verifyWoff2Entry(entry, label, requiredText) {
   ensure(entry?.mime === 'font/woff2', `${label} 的 MIME 不是 font/woff2`)
   ensure(Number.isInteger(entry.byteLength) && entry.byteLength > 0, `${label} 的字节数不合法`)
-  ensure(entry.byteLength < 1024 * 1024, `${label} 超过 1 MiB 的发布上限`)
-  ensure(/^[a-f0-9]{64}$/.test(entry.sha256), `${label} 的 SHA-256 不合法`)
+  ensure(entry.byteLength < 100 * 1024 * 1024, `${label} 超过 GitHub 单文件 100 MiB 限制`)
+  ensure(
+    Number.isInteger(entry.mappedCodePointCount) && entry.mappedCodePointCount > 0,
+    `${label} 的字符映射数量不合法`,
+  )
 
   const target = resolveSafeRelative(publicRoot, entry.path, `${label} 路径`, 'assets/fonts/')
   ensure(entry.path.endsWith('.woff2'), `${label} 的扩展名不是 WOFF2`)
   const bytes = await readFile(target)
   ensure(bytes.subarray(0, 4).toString('ascii') === 'wOF2', `${label} 的实际格式不是 WOFF2`)
   ensure(bytes.byteLength === entry.byteLength, `${label} 的实际字节数与目录不符`)
+  const metadata = await inspectFontCodePoints(bytes)
+  ensure(metadata.sourceFormat === 'woff2', `${label} 的实际格式不是 WOFF2`)
   ensure(
-    createHash('sha256').update(bytes).digest('hex') === entry.sha256,
-    `${label} 的 SHA-256 与目录不符`,
+    metadata.codePoints.size === entry.mappedCodePointCount,
+    `${label} 的实际字符映射数量与目录不符`,
   )
+  const missing = findMissingCodePoints(requiredText, metadata.codePoints)
+  ensure(missing.length === 0, `${label} 缺少必须字符：${summarizeCharacters(missing)}`)
 }
 
 async function verifyExactDirectory(directory, expectedNames, label) {
@@ -1285,15 +1297,23 @@ ensure(demoSourceHashes.size === 5, 'ImageGen 母版目录存在完全重复文�
 await verifyExactDirectory(demoGameAssetRoot, expectedGameFileNames, 'Demo 游戏视觉素材目录')
 
 const fontManifest = JSON.parse(await readFile(fontManifestPath, 'utf8'))
-ensure(fontManifest.schemaVersion === 1, '字体目录版本不受支持')
+ensure(fontManifest.schemaVersion === 2, '字体目录版本不受支持')
 ensure(fontManifest.rights === 'user-confirmed-authorized', '字体目录缺少用户授权口径')
-const currentGlyphSet = await collectInterfaceGlyphs(workspaceRoot)
+const currentGlyphSet = await collectFontGlyphs(workspaceRoot)
 ensure(
-  fontManifest.glyphSet?.codePointCount === currentGlyphSet.codePointCount &&
-    fontManifest.glyphSet.sha256 === currentGlyphSet.sha256 &&
-    JSON.stringify(fontManifest.glyphSet.sourceFiles) ===
-      JSON.stringify(currentGlyphSet.sourceFiles),
-  '字体子集未覆盖当前界面源码与公开数据，请重新运行 npm run assets:build:fonts',
+  fontManifest.glyphSet?.strategy === 'modern-chinese-common-2500-plus-runtime' &&
+    fontManifest.glyphSet.codePointCount === currentGlyphSet.codePointCount &&
+    fontManifest.glyphSet.requiredCustomFontCodePointCount ===
+      [...currentGlyphSet.requiredText].length,
+  '网页字体未覆盖当前界面用字，请重新运行 npm run assets:build:fonts',
+)
+ensure(
+  fontManifest.glyphSet.commonCharacters?.standard === '《现代汉语常用字表》常用字部分' &&
+    fontManifest.glyphSet.commonCharacters.authority === '国家语言文字工作委员会、国家教育委员会' &&
+    fontManifest.glyphSet.commonCharacters.publishedAt === '1988-01-26' &&
+    fontManifest.glyphSet.commonCharacters.codePointCount === 2500 &&
+    fontManifest.glyphSet.commonCharacters.path === currentGlyphSet.common.path,
+  '字体目录中的 2500 常用字来源元数据不一致',
 )
 
 const expectedFonts = new Map([
@@ -1330,11 +1350,10 @@ for (const font of fontManifest.fonts) {
   )
   ensure(font.source?.path === expected.sourcePath, `${font.id} 的本地字体母版路径不一致`)
   ensure(
-    Number.isInteger(font.source.byteLength) &&
-      font.source.byteLength > 0 &&
-      /^[a-f0-9]{64}$/.test(font.source.sha256),
+    Number.isInteger(font.source.byteLength) && font.source.byteLength > 0,
     `${font.id} 的本地母版锁定信息不合法`,
   )
+  ensure(font.source.format === 'sfnt', `${font.id} 的本地母版格式不是 SFNT`)
   try {
     const sourceTarget = resolveSafeRelative(
       workspaceRoot,
@@ -1344,19 +1363,25 @@ for (const font of fontManifest.fonts) {
     )
     const sourceBytes = await readFile(sourceTarget)
     ensure(sourceBytes.byteLength === font.source.byteLength, `${font.id} 的本地母版字节数不符`)
+    const sourceMetadata = await inspectFontCodePoints(sourceBytes)
+    ensure(sourceMetadata.sourceFormat === font.source.format, `${font.id} 的本地母版格式不符`)
+    const sourceMissing = findMissingCodePoints(
+      currentGlyphSet.requiredText,
+      sourceMetadata.codePoints,
+    )
     ensure(
-      createHash('sha256').update(sourceBytes).digest('hex') === font.source.sha256,
-      `${font.id} 的本地母版 SHA-256 不符`,
+      sourceMissing.length === 0,
+      `${font.id} 的本地母版缺少必须字符：${summarizeCharacters(sourceMissing)}`,
     )
     verifiedFontSources += 1
   } catch (error) {
     if (error.code !== 'ENOENT') throw error
   }
   ensure(font.file?.path === expected.filePath, `${font.id} 的 WOFF2 路径不一致`)
-  await verifyWoff2Entry(font.file, `${font.id} 字体子集`)
+  await verifyWoff2Entry(font.file, `${font.id} 常用字网页字体`, currentGlyphSet.requiredText)
   expectedFontFileNames.add(font.file.path.split('/').at(-1))
 }
-ensure(expectedFontFileNames.size === 2, '字体子集文件名存在重复')
+ensure(expectedFontFileNames.size === 2, '网页字体文件名存在重复')
 ensure(
   verifiedFontSources === 0 || verifiedFontSources === expectedFonts.size,
   `本地字体母版不完整：仅找到 ${verifiedFontSources}/${expectedFonts.size}`,
@@ -1364,5 +1389,5 @@ ensure(
 await verifyExactDirectory(publicFontAssetRoot, expectedFontFileNames, '公开字体素材目录')
 
 console.log(
-  `素材校验通过：${publicCatalog.itemCount} 张百万直拍、${siteFirstPublicCatalog.itemCount} 项全站第一、${postcardSource.itemCount} 条明信片候选、${postcardPublicCatalog.itemCount} 张真实明信片（${expectedPostcardDerivativeCount} 个 WebP）、${friendCatalog.itemCount} 位好友、${Object.keys(videoCatalog.videos).length} 条视频、${expectedGameFileNames.size} 个 Demo 视觉文件及 ${fontManifest.fonts.length} 个 WOFF2 字体子集一致；本地核验百万直拍原图 ${verifiedMillionOriginals}/${source.items.length}、明信片原图 ${verifiedPostcardOriginals}/${postcardPublicCatalog.itemCount}、字体母版 ${verifiedFontSources}/${expectedFonts.size}`,
+  `素材校验通过：${publicCatalog.itemCount} 张百万直拍、${siteFirstPublicCatalog.itemCount} 项全站第一、${postcardSource.itemCount} 条明信片候选、${postcardPublicCatalog.itemCount} 张真实明信片（${expectedPostcardDerivativeCount} 个 WebP）、${friendCatalog.itemCount} 位好友、${Object.keys(videoCatalog.videos).length} 条视频、${expectedGameFileNames.size} 个 Demo 视觉文件及 ${fontManifest.fonts.length} 个 2500 常用字 WOFF2 字体一致；本地核验百万直拍原图 ${verifiedMillionOriginals}/${source.items.length}、明信片原图 ${verifiedPostcardOriginals}/${postcardPublicCatalog.itemCount}、字体母版 ${verifiedFontSources}/${expectedFonts.size}`,
 )

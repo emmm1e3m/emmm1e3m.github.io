@@ -204,7 +204,6 @@ export {
   generateTaskBoard,
   getTaskPresentation,
   getTaskProgressLabel,
-  getTaskBoardRefreshDeadline,
   isTaskCompleted,
   hasRetiredTask,
   replaceRetiredTaskBoard,

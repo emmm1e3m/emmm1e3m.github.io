@@ -1,6 +1,20 @@
 import { ROOM_AREAS, roomAreaVisibleInWorld, type RoomPixelPoint } from './roomConfig'
 
-export const ROOM_WANDER_STEP_MS = 6_800
+export const ROOM_WANDER_REST_MIN_MS = 4_800
+export const ROOM_WANDER_REST_MAX_MS = 10_800
+export const ROOM_WANDER_MOVE_MIN_MS = 4_800
+export const ROOM_WANDER_MOVE_MAX_MS = 6_800
+
+export type RoomWanderPhase = 'resting' | 'moving'
+
+/** 每次停留和移动都重新取时长，避免待机动作呈现机械的固定节拍。 */
+export function randomRoomWanderDuration(phase: RoomWanderPhase, random: () => number) {
+  const [minimum, maximum] =
+    phase === 'resting'
+      ? [ROOM_WANDER_REST_MIN_MS, ROOM_WANDER_REST_MAX_MS]
+      : [ROOM_WANDER_MOVE_MIN_MS, ROOM_WANDER_MOVE_MAX_MS]
+  return minimum + Math.round(random() * (maximum - minimum))
+}
 
 function turn(origin: RoomPixelPoint, first: RoomPixelPoint, second: RoomPixelPoint) {
   return (first.x - origin.x) * (second.y - origin.y) - (first.y - origin.y) * (second.x - origin.x)

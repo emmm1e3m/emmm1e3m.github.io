@@ -8,18 +8,16 @@ import type {
   CollectionCatalog,
   GameState,
   GameTransition,
-  TaskEvent,
   TaskId,
   TaskInstance,
 } from '../game/types'
 import {
   generateTaskBoard,
-  getTaskBoardRefreshDeadline,
   getTaskPresentation,
   getTaskProgressLabel,
   hasRetiredTask,
   isTaskCompleted,
-  refreshTaskBoardForNewDay,
+  refreshCompletedTaskBoard,
   replaceRetiredTaskBoard,
   TASK_LIBRARY,
   validateTaskInstanceReachability,
@@ -57,35 +55,6 @@ function withTasks(
   return {
     ...state,
     tasks: { ...state.tasks, active },
-  }
-}
-
-function eventForTask(taskId: TaskId): TaskEvent {
-  switch (taskId) {
-    case 'greet-bingo':
-      return { type: 'pet-greeted' }
-    case 'open-backpack':
-      return { type: 'pet-menu-opened' }
-    case 'room-stroll':
-      return { type: 'room-visited', area: 'bed' }
-    case 'piano-time':
-    case 'two-melodies':
-      return { type: 'piano-note-played', noteId: 'C4' }
-    case 'record-time':
-      return { type: 'record-player-opened', bvid: 'BV1xx411c7mD' }
-    case 'wardrobe-choice':
-      return { type: 'room-visited', area: 'wardrobe' }
-    case 'open-memories':
-      return { type: 'collection-wall-opened' }
-    case 'revisit-two':
-    case 'remember-postcard':
-      return { type: 'collection-viewed', collectionId: 'postcard-1', category: 'postcard' }
-    case 'remember-million':
-      return { type: 'collection-viewed', collectionId: 'million-1', category: 'million-shot' }
-    case 'remember-first':
-      return { type: 'collection-viewed', collectionId: 'first-1', category: 'site-first' }
-    case 'stage-test':
-      return { type: 'stage-test-opened' }
   }
 }
 
@@ -465,11 +434,10 @@ describe('今日 Bingo 任务板', () => {
     expect(state.tasks.active[0].seenKeys).toEqual(['piano:C4', 'piano:D4'])
   })
 
-  it('第三条完成后保留全完成板，同一自然日不刷新，跨日后才生成新板', () => {
+  it('第三条完成后保留全完成板，现实日期变化本身不会刷新', () => {
     const assignedAt = new Date(2026, 7, 1, 12).getTime()
     const completedAt = new Date(2026, 7, 9, 23, 58).getTime()
-    const sameDay = new Date(2026, 7, 9, 23, 59).getTime()
-    const nextDay = new Date(2026, 7, 10).getTime()
+    const muchLater = new Date(2026, 7, 20).getTime()
     const base = createInitialGameState({ now: assignedAt, seed: 'refresh-board' })
     const state = withTasks(base, [
       { ...task('open-backpack', 1), assignedAt, seenKeys: ['opened'] },
@@ -494,7 +462,6 @@ describe('今日 Bingo 任务板', () => {
     expect(result.state.tasks.active.every(isTaskCompleted)).toBe(true)
     expect(result.state.tasks.active.map((entry) => entry.instanceId)).toEqual(instanceIdsBefore)
     expect(result.state.tasks.completedAt).toBe(completedAt)
-    expect(getTaskBoardRefreshDeadline(result.state.tasks)).toBe(nextDay)
     expect(result.state.random.sequences.tasks).toBe(sequenceBefore)
     expect(result.effects).toMatchObject([
       {
@@ -505,34 +472,17 @@ describe('今日 Bingo 任务板', () => {
       },
     ])
 
-    const beforeMidnight = successful(
-      reduceGame(result.state, { type: 'clock/tick', now: sameDay }, catalog),
+    const ticked = successful(
+      reduceGame(result.state, { type: 'clock/tick', now: muchLater }, catalog),
     )
-    expect(beforeMidnight.state.tasks).toEqual(result.state.tasks)
-    expect(beforeMidnight.state.random.sequences.tasks).toBe(sequenceBefore)
-
-    const afterMidnight = successful(
-      reduceGame(beforeMidnight.state, { type: 'clock/tick', now: nextDay }, catalog),
-    )
-    expect(afterMidnight.state.tasks.active.map((entry) => entry.instanceId)).not.toEqual(
-      instanceIdsBefore,
-    )
-    expect(afterMidnight.state.tasks.active.every((entry) => entry.progress === 0)).toBe(true)
-    expect(afterMidnight.state.tasks.active.every((entry) => entry.assignedAt === nextDay)).toBe(
-      true,
-    )
-    expect(afterMidnight.state.tasks.completedAt).toBeNull()
-    expect(getTaskBoardRefreshDeadline(afterMidnight.state.tasks)).toBeNull()
-    expect(afterMidnight.state.random.sequences).toEqual({
-      ...beforeMidnight.state.random.sequences,
-      tasks: sequenceBefore + 1,
-    })
+    expect(ticked.state.tasks).toBe(result.state.tasks)
+    expect(ticked.state.random.sequences.tasks).toBe(sequenceBefore)
   })
 
-  it('任务板未全完成时跨过多个自然日仍原样继承每项进度', () => {
+  it('任务板未全完成时，刷新检查和单纯现实时间流逝都原样保留进度', () => {
     const assignedAt = new Date(2026, 7, 1, 12).getTime()
     const muchLater = new Date(2026, 7, 10, 9).getTime()
-    const base = createInitialGameState({ now: assignedAt, seed: 'unfinished-across-days' })
+    const base = createInitialGameState({ now: assignedAt, seed: 'unfinished-across-game-days' })
     const state = withTasks(base, [
       { ...task('open-backpack', 1), assignedAt, seenKeys: ['opened'] },
       { ...task('room-stroll', 1), assignedAt, seenKeys: ['bed'] },
@@ -540,19 +490,18 @@ describe('今日 Bingo 任务板', () => {
     ])
     const sequenceBefore = state.random.sequences.tasks
 
-    expect(getTaskBoardRefreshDeadline(state.tasks)).toBeNull()
-    expect(refreshTaskBoardForNewDay(state, muchLater, catalog)).toBe(state)
+    expect(refreshCompletedTaskBoard(state, muchLater, catalog)).toBe(state)
 
     const ticked = successful(reduceGame(state, { type: 'clock/tick', now: muchLater }, catalog))
-    expect(ticked.state.tasks).toEqual(state.tasks)
+    expect(ticked.state.tasks).toBe(state.tasks)
     expect(ticked.state.random.sequences.tasks).toBe(sequenceBefore)
   })
 
-  it('跨日后的任务事件先刷新任务板，再命中当天的新任务', () => {
+  it('游戏日推进时为全完成板生成且只生成一轮新任务', () => {
     const assignedAt = new Date(2026, 7, 8, 10).getTime()
     const completedAt = new Date(2026, 7, 8, 18).getTime()
-    const nextDay = new Date(2026, 7, 9, 9).getTime()
-    const base = createInitialGameState({ now: assignedAt, seed: 'event-after-midnight' })
+    const nextGameDayAt = new Date(2026, 7, 9, 9).getTime()
+    const base = createInitialGameState({ now: assignedAt, seed: 'next-game-day-board' })
     const withCompletedTasks = withTasks(base, [
       { ...task('open-backpack', 1), assignedAt, seenKeys: ['opened'] },
       { ...task('room-stroll', 2), assignedAt, seenKeys: ['bed', 'computer'] },
@@ -562,28 +511,15 @@ describe('今日 Bingo 任务板', () => {
       ...withCompletedTasks,
       tasks: { ...withCompletedTasks.tasks, completedAt },
     }
-    const refreshed = refreshTaskBoardForNewDay(stale, nextDay, catalog)
-    const firstNewTask = refreshed.tasks.active[0]
-    const result = successful(
-      reduceGame(
-        stale,
-        { type: 'task/event', event: eventForTask(firstNewTask.taskId), now: nextDay },
-        catalog,
-      ),
-    )
+    const refreshed = refreshCompletedTaskBoard(stale, nextGameDayAt, catalog)
 
-    expect(result.state.tasks.active[0]).toMatchObject({
-      instanceId: firstNewTask.instanceId,
-      progress: 1,
-    })
-    expect(result.state.random.sequences.tasks).toBe(stale.random.sequences.tasks + 1)
-    expect(result.effects).toMatchObject([
-      {
-        type: 'task-progressed',
-        instanceId: firstNewTask.instanceId,
-        taskId: firstNewTask.taskId,
-      },
-    ])
+    expect(refreshed.tasks.active.map((entry) => entry.instanceId)).not.toEqual(
+      stale.tasks.active.map((entry) => entry.instanceId),
+    )
+    expect(refreshed.tasks.active.every((entry) => entry.progress === 0)).toBe(true)
+    expect(refreshed.tasks.active.every((entry) => entry.assignedAt === nextGameDayAt)).toBe(true)
+    expect(refreshed.tasks.completedAt).toBeNull()
+    expect(refreshed.random.sequences.tasks).toBe(stale.random.sequences.tasks + 1)
   })
 
   it('第三条之前保留原板，完成项不会再次领奖', () => {

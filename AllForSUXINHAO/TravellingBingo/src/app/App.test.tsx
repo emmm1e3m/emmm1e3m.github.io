@@ -946,6 +946,36 @@ describe('旅行饼狗应用控制器', () => {
     expect(downloadBingoSave).not.toHaveBeenCalled()
   })
 
+  it('继续跨现实日期的全完成缓存时保留任务板，等待游戏日推进', async () => {
+    const completedAt = new Date(2026, 7, 9, 20).getTime()
+    const current = new Date(2026, 7, 10, 8).getTime()
+    const cached = completedTaskBoardGame(completedAt)
+    const originalSequence = cached.random.sequences.tasks
+    const dateNow = vi.spyOn(Date, 'now').mockReturnValue(current)
+
+    try {
+      writeBrowserGameCache(
+        createBrowserGameCache({
+          saveId: 'completed-yesterday',
+          gameVersion: '0.5.0-demo.1',
+          now: completedAt,
+          payload: cached,
+        }),
+      )
+      render(<App />)
+
+      const continueButton = await screen.findByRole('button', { name: '从缓存存档继续' })
+      await waitFor(() => expect(continueButton).toBeEnabled())
+      fireEvent.click(continueButton)
+
+      expect(screen.getByTestId('task-instance-ids')).toHaveTextContent('completed-backpack')
+      expect(screen.getByTestId('task-completed-at')).toHaveTextContent(String(completedAt))
+      expect(screen.getByTestId('task-sequence')).toHaveTextContent(String(originalSequence))
+    } finally {
+      dateNow.mockRestore()
+    }
+  })
+
   it('出现本地导入预览后改选缓存继续，会立即清理旧预览且退出后不复现', async () => {
     writeBrowserGameCache(
       createBrowserGameCache({
@@ -1180,44 +1210,8 @@ describe('旅行饼狗应用控制器', () => {
     }
   })
 
-  it('全完成任务板同日保持不变，并由统一时钟在下一本地自然日自动刷新', async () => {
-    const completedAt = new Date(2026, 7, 9, 23, 30).getTime()
-    const nextMidnight = new Date(2026, 7, 10).getTime()
-    const realStartedAt = performance.now()
-    const fakeStartedAt = nextMidnight - 750
-    const dateNow = vi
-      .spyOn(Date, 'now')
-      .mockImplementation(() => fakeStartedAt + Math.floor(performance.now() - realStartedAt))
-
-    try {
-      const payload = completedTaskBoardGame(completedAt)
-      vi.mocked(importBingoSave).mockResolvedValue(importResult(payload))
-      render(<App />)
-
-      await screen.findByRole('button', { name: '开始新旅程' })
-      fireEvent.change(screen.getByLabelText('读取 .bingo 存档'), {
-        target: { files: [new File(['completed-board'], 'completed-board.bingo')] },
-      })
-      fireEvent.click(await screen.findByRole('button', { name: '进入这次旅程' }))
-
-      const originalInstanceIds = screen.getByTestId('task-instance-ids').textContent
-      const originalSequence = Number(screen.getByTestId('task-sequence').textContent)
-      expect(originalInstanceIds).toContain('completed-backpack')
-      expect(screen.getByTestId('task-completed-at')).toHaveTextContent(String(completedAt))
-
-      await waitFor(
-        () => expect(screen.getByTestId('task-completed-at')).toHaveTextContent('none'),
-        { timeout: 2_000 },
-      )
-      expect(screen.getByTestId('task-instance-ids').textContent).not.toBe(originalInstanceIds)
-      expect(screen.getByTestId('task-sequence')).toHaveTextContent(String(originalSequence + 1))
-    } finally {
-      dateNow.mockRestore()
-    }
-  })
-
   it.each(['focus', 'visibilitychange'] as const)(
-    '页面错过午夜定时器后由 %s 唤醒并刷新全完成任务板',
+    '现实日期跨日后由 %s 唤醒也不会刷新全完成任务板',
     async (resumeEvent) => {
       const completedAt = new Date(2026, 7, 9, 23, 30).getTime()
       const beforeMidnight = new Date(2026, 7, 9, 23, 59).getTime()
@@ -1240,11 +1234,9 @@ describe('旅行饼狗应用控制器', () => {
           target.dispatchEvent(new Event(resumeEvent))
         })
 
-        await waitFor(() =>
-          expect(screen.getByTestId('task-completed-at')).toHaveTextContent('none'),
-        )
-        expect(screen.getByTestId('task-instance-ids').textContent).not.toBe(originalInstanceIds)
-        expect(screen.getByTestId('task-sequence')).toHaveTextContent(String(originalSequence + 1))
+        expect(screen.getByTestId('task-completed-at')).toHaveTextContent(String(completedAt))
+        expect(screen.getByTestId('task-instance-ids').textContent).toBe(originalInstanceIds)
+        expect(screen.getByTestId('task-sequence')).toHaveTextContent(String(originalSequence))
       } finally {
         dateNow.mockRestore()
       }

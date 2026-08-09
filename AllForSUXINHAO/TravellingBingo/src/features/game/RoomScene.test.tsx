@@ -12,8 +12,12 @@ import { DEFAULT_ROOM_AREA, ROOM_AREAS, ROOM_CANVAS, type RoomArea } from './roo
 import {
   GAME_ROOM_WANDER_HULL,
   randomRoomPointInHull,
+  randomRoomWanderDuration,
   roomPointInsideConvexHull,
-  ROOM_WANDER_STEP_MS,
+  ROOM_WANDER_MOVE_MAX_MS,
+  ROOM_WANDER_MOVE_MIN_MS,
+  ROOM_WANDER_REST_MAX_MS,
+  ROOM_WANDER_REST_MIN_MS,
 } from './roomWander'
 
 function activeGame(kind: 'music' | 'rest' | 'travel'): GameState {
@@ -76,6 +80,7 @@ function renderRoom({
       panel={panel}
       area={area}
       walking={false}
+      walkingDirection="right"
       sleeping={false}
       restDarkness={0}
       onArea={onArea}
@@ -150,20 +155,19 @@ describe('房屋场景定位与返回交互', () => {
     )
   })
 
-  it('待机时在游戏设施凸包内部取连续坐标，选中设施后立即停下并清理计时器', () => {
+  it('待机时先休息再向左移动，到达休息后再向右移动', () => {
     vi.useFakeTimers()
-    let randomState = 23
-    const random = vi.fn(() => {
-      randomState = (randomState * 48271) % 2_147_483_647
-      return randomState / 2_147_483_647
-    })
+    const randomValues = [0.05, 0.2, 0.2, 0, 0.85, 0.8, 0.8, 0, 1, 1, 1, 0, 0]
+    const random = vi.fn(() => randomValues.shift() ?? 0.5)
 
     try {
       const game = createInitialGameState({ now: 1_000, seed: 'room-scene-wander' })
       const { rerender, unmount } = renderRoom({ game, panel: 'status', wanderRandom: random })
       const mascot = screen.getByRole('button', { name: '饼狗，打开行动菜单' })
 
-      expect(mascot).toHaveClass('is-wandering')
+      expect(mascot).toHaveClass('is-wandering', 'is-wander-resting')
+      expect(mascot).not.toHaveClass('is-wander-moving')
+      expect(mascot.querySelector('.mascot-sprite')).toHaveClass('mascot-sprite--idle')
       const readPoint = () => ({
         x: (Number.parseFloat(mascot.style.getPropertyValue('--pet-x')) / 100) * ROOM_CANVAS.width,
         y: (Number.parseFloat(mascot.style.getPropertyValue('--pet-y')) / 100) * ROOM_CANVAS.height,
@@ -172,10 +176,43 @@ describe('房屋场景定位与返回交互', () => {
       expect(roomPointInsideConvexHull(firstPoint, GAME_ROOM_WANDER_HULL)).toBe(true)
       expect(ROOM_AREAS.some((candidate) => candidate.petCenter.x === firstPoint.x)).toBe(false)
 
-      act(() => vi.advanceTimersByTime(ROOM_WANDER_STEP_MS))
-      const secondPoint = readPoint()
-      expect(roomPointInsideConvexHull(secondPoint, GAME_ROOM_WANDER_HULL)).toBe(true)
-      expect(secondPoint).not.toEqual(firstPoint)
+      act(() => vi.advanceTimersByTime(ROOM_WANDER_REST_MIN_MS - 1))
+      expect(mascot).toHaveClass('is-wander-resting')
+      expect(readPoint()).toEqual(firstPoint)
+
+      act(() => vi.advanceTimersByTime(1))
+      const targetPoint = readPoint()
+      expect(mascot).toHaveClass('is-wandering', 'is-wander-moving')
+      expect(mascot).toHaveClass('is-facing-left')
+      expect(mascot).not.toHaveClass('is-wander-resting')
+      expect(mascot.querySelector('.mascot-sprite')).toHaveClass('mascot-sprite--walk')
+      expect(mascot.style.getPropertyValue('--pet-wander-duration')).toBe(
+        `${ROOM_WANDER_MOVE_MIN_MS}ms`,
+      )
+      expect(roomPointInsideConvexHull(targetPoint, GAME_ROOM_WANDER_HULL)).toBe(true)
+      expect(targetPoint.x).toBeLessThan(firstPoint.x)
+
+      act(() => vi.advanceTimersByTime(ROOM_WANDER_MOVE_MIN_MS - 1))
+      expect(mascot).toHaveClass('is-wander-moving')
+      act(() => vi.advanceTimersByTime(1))
+      expect(mascot).toHaveClass('is-wander-resting')
+      expect(mascot).not.toHaveClass('is-wander-moving', 'is-facing-left')
+      expect(mascot.querySelector('.mascot-sprite')).toHaveClass('mascot-sprite--idle')
+      expect(readPoint()).toEqual(targetPoint)
+      expect(mascot.style.getPropertyValue('--pet-wander-duration')).toBe(
+        `${ROOM_WANDER_REST_MAX_MS}ms`,
+      )
+
+      act(() => vi.advanceTimersByTime(ROOM_WANDER_REST_MAX_MS))
+      const rightTargetPoint = readPoint()
+      expect(mascot).toHaveClass('is-wander-moving')
+      expect(mascot).not.toHaveClass('is-facing-left')
+      expect(rightTargetPoint.x).toBeGreaterThan(targetPoint.x)
+      expect(roomPointInsideConvexHull(rightTargetPoint, GAME_ROOM_WANDER_HULL)).toBe(true)
+
+      act(() => vi.advanceTimersByTime(ROOM_WANDER_MOVE_MIN_MS))
+      expect(mascot).toHaveClass('is-wander-resting')
+      expect(readPoint()).toEqual(rightTargetPoint)
 
       const fridge = ROOM_AREAS.find((candidate) => candidate.id === 'fridge')!
       rerender(
@@ -184,6 +221,7 @@ describe('房屋场景定位与返回交互', () => {
           panel="fridge"
           area={fridge}
           walking={false}
+          walkingDirection="right"
           sleeping={false}
           restDarkness={0}
           onArea={vi.fn()}
@@ -200,7 +238,7 @@ describe('房屋场景定位与返回交互', () => {
         12,
       )
       const randomCalls = random.mock.calls.length
-      act(() => vi.advanceTimersByTime(ROOM_WANDER_STEP_MS * 2))
+      act(() => vi.advanceTimersByTime(ROOM_WANDER_REST_MAX_MS * 2))
       expect(random).toHaveBeenCalledTimes(randomCalls)
 
       unmount()
@@ -208,6 +246,19 @@ describe('房屋场景定位与返回交互', () => {
     } finally {
       vi.useRealTimers()
     }
+  })
+
+  it('休息与移动时长分别落在约定区间，移动样式使用同一计时值', () => {
+    expect(randomRoomWanderDuration('resting', () => 0)).toBe(ROOM_WANDER_REST_MIN_MS)
+    expect(randomRoomWanderDuration('resting', () => 1)).toBe(ROOM_WANDER_REST_MAX_MS)
+    expect(randomRoomWanderDuration('moving', () => 0)).toBe(ROOM_WANDER_MOVE_MIN_MS)
+    expect(randomRoomWanderDuration('moving', () => 1)).toBe(ROOM_WANDER_MOVE_MAX_MS)
+    expect(gameV4Styles).toContain('.room-mascot--actor.is-wander-moving')
+    expect(gameV4Styles).toContain('left var(--pet-wander-duration, 6.4s) ease-in-out')
+    expect(gameV4Styles).toContain('top var(--pet-wander-duration, 6.4s) ease-in-out')
+    expect(gameV4Styles).toMatch(
+      /\.room-mascot--actor\.is-facing-left\s*>\s*\.mascot-sprite--walk\s*\{[^}]*transform:\s*scaleX\(-1\);/su,
+    )
   })
 
   it('纯函数生成的任意漫步点都在最大凸包内部且不只取设施落点', () => {
@@ -251,6 +302,54 @@ describe('房屋场景定位与返回交互', () => {
       expect(vi.getTimerCount()).toBe(0)
     } finally {
       vi.unstubAllGlobals()
+      vi.useRealTimers()
+    }
+  })
+
+  it('苹果钟运行时停止底层待机漫步且不保留计时器', () => {
+    vi.useFakeTimers()
+    const random = vi.fn(() => 0.5)
+
+    try {
+      renderRoom({ panel: 'status', pomodoroRunning: true, wanderRandom: random })
+      const mascot = screen.getByRole('button', { name: '饼狗，打开行动菜单' })
+
+      expect(mascot).not.toHaveClass('is-wandering', 'is-wander-moving', 'is-facing-left')
+      expect(mascot.querySelector('.mascot-sprite')).toHaveClass('mascot-sprite--idle')
+      expect(vi.getTimerCount()).toBe(0)
+    } finally {
+      vi.useRealTimers()
+    }
+  })
+
+  it('睡觉时固定在设施落点并停用待机漫步', () => {
+    vi.useFakeTimers()
+    const random = vi.fn(() => 0.5)
+
+    try {
+      render(
+        <RoomScene
+          game={createInitialGameState({ now: 1_000, seed: 'room-scene-sleeping' })}
+          panel="status"
+          area={DEFAULT_ROOM_AREA}
+          walking={false}
+          walkingDirection="right"
+          sleeping
+          restDarkness={0.8}
+          onArea={vi.fn()}
+          onPanel={vi.fn()}
+          onBackgroundActivate={vi.fn()}
+          onHelp={vi.fn()}
+          onTaskEvent={vi.fn()}
+          wanderRandom={random}
+        />,
+      )
+
+      const mascot = screen.getByRole('button', { name: '饼狗，打开行动菜单' })
+      expect(mascot).not.toHaveClass('is-wandering', 'is-wander-moving')
+      expect(mascot.querySelector('.mascot-sprite')).toHaveClass('mascot-sprite--sleep')
+      expect(vi.getTimerCount()).toBe(0)
+    } finally {
       vi.useRealTimers()
     }
   })
@@ -300,6 +399,7 @@ describe('房屋场景定位与返回交互', () => {
         panel={null}
         area={DEFAULT_ROOM_AREA}
         walking={false}
+        walkingDirection="right"
         sleeping={false}
         restDarkness={0}
         onArea={vi.fn()}
@@ -325,6 +425,7 @@ describe('房屋场景定位与返回交互', () => {
         panel="fridge"
         area={fridge}
         walking={false}
+        walkingDirection="right"
         sleeping={false}
         restDarkness={0}
         onArea={onArea}
@@ -423,7 +524,9 @@ describe('房屋场景定位与返回交互', () => {
       onPanel,
     })
 
-    fireEvent.click(screen.getByRole('button', { name: /的饼狗$/u }))
+    const mascot = screen.getByRole('button', { name: /的饼狗$/u })
+    expect(mascot).not.toHaveClass('is-wandering', 'is-wander-moving')
+    fireEvent.click(mascot)
 
     expect(screen.getByRole('dialog', { name: '饼狗想做什么' })).toBeInTheDocument()
     expect(onPanel).toHaveBeenCalledWith('activity')
@@ -442,6 +545,7 @@ describe('房屋场景定位与返回交互', () => {
         panel={null}
         area={DEFAULT_ROOM_AREA}
         walking={false}
+        walkingDirection="right"
         sleeping={false}
         restDarkness={0}
         onArea={vi.fn()}
@@ -471,6 +575,7 @@ describe('房屋场景定位与返回交互', () => {
         panel={null}
         area={DEFAULT_ROOM_AREA}
         walking={false}
+        walkingDirection="right"
         sleeping={false}
         restDarkness={0}
         onArea={vi.fn()}
@@ -516,6 +621,7 @@ describe('房屋场景定位与返回交互', () => {
         panel={null}
         area={DEFAULT_ROOM_AREA}
         walking={false}
+        walkingDirection="right"
         sleeping={false}
         restDarkness={0}
         onArea={vi.fn()}
@@ -554,6 +660,7 @@ describe('房屋场景定位与返回交互', () => {
         panel={null}
         area={DEFAULT_ROOM_AREA}
         walking={false}
+        walkingDirection="right"
         sleeping={false}
         restDarkness={0}
         onArea={vi.fn()}

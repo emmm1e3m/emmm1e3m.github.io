@@ -8,7 +8,7 @@ import {
 import { hashSeed } from '../rewards/prng'
 import { planActivityReward } from '../rewards/planReward'
 import { getLuckyAppleAvailability } from '../rewards/luckyApple'
-import { applyTaskEvent, refreshTaskBoardForNewDay } from '../tasks/taskBoard'
+import { applyTaskEvent, refreshCompletedTaskBoard } from '../tasks/taskBoard'
 import {
   ALL_ACTIVITY_PREFERENCES,
   getVitalityMagicAvailability,
@@ -997,11 +997,15 @@ export function reduceGame(
   action: GameAction,
   catalog: CollectionCatalog,
 ): GameTransition {
-  const now = 'now' in action ? action.now : null
-  const preparedState =
-    now !== null && isValidTimestamp(now) ? refreshTaskBoardForNewDay(state, now, catalog) : state
-  const transition = reducePreparedGame(preparedState, action, catalog)
+  const transition = reducePreparedGame(state, action, catalog)
+  if (!transition.ok || transition.state.profile.companionDays <= state.profile.companionDays) {
+    return transition
+  }
 
-  // 刷新与当前动作构成一次提交；当前动作失败时，两者都不落盘。
-  return !transition.ok && preparedState !== state ? { ...transition, state } : transition
+  const now = 'now' in action ? action.now : null
+  if (now === null || !isValidTimestamp(now)) return transition
+  const refreshed = refreshCompletedTaskBoard(transition.state, now, catalog)
+
+  // 游戏日推进与任务板刷新属于同一次成功提交；失败动作和现实时间流逝都不会换板。
+  return refreshed === transition.state ? transition : { ...transition, state: refreshed }
 }

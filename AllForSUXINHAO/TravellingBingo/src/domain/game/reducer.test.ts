@@ -11,6 +11,7 @@ import {
   MAX_APPLES,
   MAX_COMPANION_DAYS,
   PET_ENCOURAGEMENT_APPLE_COST,
+  POMODORO_PRESETS,
 } from './constants'
 import { createInitialGameState } from './createGameState'
 import { DEFAULT_GAME_BALANCE, LUCKY_APPLE_COLLECTION_DROP_BONUS } from './gameBalance'
@@ -60,6 +61,20 @@ function withProbability(
     gameBalance: {
       ...state.gameBalance,
       probabilities: { ...state.gameBalance.probabilities, [key]: value },
+    },
+  }
+}
+
+function withCompletedTaskBoard(state: GameState, completedAt: number): GameState {
+  return {
+    ...state,
+    tasks: {
+      ...state.tasks,
+      active: state.tasks.active.map((task) => ({
+        ...task,
+        progress: task.target,
+      })) as GameState['tasks']['active'],
+      completedAt,
     },
   }
 }
@@ -494,6 +509,7 @@ describe('旅行饼狗 v5 领域状态', () => {
   it('睡觉也要完整读条；领取后才增加一天、一个苹果并推进偏好序列', () => {
     const state = createInitialGameState({ now: 0, seed: 'rest-streams' })
     const before = structuredClone(state.random.sequences)
+    const tasksBefore = state.tasks
     const started = successful(
       reduceGame(state, { type: 'activity/start', kind: 'rest', now: 100 }, catalog),
     ).state
@@ -540,10 +556,125 @@ describe('旅行饼狗 v5 领域状态', () => {
       tasks: before.tasks,
       preferences: before.preferences + 1,
     })
+    expect(rested.state.tasks).toBe(tasksBefore)
     expect(rested.effects).toMatchObject([
       { type: 'activity-claimed', summary: { apples: { total: 1 } } },
       { type: 'pet-rested', replayKey: 1 },
     ])
+  })
+
+  it.each(['travel', 'stream', 'trend', 'music', 'rest'] as const)(
+    '%s 活动领取推进游戏日时刷新已经全完成的任务板',
+    (kind) => {
+      const completedAt = new Date(2026, 7, 9, 12).getTime()
+      const activityStartedAt = new Date(2026, 7, 9, 13).getTime()
+      let original = willing(
+        createInitialGameState({ now: completedAt - 1_000, seed: `activity-new-board-${kind}` }),
+        kind,
+      )
+      if (kind === 'stream') original = withItem(original, 'signal-headphones')
+      if (kind === 'trend') original = withItem(original, 'trend-toolbox')
+      const state = withCompletedTaskBoard(original, completedAt)
+      const instanceIdsBefore = state.tasks.active.map((task) => task.instanceId)
+      const taskSequenceBefore = state.random.sequences.tasks
+
+      const started = successful(
+        reduceGame(state, { type: 'activity/start', kind, now: activityStartedAt }, catalog),
+      ).state
+      expect(started.tasks.active.map((task) => task.instanceId)).toEqual(instanceIdsBefore)
+
+      const claimed = successful(
+        reduceGame(
+          started,
+          {
+            type: 'activity/claim',
+            runId: started.activeActivity!.runId,
+            now: started.activeActivity!.endsAt,
+          },
+          catalog,
+        ),
+      )
+
+      expect(claimed.state.tasks.active.map((task) => task.instanceId)).not.toEqual(
+        instanceIdsBefore,
+      )
+      expect(claimed.state.tasks.active.every((task) => task.progress === 0)).toBe(true)
+      expect(
+        claimed.state.tasks.active.every(
+          (task) => task.assignedAt === started.activeActivity!.endsAt,
+        ),
+      ).toBe(true)
+      expect(claimed.state.tasks.completedAt).toBeNull()
+      expect(claimed.state.random.sequences.tasks).toBe(taskSequenceBefore + 1)
+      expect(claimed.state.profile.companionDays).toBe(state.profile.companionDays + 1)
+    },
+  )
+
+  it('完整苹果钟推进游戏日时刷新已经全完成的任务板', () => {
+    const completedAt = new Date(2026, 7, 9, 12).getTime()
+    const pomodoroStartedAt = new Date(2026, 7, 9, 13).getTime()
+    const state = withCompletedTaskBoard(
+      createInitialGameState({ now: completedAt - 1_000, seed: 'pomodoro-new-board' }),
+      completedAt,
+    )
+    const instanceIdsBefore = state.tasks.active.map((task) => task.instanceId)
+    const taskSequenceBefore = state.random.sequences.tasks
+    const preset = POMODORO_PRESETS[0]
+
+    const started = successful(
+      reduceGame(
+        state,
+        { type: 'pomodoro/start', now: pomodoroStartedAt, durationMs: preset.focusDurationMs },
+        catalog,
+      ),
+    ).state
+    expect(started.tasks.active.map((task) => task.instanceId)).toEqual(instanceIdsBefore)
+
+    const completed = successful(
+      reduceGame(
+        started,
+        {
+          type: 'clock/tick',
+          now: pomodoroStartedAt + preset.focusDurationMs + preset.breakDurationMs,
+        },
+        catalog,
+      ),
+    )
+
+    expect(completed.state.tasks.active.map((task) => task.instanceId)).not.toEqual(
+      instanceIdsBefore,
+    )
+    expect(completed.state.tasks.active.every((task) => task.progress === 0)).toBe(true)
+    expect(completed.state.tasks.completedAt).toBeNull()
+    expect(completed.state.random.sequences.tasks).toBe(taskSequenceBefore + 1)
+    expect(completed.state.profile.companionDays).toBe(state.profile.companionDays + 1)
+  })
+
+  it('完整苹果钟推进游戏日时仍继承未完成任务板', () => {
+    const startedAt = new Date(2026, 7, 9, 13).getTime()
+    const state = createInitialGameState({ now: startedAt - 1_000, seed: 'pomodoro-keep-board' })
+    const tasksBefore = state.tasks
+    const preset = POMODORO_PRESETS[0]
+    const started = successful(
+      reduceGame(
+        state,
+        { type: 'pomodoro/start', now: startedAt, durationMs: preset.focusDurationMs },
+        catalog,
+      ),
+    ).state
+    const completed = successful(
+      reduceGame(
+        started,
+        {
+          type: 'clock/tick',
+          now: startedAt + preset.focusDurationMs + preset.breakDurationMs,
+        },
+        catalog,
+      ),
+    )
+
+    expect(completed.state.profile.companionDays).toBe(state.profile.companionDays + 1)
+    expect(completed.state.tasks).toBe(tasksBefore)
   })
 
   it('陪伴天数达到上限后不能再开始扣资源，最后一天仍可正常领取', () => {

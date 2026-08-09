@@ -1,6 +1,5 @@
 import { BILIBILI_BVID_PATTERN, MAX_APPLES, PIANO_NOTE_IDS } from '../game/constants'
 import { incrementSafeCounter, saturatingAddSafeCounter } from '../game/counters'
-import { isValidTimestamp } from '../game/time'
 import type {
   CollectionCatalog,
   CollectibleCategory,
@@ -470,28 +469,16 @@ export function getTaskProgressLabel(task: TaskInstance): string {
   return isTaskCompleted(task) ? '已完成' : `${task.progress} / ${task.target}`
 }
 
-/** 全完成板下一次允许刷新的本地自然日零点，也是 App 统一时钟的唤醒截止时间。 */
-export function getTaskBoardRefreshDeadline(
-  board: Pick<TaskBoard, 'active' | 'completedAt'>,
-): number | null {
-  if (board.completedAt === null || !board.active.every(isTaskCompleted)) return null
-  const completedDate = new Date(board.completedAt)
-  const deadline = new Date(
-    completedDate.getFullYear(),
-    completedDate.getMonth(),
-    completedDate.getDate() + 1,
-  ).getTime()
-  return isValidTimestamp(deadline) ? deadline : null
-}
-
-/** 全完成板在完成日之后首次唤醒时刷新，不按离线天数补抽多轮随机序列。 */
-export function refreshTaskBoardForNewDay(
+/**
+ * 完成的任务板在游戏日推进时刷新。调用方只应在 companionDays 确实增加后调用；
+ * 未全完成的任务板保留原引用，从而完整继承任务及各自进度。
+ */
+export function refreshCompletedTaskBoard(
   state: GameState,
   now: number,
   catalog: CollectionCatalog,
 ): GameState {
-  const deadline = getTaskBoardRefreshDeadline(state.tasks)
-  if (deadline === null || now < deadline) return state
+  if (state.tasks.completedAt === null || !state.tasks.active.every(isTaskCompleted)) return state
 
   const generated = generateTaskBoard({
     seed: state.random.seed,
@@ -568,7 +555,7 @@ export interface TaskEventApplication {
   effect: Extract<import('../game/types').GameEffect, { type: 'task-progressed' }> | null
 }
 
-/** 同一领域事件只推进第一条匹配任务；跨日刷新由 reducer 在调用前统一完成。 */
+/** 同一领域事件只推进第一条匹配任务；游戏日推进后的换板由 reducer 统一完成。 */
 export function applyTaskEvent(
   state: GameState,
   event: TaskEvent,

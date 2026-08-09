@@ -282,6 +282,38 @@ test('DEBUG 仍会生成拒绝意愿，暗淡按钮询问后显示领域拒绝',
   await expect(page.getByRole('button', { name: '取消当前活动', exact: true })).toHaveCount(0)
 })
 
+test('待机饼狗先静止，再走动并回到休息状态', async ({ page }, testInfo) => {
+  test.skip(testInfo.project.name !== 'chromium', '待机状态时序只在桌面验证一次')
+  await page.clock.install({ time: new Date('2026-08-09T10:00:00+08:00') })
+  await startGame(page, { displayName: '待机漫步测试', seed: 'idle-wander-e2e' })
+  const room = page.getByRole('region', { name: '铲铲饼屋互动场景' })
+  const mascot = room.locator('.room-mascot--actor')
+
+  await expect(mascot).toHaveClass(/is-wander-resting/u)
+  await expect(mascot).not.toHaveClass(/is-wander-moving/u)
+  await expect(mascot.locator('.mascot-sprite--idle')).toBeVisible()
+  const restingDurationMs = await mascot.evaluate((element) =>
+    Number.parseFloat(element.style.getPropertyValue('--pet-wander-duration')),
+  )
+  expect(restingDurationMs).toBeGreaterThanOrEqual(4_800)
+  expect(restingDurationMs).toBeLessThanOrEqual(10_800)
+
+  await page.clock.fastForward(restingDurationMs)
+  await expect(mascot).toHaveClass(/is-wander-moving/u)
+  await expect(mascot).not.toHaveClass(/is-wander-resting/u)
+  await expect(mascot.locator('.mascot-sprite--walk')).toBeVisible()
+  const movingDurationMs = await mascot.evaluate((element) =>
+    Number.parseFloat(element.style.getPropertyValue('--pet-wander-duration')),
+  )
+  expect(movingDurationMs).toBeGreaterThanOrEqual(4_800)
+  expect(movingDurationMs).toBeLessThanOrEqual(6_800)
+
+  await page.clock.fastForward(movingDurationMs)
+  await expect(mascot).toHaveClass(/is-wander-resting/u)
+  await expect(mascot).not.toHaveClass(/is-wander-moving/u)
+  await expect(mascot.locator('.mascot-sprite--idle')).toBeVisible()
+})
+
 test('饼狗站在冰箱前时热点与角色都能用普通鼠标点击', async ({ page }, testInfo) => {
   test.skip(testInfo.project.name !== 'chromium', '设施与角色层级只在桌面验证一次')
   await page.setViewportSize({ width: 1440, height: 1000 })

@@ -5,4 +5,6 @@
 - `可画乐融融.ttf`：标题与强调文字；
 - `可画奶糖体.otf`：正文与小型 UI 文字。
 
-字体母版体积较大，不进入仓库或 GitHub Pages。运行 `npm run assets:build:fonts` 会从当前界面源码与公开数据提取实际用字，生成 `public/assets/fonts/*.woff2` 子集及可核验清单。
+字体母版体积较大，不进入仓库或 GitHub Pages。运行 `npm run assets:build:fonts` 会把《现代汉语常用字表》的 2500 个常用字，与当前界面源码、公开数据中的实际用字以及 ASCII/中文标点合并，生成 `public/assets/fonts/*.woff2` 常用字网页字体及可核验清单。
+
+常用字固定表位于 `scripts/assets/data/modern-chinese-common-2500.txt`。该表采用国家语言文字工作委员会、国家教育委员会 1988 年发布的《现代汉语常用字表》“常用字”部分，并由两份公开转录逐字交叉核对；构建和校验均不依赖运行时联网。

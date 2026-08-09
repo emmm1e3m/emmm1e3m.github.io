@@ -1,6 +1,143 @@
-import { expect, test } from '@playwright/test'
+import { expect, test, type Page } from '@playwright/test'
 
-import { enterReality, openDebugPanel, saveScreenshot, startGame } from './support/game'
+import {
+  enterReality,
+  openDebugPanel,
+  readCompanionDays,
+  saveScreenshot,
+  setDebugDuration,
+  startActivity,
+  startGame,
+} from './support/game'
+
+const BROWSER_SAVE_KEY = 'travelling-bingo:browser-save:v1'
+
+interface CachedTaskInstance {
+  instanceId: string
+  taskId: string
+  assignedAt: number
+  progress: number
+  target: number
+  rewardApples: number
+  seenKeys: string[]
+}
+
+interface CachedGameProgress {
+  profile: { companionDays: number }
+  tasks: {
+    active: CachedTaskInstance[]
+    completedAt: number | null
+    completedCount: number
+  }
+}
+
+const COMPLETE_TASKS: Omit<CachedTaskInstance, 'assignedAt'>[] = [
+  {
+    instanceId: 'e2e-complete-backpack',
+    taskId: 'open-backpack',
+    progress: 1,
+    target: 1,
+    rewardApples: 1,
+    seenKeys: ['opened'],
+  },
+  {
+    instanceId: 'e2e-complete-stroll',
+    taskId: 'room-stroll',
+    progress: 2,
+    target: 2,
+    rewardApples: 2,
+    seenKeys: ['bed', 'computer'],
+  },
+  {
+    instanceId: 'e2e-complete-piano',
+    taskId: 'piano-time',
+    progress: 1,
+    target: 1,
+    rewardApples: 1,
+    seenKeys: ['piano:C4'],
+  },
+]
+
+const PARTIAL_TASKS: Omit<CachedTaskInstance, 'assignedAt'>[] = [
+  {
+    instanceId: 'e2e-partial-backpack',
+    taskId: 'open-backpack',
+    progress: 1,
+    target: 1,
+    rewardApples: 1,
+    seenKeys: ['opened'],
+  },
+  {
+    instanceId: 'e2e-partial-stroll',
+    taskId: 'room-stroll',
+    progress: 1,
+    target: 2,
+    rewardApples: 2,
+    seenKeys: ['bed'],
+  },
+  {
+    instanceId: 'e2e-partial-piano',
+    taskId: 'piano-time',
+    progress: 0,
+    target: 1,
+    rewardApples: 1,
+    seenKeys: [],
+  },
+]
+
+async function injectCachedTaskBoard(
+  page: Page,
+  tasks: Omit<CachedTaskInstance, 'assignedAt'>[],
+  completed: boolean,
+) {
+  await expect
+    .poll(() => page.evaluate((key) => localStorage.getItem(key) !== null, BROWSER_SAVE_KEY))
+    .toBe(true)
+  return page.evaluate(
+    ({ key, taskSnapshots, boardCompleted }) => {
+      const cache = JSON.parse(localStorage.getItem(key)!) as {
+        payload: CachedGameProgress
+      }
+      const assignedAt = cache.payload.tasks.active[0]?.assignedAt ?? Date.now()
+      const active = taskSnapshots.map((task) => ({ ...task, assignedAt }))
+      cache.payload.tasks.active = active
+      cache.payload.tasks.completedAt = boardCompleted ? assignedAt : null
+      cache.payload.tasks.completedCount = active.filter(
+        (task) => task.progress >= task.target,
+      ).length
+      localStorage.setItem(key, JSON.stringify(cache))
+      return active
+    },
+    { key: BROWSER_SAVE_KEY, taskSnapshots: tasks, boardCompleted: completed },
+  )
+}
+
+async function readCachedGameProgress(page: Page) {
+  return page.evaluate((key) => {
+    const cache = JSON.parse(localStorage.getItem(key)!) as { payload: CachedGameProgress }
+    return {
+      profile: cache.payload.profile,
+      tasks: cache.payload.tasks,
+    }
+  }, BROWSER_SAVE_KEY)
+}
+
+async function continueCachedGame(page: Page) {
+  await page.reload()
+  await page.getByRole('button', { name: '继续' }).click()
+  await expect(page.getByRole('region', { name: '铲铲饼屋互动场景' })).toBeVisible()
+}
+
+async function completeTenSecondRest(page: Page) {
+  await startActivity(page, '床铺', '好好睡一觉')
+  await page.clock.fastForward(10_001)
+  const claim = page.getByRole('button', { name: '看看这次的结果' })
+  await expect(claim).toBeVisible()
+  await claim.click()
+  const reward = page.locator('.reward-card--v3')
+  await expect(reward).toContainText('饼狗睡醒啦')
+  await reward.getByRole('button', { name: '回到房间' }).click()
+}
 
 test.describe('V5 高风险集成契约', () => {
   test.beforeEach(({ browserName }, testInfo) => {
@@ -179,6 +316,60 @@ test.describe('V5 高风险集成契约', () => {
       )
       .not.toEqual(initialPosition)
     await saveScreenshot(page, 'pomodoro-fullscreen-live-todos.png', false)
+  })
+
+  test('睡醒推进游戏日后刷新已经全完成的三项任务板', async ({ page }) => {
+    await page.clock.install({ time: new Date('2026-08-09T10:00:00+08:00') })
+    await startGame(page, {
+      debug: true,
+      seed: 'completed-board-rest-e2e',
+      displayName: '全完成换板验收',
+    })
+    await setDebugDuration(page, '10 秒')
+    const injectedTasks = await injectCachedTaskBoard(page, COMPLETE_TASKS, true)
+    await continueCachedGame(page)
+    const before = await readCachedGameProgress(page)
+    expect(before.tasks.active).toEqual(injectedTasks)
+    expect(before.tasks.completedAt).not.toBeNull()
+    const daysBefore = before.profile.companionDays
+
+    await completeTenSecondRest(page)
+    await expect.poll(() => readCompanionDays(page)).toBe(daysBefore + 1)
+    await expect
+      .poll(async () => (await readCachedGameProgress(page)).profile.companionDays)
+      .toBe(daysBefore + 1)
+    const after = await readCachedGameProgress(page)
+    const previousInstanceIds = new Set(injectedTasks.map((task) => task.instanceId))
+    expect(after.tasks.active).toHaveLength(3)
+    expect(after.tasks.active.every((task) => !previousInstanceIds.has(task.instanceId))).toBe(true)
+    expect(after.tasks.active.every((task) => task.progress === 0)).toBe(true)
+    expect(after.tasks.completedAt).toBeNull()
+  })
+
+  test('睡醒推进游戏日时完整继承尚未全完成任务板的实例与进度', async ({ page }) => {
+    await page.clock.install({ time: new Date('2026-08-09T11:00:00+08:00') })
+    await startGame(page, {
+      debug: true,
+      seed: 'partial-board-rest-e2e',
+      displayName: '未完成继承验收',
+    })
+    await setDebugDuration(page, '10 秒')
+    const injectedTasks = await injectCachedTaskBoard(page, PARTIAL_TASKS, false)
+    await continueCachedGame(page)
+    const before = await readCachedGameProgress(page)
+    expect(before.tasks.active).toEqual(injectedTasks)
+    expect(before.tasks.completedAt).toBeNull()
+    const daysBefore = before.profile.companionDays
+
+    await completeTenSecondRest(page)
+    await expect.poll(() => readCompanionDays(page)).toBe(daysBefore + 1)
+    await expect
+      .poll(async () => (await readCachedGameProgress(page)).profile.companionDays)
+      .toBe(daysBefore + 1)
+    const after = await readCachedGameProgress(page)
+    expect(after.tasks.active).toEqual(before.tasks.active)
+    expect(after.tasks.completedCount).toBe(before.tasks.completedCount)
+    expect(after.tasks.completedAt).toBeNull()
   })
 
   test('衣架访问同时命中两类任务时优先完成专用造型任务', async ({ page }) => {

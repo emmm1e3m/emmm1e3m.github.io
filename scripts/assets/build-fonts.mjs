@@ -1,9 +1,14 @@
-import { createHash } from 'node:crypto'
 import { mkdir, readFile, readdir, stat, writeFile } from 'node:fs/promises'
 import { extname, relative, resolve } from 'node:path'
 import { fileURLToPath } from 'node:url'
 
 import subsetFont from 'subset-font'
+
+import {
+  findMissingCodePoints,
+  inspectFontCodePoints,
+  summarizeCharacters,
+} from './font-metadata.mjs'
 
 const scriptPath = fileURLToPath(import.meta.url)
 const workspaceRoot = resolve(fileURLToPath(new URL('../..', import.meta.url)))
@@ -14,6 +19,7 @@ const manifestPath = resolve(appRoot, 'public/data/font-manifest.json')
 const readableExtensions = new Set(['.css', '.html', '.json', '.ts', '.tsx'])
 const alwaysIncluded =
   ' !"#$%&\'()*+,-./0123456789:;<=>?@ABCDEFGHIJKLMNOPQRSTUVWXYZ[\\]^_`abcdefghijklmnopqrstuvwxyz{|}~，。！？：；（）《》“”‘’—…·、￥'
+const requiredCustomFontCharacter = /[\u0020-\u007e\p{Script=Han}，。！？：；（）《》“”‘’—…·、￥]/u
 
 const fontDefinitions = [
   {
@@ -33,10 +39,6 @@ const fontDefinitions = [
     cssWeight: 400,
   },
 ]
-
-function sha256(bytes) {
-  return createHash('sha256').update(bytes).digest('hex')
-}
 
 async function collectTextFiles(root, result, shouldInclude = () => true) {
   const entries = await readdir(root, { withFileTypes: true })
@@ -81,12 +83,60 @@ export async function collectInterfaceGlyphs(root = workspaceRoot) {
     text,
     codePointCount: characters.size,
     sourceFiles: sourceFiles.map((sourceFile) => relative(root, sourceFile).split('\\').join('/')),
-    sha256: sha256(Buffer.from(text, 'utf8')),
+  }
+}
+
+export async function readCommonChineseCharacters(root = workspaceRoot) {
+  const target = resolve(root, 'scripts/assets/data/modern-chinese-common-2500.txt')
+  const contents = await readFile(target, 'utf8')
+  const text = contents
+    .split(/\r?\n/u)
+    .filter((line) => !line.trimStart().startsWith('#'))
+    .join('')
+    .replace(/\s/gu, '')
+    .normalize('NFC')
+  const characters = [...text]
+  const uniqueCharacters = new Set(characters)
+  if (characters.length !== 2500 || uniqueCharacters.size !== 2500) {
+    throw new Error(
+      `《现代汉语常用字表》常用字数据必须恰好包含 2500 个不重复字符，当前为 ${characters.length}/${uniqueCharacters.size}`,
+    )
+  }
+  if (characters.some((character) => !/\p{Script=Han}/u.test(character))) {
+    throw new Error('《现代汉语常用字表》常用字数据含有非汉字字符')
+  }
+  if (!text.startsWith('一乙二十丁厂') || !text.endsWith('魔灌蠢霸露囊罐')) {
+    throw new Error('《现代汉语常用字表》常用字数据的首尾顺序不符合已核对版本')
+  }
+  return {
+    text,
+    codePointCount: uniqueCharacters.size,
+    path: relative(root, target).split('\\').join('/'),
+  }
+}
+
+export async function collectFontGlyphs(root = workspaceRoot) {
+  const [runtime, common] = await Promise.all([
+    collectInterfaceGlyphs(root),
+    readCommonChineseCharacters(root),
+  ])
+  const characters = new Set(`${common.text}${runtime.text}`)
+  const text = [...characters]
+    .sort((left, right) => left.codePointAt(0) - right.codePointAt(0))
+    .join('')
+  return {
+    text,
+    codePointCount: characters.size,
+    requiredText: [...text]
+      .filter((character) => requiredCustomFontCharacter.test(character))
+      .join(''),
+    common,
+    runtime,
   }
 }
 
 async function buildFonts() {
-  const glyphSet = await collectInterfaceGlyphs()
+  const glyphSet = await collectFontGlyphs()
   await mkdir(outputRoot, { recursive: true })
 
   const fonts = []
@@ -105,15 +155,30 @@ async function buildFonts() {
       throw error
     }
 
+    const sourceMetadata = await inspectFontCodePoints(sourceBytes)
+    const sourceMissing = findMissingCodePoints(glyphSet.requiredText, sourceMetadata.codePoints)
+    if (sourceMissing.length > 0) {
+      throw new Error(
+        `${definition.sourceName} 缺少必须发布的常用或界面字符：${summarizeCharacters(sourceMissing)}`,
+      )
+    }
+
     const subsetBytes = await subsetFont(sourceBytes, glyphSet.text, {
       targetFormat: 'woff2',
       preserveNameIds: [0, 1, 2, 3, 4, 5, 6],
     })
     if (subsetBytes.subarray(0, 4).toString('ascii') !== 'wOF2') {
-      throw new Error(`${definition.sourceName} 的子集不是 WOFF2`)
+      throw new Error(`${definition.sourceName} 的网页字体不是 WOFF2`)
     }
-    if (subsetBytes.byteLength >= 1024 * 1024) {
-      throw new Error(`${definition.sourceName} 的子集仍超过 1 MiB，请收窄界面字形来源`)
+    if (subsetBytes.byteLength >= 100 * 1024 * 1024) {
+      throw new Error(`${definition.sourceName} 的网页字体超过 GitHub 单文件 100 MiB 限制`)
+    }
+    const outputMetadata = await inspectFontCodePoints(subsetBytes)
+    const outputMissing = findMissingCodePoints(glyphSet.requiredText, outputMetadata.codePoints)
+    if (outputMissing.length > 0) {
+      throw new Error(
+        `${definition.sourceName} 的网页字体缺少常用或界面字符：${summarizeCharacters(outputMissing)}`,
+      )
     }
 
     const outputPath = resolve(outputRoot, definition.outputName)
@@ -128,13 +193,13 @@ async function buildFonts() {
       source: {
         path: `resources/raw/travelling-bingo/fonts/${definition.sourceName}`,
         byteLength: (await stat(sourcePath)).size,
-        sha256: sha256(sourceBytes),
+        format: sourceMetadata.sourceFormat,
       },
       file: {
         path: `assets/fonts/${definition.outputName}`,
         byteLength: subsetBytes.byteLength,
         mime: 'font/woff2',
-        sha256: sha256(subsetBytes),
+        mappedCodePointCount: outputMetadata.codePoints.size,
       },
     })
   }
@@ -143,15 +208,23 @@ async function buildFonts() {
     manifestPath,
     `${JSON.stringify(
       {
-        schemaVersion: 1,
+        schemaVersion: 2,
         rights: 'user-confirmed-authorized',
-        generatedAt: '2026-08-08',
+        generatedAt: '2026-08-09',
         glyphSet: {
-          strategy:
-            'all Unicode code points used by runtime game source and collectible catalogs, plus printable ASCII and Chinese punctuation',
+          strategy: 'modern-chinese-common-2500-plus-runtime',
           codePointCount: glyphSet.codePointCount,
-          sha256: glyphSet.sha256,
-          sourceFiles: glyphSet.sourceFiles,
+          requiredCustomFontCodePointCount: [...glyphSet.requiredText].length,
+          commonCharacters: {
+            standard: '《现代汉语常用字表》常用字部分',
+            authority: '国家语言文字工作委员会、国家教育委员会',
+            publishedAt: '1988-01-26',
+            codePointCount: glyphSet.common.codePointCount,
+            path: glyphSet.common.path,
+            referenceUrl:
+              'https://www.moe.gov.cn/jyb_xwfb/xw_fbh/moe_2069/s7135/s7562/s7569/201308/t20130827_156353.html',
+          },
+          runtimeCodePointCountAtBuild: glyphSet.runtime.codePointCount,
         },
         fonts,
       },
@@ -162,7 +235,7 @@ async function buildFonts() {
   )
 
   console.log(
-    `字体子集已生成：${glyphSet.codePointCount} 个界面字符，${fonts
+    `常用字网页字体已生成：2500 个标准常用汉字与当前界面合并为 ${glyphSet.codePointCount} 个字符，${fonts
       .map((font) => `${font.file.path} ${(font.file.byteLength / 1024).toFixed(1)} KiB`)
       .join('；')}`,
   )

@@ -12,7 +12,12 @@ import {
   roomPointToPercent,
   type RoomArea,
 } from './roomConfig'
-import { GAME_ROOM_WANDER_HULL, randomRoomPointInHull, ROOM_WANDER_STEP_MS } from './roomWander'
+import {
+  GAME_ROOM_WANDER_HULL,
+  randomRoomPointInHull,
+  randomRoomWanderDuration,
+  type RoomWanderPhase,
+} from './roomWander'
 import type { PanelId } from './GameHome'
 
 function readPet(game: GameState) {
@@ -117,6 +122,7 @@ interface RoomSceneProps {
   panel: PanelId | null
   area: RoomArea
   walking: boolean
+  walkingDirection: RoomWalkingDirection
   sleeping: boolean
   restDarkness: number
   onArea: (area: RoomArea) => void
@@ -134,11 +140,14 @@ interface RoomSceneProps {
   wanderRandom?: () => number
 }
 
+export type RoomWalkingDirection = 'left' | 'right'
+
 export function RoomScene({
   game,
   panel,
   area,
   walking,
+  walkingDirection,
   sleeping,
   restDarkness,
   onArea,
@@ -156,19 +165,33 @@ export function RoomScene({
   wanderRandom = Math.random,
 }: RoomSceneProps) {
   const [menuOpen, setMenuOpen] = useState(false)
-  const [wanderPoint, setWanderPoint] = useState(() =>
-    randomRoomPointInHull(GAME_ROOM_WANDER_HULL, wanderRandom),
-  )
+  const [wanderState, setWanderState] = useState<{
+    phase: RoomWanderPhase
+    point: ReturnType<typeof randomRoomPointInHull>
+    durationMs: number
+    facing: 'left' | 'right'
+  }>(() => ({
+    phase: 'resting',
+    point: randomRoomPointInHull(GAME_ROOM_WANDER_HULL, wanderRandom),
+    durationMs: randomRoomWanderDuration('resting', wanderRandom),
+    facing: 'right',
+  }))
   const [reducedMotion, setReducedMotion] = useState(
     () => globalThis.matchMedia?.('(prefers-reduced-motion: reduce)').matches ?? false,
   )
   const petButtonRef = useRef<HTMLButtonElement>(null)
   const travelling = game.activeActivity?.kind === 'travel'
   const wanderEligible =
-    game.activeActivity === null && !sleeping && (panel === null || panel === 'status')
+    game.activeActivity === null &&
+    !sleeping &&
+    !pomodoroRunning &&
+    (panel === null || panel === 'status')
   const wandering = wanderEligible && !reducedMotion
-  const pose = poseForRoom({ game, area, walking: walking || wandering, sleeping })
-  const petCenter = roomPointToPercent(wandering ? wanderPoint : area.petCenter)
+  const wanderMoving = wandering && wanderState.phase === 'moving'
+  const facingLeft =
+    (walking && walkingDirection === 'left') || (wanderMoving && wanderState.facing === 'left')
+  const pose = poseForRoom({ game, area, walking: walking || wanderMoving, sleeping })
+  const petCenter = roomPointToPercent(wandering ? wanderState.point : area.petCenter)
 
   useEffect(() => {
     const motionPreference = globalThis.matchMedia?.('(prefers-reduced-motion: reduce)')
@@ -181,12 +204,26 @@ export function RoomScene({
 
   useEffect(() => {
     if (!wandering) return
-    const timer = globalThis.setInterval(
-      () => setWanderPoint(randomRoomPointInHull(GAME_ROOM_WANDER_HULL, wanderRandom)),
-      ROOM_WANDER_STEP_MS,
-    )
-    return () => globalThis.clearInterval(timer)
-  }, [wanderRandom, wandering])
+    const timer = globalThis.setTimeout(() => {
+      if (wanderState.phase === 'resting') {
+        const nextPoint = randomRoomPointInHull(GAME_ROOM_WANDER_HULL, wanderRandom)
+        setWanderState({
+          phase: 'moving',
+          point: nextPoint,
+          durationMs: randomRoomWanderDuration('moving', wanderRandom),
+          facing: nextPoint.x < wanderState.point.x ? 'left' : 'right',
+        })
+        return
+      }
+
+      setWanderState((current) => ({
+        ...current,
+        phase: 'resting',
+        durationMs: randomRoomWanderDuration('resting', wanderRandom),
+      }))
+    }, wanderState.durationMs)
+    return () => globalThis.clearTimeout(timer)
+  }, [wanderRandom, wanderState, wandering])
 
   useEffect(() => {
     if (!travelling) return
@@ -311,7 +348,7 @@ export function RoomScene({
         {!travelling && (
           <MascotSprite
             pose={pose}
-            className={`room-mascot room-mascot--actor ${walking ? 'is-walking' : ''} ${wandering ? 'is-wandering' : ''}`}
+            className={`room-mascot room-mascot--actor ${walking ? 'is-walking' : ''} ${wandering ? 'is-wandering' : ''} ${wanderMoving ? 'is-wander-moving' : ''} ${facingLeft ? 'is-facing-left' : ''} ${wandering && !wanderMoving ? 'is-wander-resting' : ''}`}
             label={
               game.activeActivity
                 ? `正在${ACTIVITY_COPY[game.activeActivity.kind].verb}的饼狗`
@@ -325,6 +362,7 @@ export function RoomScene({
               {
                 '--pet-x': `${petCenter.x}%`,
                 '--pet-y': `${petCenter.y}%`,
+                '--pet-wander-duration': `${wanderState.durationMs}ms`,
               } as CSSProperties
             }
           />

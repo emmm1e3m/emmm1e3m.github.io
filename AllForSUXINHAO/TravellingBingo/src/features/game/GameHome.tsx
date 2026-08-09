@@ -39,7 +39,7 @@ import { DimensionDialog, type DimensionDialogMode } from './DimensionDialog'
 import { ACTIVITY_COPY, formatCountdown } from './gameCopy'
 import { GameHud } from './GameHud'
 import { HelpDialog } from './HelpDialog'
-import { RoomScene } from './RoomScene'
+import { RoomScene, type RoomWalkingDirection } from './RoomScene'
 import { areaForActivity, areaForPanel, roomAreaFromLocation, type RoomArea } from './roomConfig'
 
 export type PanelId =
@@ -215,6 +215,7 @@ export function GameHome({
   const activity = game.activeActivity
   const timing = deriveActivityTiming(activity, now)
   const [walking, setWalking] = useState(false)
+  const [walkingDirection, setWalkingDirection] = useState<RoomWalkingDirection>('right')
   const [sleeping, setSleeping] = useState(false)
   const [helpOpen, setHelpOpen] = useState(false)
   const [dimensionDialog, setDimensionDialog] = useState<DimensionDialogMode | null>(null)
@@ -302,6 +303,7 @@ export function GameHome({
 
     const changed = roomArea.id !== area.id
     if (changed) {
+      setWalkingDirection(area.petCenter.x < roomArea.petCenter.x ? 'left' : 'right')
       setWalking(true)
       if (walkTimerRef.current !== null) globalThis.clearTimeout(walkTimerRef.current)
       walkTimerRef.current = globalThis.setTimeout(() => setWalking(false), 620)
@@ -445,6 +447,7 @@ export function GameHome({
             panel={displayedPanel}
             area={roomArea}
             walking={walking && !activity}
+            walkingDirection={walkingDirection}
             sleeping={sleeping}
             restDarkness={
               activity?.kind === 'rest' ? Math.min(0.84, 0.16 + timing.progress * 0.68) : 0
