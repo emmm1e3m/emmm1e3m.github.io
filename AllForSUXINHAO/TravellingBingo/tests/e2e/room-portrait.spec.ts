@@ -8,9 +8,9 @@ const HOTSPOTS = [
   { name: '床铺', x: 22, y: 29 },
   { name: '电脑', x: 52, y: 29 },
   { name: '衣架', x: 54, y: 44 },
-  { name: '电子琴', x: 17, y: 79 },
+  { name: '电子琴', x: 17, y: 67 },
   { name: '冰箱', x: 50, y: 59 },
-  { name: '唱片机', x: 75, y: 74 },
+  { name: '唱片机', x: 75, y: 84 },
   { name: '收藏墙', x: 81, y: 60 },
   { name: '房门', x: 92, y: 74 },
 ] as const
@@ -298,6 +298,76 @@ test('房间等比图层、热点与饼狗落点共用同一套母版坐标', as
   expect(workPosition.y).toBeCloseTo((1172 / 1433) * 100, 5)
 })
 
+test('桌面设施入口不会遮住到达设施后的饼狗，冲热入口在卡片中居中', async ({ page }, testInfo) => {
+  test.skip(testInfo.project.name !== 'chromium', '设施几何只在 Desktop Chromium 验证')
+  const desktopViewports = [
+    { width: 1024, height: 768 },
+    { width: 1440, height: 900 },
+  ] as const
+  await page.setViewportSize(desktopViewports[0])
+  await startGame(page, { seed: 'pet-hotspot-clearance', displayName: '设施测试' })
+
+  const room = page.getByRole('region', { name: '铲铲饼屋互动场景' })
+  const mascot = room.locator('.room-mascot--actor')
+
+  async function expectPetClearOf(hotspotName: string) {
+    const hotspot = room.locator(`[data-hotspot="${hotspotName}"]`)
+    await hotspot.click()
+    await expect
+      .poll(
+        async () => {
+          const [hotspotBox, mascotBox] = await Promise.all([
+            hotspot.boundingBox(),
+            mascot.boundingBox(),
+          ])
+          return Boolean(hotspotBox && mascotBox && boxesOverlap(hotspotBox, mascotBox))
+        },
+        { message: `${hotspotName} 入口不应遮住到达设施后的饼狗` },
+      )
+      .toBe(false)
+  }
+
+  async function expectVisibleHotspotsDisjoint() {
+    const hotspots = room.locator('.room-hotspot')
+    const boxes = await Promise.all(
+      Array.from({ length: await hotspots.count() }, (_, index) =>
+        hotspots.nth(index).boundingBox(),
+      ),
+    )
+    expect(boxes.every(Boolean)).toBe(true)
+    for (let leftIndex = 0; leftIndex < boxes.length; leftIndex += 1) {
+      for (let rightIndex = leftIndex + 1; rightIndex < boxes.length; rightIndex += 1) {
+        expect(boxesOverlap(boxes[leftIndex]!, boxes[rightIndex]!)).toBe(false)
+      }
+    }
+  }
+
+  for (const viewport of desktopViewports) {
+    await page.setViewportSize(viewport)
+    await expectPetClearOf('电子琴')
+    await expectPetClearOf('唱片机')
+    await expectVisibleHotspotsDisjoint()
+  }
+  await saveScreenshot(page, 'room-hotspots-game-clear.png', false)
+
+  await enterReality(page)
+  for (const viewport of desktopViewports) {
+    await page.setViewportSize(viewport)
+    await expectPetClearOf('电脑')
+    await expectPetClearOf('一楼电脑')
+    await expectVisibleHotspotsDisjoint()
+  }
+  await saveScreenshot(page, 'room-hotspots-reality-clear.png', false)
+
+  await room.locator('[data-hotspot="二楼电脑·冲热"]').click()
+  const groupCard = page.locator('.reality-group-card--centered')
+  const groupLink = groupCard.getByRole('link', { name: /前往字母建设站/u })
+  const [cardBox, linkBox] = await Promise.all([groupCard.boundingBox(), groupLink.boundingBox()])
+  expect(cardBox && linkBox).toBeTruthy()
+  expectNear(linkBox!.x + linkBox!.width / 2, cardBox!.x + cardBox!.width / 2, 1)
+  await saveScreenshot(page, 'letter-site-link-centered.png', false)
+})
+
 test('1024px 房间中刷播与冲热在悬停放大后仍保持分离', async ({ page }, testInfo) => {
   test.skip(testInfo.project.name !== 'chromium', '热点悬停几何只在 Desktop Chromium 验证')
   await page.setViewportSize({ width: 1024, height: 768 })
@@ -441,7 +511,7 @@ test('饼狗站在冰箱前时热点与角色都能用普通鼠标点击', async
 
   const actor = room.getByRole('button', { name: '饼狗，打开行动菜单' })
   await actor.click()
-  await expect(page.getByRole('dialog', { name: '饼狗想做什么' })).toBeVisible()
+  await expect(page.getByRole('dialog', { name: '饼狗状态' })).toBeVisible()
 })
 
 test('饼狗出门后用母版内便签替代角色，并可用键盘查看进度', async ({ page }, testInfo) => {

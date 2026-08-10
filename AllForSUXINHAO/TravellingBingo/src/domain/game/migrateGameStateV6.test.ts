@@ -7,6 +7,7 @@ import {
   migrateGameStateV6ToV7,
   migrateStoredGameStateToV7,
 } from './migrateGameStateV6'
+import { gameStateV8Schema } from './migrateGameStateV7'
 import { reduceGame } from './reducer'
 import type { CollectionCatalog, GameStateV5, GameStateV6, GameTransition } from './types'
 
@@ -139,7 +140,7 @@ describe('V7 刷播会话历史', () => {
         },
       ],
     })
-    expect(gameStateV7Schema.safeParse(state).success).toBe(true)
+    expect(gameStateV8Schema.safeParse(state).success).toBe(true)
   })
 
   it('相同的结束动作保持幂等，冲突动作不能改写已结束记录', () => {
@@ -246,7 +247,7 @@ describe('V7 刷播会话历史', () => {
     expect(state.reality.streamHistory.recentSessions.map((session) => session.sessionId)).toEqual(
       Array.from({ length: 10 }, (_, index) => `session-${12 - index}`),
     )
-    expect(gameStateV7Schema.safeParse(state).success).toBe(true)
+    expect(gameStateV8Schema.safeParse(state).success).toBe(true)
   })
 
   it('拒绝非法时间、轮次、重复身份及超过累计轮次的结束记录', () => {
@@ -288,9 +289,9 @@ describe('V7 刷播会话历史', () => {
     }
   })
 
-  it('严格 schema 拒绝额外字段、重复会话、非因果时间和会话轮次超出累计值', () => {
-    const valid = createInitialGameState({ now: 1_000, seed: 'v7-schema' })
-    expect(gameStateV7Schema.safeParse(valid).success).toBe(true)
+  it('当前严格 schema 拒绝额外字段、重复会话、非因果时间和会话轮次超出累计值', () => {
+    const valid = createInitialGameState({ now: 1_000, seed: 'v8-stream-history-schema' })
+    expect(gameStateV8Schema.safeParse(valid).success).toBe(true)
 
     const session = {
       sessionId: 'session-1',
@@ -315,7 +316,7 @@ describe('V7 刷播会话历史', () => {
 
     for (const streamHistory of invalidHistories) {
       expect(
-        gameStateV7Schema.safeParse({
+        gameStateV8Schema.safeParse({
           ...valid,
           reality: { ...valid.reality, streamHistory },
         }).success,

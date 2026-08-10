@@ -77,10 +77,10 @@ function toBaseVideo(video) {
   }
 }
 
-async function fetchBilibiliJson(url) {
+async function fetchBilibiliJson(url, referer = 'https://space.bilibili.com/1210409821/favlist') {
   const response = await fetch(url, {
     headers: {
-      Referer: 'https://space.bilibili.com/1210409821/favlist',
+      Referer: referer,
       'User-Agent': 'TravellingBingoCatalogSync/1.0',
     },
   })
@@ -107,7 +107,7 @@ async function fetchFavoriteFolder(folder) {
       type: '0',
       platform: 'web',
     })
-    const data = await fetchBilibiliJson(url)
+    const data = await fetchBilibiliJson(url, folder.sourceUrl)
     info ??= data.info
     const pageItems = (data.medias ?? []).map((media, index) =>
       toFavoriteVideo(media, folder.favoriteId, (pageNumber - 1) * pageSize + index + 1),
@@ -158,12 +158,17 @@ async function verifySiteFirstRank(mapping) {
 }
 
 export async function refreshVideoCatalog(seedCatalog) {
-  const [millionFolder, siteFirstFolder] = await Promise.all([
+  const [millionFolder, siteFirstFolder, streamFolder] = await Promise.all([
     fetchFavoriteFolder(seedCatalog.folders.millionShots),
     fetchFavoriteFolder(seedCatalog.folders.siteFirsts),
+    fetchFavoriteFolder(seedCatalog.folders.streaming),
   ])
   const videoMap = new Map()
-  for (const video of [...millionFolder.latestItems, ...siteFirstFolder.latestItems]) {
+  for (const video of [
+    ...millionFolder.latestItems,
+    ...siteFirstFolder.latestItems,
+    ...streamFolder.allItems,
+  ]) {
     mergeVideo(videoMap, video)
   }
 
@@ -216,6 +221,17 @@ export async function refreshVideoCatalog(seedCatalog) {
           items: siteFirstFolder.latestItems,
         },
       },
+      streaming: {
+        ...seedCatalog.folders.streaming,
+        title: streamFolder.title,
+        reportedItemCount: streamFolder.reportedItemCount,
+        visibleItemCount: streamFolder.visibleItemCount,
+        latestPage: {
+          pageNumber: 1,
+          pageSize,
+          items: streamFolder.latestItems,
+        },
+      },
     },
     videos: [...videoMap.values()].sort((left, right) => left.bvid.localeCompare(right.bvid)),
     posterMappings: {
@@ -227,6 +243,11 @@ export async function refreshVideoCatalog(seedCatalog) {
       selectionRule:
         '固定选取已核验全站第一 chronology 第 1–8 项（Dynamite 至 POWER）；运行时不请求 Bilibili API。',
       items: recordPlayerItems,
+    },
+    streamPlaylist: {
+      sourceFavoriteId: streamFolder.config.favoriteId,
+      selectionRule: '固定使用收藏夹 fid=3963921644 的全部可见视频；运行时只读取同源静态目录。',
+      items: streamFolder.allItems,
     },
   }
   return assertVideoCatalog(refreshed)
@@ -428,12 +449,14 @@ async function main() {
   if (options.refresh) {
     const catalog = await refreshAndWriteCatalog()
     console.log(
-      `完成：联网刷新 ${catalog.videos.length} 条视频元数据、30 项百万直拍映射、8 项全站第一映射`,
+      `完成：联网刷新 ${catalog.videos.length} 条视频元数据、30 项百万直拍映射、8 项全站第一映射、${catalog.streamPlaylist.items.length} 条刷播视频`,
     )
     return
   }
   const catalog = await buildOfflineCatalog()
-  console.log(`完成：离线校验并生成 ${catalog.videos.length} 条静态视频目录`)
+  console.log(
+    `完成：离线校验并生成 ${catalog.videos.length} 条静态视频目录，其中 ${catalog.streamPlaylist.items.length} 条用于刷播`,
+  )
 }
 
 const isMain = process.argv[1] && resolve(process.argv[1]) === fileURLToPath(import.meta.url)

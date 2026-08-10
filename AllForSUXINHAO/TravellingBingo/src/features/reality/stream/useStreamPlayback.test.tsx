@@ -22,9 +22,13 @@ describe('useStreamPlayback', () => {
   ] as const)('%s 模式都按默认 8 秒依次打开', (mode, features) => {
     vi.useFakeTimers()
     vi.spyOn(window, 'open').mockImplementation(() => fakeWindow())
-    const { result } = renderHook(() => useStreamPlayback())
+    const { result } = renderHook(() =>
+      useStreamPlayback({
+        catalogBvids: ['BV1xx411c7mD', 'BV1B7411m7LV', 'BV17x411w7KC'],
+      }),
+    )
 
-    act(() => result.current.start('BV1xx411c7mD\nBV1B7411m7LV\nBV17x411w7KC', mode))
+    act(() => result.current.start('', mode))
 
     expect(window.open).toHaveBeenCalledTimes(1)
     expect(window.open).toHaveBeenNthCalledWith(
@@ -50,12 +54,13 @@ describe('useStreamPlayback', () => {
     vi.useFakeTimers()
     vi.spyOn(window, 'open').mockImplementation(() => fakeWindow())
     const { result, rerender } = renderHook(
-      ({ roundDurationMs }) => useStreamPlayback({ roundDurationMs }),
+      ({ roundDurationMs }) =>
+        useStreamPlayback({ catalogBvids: ['BV1B7411m7LV'], roundDurationMs }),
       { initialProps: { roundDurationMs: 1_000 } },
     )
 
     act(() =>
-      result.current.start('BV1xx411c7mD\nBV1B7411m7LV', 'popup', {
+      result.current.start('BV1xx411c7mD', 'popup', {
         openDelayMs: 12_000,
       }),
     )
@@ -117,10 +122,12 @@ describe('useStreamPlayback', () => {
     const handle = fakeWindow()
     vi.spyOn(window, 'open').mockImplementationOnce(() => handle)
     const onSessionEnded = vi.fn()
-    const { result } = renderHook(() => useStreamPlayback({ onSessionEnded }))
+    const { result } = renderHook(() =>
+      useStreamPlayback({ catalogBvids: ['BV1B7411m7LV'], onSessionEnded }),
+    )
 
     act(() =>
-      result.current.start('BV1xx411c7mD\nBV1B7411m7LV', 'popup', {
+      result.current.start('BV1xx411c7mD', 'popup', {
         openDelayMs: 8_000,
         stopAfterMs: 5_000,
       }),
@@ -174,10 +181,12 @@ describe('useStreamPlayback', () => {
       .mockImplementationOnce(() => resumedHandles[0]!)
       .mockImplementationOnce(() => resumedHandles[1]!)
     const onSessionEnded = vi.fn()
-    const { result } = renderHook(() => useStreamPlayback({ onSessionEnded }))
+    const { result } = renderHook(() =>
+      useStreamPlayback({ catalogBvids: ['BV1B7411m7LV'], onSessionEnded }),
+    )
 
     act(() =>
-      result.current.start('BV1xx411c7mD\nBV1B7411m7LV', 'popup', {
+      result.current.start('BV1xx411c7mD', 'popup', {
         openDelayMs: 1_000,
         stopAfterMs: 5_000,
       }),
@@ -201,8 +210,12 @@ describe('useStreamPlayback', () => {
   it('页面恢复只推进当前到期步骤，并始终只保留一个计时器', () => {
     vi.useFakeTimers()
     vi.spyOn(window, 'open').mockImplementation(() => fakeWindow())
-    const { result } = renderHook(() => useStreamPlayback())
-    act(() => result.current.start('BV1xx411c7mD\nBV1B7411m7LV\nBV17x411w7KC', 'tabs'))
+    const { result } = renderHook(() =>
+      useStreamPlayback({
+        catalogBvids: ['BV1xx411c7mD', 'BV1B7411m7LV', 'BV17x411w7KC'],
+      }),
+    )
+    act(() => result.current.start('', 'tabs'))
 
     act(() => vi.advanceTimersByTime(STREAM_OPEN_DELAY_MS - 1))
     act(() => {
@@ -232,7 +245,7 @@ describe('useStreamPlayback', () => {
     })
     expect(open).not.toHaveBeenCalled()
     expect(result.current.state.errors).toEqual([
-      expect.objectContaining({ line: 1, code: 'short-link', message: expect.any(String) }),
+      expect.objectContaining({ line: 1, code: 'invalid-bvid', message: expect.any(String) }),
     ])
 
     expect(() => {

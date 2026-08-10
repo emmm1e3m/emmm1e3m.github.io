@@ -8,7 +8,7 @@ import {
   REALITY_REWARD_INTERVAL_MS,
 } from './constants'
 import { createInitialGameState } from './createGameState'
-import { gameStateV7Schema } from './migrateGameStateV6'
+import { gameStateV8Schema } from './migrateGameStateV7'
 import { isProductivityAction, reduceProductivity, type ProductivityAction } from './productivity'
 import { MAX_DATE_TIMESTAMP_MS } from './time'
 import type { CollectionCatalog, GameAction, GameState, GameTransition, TodoItem } from './types'
@@ -628,7 +628,7 @@ describe('苹果钟与通知', () => {
     expect(seventhDay.state.random.sequences.preferences).toBe(
       expectedPreferenceGeneration.nextSequence,
     )
-    expect(gameStateV7Schema.safeParse(seventhDay.state).success).toBe(true)
+    expect(gameStateV8Schema.safeParse(seventhDay.state).success).toBe(true)
     expect(seventhDay.effects).toContainEqual({
       type: 'player-effect-expired',
       effect: 'vitality',

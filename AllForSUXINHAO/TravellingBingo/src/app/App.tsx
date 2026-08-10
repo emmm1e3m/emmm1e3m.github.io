@@ -7,12 +7,13 @@ import {
 } from '@/app/gameStateSchema'
 import { useGameController } from '@/app/useGameController'
 import { useKeepAliveAudio, type KeepAliveAudioFactory } from '@/app/useKeepAliveAudio'
+import { useScreenWakeLock } from '@/app/useScreenWakeLock'
 import { useModalFocus } from '@/components/useModalFocus'
 import { PwaUpdatePrompt, type InstallPwaUpdate } from '@/components/PwaUpdatePrompt'
 import { loadContentCatalog, type ContentCatalog } from '@/content'
 import {
   createInitialGameState,
-  migrateStoredGameStateToV7,
+  migrateStoredGameStateToV8,
   normalizeImportedGameBalance,
   reconcileGameStateWithCatalog,
   validateImportedGameState,
@@ -40,7 +41,7 @@ import {
   type BingoSaveSummary,
 } from '@/infrastructure/persistence'
 
-const GAME_VERSION = '0.7.0-demo.1'
+const GAME_VERSION = '0.8.0-demo.1'
 const DEBUG_PASSWORD = 'TravellingBingo'
 const PERIODIC_BACKUP_INTERVAL_MS = 3 * 24 * 60 * 60 * 1_000
 
@@ -140,7 +141,7 @@ function prepareStoredGame(
   catalog: CollectionCatalog,
   now: number,
 ): GameState {
-  const migrated = migrateStoredGameStateToV7(stored, { now, catalog })
+  const migrated = migrateStoredGameStateToV8(stored, { now, catalog })
   const normalized = normalizeImportedGameBalance(migrated)
   const reconciled = reconcileGameStateWithCatalog(normalized, catalog)
   const validation = validateImportedGameState(reconciled, catalog)
@@ -236,6 +237,7 @@ export function App({
     checkForUpdatesOverride || 'serviceWorker' in globalThis.navigator ? 'idle' : 'unsupported',
   )
   const { activateFromJourneyGesture } = useKeepAliveAudio(createAudioContext)
+  useScreenWakeLock(screen === 'home' && game !== null && catalog !== null)
   const titleActivations = useRef<number[]>([])
   const importAttempt = useRef(0)
   const preparedCacheRef = useRef<PreparedBrowserCache | null>(null)

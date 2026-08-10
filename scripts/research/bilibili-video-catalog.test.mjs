@@ -13,6 +13,8 @@ import {
 import { buildSynchronizedPosterCatalogs, parseArguments } from './sync-bilibili-video-catalog.mjs'
 
 const workspaceRoot = resolve(fileURLToPath(new URL('../..', import.meta.url)))
+const STREAM_FAVORITE_ID = 3963921644
+const STREAM_BVIDS = ['BV1At3j6EE6w', 'BV1mkuN6HEFC', 'BV1UZ3D6REhZ']
 
 async function readJson(relativePath) {
   return JSON.parse(await readFile(resolve(workspaceRoot, relativePath), 'utf8'))
@@ -49,6 +51,20 @@ test('已提交的视频目录、公开目录与两类海报映射保持一致',
   assert.deepEqual(publicCatalog, buildPublicVideoCatalog(catalog))
   assert.equal(catalog.folders.millionShots.latestPage.items.length, 20)
   assert.equal(catalog.folders.siteFirsts.latestPage.items.length, 18)
+  assert.equal(catalog.folders.streaming.favoriteId, STREAM_FAVORITE_ID)
+  assert.equal(
+    catalog.folders.streaming.latestPage.items.length,
+    catalog.folders.streaming.visibleItemCount,
+  )
+  assert.equal(catalog.streamPlaylist.sourceFavoriteId, STREAM_FAVORITE_ID)
+  assert.deepEqual(
+    catalog.streamPlaylist.items.map((video) => video.bvid),
+    STREAM_BVIDS,
+  )
+  assert.deepEqual(
+    catalog.folders.streaming.latestPage.items,
+    catalog.streamPlaylist.items.slice(0, catalog.folders.streaming.latestPage.pageSize),
+  )
   assert.equal(catalog.posterMappings.millionShots.length, 30)
   assert.equal(catalog.posterMappings.siteFirsts.length, 8)
   assert.equal(catalog.recordPlayer.items.length, 8)
@@ -208,6 +224,41 @@ test('目录拒绝持久化 embedUrl 和错误 chronology', async () => {
   const withWrongChronology = structuredClone(catalog)
   withWrongChronology.posterMappings.siteFirsts[0].chronology = 2
   assert.throws(() => assertVideoCatalog(withWrongChronology), /chronology/u)
+})
+
+test('刷播目录固定收藏夹并拒绝缺项、重复和首页乱序', async () => {
+  const catalog = await readJson(
+    'research/travelling-bingo/data/bilibili-video-catalog.source.json',
+  )
+
+  const wrongFavorite = structuredClone(catalog)
+  wrongFavorite.folders.streaming.favoriteId = 1
+  wrongFavorite.streamPlaylist.sourceFavoriteId = 1
+  for (const video of wrongFavorite.folders.streaming.latestPage.items) video.favoriteId = 1
+  for (const video of wrongFavorite.streamPlaylist.items) video.favoriteId = 1
+  assert.throws(() => assertVideoCatalog(wrongFavorite), /刷播收藏夹 ID/u)
+
+  const missingItem = structuredClone(catalog)
+  missingItem.streamPlaylist.items.pop()
+  assert.throws(() => assertVideoCatalog(missingItem), /全部可见视频/u)
+
+  const duplicateItem = structuredClone(catalog)
+  duplicateItem.streamPlaylist.items[1] = {
+    ...structuredClone(duplicateItem.streamPlaylist.items[0]),
+    favoriteOrder: 2,
+  }
+  assert.throws(() => assertVideoCatalog(duplicateItem), /重复/u)
+
+  const wrongOrder = structuredClone(catalog)
+  const first = structuredClone(wrongOrder.streamPlaylist.items[0])
+  const second = structuredClone(wrongOrder.streamPlaylist.items[1])
+  wrongOrder.streamPlaylist.items[0] = { ...second, favoriteOrder: 1 }
+  wrongOrder.streamPlaylist.items[1] = { ...first, favoriteOrder: 2 }
+  assert.throws(() => assertVideoCatalog(wrongOrder), /首页顺序/u)
+
+  const incompleteLatestPage = structuredClone(catalog)
+  incompleteLatestPage.folders.streaming.latestPage.items.pop()
+  assert.throws(() => assertVideoCatalog(incompleteLatestPage), /首页数量/u)
 })
 
 test('同步命令只有显式 --refresh 才启用联网刷新', () => {

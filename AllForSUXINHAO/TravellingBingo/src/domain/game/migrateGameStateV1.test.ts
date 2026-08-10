@@ -8,6 +8,7 @@ import { migrateGameStateV1ToV4 } from './migrateGameStateV3'
 import { migrateGameStateV4ToV5 } from './migrateGameStateV4'
 import { migrateGameStateV5ToV6 } from './migrateGameStateV5'
 import { migrateGameStateV6ToV7 } from './migrateGameStateV6'
+import { migrateGameStateV7ToV8 } from './migrateGameStateV7'
 import { reduceGame } from './reducer'
 import type { CollectionCatalog, GameStateV1 } from './types'
 import { validateImportedGameState } from './validateImportedGameState'
@@ -177,8 +178,8 @@ describe('v1 存档显式迁移', () => {
       now: 9_000,
       catalog: expandedCatalog,
     })
-    const migrated = migrateGameStateV6ToV7(
-      migrateGameStateV5ToV6(migrateGameStateV4ToV5(migratedV4)),
+    const migrated = migrateGameStateV7ToV8(
+      migrateGameStateV6ToV7(migrateGameStateV5ToV6(migrateGameStateV4ToV5(migratedV4))),
     )
     expect(validateImportedGameState(migrated, expandedCatalog)).toEqual({ ok: true })
     expect(migrated.activeActivity?.legacySource).toBe('v1')
@@ -215,9 +216,11 @@ describe('v1 存档显式迁移', () => {
 
   it('V1 已拥有的计划收藏按历史规则结算重复次数与补偿', () => {
     const legacy = legacyState()
-    const migrated = migrateGameStateV6ToV7(
-      migrateGameStateV5ToV6(
-        migrateGameStateV4ToV5(migrateGameStateV1ToV4(legacy, { now: 9_000, catalog })),
+    const migrated = migrateGameStateV7ToV8(
+      migrateGameStateV6ToV7(
+        migrateGameStateV5ToV6(
+          migrateGameStateV4ToV5(migrateGameStateV1ToV4(legacy, { now: 9_000, catalog })),
+        ),
       ),
     )
     const applesBefore = migrated.economy.apples
@@ -249,9 +252,11 @@ describe('v1 存档显式迁移', () => {
   })
 
   it('V1 冻结奖励空间不足时保持整次待领取，不截断或部分写入', () => {
-    const migrated = migrateGameStateV6ToV7(
-      migrateGameStateV5ToV6(
-        migrateGameStateV4ToV5(migrateGameStateV1ToV4(legacyState(), { now: 9_000, catalog })),
+    const migrated = migrateGameStateV7ToV8(
+      migrateGameStateV6ToV7(
+        migrateGameStateV5ToV6(
+          migrateGameStateV4ToV5(migrateGameStateV1ToV4(legacyState(), { now: 9_000, catalog })),
+        ),
       ),
     )
     const capped: typeof migrated = {

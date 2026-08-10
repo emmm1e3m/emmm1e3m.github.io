@@ -24,6 +24,7 @@ import {
   buildUnlockedPostcardBackgrounds,
   type RealityNotificationPermission,
   type StreamPlaybackController,
+  type VisitorStreamController,
 } from '@/features/reality'
 import { TaskBoard } from '@/features/tasks/TaskBoard'
 
@@ -52,6 +53,9 @@ interface ContextPanelProps {
   notificationPermission?: RealityNotificationPermission
   onRequestNotificationPermission?: () => void
   streamPlayback: StreamPlaybackController
+  visitorStreamPlayback: VisitorStreamController
+  streamVideoIntervalMs: number
+  onStreamVideoIntervalChange: (intervalMs: number) => void
   streamRoundDurationSeconds: number
   onStreamRoundDurationChange: (seconds: number) => void
 }
@@ -147,6 +151,10 @@ function RealityPanel({
   pomodoroCancelRequestToken,
   onPomodoroCancelRequestHandled,
   streamPlayback,
+  visitorStreamPlayback,
+  streamVideoIntervalMs,
+  onStreamVideoIntervalChange,
+  streamRoundDurationSeconds,
 }: {
   panel: Extract<PanelId, 'reality-stream' | 'reality-trend' | 'reality-work'>
   game: GameState
@@ -158,6 +166,10 @@ function RealityPanel({
   pomodoroCancelRequestToken?: number | null
   onPomodoroCancelRequestHandled?: (token: number) => void
   streamPlayback: StreamPlaybackController
+  visitorStreamPlayback: VisitorStreamController
+  streamVideoIntervalMs: number
+  onStreamVideoIntervalChange: (intervalMs: number) => void
+  streamRoundDurationSeconds: number
 }) {
   const [selectedDurationMs, setSelectedDurationMs] = useState(25 * 60_000)
   const todoSequenceRef = useRef(0)
@@ -188,12 +200,23 @@ function RealityPanel({
         now={now}
         completedRounds={game.reality.streamHistory.completedRounds}
         recentSessions={game.reality.streamHistory.recentSessions}
+        staticVideoCount={catalog.streamVideos.length}
+        selfTestBvid={game.reality.streamSettings.selfTestBvid}
+        dimensionPenetrationEnabled={game.reality.streamSettings.dimensionPenetrationEnabled}
+        videoIntervalMs={streamVideoIntervalMs}
+        roundIntervalMs={streamRoundDurationSeconds * 1_000}
         playback={streamPlayback.state}
+        visitorPlayback={visitorStreamPlayback.state}
         getRemainingMs={streamPlayback.getRemainingMs}
         getStopRemainingMs={streamPlayback.getStopRemainingMs}
         onStart={streamPlayback.start}
         onResume={streamPlayback.resume}
         onStop={streamPlayback.stop}
+        onSelfTestBvidChange={(bvid) => onAction({ type: 'reality/stream-self-test-set', bvid })}
+        onDimensionPenetrationChange={(enabled) =>
+          onAction({ type: 'reality/stream-dimension-penetration-set', enabled })
+        }
+        onVideoIntervalChange={onStreamVideoIntervalChange}
       />
     )
   }
@@ -274,6 +297,9 @@ export function ContextPanel({
   notificationPermission,
   onRequestNotificationPermission,
   streamPlayback,
+  visitorStreamPlayback,
+  streamVideoIntervalMs,
+  onStreamVideoIntervalChange,
   streamRoundDurationSeconds,
   onStreamRoundDurationChange,
 }: ContextPanelProps) {
@@ -446,13 +472,13 @@ export function ContextPanel({
           </div>
         ) : prompt?.mode === 'refusal' ? (
           <div className="activity-refusal">
-            <p role="alert">
-              {game.pet.tired
-                ? '饼狗现在有点累，可以先去床铺休息。'
-                : vitalityAvailability.reason === 'missing-item'
-                  ? '冰箱里还没有瓶装活力魔法，可以先去床铺休息。'
+            {(game.pet.tired || vitalityAvailability.reason !== 'missing-item') && (
+              <p role="alert">
+                {game.pet.tired
+                  ? '饼狗现在有点累，可以先去床铺休息。'
                   : `${vitalityAvailability.message}。`}
-            </p>
+              </p>
+            )}
             <button type="button" onClick={() => onNavigate('rest')}>
               去床铺休息
             </button>
@@ -728,6 +754,10 @@ export function ContextPanel({
           pomodoroCancelRequestToken={pomodoroCancelRequestToken}
           onPomodoroCancelRequestHandled={onPomodoroCancelRequestHandled}
           streamPlayback={streamPlayback}
+          visitorStreamPlayback={visitorStreamPlayback}
+          streamVideoIntervalMs={streamVideoIntervalMs}
+          onStreamVideoIntervalChange={onStreamVideoIntervalChange}
+          streamRoundDurationSeconds={streamRoundDurationSeconds}
         />
       </PanelFrame>
     )

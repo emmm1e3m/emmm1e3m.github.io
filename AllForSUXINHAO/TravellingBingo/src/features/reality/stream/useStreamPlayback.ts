@@ -1,8 +1,19 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
 
 import {
+  STREAM_DEFAULT_ROUND_INTERVAL_MS,
+  STREAM_DEFAULT_VIDEO_INTERVAL_MS,
+  STREAM_MAX_ROUND_INTERVAL_MS,
+  STREAM_MAX_VIDEO_INTERVAL_MS,
+  STREAM_MIN_ROUND_INTERVAL_MS,
+  STREAM_MIN_VIDEO_INTERVAL_MS,
+} from '@/domain'
+
+import {
+  buildStreamQueue,
   buildStreamVideoUrl,
-  parseStreamInput,
+  emptyStreamCatalogResult,
+  parseStreamSelfTestInput,
   type StreamInputError,
   type StreamParseResult,
 } from './parser'
@@ -35,6 +46,7 @@ export interface StreamPlaybackState {
   readonly round: number
   readonly sessionRoundsCompleted: number
   readonly openDelayMs: number
+  readonly roundDurationMs: number
   readonly stopAfterMs: number | null
   readonly mode: StreamPlaybackMode | null
   readonly sourceInput: string
@@ -45,6 +57,7 @@ export interface StreamPlaybackState {
 }
 
 export interface UseStreamPlaybackOptions {
+  readonly catalogBvids?: readonly string[]
   readonly completedRounds?: number
   readonly roundDurationMs?: number
   readonly onRoundCompleted?: (event: StreamRoundCompletion) => void
@@ -64,10 +77,10 @@ export interface StreamPlaybackController {
   readonly getStopRemainingMs: () => number | null
 }
 
-export const STREAM_OPEN_DELAY_MS = 8_000
-export const STREAM_ROUND_DURATION_MS = 310_000
-export const STREAM_MIN_OPEN_DELAY_MS = 1_000
-export const STREAM_MAX_OPEN_DELAY_MS = 60_000
+export const STREAM_OPEN_DELAY_MS = STREAM_DEFAULT_VIDEO_INTERVAL_MS
+export const STREAM_ROUND_DURATION_MS = STREAM_DEFAULT_ROUND_INTERVAL_MS
+export const STREAM_MIN_OPEN_DELAY_MS = STREAM_MIN_VIDEO_INTERVAL_MS
+export const STREAM_MAX_OPEN_DELAY_MS = STREAM_MAX_VIDEO_INTERVAL_MS
 export const STREAM_MAX_SESSION_DURATION_MS = 24 * 60 * 60 * 1_000
 
 const POPUP_FEATURES = 'popup=yes,width=960,height=720'
@@ -125,6 +138,7 @@ function toState(runtime: StreamRuntime): StreamPlaybackState {
     round: runtime.round,
     sessionRoundsCompleted: runtime.sessionRoundsCompleted,
     openDelayMs: runtime.openDelayMs,
+    roundDurationMs: runtime.roundDurationMs,
     stopAfterMs: runtime.sessionStopAfterMs,
     mode: runtime.mode,
     sourceInput: runtime.sourceInput,
@@ -140,7 +154,11 @@ function normalizeCounter(value: number) {
 }
 
 function normalizeRoundDuration(value: number) {
-  if (!Number.isSafeInteger(value) || value < 1_000 || value > 3_600_000) {
+  if (
+    !Number.isSafeInteger(value) ||
+    value < STREAM_MIN_ROUND_INTERVAL_MS ||
+    value > STREAM_MAX_ROUND_INTERVAL_MS
+  ) {
     return STREAM_ROUND_DURATION_MS
   }
   return value
@@ -178,6 +196,7 @@ function createSessionId() {
  * 页面恢复时只处理当前已经到期的步骤，不追赶已经错过的多轮。
  */
 export function useStreamPlayback({
+  catalogBvids = [],
   completedRounds = 0,
   roundDurationMs = STREAM_ROUND_DURATION_MS,
   onRoundCompleted,
@@ -189,6 +208,7 @@ export function useStreamPlayback({
   const roundCallbackRef = useRef(onRoundCompleted)
   const sessionCallbackRef = useRef(onSessionEnded)
   const completedRoundsRef = useRef(completedRounds)
+  const catalogBvidsRef = useRef([...catalogBvids])
   const roundDurationRef = useRef(normalizeRoundDuration(roundDurationMs))
   const [state, setState] = useState<StreamPlaybackState>(() => toState(createRuntime()))
   const reconcileRef = useRef<() => void>(() => undefined)
@@ -204,6 +224,10 @@ export function useStreamPlayback({
   useEffect(() => {
     completedRoundsRef.current = normalizeCounter(completedRounds)
   }, [completedRounds])
+
+  useEffect(() => {
+    catalogBvidsRef.current = [...catalogBvids]
+  }, [catalogBvids])
 
   useEffect(() => {
     roundDurationRef.current = normalizeRoundDuration(roundDurationMs)
@@ -434,7 +458,7 @@ export function useStreamPlayback({
 
   const start = useCallback(
     (input: string, mode: StreamPlaybackMode, settings: StreamStartSettings = {}) => {
-      const result = parseStreamInput(input)
+      const result = parseStreamSelfTestInput(input)
 
       if (!result.ok) {
         clearTimer()
@@ -450,6 +474,22 @@ export function useStreamPlayback({
         return result
       }
 
+      const bvids = buildStreamQueue(result.bvid, catalogBvidsRef.current)
+      if (bvids.length === 0) {
+        const emptyResult = emptyStreamCatalogResult()
+        clearTimer()
+        closeHandles()
+        runtimeRef.current = {
+          ...createRuntime(),
+          mode,
+          sourceInput: input,
+          message: '静态刷播收藏夹暂时为空',
+          errors: [...emptyResult.errors],
+        }
+        publish()
+        return emptyResult
+      }
+
       const openDelayMs = normalizeOpenDelay(settings.openDelayMs)
       const stopAfterMs = normalizeStopAfter(settings.stopAfterMs)
       clearTimer()
@@ -458,7 +498,7 @@ export function useStreamPlayback({
       const startedAt = Date.now()
       runtime.mode = mode
       runtime.sourceInput = input
-      runtime.bvids = [...result.bvids]
+      runtime.bvids = bvids
       runtime.openDelayMs = openDelayMs
       runtime.sessionId = createSessionId()
       runtime.sessionStartedAt = startedAt
@@ -514,5 +554,5 @@ export function useStreamPlayback({
   return { state, start, resume, stop, getRemainingMs, getStopRemainingMs }
 }
 
-export { buildStreamVideoUrl, parseStreamInput }
+export { buildStreamQueue, buildStreamVideoUrl, parseStreamSelfTestInput }
 export type { StreamInputError, StreamParseResult }

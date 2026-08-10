@@ -676,6 +676,29 @@ ensureJsonEqual(
   '唱片机必须精确使用全部 8 个全站第一（chronology 第 1–8 项）',
 )
 
+const expectedStreamBvids = ['BV1At3j6EE6w', 'BV1mkuN6HEFC', 'BV1UZ3D6REhZ']
+const streamFolder = videoCatalog.folders?.streaming
+const streamItems = videoCatalog.streamPlaylist?.items
+ensure(streamFolder?.favoriteId === 3963921644, '刷播目录不是指定收藏夹 3963921644')
+ensure(
+  videoCatalog.streamPlaylist?.sourceFavoriteId === streamFolder.favoriteId,
+  '刷播目录来源与收藏夹快照不一致',
+)
+ensure(
+  Array.isArray(streamItems) && streamItems.length === streamFolder.visibleItemCount,
+  '刷播目录没有包含收藏夹全部可见视频',
+)
+ensureJsonEqual(
+  streamItems.map((video) => video.bvid),
+  expectedStreamBvids,
+  '刷播目录 BV 号或顺序不一致',
+)
+ensureJsonEqual(
+  streamFolder.latestPage.items,
+  streamItems.slice(0, streamFolder.latestPage.pageSize),
+  '刷播目录与收藏夹首页前缀不一致',
+)
+
 const postcardSource = JSON.parse(await readFile(postcardSourcePath, 'utf8'))
 const postcardDuplicates = JSON.parse(await readFile(postcardDuplicatesPath, 'utf8'))
 const postcardSelection = JSON.parse(await readFile(postcardSelectionPath, 'utf8'))
@@ -1389,5 +1412,5 @@ ensure(
 await verifyExactDirectory(publicFontAssetRoot, expectedFontFileNames, '公开字体素材目录')
 
 console.log(
-  `素材校验通过：${publicCatalog.itemCount} 张百万直拍、${siteFirstPublicCatalog.itemCount} 项全站第一、${postcardSource.itemCount} 条明信片候选、${postcardPublicCatalog.itemCount} 张真实明信片（${expectedPostcardDerivativeCount} 个 WebP）、${friendCatalog.itemCount} 位好友、${Object.keys(videoCatalog.videos).length} 条视频、${expectedGameFileNames.size} 个 Demo 视觉文件及 ${fontManifest.fonts.length} 个 2500 常用字 WOFF2 字体一致；本地核验百万直拍原图 ${verifiedMillionOriginals}/${source.items.length}、明信片原图 ${verifiedPostcardOriginals}/${postcardPublicCatalog.itemCount}、字体母版 ${verifiedFontSources}/${expectedFonts.size}`,
+  `素材校验通过：${publicCatalog.itemCount} 张百万直拍、${siteFirstPublicCatalog.itemCount} 项全站第一、${streamItems.length} 条刷播视频、${postcardSource.itemCount} 条明信片候选、${postcardPublicCatalog.itemCount} 张真实明信片（${expectedPostcardDerivativeCount} 个 WebP）、${friendCatalog.itemCount} 位好友、${Object.keys(videoCatalog.videos).length} 条视频、${expectedGameFileNames.size} 个 Demo 视觉文件及 ${fontManifest.fonts.length} 个 2500 常用字 WOFF2 字体一致；本地核验百万直拍原图 ${verifiedMillionOriginals}/${source.items.length}、明信片原图 ${verifiedPostcardOriginals}/${postcardPublicCatalog.itemCount}、字体母版 ${verifiedFontSources}/${expectedFonts.size}`,
 )

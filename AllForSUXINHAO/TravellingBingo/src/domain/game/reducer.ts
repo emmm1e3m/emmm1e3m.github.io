@@ -21,6 +21,7 @@ import {
   vitalityExpiryDay,
 } from '../player/vitality'
 import {
+  BILIBILI_BVID_PATTERN,
   FRIEND_EVENT_IDS,
   ITEM_PRICES,
   LEGACY_V1_DUPLICATE_APPLE_COMPENSATION,
@@ -1053,6 +1054,42 @@ function endStreamSession(
   })
 }
 
+function setStreamSelfTest(
+  state: GameState,
+  action: Extract<GameAction, { type: 'reality/stream-self-test-set' }>,
+): GameTransition {
+  if (action.bvid !== null && !BILIBILI_BVID_PATTERN.test(action.bvid)) {
+    return fail(state, 'INVALID_BVID', '自测视频 BV 号无效')
+  }
+  if (state.reality.streamSettings.selfTestBvid === action.bvid) return succeed(state)
+  return succeed({
+    ...state,
+    reality: {
+      ...state.reality,
+      streamSettings: { ...state.reality.streamSettings, selfTestBvid: action.bvid },
+    },
+  })
+}
+
+function setStreamDimensionPenetration(
+  state: GameState,
+  action: Extract<GameAction, { type: 'reality/stream-dimension-penetration-set' }>,
+): GameTransition {
+  if (state.reality.streamSettings.dimensionPenetrationEnabled === action.enabled) {
+    return succeed(state)
+  }
+  return succeed({
+    ...state,
+    reality: {
+      ...state.reality,
+      streamSettings: {
+        ...state.reality.streamSettings,
+        dimensionPenetrationEnabled: action.enabled,
+      },
+    },
+  })
+}
+
 function reducePreparedGame(
   state: GameState,
   action: GameAction,
@@ -1085,6 +1122,10 @@ function reducePreparedGame(
       return progressStreamSession(state, action)
     case 'reality/stream-session-end':
       return endStreamSession(state, action)
+    case 'reality/stream-self-test-set':
+      return setStreamSelfTest(state, action)
+    case 'reality/stream-dimension-penetration-set':
+      return setStreamDimensionPenetration(state, action)
     case 'debug/apples-adjust':
       return adjustDebugApples(state, action)
     case 'debug/item-adjust':

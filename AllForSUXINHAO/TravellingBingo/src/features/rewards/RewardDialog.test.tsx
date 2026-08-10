@@ -84,6 +84,7 @@ const catalog: ContentCatalog = {
   friendById: { [friend.id]: friend },
   videosByBvid: {},
   recordPlayerVideos: [],
+  streamVideos: [],
 }
 
 function summary(overrides: Partial<ClaimSummary> = {}): ClaimSummary {

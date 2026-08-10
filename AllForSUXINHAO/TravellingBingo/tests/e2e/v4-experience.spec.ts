@@ -14,11 +14,11 @@ import {
   startGame,
 } from './support/game'
 
-test.describe('V7 房间契约', () => {
+test.describe('V8 房间契约', () => {
   test.beforeEach(({ browserName }, testInfo) => {
     test.skip(
       browserName !== 'chromium' || testInfo.project.name !== 'chromium',
-      'V7 桌面主流程只在 Chromium 验证',
+      'V8 桌面主流程只在 Chromium 验证',
     )
   })
 
@@ -111,7 +111,8 @@ test.describe('V7 房间契约', () => {
     await confirmation.getByRole('button', { name: '使用活力魔法' }).click()
 
     const petStatus = page.getByRole('status', { name: '饼狗状态' })
-    await expect(petStatus.locator('.pet-status-bar__label')).toHaveText('活力满满')
+    await expect(petStatus.locator('.pet-status-bar__label')).toHaveText('状态正常')
+    await expect(petStatus.locator('.pet-status-bar__vitality')).toHaveText('活力满满')
     await expect(petStatus.locator('.pet-status-bar__effect')).toHaveText('活力还可陪伴 7 天')
     await expect(card).toHaveAttribute('data-interest', 'willing')
     await expect(card.getByRole('button', { name: '准备出去旅行' })).toBeEnabled()
@@ -142,7 +143,7 @@ test.describe('V7 房间契约', () => {
     const streamPanel = page.locator('.context-panel--reality-stream')
     await expect(streamPanel.getByRole('heading', { name: '视频刷播' })).toBeVisible()
     await expect(streamPanel).toContainText(
-      '输入视频BV号或链接列表，可以包含自测视频，并允许网站弹出窗口的权限。',
+      '输入一个自测视频 BV 号（可留空），其余视频使用本站已保存的收藏夹快照。',
     )
 
     await room.locator('[data-hotspot="二楼电脑·冲热"]').click()
@@ -157,18 +158,18 @@ test.describe('V7 房间契约', () => {
     await room.locator('[data-hotspot="一楼电脑"]').click()
     const workPanel = page.locator('.context-panel--reality-work')
     await expect(workPanel.getByRole('heading', { name: '苹果钟与待办' })).toBeVisible()
-    await workPanel.getByLabel('新待办').fill('完成 V7 验收')
+    await workPanel.getByLabel('新待办').fill('完成 V8 验收')
     await workPanel.getByRole('button', { name: '添加' }).click()
     const todo = workPanel.getByRole('list', { name: '现实生活待办' }).getByRole('listitem')
-    await expect(todo).toContainText('完成 V7 验收')
-    await todo.getByRole('checkbox', { name: '标记为已完成：完成 V7 验收' }).check()
+    await expect(todo).toContainText('完成 V8 验收')
+    await todo.getByRole('checkbox', { name: '标记为已完成：完成 V8 验收' }).check()
     await todo.getByRole('button', { name: '编辑' }).click()
-    await todo.getByLabel('待办标题').fill('完成 V7 桌面验收')
+    await todo.getByLabel('待办标题').fill('完成 V8 桌面验收')
     await todo.getByRole('button', { name: '保存' }).click()
 
     await room.locator('[data-hotspot="电脑"]').click()
     await room.locator('[data-hotspot="一楼电脑"]').click()
-    await expect(page.getByRole('list', { name: '现实生活待办' })).toContainText('完成 V7 桌面验收')
+    await expect(page.getByRole('list', { name: '现实生活待办' })).toContainText('完成 V8 桌面验收')
     await saveScreenshot(page, 'reality-work-todos.png', false)
 
     await page.clock.fastForward(10 * 60_000 + 1_000)

@@ -2,7 +2,7 @@ import { describe, expect, it } from 'vitest'
 
 import { MAX_APPLES } from '../game/constants'
 import { createInitialGameState } from '../game/createGameState'
-import { gameStateV7Schema } from '../game/migrateGameStateV6'
+import { gameStateV8Schema } from '../game/migrateGameStateV7'
 import { reduceGame } from '../game/reducer'
 import type {
   CollectionCatalog,
@@ -75,6 +75,37 @@ describe('今日 Bingo 任务板', () => {
     }
   })
 
+  it('只为当前可签发的和饼狗任务使用增加后的奖励快照', () => {
+    expect(
+      Object.fromEntries(
+        Object.entries(TASK_LIBRARY)
+          .filter(([taskId]) => taskId !== 'greet-bingo')
+          .map(([taskId, template]) => [taskId, template.rewardApples]),
+      ),
+    ).toEqual({
+      'open-backpack': 2,
+      'room-stroll': 3,
+      'piano-time': 2,
+      'record-time': 2,
+      'two-melodies': 3,
+      'wardrobe-choice': 2,
+      'open-memories': 2,
+      'revisit-two': 3,
+      'remember-postcard': 2,
+      'remember-million': 2,
+      'remember-first': 3,
+      'stage-test': 4,
+    })
+    expect(TASK_LIBRARY['greet-bingo'].rewardApples).toBe(1)
+
+    for (let sequence = 0; sequence < 20; sequence += 1) {
+      const generated = generateTaskBoard({ seed: 'new-reward-snapshots', sequence, now: 100 })
+      for (const entry of generated.board.active) {
+        expect(entry.rewardApples).toBe(TASK_LIBRARY[entry.taskId].rewardApples)
+      }
+    }
+  })
+
   it('任务序列、完成总数与苹果收入到安全上限后保持可导出', () => {
     const generated = generateTaskBoard({
       seed: 'task-counter-cap',
@@ -122,7 +153,7 @@ describe('今日 Bingo 任务板', () => {
     expect(completed.state.tasks.completedAt).toBe(1_000)
     expect(completed.state.tasks.active.every(isTaskCompleted)).toBe(true)
     expect(completed.effects[0]).toMatchObject({ completed: true })
-    expect(gameStateV7Schema.safeParse(completed.state).success).toBe(true)
+    expect(gameStateV8Schema.safeParse(completed.state).success).toBe(true)
   })
 
   it('最近六项会优先避开，直到候选触发组不足', () => {
@@ -778,8 +809,8 @@ describe('今日 Bingo 任务板', () => {
       ),
     )
 
-    expect(result.state.economy.apples).toBe(applesBefore + 3)
-    expect(result.state.statistics.applesEarned).toBe(3)
+    expect(result.state.economy.apples).toBe(applesBefore + 4)
+    expect(result.state.statistics.applesEarned).toBe(4)
     expect(result.state.tasks.completedCount).toBe(state.tasks.completedCount + 1)
     expect(result.state.tasks.oneOffCompleted).toContain('stage-test')
     expect(result.state.tasks.active.every(isTaskCompleted)).toBe(true)
@@ -791,7 +822,7 @@ describe('今日 Bingo 任务板', () => {
         type: 'task-progressed',
         taskId: 'stage-test',
         completed: true,
-        applesAwarded: 3,
+        applesAwarded: 4,
       },
     ])
 
@@ -871,6 +902,26 @@ describe('今日 Bingo 任务板', () => {
     expect(repeated.effects).toEqual([])
   })
 
+  it('已签发任务继续按自身奖励快照结算', () => {
+    const base = createInitialGameState({ now: 0, seed: 'historical-task-reward' })
+    const historicalTask = { ...task('open-backpack'), rewardApples: 1 }
+    const state = withTasks(base, [historicalTask, task('wardrobe-choice'), task('record-time')])
+    const result = successful(
+      reduceGame(
+        state,
+        { type: 'task/event', event: { type: 'pet-menu-opened' }, now: 100 },
+        catalog,
+      ),
+    )
+
+    expect(TASK_LIBRARY['open-backpack'].rewardApples).toBe(2)
+    expect(result.state.tasks.active[0].rewardApples).toBe(1)
+    expect(result.state.economy.apples).toBe(state.economy.apples + 1)
+    expect(result.effects).toMatchObject([
+      { type: 'task-progressed', taskId: 'open-backpack', applesAwarded: 1 },
+    ])
+  })
+
   it('苹果已满时任务仍可完成，不会因奖励溢出卡住', () => {
     const base = createInitialGameState({ now: 0, seed: 'apple-cap' })
     const state = withTasks({ ...base, economy: { apples: MAX_APPLES } }, [
@@ -942,12 +993,16 @@ describe('今日 Bingo 任务板', () => {
   it('展示 helper 从任务库取稳定文案与进度', () => {
     const entry = task('revisit-two', 1)
     expect(getTaskPresentation('greet-bingo')).toEqual({
-      title: '看看饼狗的小背包',
+      title: '摸摸饼狗',
       description: '打开一次饼狗菜单',
     })
     expect(getTaskPresentation('record-time')).toEqual({
       title: '看看一张唱片',
       description: '主动打开唱片播放器看看',
+    })
+    expect(getTaskPresentation('open-backpack')).toEqual({
+      title: '摸摸饼狗',
+      description: '打开一次饼狗菜单',
     })
     expect(getTaskPresentation('two-melodies')).toEqual({
       title: '逛逛音乐角落',

@@ -4,6 +4,8 @@ import { createRandomCursor, nextRandom, randomInteger } from '../rewards/prng'
 
 const PET_INTERESTS: readonly PetInterest[] = ['travel', 'computer', 'music']
 
+export type PetVitalityStatus = '低活力' | '中等活力' | '高活力' | '活力满满'
+
 export interface GeneratedPreferences {
   preferences: ActivityPreferences
   nextSequence: number
@@ -46,6 +48,22 @@ export function generateActivityPreferences(seed: string, sequence: number): Gen
 
 export function isPetTired(preferences: ActivityPreferences): boolean {
   return !PET_INTERESTS.some((interest) => preferences[interest])
+}
+
+/**
+ * 活力魔法优先显示；普通状态则按当下真正可做的三类事情计算。
+ * 菜单与顶栏共用这一纯派生，避免同一状态出现两种文案。
+ */
+export function getPetVitalityStatus(
+  preferences: ActivityPreferences,
+  vitalityActive: boolean,
+): PetVitalityStatus {
+  if (vitalityActive) return '活力满满'
+
+  const availableInterestCount = PET_INTERESTS.filter((interest) => preferences[interest]).length
+  if (availableInterestCount <= 1) return '低活力'
+  if (availableInterestCount === 2) return '中等活力'
+  return '高活力'
 }
 
 export function interestForActivity(kind: ActivityKind): PetInterest | null {

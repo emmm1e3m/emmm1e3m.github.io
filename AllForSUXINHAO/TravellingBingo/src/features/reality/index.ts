@@ -6,6 +6,7 @@ export { RealitySettlementResultDialog } from './RealitySettlementResultDialog'
 export {
   StreamPanel,
   STREAM_INSTRUCTION,
+  VISITOR_STREAM_INSTRUCTION,
   type StreamPanelProps,
   type StreamSessionHistoryItem,
 } from './StreamPanel'
@@ -16,8 +17,9 @@ export {
   STREAM_MIN_OPEN_DELAY_MS,
   STREAM_OPEN_DELAY_MS,
   STREAM_ROUND_DURATION_MS,
+  buildStreamQueue,
   buildStreamVideoUrl,
-  parseStreamInput,
+  parseStreamSelfTestInput,
   useStreamPlayback,
   type StreamInputError,
   type StreamParseResult,
@@ -28,6 +30,14 @@ export {
   type StreamSessionEnd,
   type StreamStartSettings,
 } from './stream/useStreamPlayback'
+export {
+  useVisitorStreamPlayback,
+  type VisitorStreamController,
+  type VisitorStreamFrame,
+  type VisitorStreamSettings,
+  type VisitorStreamState,
+  type VisitorStreamStatus,
+} from './stream/useVisitorStreamPlayback'
 export { WorkPanel } from './WorkPanel'
 export {
   type DataPanelProps,

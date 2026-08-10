@@ -139,7 +139,7 @@ async function completeTenSecondRest(page: Page) {
   await reward.getByRole('button', { name: '回到房间' }).click()
 }
 
-test.describe('V7 高风险集成契约', () => {
+test.describe('V8 高风险集成契约', () => {
   test.beforeEach(({ browserName }, testInfo) => {
     test.skip(
       browserName !== 'chromium' || testInfo.project.name !== 'chromium',

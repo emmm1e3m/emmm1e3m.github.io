@@ -9,7 +9,7 @@ import {
   type GameAction,
   type GameState,
 } from '@/domain'
-import type { StreamPlaybackController } from '@/features/reality'
+import type { StreamPlaybackController, VisitorStreamController } from '@/features/reality'
 
 import { ActivityLauncher } from './ActivityLauncher'
 import { ContextPanel } from './ContextPanel'
@@ -47,6 +47,7 @@ const contentCatalog: ContentCatalog = {
   friendById: {},
   videosByBvid: {},
   recordPlayerVideos: [],
+  streamVideos: [],
 }
 
 function idleStreamPlayback(): StreamPlaybackController {
@@ -56,6 +57,7 @@ function idleStreamPlayback(): StreamPlaybackController {
       round: 0,
       sessionRoundsCompleted: 0,
       openDelayMs: 8_000,
+      roundDurationMs: 310_000,
       stopAfterMs: null,
       mode: null,
       sourceInput: '',
@@ -64,11 +66,29 @@ function idleStreamPlayback(): StreamPlaybackController {
       message: '尚未开始刷播',
       errors: [],
     },
-    start: vi.fn(() => ({ ok: true as const, bvids: [], errors: [] as const })),
+    start: vi.fn(() => ({ ok: true as const, bvid: null, errors: [] as const })),
     resume: vi.fn(() => true),
     stop: vi.fn(),
     getRemainingMs: vi.fn(() => null),
     getStopRemainingMs: vi.fn(() => null),
+  }
+}
+
+function idleVisitorStreamPlayback(): VisitorStreamController {
+  return {
+    state: {
+      status: 'idle',
+      startedAt: null,
+      round: 0,
+      completedRounds: 0,
+      frames: [],
+      bvids: [],
+      videoIntervalMs: 8_000,
+      roundIntervalMs: 310_000,
+      message: '游客刷播未运行',
+    },
+    start: vi.fn(() => true),
+    stop: vi.fn(),
   }
 }
 
@@ -144,6 +164,9 @@ describe('活动场景标题', () => {
         onBackup={vi.fn()}
         onTaskEvent={vi.fn()}
         streamPlayback={idleStreamPlayback()}
+        visitorStreamPlayback={idleVisitorStreamPlayback()}
+        streamVideoIntervalMs={8_000}
+        onStreamVideoIntervalChange={vi.fn()}
         streamRoundDurationSeconds={310}
         onStreamRoundDurationChange={vi.fn()}
       />,
@@ -483,6 +506,9 @@ describe('活动面板目录复用', () => {
       onTaskEvent: vi.fn(),
       onClose: vi.fn(),
       streamPlayback: idleStreamPlayback(),
+      visitorStreamPlayback: idleVisitorStreamPlayback(),
+      streamVideoIntervalMs: 8_000,
+      onStreamVideoIntervalChange: vi.fn(),
       streamRoundDurationSeconds: 310,
       onStreamRoundDurationChange: vi.fn(),
     }

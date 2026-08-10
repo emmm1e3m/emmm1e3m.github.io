@@ -15,7 +15,7 @@ import {
   DEFAULT_GAME_BALANCE,
   DEFAULT_GAME_BALANCE_V3,
   deriveActivityTiming,
-  migrateStoredGameStateToV7,
+  migrateStoredGameStateToV8,
   normalizeImportedGameBalance,
   reconcileGameStateWithCatalog,
   reduceGame,
@@ -26,6 +26,7 @@ import {
   type GameStateV3,
   type GameStateV5,
   type GameStateV5LegacyMusic,
+  type GameStateV7,
   type GameTransition,
 } from '@/domain'
 
@@ -98,6 +99,18 @@ function asPublishedV5(state: GameState): GameStateV5 {
     pomodoro: state.reality.pomodoro,
   }
   return { ...state, schemaVersion: 5, reality }
+}
+
+function asPublishedV7(state: GameState): GameStateV7 {
+  const reality: GameStateV7['reality'] = {
+    nextStaySequence: state.reality.nextStaySequence,
+    activeStay: state.reality.activeStay,
+    pendingSettlement: state.reality.pendingSettlement,
+    todos: structuredClone(state.reality.todos),
+    pomodoro: structuredClone(state.reality.pomodoro),
+    streamHistory: structuredClone(state.reality.streamHistory),
+  }
+  return { ...structuredClone(state), schemaVersion: 7, reality }
 }
 
 describe('游戏活动存档时长快照', () => {
@@ -227,7 +240,7 @@ describe('游戏活动存档时长快照', () => {
 
     expect(gameStateSchema.safeParse(completed).success).toBe(true)
     const exported = await createBingoSave(
-      { gameVersion: '0.7.0-stream-history', exportedAt: 90_000, payload: completed },
+      { gameVersion: '0.8.0-stream-history', exportedAt: 90_000, payload: completed },
       gameStateSchema,
       { subtle: webcrypto.subtle },
     )
@@ -246,6 +259,45 @@ describe('游戏活动存档时长快照', () => {
           outcome: 'completed',
         },
       ],
+    })
+  })
+
+  it('严格导入 V7 后显式迁移默认刷播设置，并只以 V8 再次导出', async () => {
+    const v7 = asPublishedV7(
+      createInitialGameState({ now: 50_000, seed: 'stream-settings-v7-save' }),
+    )
+    expect(gameStateSchema.safeParse(v7).success).toBe(false)
+    expect(importableGameStateSchema.safeParse(v7).success).toBe(true)
+
+    const oldSave = await createBingoSave<ImportableGameState>(
+      { gameVersion: '0.7.0-demo.1', exportedAt: 60_000, payload: v7 },
+      importableGameStateSchema,
+      { subtle: webcrypto.subtle },
+    )
+    const imported = await importBingoSave(oldSave.text, importableGameStateSchema, {
+      subtle: webcrypto.subtle,
+    })
+    const migrated = migrateStoredGameStateToV8(imported.payload, { now: 70_000, catalog })
+
+    expect(migrated).toMatchObject({
+      schemaVersion: 8,
+      reality: {
+        streamSettings: { selfTestBvid: null, dimensionPenetrationEnabled: false },
+      },
+    })
+    expect(gameStateSchema.safeParse(migrated).success).toBe(true)
+
+    const currentSave = await createBingoSave(
+      { gameVersion: '0.8.0-demo.1', exportedAt: 80_000, payload: migrated },
+      gameStateSchema,
+      { subtle: webcrypto.subtle },
+    )
+    const roundTrip = await importBingoSave(currentSave.text, gameStateSchema, {
+      subtle: webcrypto.subtle,
+    })
+    expect(roundTrip.payload.reality.streamSettings).toEqual({
+      selfTestBvid: null,
+      dimensionPenetrationEnabled: false,
     })
   })
 
@@ -346,6 +398,10 @@ describe('游戏活动存档时长快照', () => {
           },
         },
         streamHistory: initial.reality.streamHistory,
+        streamSettings: {
+          selfTestBvid: 'BV1xx411c7mD',
+          dimensionPenetrationEnabled: true,
+        },
       },
       musicPlayer: {
         currentBvid: 'BV1xx411c7mD',
@@ -436,7 +492,7 @@ describe('游戏活动存档时长快照', () => {
     if (imported.payload.schemaVersion !== 3) throw new Error('测试存档没有保留 V3 payload')
 
     const normalized = normalizeImportedGameBalance(
-      migrateStoredGameStateToV7(imported.payload, { now: startedAt + 1_000, catalog }),
+      migrateStoredGameStateToV8(imported.payload, { now: startedAt + 1_000, catalog }),
       futureDefault,
     )
     expect(normalized.gameBalance).toEqual(futureDefault)
@@ -525,7 +581,7 @@ describe('游戏活动存档时长快照', () => {
       subtle: webcrypto.subtle,
     })
     const normalized = normalizeImportedGameBalance(
-      migrateStoredGameStateToV7(imported.payload, { now: startedAt + 1_000, catalog }),
+      migrateStoredGameStateToV8(imported.payload, { now: startedAt + 1_000, catalog }),
     )
 
     expect(normalized.gameBalance).toEqual(DEFAULT_GAME_BALANCE)
@@ -543,12 +599,15 @@ describe('冻结的已发布存档兼容性', () => {
 
     expect(imported.summary.schemaVersion).toBe(1)
     expect(imported.payload.schemaVersion).toBe(1)
-    const migrated = migrateStoredGameStateToV7(imported.payload, { now: 900_000, catalog })
+    const migrated = migrateStoredGameStateToV8(imported.payload, { now: 900_000, catalog })
 
     expect(migrated).toMatchObject({
-      schemaVersion: 7,
+      schemaVersion: 8,
       profile: { displayName: '你', companionDays: 3 },
       friends: {},
+      reality: {
+        streamSettings: { selfTestBvid: null, dimensionPenetrationEnabled: false },
+      },
     })
     expect(validateImportedGameState(migrated, catalog)).toEqual({ ok: true })
   })
@@ -562,7 +621,7 @@ describe('冻结的已发布存档兼容性', () => {
 
     const migrated = reconcileGameStateWithCatalog(
       normalizeImportedGameBalance(
-        migrateStoredGameStateToV7(imported.payload, { now: 900_000, catalog }),
+        migrateStoredGameStateToV8(imported.payload, { now: 900_000, catalog }),
       ),
       catalog,
     )
@@ -604,7 +663,7 @@ describe('冻结的已发布存档兼容性', () => {
     const imported = await importBingoSave(text, importableGameStateSchema, {
       subtle: webcrypto.subtle,
     })
-    const migrated = migrateStoredGameStateToV7(imported.payload, { now: 900_000, catalog })
+    const migrated = migrateStoredGameStateToV8(imported.payload, { now: 900_000, catalog })
 
     expect(migrated.profile.debug).toBe(true)
     expect(migrated.gameBalance).toEqual({
@@ -655,7 +714,7 @@ describe('冻结的已发布存档兼容性', () => {
     const imported = await importBingoSave(oldSave.text, importableGameStateSchema, {
       subtle: webcrypto.subtle,
     })
-    const migrated = migrateStoredGameStateToV7(imported.payload, { now: 2_000, catalog })
+    const migrated = migrateStoredGameStateToV8(imported.payload, { now: 2_000, catalog })
 
     expect(migrated.musicPlayer).toEqual({
       currentBvid: 'BV1234567890',

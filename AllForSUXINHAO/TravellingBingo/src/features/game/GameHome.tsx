@@ -23,13 +23,18 @@ import {
   PomodoroFocusOverlay,
   RealityReturnDialog,
   RealitySettlementResultDialog,
+  STREAM_OPEN_DELAY_MS,
   STREAM_ROUND_DURATION_MS,
+  buildStreamQueue,
+  parseStreamSelfTestInput,
   buildRealityTodoViews,
   buildUnlockedPostcardBackgrounds,
   type RealityNotificationPermission,
   type StreamRoundCompletion,
   type StreamSessionEnd,
+  type StreamPlaybackController,
   useStreamPlayback,
+  useVisitorStreamPlayback,
 } from '@/features/reality'
 import { RewardDialog } from '@/features/rewards/RewardDialog'
 
@@ -243,6 +248,7 @@ export function GameHome({
     null,
   )
   const [streamRoundDurationMs, setStreamRoundDurationMs] = useState(STREAM_ROUND_DURATION_MS)
+  const [streamVideoIntervalMs, setStreamVideoIntervalMs] = useState(STREAM_OPEN_DELAY_MS)
   const walkTimerRef = useRef<ReturnType<typeof globalThis.setTimeout> | null>(null)
   const visiblePetCenterRef = useRef<RoomPixelPoint | null>(null)
   const sleepTimerRef = useRef<ReturnType<typeof globalThis.setTimeout> | null>(null)
@@ -268,12 +274,64 @@ export function GameHome({
     },
     [onAction],
   )
+  const streamCatalogBvids = useMemo(
+    () => catalog.streamVideos.map((video) => video.bvid),
+    [catalog.streamVideos],
+  )
   const streamPlayback = useStreamPlayback({
+    catalogBvids: streamCatalogBvids,
     completedRounds: game.reality.streamHistory.completedRounds,
     roundDurationMs: streamRoundDurationMs,
     onRoundCompleted: handleStreamRoundCompleted,
     onSessionEnded: handleStreamSessionEnded,
   })
+  const visitorStreamPlayback = useVisitorStreamPlayback()
+  const startVisitorStream = visitorStreamPlayback.start
+  const stopVisitorStream = visitorStreamPlayback.stop
+  const startStreamPlayback = streamPlayback.start
+  const loginStreamActive =
+    streamPlayback.state.status === 'opening' ||
+    streamPlayback.state.status === 'waiting' ||
+    streamPlayback.state.status === 'blocked'
+  const visitorStreamQueue = useMemo(
+    () => buildStreamQueue(game.reality.streamSettings.selfTestBvid, streamCatalogBvids),
+    [game.reality.streamSettings.selfTestBvid, streamCatalogBvids],
+  )
+
+  useEffect(() => {
+    if (!game.reality.streamSettings.dimensionPenetrationEnabled || loginStreamActive) {
+      stopVisitorStream()
+      return
+    }
+    startVisitorStream(visitorStreamQueue, {
+      videoIntervalMs: streamVideoIntervalMs,
+      roundIntervalMs: streamRoundDurationMs,
+    })
+  }, [
+    game.reality.streamSettings.dimensionPenetrationEnabled,
+    loginStreamActive,
+    streamRoundDurationMs,
+    streamVideoIntervalMs,
+    startVisitorStream,
+    stopVisitorStream,
+    visitorStreamQueue,
+  ])
+
+  const startLoginStream = useCallback<StreamPlaybackController['start']>(
+    (input, mode, settings) => {
+      const inputResult = parseStreamSelfTestInput(input)
+      if (!inputResult.ok || buildStreamQueue(inputResult.bvid, streamCatalogBvids).length === 0) {
+        return startStreamPlayback(input, mode, settings)
+      }
+      stopVisitorStream()
+      return startStreamPlayback(input, mode, settings)
+    },
+    [startStreamPlayback, stopVisitorStream, streamCatalogBvids],
+  )
+  const coordinatedStreamPlayback = useMemo<StreamPlaybackController>(
+    () => ({ ...streamPlayback, start: startLoginStream }),
+    [startLoginStream, streamPlayback],
+  )
   const handlePetCenterChange = useCallback((point: RoomPixelPoint) => {
     visiblePetCenterRef.current = point
   }, [])
@@ -430,11 +488,9 @@ export function GameHome({
     ? timing.phase === 'ready'
       ? `${ACTIVITY_COPY[activity.kind].name}完成了`
       : ACTIVITY_COPY[activity.kind].verb
-    : vitalityDays > 0
-      ? '活力满满'
-      : game.pet.tired
-        ? '今天想先休息'
-        : '状态正常'
+    : game.pet.tired
+      ? '今天想先休息'
+      : '状态正常'
 
   return (
     <BilibiliPlayerProvider state={game.musicPlayer} onAction={onAction} tracks={playerTracks}>
@@ -460,6 +516,15 @@ export function GameHome({
           inert={overlayOpen}
           statusLabel={petStatusLabel}
           vitalityDays={vitalityDays}
+          visitorStream={
+            visitorStreamPlayback.state.status === 'idle' ||
+            visitorStreamPlayback.state.startedAt === null
+              ? null
+              : {
+                  startedAt: visitorStreamPlayback.state.startedAt,
+                  round: visitorStreamPlayback.state.round,
+                }
+          }
           onExit={onExit}
           onCenter={() => navigate(activity ? 'activity' : 'status')}
           onFridge={() => navigate('fridge')}
@@ -550,7 +615,10 @@ export function GameHome({
                   }}
                   notificationPermission={notificationPermission}
                   onRequestNotificationPermission={onRequestNotificationPermission}
-                  streamPlayback={streamPlayback}
+                  streamPlayback={coordinatedStreamPlayback}
+                  visitorStreamPlayback={visitorStreamPlayback}
+                  streamVideoIntervalMs={streamVideoIntervalMs}
+                  onStreamVideoIntervalChange={setStreamVideoIntervalMs}
                   streamRoundDurationSeconds={streamRoundDurationMs / 1_000}
                   onStreamRoundDurationChange={(seconds) =>
                     setStreamRoundDurationMs(seconds * 1_000)
@@ -560,6 +628,22 @@ export function GameHome({
             </div>
           )}
         </div>
+
+        {visitorStreamPlayback.state.status !== 'idle' && (
+          <div className="visitor-stream-layer" aria-hidden="true" inert>
+            {visitorStreamPlayback.state.frames.map((frame) => (
+              <iframe
+                key={frame.id}
+                src={frame.url}
+                title={`游客刷播 ${frame.bvid}`}
+                allow="autoplay"
+                referrerPolicy="strict-origin-when-cross-origin"
+                tabIndex={-1}
+                inert
+              />
+            ))}
+          </div>
+        )}
 
         {panel === 'album' && (
           <AlbumView

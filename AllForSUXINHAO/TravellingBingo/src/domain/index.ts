@@ -3,6 +3,7 @@ export {
   ACTIVITY_APPLE_REWARDS,
   BASE_ACTIVITY_DURATION_MINUTES,
   BASE_ACTIVITY_DURATION_MS,
+  BILIBILI_BVID_PATTERN,
   DEFAULT_POMODORO_BREAK_DURATION_MS,
   DEFAULT_POMODORO_DURATION_MS,
   DUPLICATE_APPLE_COMPENSATION,
@@ -19,6 +20,12 @@ export {
   MAX_POMODORO_DURATION_MS,
   MIN_POMODORO_DURATION_MS,
   REALITY_REWARD_INTERVAL_MS,
+  STREAM_DEFAULT_ROUND_INTERVAL_MS,
+  STREAM_DEFAULT_VIDEO_INTERVAL_MS,
+  STREAM_MAX_ROUND_INTERVAL_MS,
+  STREAM_MAX_VIDEO_INTERVAL_MS,
+  STREAM_MIN_ROUND_INTERVAL_MS,
+  STREAM_MIN_VIDEO_INTERVAL_MS,
   VITALITY_MAGIC_COMPANION_DAYS,
   PET_ENCOURAGEMENT_APPLE_COST,
   PITY_THRESHOLDS,
@@ -102,8 +109,15 @@ export {
   isStrictGameStateV7,
   migrateGameStateV6ToV7,
   migrateStoredGameStateToV7,
-  type StoredGameState,
+  type StoredGameStateThroughV7,
 } from './game/migrateGameStateV6'
+export {
+  gameStateV8Schema,
+  isStrictGameStateV8,
+  migrateGameStateV7ToV8,
+  migrateStoredGameStateToV8,
+  type StoredGameState,
+} from './game/migrateGameStateV7'
 export { reduceGame } from './game/reducer'
 export {
   isProductivityAction,
@@ -155,6 +169,7 @@ export type {
   GameStateV5LegacyMusic,
   GameStateV6,
   GameStateV7,
+  GameStateV8,
   GameTransition,
   Inventory,
   ItemId,
@@ -174,6 +189,7 @@ export type {
   MusicPlayerState,
   PianoNoteId,
   PlayerState,
+  StreamSettings,
   PomodoroSession,
   PomodoroSessionV4,
   PomodoroState,
@@ -213,10 +229,12 @@ export {
 export {
   exhaustActivityPreference,
   generateActivityPreferences,
+  getPetVitalityStatus,
   getRefusalCountForRoll,
   interestForActivity,
   isPetTired,
   type GeneratedPreferences,
+  type PetVitalityStatus,
 } from './pet/preferences'
 export { createRandomCursor, hashSeed, nextRandom, randomInteger } from './rewards/prng'
 export { planActivityReward, type RewardPlanningInput } from './rewards/planReward'

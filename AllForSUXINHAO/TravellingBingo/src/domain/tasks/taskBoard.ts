@@ -40,7 +40,7 @@ export const TASK_LIBRARY: Readonly<Record<TaskId, TaskTemplate>> = {
   'greet-bingo': {
     id: 'greet-bingo',
     triggerGroup: 'pet',
-    title: '看看饼狗的小背包',
+    title: '摸摸饼狗',
     description: '打开一次饼狗菜单',
     target: 1,
     rewardApples: 1,
@@ -48,10 +48,10 @@ export const TASK_LIBRARY: Readonly<Record<TaskId, TaskTemplate>> = {
   'open-backpack': {
     id: 'open-backpack',
     triggerGroup: 'pet',
-    title: '看看小背包',
+    title: '摸摸饼狗',
     description: '打开一次饼狗菜单',
     target: 1,
-    rewardApples: 1,
+    rewardApples: 2,
   },
   'room-stroll': {
     id: 'room-stroll',
@@ -59,7 +59,7 @@ export const TASK_LIBRARY: Readonly<Record<TaskId, TaskTemplate>> = {
     title: '在饼屋里走走',
     description: '去两个不同的角落',
     target: 2,
-    rewardApples: 2,
+    rewardApples: 3,
   },
   'piano-time': {
     id: 'piano-time',
@@ -67,7 +67,7 @@ export const TASK_LIBRARY: Readonly<Record<TaskId, TaskTemplate>> = {
     title: '弹一小段琴',
     description: '在电子琴上弹响一个音',
     target: 1,
-    rewardApples: 1,
+    rewardApples: 2,
   },
   'record-time': {
     id: 'record-time',
@@ -75,7 +75,7 @@ export const TASK_LIBRARY: Readonly<Record<TaskId, TaskTemplate>> = {
     title: '看看一张唱片',
     description: '主动打开唱片播放器看看',
     target: 1,
-    rewardApples: 1,
+    rewardApples: 2,
   },
   'two-melodies': {
     id: 'two-melodies',
@@ -83,7 +83,7 @@ export const TASK_LIBRARY: Readonly<Record<TaskId, TaskTemplate>> = {
     title: '逛逛音乐角落',
     description: '弹响不同琴键，或打开不同视频看看',
     target: 2,
-    rewardApples: 2,
+    rewardApples: 3,
   },
   'wardrobe-choice': {
     id: 'wardrobe-choice',
@@ -91,7 +91,7 @@ export const TASK_LIBRARY: Readonly<Record<TaskId, TaskTemplate>> = {
     title: '挑挑今天的造型',
     description: '去衣架旁看看',
     target: 1,
-    rewardApples: 1,
+    rewardApples: 2,
   },
   'open-memories': {
     id: 'open-memories',
@@ -99,7 +99,7 @@ export const TASK_LIBRARY: Readonly<Record<TaskId, TaskTemplate>> = {
     title: '打开收藏墙',
     description: '看看已经收藏的回忆',
     target: 1,
-    rewardApples: 1,
+    rewardApples: 2,
     assignmentRequirements: [{ kind: 'owned-collection', minimum: 1 }],
   },
   'revisit-two': {
@@ -108,7 +108,7 @@ export const TASK_LIBRARY: Readonly<Record<TaskId, TaskTemplate>> = {
     title: '重温两份回忆',
     description: '查看两份不同的收藏',
     target: 2,
-    rewardApples: 2,
+    rewardApples: 3,
     assignmentRequirements: [{ kind: 'owned-collection', minimum: 2 }],
   },
   'remember-postcard': {
@@ -117,7 +117,7 @@ export const TASK_LIBRARY: Readonly<Record<TaskId, TaskTemplate>> = {
     title: '重看一张明信片',
     description: '查看一份明信片收藏',
     target: 1,
-    rewardApples: 1,
+    rewardApples: 2,
     assignmentRequirements: [{ kind: 'owned-collection', category: 'postcard', minimum: 1 }],
   },
   'remember-million': {
@@ -126,7 +126,7 @@ export const TASK_LIBRARY: Readonly<Record<TaskId, TaskTemplate>> = {
     title: '重看一次百万瞬间',
     description: '查看一份百万直拍收藏',
     target: 1,
-    rewardApples: 1,
+    rewardApples: 2,
     assignmentRequirements: [{ kind: 'owned-collection', category: 'million-shot', minimum: 1 }],
   },
   'remember-first': {
@@ -135,7 +135,7 @@ export const TASK_LIBRARY: Readonly<Record<TaskId, TaskTemplate>> = {
     title: '重看全站第一',
     description: '查看一份全站第一收藏',
     target: 1,
-    rewardApples: 2,
+    rewardApples: 3,
     assignmentRequirements: [{ kind: 'owned-collection', category: 'site-first', minimum: 1 }],
   },
   'stage-test': {
@@ -144,7 +144,7 @@ export const TASK_LIBRARY: Readonly<Record<TaskId, TaskTemplate>> = {
     title: '奇迹饼狗',
     description: '完成一次舞台测试',
     target: 1,
-    rewardApples: 3,
+    rewardApples: 4,
     oneOff: true,
   },
 }

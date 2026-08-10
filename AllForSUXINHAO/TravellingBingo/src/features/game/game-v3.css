@@ -297,25 +297,15 @@
   font-size: 0.72rem;
 }
 
-.pet-menu__wishes {
-  display: grid;
-  gap: 0.3rem;
-}
-
-.pet-menu__wishes p {
+.pet-menu__vitality {
   display: grid;
   grid-template-columns: 3rem minmax(0, 1fr);
   gap: 0.35rem;
   align-items: center;
 }
 
-.pet-menu__wishes p.is-reluctant {
-  filter: saturate(0.35);
-  opacity: 0.68;
-}
-
-.pet-menu__wishes strong,
-.pet-menu__wishes span {
+.pet-menu__vitality strong,
+.pet-menu__vitality span {
   font-size: 0.72rem;
 }
 

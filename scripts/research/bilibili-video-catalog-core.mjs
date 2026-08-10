@@ -69,6 +69,14 @@ function videoMetadataMatches(left, right) {
   return VIDEO_FIELDS.every((field) => left[field] === right[field])
 }
 
+function favoriteVideoMatches(left, right) {
+  return (
+    videoMetadataMatches(left, right) &&
+    left.favoriteId === right.favoriteId &&
+    left.favoriteOrder === right.favoriteOrder
+  )
+}
+
 function assertUnique(items, getKey, label) {
   const keys = items.map(getKey)
   invariant(new Set(keys).size === keys.length, `${label} 存在重复值`)
@@ -128,6 +136,8 @@ export function assertVideoCatalog(catalog) {
   invariant(isRecord(catalog.folders), 'folders 必须是对象')
   assertFolder(catalog.folders.millionShots, 'folders.millionShots')
   assertFolder(catalog.folders.siteFirsts, 'folders.siteFirsts')
+  assertFolder(catalog.folders.streaming, 'folders.streaming')
+  invariant(catalog.folders.streaming.favoriteId === 3963921644, '刷播收藏夹 ID 无效')
 
   invariant(Array.isArray(catalog.videos), 'videos 必须是数组')
   catalog.videos.forEach((video, index) => assertVideoMetadata(video, `videos[${index}]`))
@@ -194,6 +204,50 @@ export function assertVideoCatalog(catalog) {
     )
   })
 
+  invariant(isRecord(catalog.streamPlaylist), 'streamPlaylist 必须是对象')
+  invariant(
+    catalog.streamPlaylist.sourceFavoriteId === catalog.folders.streaming.favoriteId,
+    '刷播收藏夹来源不一致',
+  )
+  invariant(catalog.streamPlaylist.sourceFavoriteId === 3963921644, '刷播收藏夹来源 ID 无效')
+  assertNonEmptyString(catalog.streamPlaylist.selectionRule, 'streamPlaylist.selectionRule')
+  invariant(
+    Array.isArray(catalog.streamPlaylist.items) && catalog.streamPlaylist.items.length > 0,
+    '刷播收藏夹必须至少有一项',
+  )
+  catalog.streamPlaylist.items.forEach((video, index) => {
+    assertFavoriteVideo(video, `streamPlaylist.items[${index}]`)
+    invariant(
+      video.favoriteId === catalog.folders.streaming.favoriteId,
+      '刷播视频 favoriteId 与收藏夹不一致',
+    )
+    invariant(video.favoriteOrder === index + 1, '刷播视频顺序必须从 1 连续递增')
+    invariant(
+      videoMetadataMatches(video, getVideoByBvid(catalog, video.bvid)),
+      '刷播视频元数据与视频索引不一致',
+    )
+  })
+  assertUnique(catalog.streamPlaylist.items, (video) => video.bvid, 'streamPlaylist.bvid')
+  invariant(
+    catalog.streamPlaylist.items.length === catalog.folders.streaming.visibleItemCount,
+    '刷播目录必须包含收藏夹全部可见视频',
+  )
+  invariant(
+    catalog.folders.streaming.latestPage.items.length ===
+      Math.min(
+        catalog.folders.streaming.visibleItemCount,
+        catalog.folders.streaming.latestPage.pageSize,
+      ),
+    '刷播收藏夹首页数量与可见视频数不一致',
+  )
+  catalog.folders.streaming.latestPage.items.forEach((video, index) => {
+    const streamVideo = catalog.streamPlaylist.items[index]
+    invariant(
+      streamVideo && favoriteVideoMatches(video, streamVideo),
+      '刷播目录必须与收藏夹首页顺序一致',
+    )
+  })
+
   invariant(!JSON.stringify(catalog).includes('"embedUrl"'), '视频目录不得持久化 embedUrl')
   return catalog
 }
@@ -234,6 +288,9 @@ function favoriteVideoForBvid(catalog, bvid) {
   )
   if (siteFirstMapping) return videoForMapping(catalog, siteFirstMapping)
 
+  const streamVideo = catalog.streamPlaylist.items.find((video) => video.bvid === bvid)
+  if (streamVideo) return streamVideo
+
   throw new Error(`视频 ${bvid} 缺少收藏夹快照位置`)
 }
 
@@ -261,11 +318,20 @@ export function buildPublicVideoCatalog(catalog) {
         visibleItemCount: catalog.folders.siteFirsts.visibleItemCount,
         latestPage: catalog.folders.siteFirsts.latestPage,
       },
+      streaming: {
+        favoriteId: catalog.folders.streaming.favoriteId,
+        title: catalog.folders.streaming.title,
+        sourceUrl: catalog.folders.streaming.sourceUrl,
+        reportedItemCount: catalog.folders.streaming.reportedItemCount,
+        visibleItemCount: catalog.folders.streaming.visibleItemCount,
+        latestPage: catalog.folders.streaming.latestPage,
+      },
     },
     videos: Object.fromEntries(
       catalog.videos.map((video) => [video.bvid, favoriteVideoForBvid(catalog, video.bvid)]),
     ),
     posterMappings: catalog.posterMappings,
     recordPlayer: catalog.recordPlayer,
+    streamPlaylist: catalog.streamPlaylist,
   }
 }

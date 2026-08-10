@@ -30,12 +30,12 @@ const EXPECTED_HOTSPOTS: Record<RoomAreaId, { x: number; y: number }> = {
   bed: { x: 22, y: 29 },
   computer: { x: 52, y: 29 },
   wardrobe: { x: 54, y: 44 },
-  keyboard: { x: 17, y: 79 },
+  keyboard: { x: 17, y: 67 },
   fridge: { x: 50, y: 59 },
-  recordPlayer: { x: 75, y: 74 },
+  recordPlayer: { x: 75, y: 84 },
   album: { x: 81, y: 60 },
   trendComputer: { x: 72, y: 29 },
-  workComputer: { x: 38, y: 82 },
+  workComputer: { x: 22, y: 86 },
   door: { x: 92, y: 74 },
 }
 
@@ -64,7 +64,7 @@ describe('纵向房间配置', () => {
     expect(large.height!).toBeGreaterThan(large.width!)
   })
 
-  it('设施热点互不重叠，饼狗中心严格使用 1098 × 1433 母版像素', () => {
+  it('热点坐标互不重复，饼狗中心严格使用 1098 × 1433 母版像素', () => {
     const allAreas = [DEFAULT_ROOM_AREA, ...ROOM_AREAS]
     const ids = allAreas.map((area) => area.id)
     const hotspotCoordinates = ROOM_AREAS.map((area) => `${area.hotspot.x},${area.hotspot.y}`)
@@ -93,10 +93,13 @@ describe('纵向房间配置', () => {
       expect(area.hotspot).toEqual(EXPECTED_HOTSPOTS[area.id])
     }
 
-    const streamHotspot = ROOM_AREAS.find((area) => area.id === 'computer')!.hotspot
+    const streamHotspot = roomAreaForWorld(
+      ROOM_AREAS.find((area) => area.id === 'computer')!,
+      'reality',
+    ).hotspot
     const trendHotspot = ROOM_AREAS.find((area) => area.id === 'trendComputer')!.hotspot
-    expect(streamHotspot.y).toBe(trendHotspot.y)
     expect(trendHotspot.x - streamHotspot.x).toBeGreaterThanOrEqual(20)
+    expect(trendHotspot.y - streamHotspot.y).toBeGreaterThanOrEqual(10)
   })
 
   it('面板、活动和持久化位置都映射回统一坐标表', () => {
@@ -113,6 +116,7 @@ describe('纵向房间配置', () => {
       id: 'computer',
       panel: 'reality-stream',
       buttonLabel: '刷播',
+      hotspot: { x: 52, y: 18 },
     })
 
     const expectedActivityAreas: Record<ActivityKind, string> = {

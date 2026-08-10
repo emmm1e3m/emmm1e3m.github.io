@@ -2,7 +2,7 @@ import { useEffect, useRef, useState, type CSSProperties, type Ref } from 'react
 
 import { publicAsset } from '@/app/assets'
 import { MascotSprite, type MascotPose } from '@/components/MascotSprite'
-import type { GameState, TaskEvent } from '@/domain'
+import { getPetVitalityStatus, isVitalityActive, type GameState, type TaskEvent } from '@/domain'
 
 import { ACTIVITY_COPY } from './gameCopy'
 import {
@@ -71,6 +71,7 @@ function PetMenu({ game, open, onClose, onPanel }: PetMenuProps) {
 
   if (!open) return null
   const activity = game.activeActivity
+  const vitalityStatus = getPetVitalityStatus(pet.preferences, isVitalityActive(game))
 
   return (
     <div
@@ -78,7 +79,7 @@ function PetMenu({ game, open, onClose, onPanel }: PetMenuProps) {
       className="pet-menu"
       id="pet-action-menu"
       role="dialog"
-      aria-label="饼狗想做什么"
+      aria-label="饼狗状态"
       onKeyDown={(event) => {
         if (event.key === 'Escape') {
           event.stopPropagation()
@@ -92,27 +93,14 @@ function PetMenu({ game, open, onClose, onPanel }: PetMenuProps) {
           收起菜单
         </button>
       </div>
-      {activity ? (
+      <p className="pet-menu__vitality" aria-label="饼狗活力状态">
+        <strong>活力状态</strong>
+        <span>{vitalityStatus}</span>
+      </p>
+      {activity && (
         <button type="button" onClick={() => onPanel('activity')}>
           查看这次活动
         </button>
-      ) : (
-        <div className="pet-menu__wishes" aria-label="饼狗今天的想法">
-          <p className={pet.preferences.travel && !pet.tired ? '' : 'is-reluctant'}>
-            <strong>出门</strong>
-            <span>{pet.preferences.travel && !pet.tired ? '想出去走走' : '更想待在家'}</span>
-          </p>
-          <p className={pet.preferences.computer && !pet.tired ? '' : 'is-reluctant'}>
-            <strong>电脑</strong>
-            <span>
-              {pet.preferences.computer && !pet.tired ? '愿意认真坐一会儿' : '想离屏幕远一点'}
-            </span>
-          </p>
-          <p className={pet.preferences.music && !pet.tired ? '' : 'is-reluctant'}>
-            <strong>音乐</strong>
-            <span>{pet.preferences.music && !pet.tired ? '想听见一点旋律' : '今天想安静一点'}</span>
-          </p>
-        </div>
       )}
     </div>
   )

@@ -21,7 +21,15 @@ describe('GameHud', () => {
   })
 
   it('用单行完整句显示 V4 顶栏中心文案', () => {
-    const game = createInitialGameState({ now: 1_000, seed: 'v4-hud-copy' })
+    const initial = createInitialGameState({ now: 1_000, seed: 'v4-hud-copy' })
+    const game = {
+      ...initial,
+      pet: {
+        ...initial.pet,
+        preferences: { travel: true, computer: true, music: true },
+        tired: false,
+      },
+    }
 
     render(
       <GameHud
@@ -49,8 +57,58 @@ describe('GameHud', () => {
       center.closest('header'),
     )
     expect(screen.getByRole('status', { name: '饼狗状态' })).toHaveTextContent(
-      '状态很好你陪伴饼狗已经 0 天',
+      '状态很好高活力你陪伴饼狗已经 0 天',
     )
+    expect(screen.getByLabelText('活力状态 高活力')).toBeInTheDocument()
+  })
+
+  it('独立显示活力状态，不覆盖正在进行的活动文案', () => {
+    const initial = createInitialGameState({ now: 1_000, seed: 'v4-hud-vitality' })
+    const game = {
+      ...initial,
+      pet: {
+        ...initial.pet,
+        preferences: { travel: true, computer: true, music: false },
+        tired: false,
+      },
+    }
+    const props = {
+      now: 1_000,
+      activity: null,
+      timing: deriveActivityTiming(null, 1_000),
+      dirty: false,
+      statusLabel: '正在弹琴',
+      vitalityDays: 0,
+      onExit: vi.fn(),
+      onCenter: vi.fn(),
+      onFridge: vi.fn(),
+      onAlbum: vi.fn(),
+      onDebug: vi.fn(),
+    } as const
+    const { rerender } = render(<GameHud {...props} game={game} />)
+
+    const status = screen.getByRole('status', { name: '饼狗状态' })
+    expect(status).toHaveTextContent('正在弹琴')
+    expect(status).toHaveTextContent('中等活力')
+
+    rerender(
+      <GameHud
+        {...props}
+        game={{
+          ...game,
+          player: {
+            effects: {
+              vitality: {
+                activatedAt: 1_000,
+                activatedOnCompanionDay: 0,
+                expiresAfterCompanionDay: 7,
+              },
+            },
+          },
+        }}
+      />,
+    )
+    expect(status).toHaveTextContent('活力满满')
   })
 
   it('为顶栏各块分别提供协调的圆角矩形背景', () => {
@@ -58,7 +116,6 @@ describe('GameHud', () => {
       ['.game-hud--v4 .exit-button--text', '#f8e2dc'],
       ['.game-hud--v4 .game-hud__center', '#fff1dc'],
       ['.game-page--v4 .pet-status-bar', '#f8eee4'],
-      ['.game-hud--v4 .reality-stay-timer', '#e5eff2'],
       ['.game-hud--v4 .apple-counter', '#ffe9c9'],
       ['.game-hud--v4 .hud-icon--album', '#f7dfdf'],
       ['.game-hud--v4 .debug-chip', '#eee3f2'],
@@ -70,6 +127,9 @@ describe('GameHud', () => {
         ),
       )
     }
+    expect(gameV4Styles).toMatch(
+      /\.game-hud--v4 \.reality-stay-timer,\s*\.game-hud--v4 \.visitor-stream-timer\s*\{[^}]*background:\s*#e5eff2;/su,
+    )
     expect(gameV4Styles).toMatch(
       /\.game-hud--v4 \.exit-button--text,[^}]*\.game-page--v4 \.pet-status-bar,[^}]*\{[^}]*border-radius:\s*14px !important;/su,
     )

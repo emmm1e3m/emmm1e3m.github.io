@@ -4,7 +4,7 @@ import type { ReactNode } from 'react'
 import type { ContentCatalog, RecordPlayerVideo } from '@/content'
 import { createInitialGameState, type GameAction, type GameState } from '@/domain'
 import { BilibiliPlayerProvider, PersistentPlayerDock } from '@/features/player'
-import type { StreamPlaybackController } from '@/features/reality'
+import type { StreamPlaybackController, VisitorStreamController } from '@/features/reality'
 
 import { ContextPanel } from './ContextPanel'
 
@@ -46,6 +46,7 @@ const contentCatalog: ContentCatalog = {
   friendById: {},
   videosByBvid: Object.fromEntries(recordVideos.map((video) => [video.bvid, video])),
   recordPlayerVideos: recordVideos,
+  streamVideos: [],
 }
 
 function gameWithActiveTravel(): GameState {
@@ -118,6 +119,7 @@ function idleStreamPlayback(): StreamPlaybackController {
       round: 0,
       sessionRoundsCompleted: 0,
       openDelayMs: 8_000,
+      roundDurationMs: 310_000,
       stopAfterMs: null,
       mode: null,
       sourceInput: '',
@@ -126,11 +128,29 @@ function idleStreamPlayback(): StreamPlaybackController {
       message: '尚未开始刷播',
       errors: [],
     },
-    start: vi.fn(() => ({ ok: true as const, bvids: [], errors: [] as const })),
+    start: vi.fn(() => ({ ok: true as const, bvid: null, errors: [] as const })),
     resume: vi.fn(() => true),
     stop: vi.fn(),
     getRemainingMs: vi.fn(() => null),
     getStopRemainingMs: vi.fn(() => null),
+  }
+}
+
+function idleVisitorStreamPlayback(): VisitorStreamController {
+  return {
+    state: {
+      status: 'idle',
+      startedAt: null,
+      round: 0,
+      completedRounds: 0,
+      frames: [],
+      bvids: [],
+      videoIntervalMs: 8_000,
+      roundIntervalMs: 310_000,
+      message: '游客刷播未运行',
+    },
+    start: vi.fn(() => true),
+    stop: vi.fn(),
   }
 }
 
@@ -143,6 +163,9 @@ const commonProps = {
   onBackup: vi.fn(),
   onTaskEvent: vi.fn(),
   streamPlayback: idleStreamPlayback(),
+  visitorStreamPlayback: idleVisitorStreamPlayback(),
+  streamVideoIntervalMs: 8_000,
+  onStreamVideoIntervalChange: vi.fn(),
   streamRoundDurationSeconds: 310,
   onStreamRoundDurationChange: vi.fn(),
 }
@@ -272,7 +295,7 @@ describe('ContextPanel 信息栏交互', () => {
     expect(onAction).not.toHaveBeenCalled()
   })
 
-  it('共享活力确认只派发魔法动作，没有魔法时则立即拒绝且不开始活动', async () => {
+  it('共享活力确认只派发魔法动作，没有魔法时不显示库存说明', async () => {
     const onAction = vi.fn()
     const { rerender } = render(
       <ContextPanel
@@ -299,7 +322,10 @@ describe('ContextPanel 信息栏交互', () => {
         vitalityPromptRequest={{ token: 19, panel: 'computer', kind: null, interest: 'computer' }}
       />,
     )
-    expect(await screen.findByRole('alert')).toHaveTextContent('冰箱里还没有瓶装活力魔法')
+    const sharedPrompt = await screen.findByLabelText('使用活力魔法')
+    expect(within(sharedPrompt).getByRole('button', { name: '去床铺休息' })).toBeInTheDocument()
+    expect(screen.queryByText(/冰箱里还没有瓶装活力魔法/u)).not.toBeInTheDocument()
+    expect(within(sharedPrompt).queryByRole('alert')).not.toBeInTheDocument()
     expect(onAction).not.toHaveBeenCalled()
   })
 

@@ -1,6 +1,7 @@
 import { render, screen } from '@testing-library/react'
 
 import { DataPanel } from './DataPanel'
+import gameV4Styles from '../game/game-v4.css?raw'
 import realityStyles from './reality.css?raw'
 
 describe('DataPanel', () => {
@@ -22,6 +23,12 @@ describe('DataPanel', () => {
     expect(link.closest('aside')).toHaveClass('reality-group-card--centered')
     expect(realityStyles).toMatch(
       /\.reality-group-card--centered \.reality-primary-link\s*\{[^}]*align-self:\s*center;[^}]*margin-inline:\s*auto;/su,
+    )
+    expect(gameV4Styles).toMatch(
+      /\.reality-group-card--centered\s+\.reality-primary-link\s*\{[^}]*justify-self:\s*center;[^}]*width:\s*min\(100%,\s*16rem\);/su,
+    )
+    expect(gameV4Styles).toMatch(
+      /\.reality-context-panel \.reality-group-card\s*\{[^}]*grid-template-columns:\s*minmax\(0,\s*1fr\);/su,
     )
   })
 })

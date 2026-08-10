@@ -495,7 +495,7 @@ describe('房屋场景定位与返回交互', () => {
     expect(onArea).toHaveBeenCalledWith(fridge)
 
     fireEvent.click(screen.getByRole('button', { name: '饼狗，打开行动菜单' }))
-    expect(screen.getByRole('dialog', { name: '饼狗想做什么' })).toBeInTheDocument()
+    expect(screen.getByRole('dialog', { name: '饼狗状态' })).toBeInTheDocument()
     expect(onTaskEvent).toHaveBeenCalledWith({ type: 'pet-menu-opened' })
 
     expect(gameV4Styles).toMatch(/\.room-card--v4 \.room-hotspot\s*\{\s*z-index:\s*9;\s*\}/u)
@@ -579,9 +579,12 @@ describe('房屋场景定位与返回交互', () => {
     }
 
     fireEvent.click(screen.getByRole('button', { name: '饼狗，打开行动菜单' }))
-    expect(screen.getByRole('dialog', { name: '饼狗想做什么' })).toBeInTheDocument()
+    expect(screen.getByRole('dialog', { name: '饼狗状态' })).toBeInTheDocument()
     expect(screen.getByText('饼狗正看着你👀')).toBeInTheDocument()
-    expect(screen.getByLabelText('饼狗今天的想法')).toBeInTheDocument()
+    expect(screen.getByLabelText('饼狗活力状态')).toHaveTextContent(
+      /低活力|中等活力|高活力|活力满满/u,
+    )
+    expect(document.querySelector('.pet-menu__wishes')).toBeNull()
     expect(screen.queryByRole('button', { name: '和饼狗打个招呼' })).not.toBeInTheDocument()
   })
 
@@ -598,7 +601,9 @@ describe('房屋场景定位与返回交互', () => {
     expect(mascot).not.toHaveClass('is-wandering', 'is-wander-moving')
     fireEvent.click(mascot)
 
-    expect(screen.getByRole('dialog', { name: '饼狗想做什么' })).toBeInTheDocument()
+    expect(screen.getByRole('dialog', { name: '饼狗状态' })).toBeInTheDocument()
+    expect(screen.getByLabelText('饼狗活力状态')).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: '查看这次活动' })).toBeInTheDocument()
     expect(onPanel).toHaveBeenCalledWith('activity')
   })
 
@@ -607,7 +612,7 @@ describe('房屋场景定位与返回交互', () => {
     const { rerender } = renderRoom({ game: idleGame })
 
     fireEvent.click(screen.getByRole('button', { name: '饼狗，打开行动菜单' }))
-    expect(screen.getByRole('dialog', { name: '饼狗想做什么' })).toBeInTheDocument()
+    expect(screen.getByRole('dialog', { name: '饼狗状态' })).toBeInTheDocument()
 
     rerender(
       <RoomScene
@@ -655,7 +660,7 @@ describe('房屋场景定位与返回交互', () => {
         onTaskEvent={vi.fn()}
       />,
     )
-    expect(screen.queryByRole('dialog', { name: '饼狗想做什么' })).not.toBeInTheDocument()
+    expect(screen.queryByRole('dialog', { name: '饼狗状态' })).not.toBeInTheDocument()
   })
 
   it('旅行占位是母版内可聚焦按钮，点击后打开活动进度', () => {

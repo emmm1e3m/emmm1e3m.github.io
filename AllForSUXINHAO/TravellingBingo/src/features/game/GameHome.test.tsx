@@ -2,7 +2,13 @@ import { act, fireEvent, render, screen, waitFor, within } from '@testing-librar
 import { useState } from 'react'
 
 import type { BilibiliVideo, CollectibleItem, ContentCatalog } from '@/content'
-import { createInitialGameState, type GameState } from '@/domain'
+import {
+  createInitialGameState,
+  reduceGame,
+  type CollectionCatalog,
+  type GameAction,
+  type GameState,
+} from '@/domain'
 
 import { ACTIVITY_COPY, STAGE_TEST_URL } from './gameCopy'
 import { GameHome, type PanelId } from './GameHome'
@@ -36,6 +42,14 @@ const catalog: ContentCatalog = {
   friendById: {},
   videosByBvid: {},
   recordPlayerVideos: [],
+  streamVideos: [],
+}
+
+const domainCatalog: CollectionCatalog = {
+  postcard: [postcard.id],
+  'million-shot': [],
+  'site-first': [],
+  siteFirstChronology: [],
 }
 
 const albumVideo: BilibiliVideo = {
@@ -68,6 +82,7 @@ const videoCatalog: ContentCatalog = {
   friendById: {},
   videosByBvid: { [albumVideo.bvid]: albumVideo },
   recordPlayerVideos: [],
+  streamVideos: [],
 }
 
 function collectedGame(): GameState {
@@ -138,15 +153,25 @@ function RoomPanelHarness({ game = collectedGame() }: { game?: GameState }) {
 
 function RealityStreamHarness() {
   const [panel, setPanel] = useState<PanelId | null>('reality-stream')
-  const base = createInitialGameState({ now: 1_000, seed: 'reality-stream-stability' })
-  const game: GameState = {
-    ...base,
-    world: 'reality',
-    reality: {
-      ...base.reality,
-      activeStay: { stayId: 'reality-stream-stay', enteredAt: 1_000 },
-    },
+  const [game, setGame] = useState<GameState>(() => {
+    const base = createInitialGameState({ now: 1_000, seed: 'reality-stream-stability' })
+    return {
+      ...base,
+      world: 'reality',
+      reality: {
+        ...base.reality,
+        activeStay: { stayId: 'reality-stream-stay', enteredAt: 1_000 },
+      },
+    }
+  })
+
+  const onAction = (action: GameAction) => {
+    setGame((current) => {
+      const transition = reduceGame(current, action, domainCatalog)
+      return transition.ok ? transition.state : current
+    })
   }
+
   return (
     <GameHome
       game={game}
@@ -156,7 +181,7 @@ function RealityStreamHarness() {
       dirty={false}
       reward={null}
       onPanel={setPanel}
-      onAction={vi.fn()}
+      onAction={onAction}
       onExit={vi.fn()}
       onBackup={vi.fn()}
       onDismissReward={vi.fn()}
@@ -264,6 +289,7 @@ describe('收藏墙模态框', () => {
       friendById: {},
       videosByBvid: {},
       recordPlayerVideos: [],
+      streamVideos: [],
     }
     render(
       <GameHome
@@ -407,10 +433,10 @@ describe('现实刷播运行时', () => {
     const openSpy = vi.spyOn(window, 'open').mockReturnValue(openedWindow)
 
     const { unmount } = render(<RealityStreamHarness />)
-    fireEvent.change(screen.getByRole('textbox', { name: '视频BV号或链接列表' }), {
+    fireEvent.change(screen.getByRole('textbox', { name: '自测视频BV号' }), {
       target: { value: 'BV1xx411c7mD' },
     })
-    fireEvent.click(screen.getByRole('button', { name: '开始刷播' }))
+    fireEvent.click(screen.getByRole('button', { name: '开始登录刷播' }))
 
     await waitFor(() => expect(openSpy).toHaveBeenCalledOnce())
     expect(screen.getByText('本轮播放中')).toBeVisible()
@@ -420,8 +446,8 @@ describe('现实刷播运行时', () => {
 
     fireEvent.click(screen.getByRole('button', { name: '刷播' }))
     expect(screen.getByText('本轮播放中')).toBeVisible()
-    expect(screen.getByRole('textbox', { name: '视频BV号或链接列表' })).toBeDisabled()
-    expect(screen.getByRole('textbox', { name: '视频BV号或链接列表' })).toHaveValue('BV1xx411c7mD')
+    expect(screen.getByRole('textbox', { name: '自测视频BV号' })).toBeDisabled()
+    expect(screen.getByRole('textbox', { name: '自测视频BV号' })).toHaveValue('BV1xx411c7mD')
     expect(openSpy).toHaveBeenCalledOnce()
 
     unmount()
@@ -555,7 +581,7 @@ describe('房间互动', () => {
     )
 
     fireEvent.click(screen.getByRole('button', { name: '饼狗，打开行动菜单' }))
-    expect(screen.getByRole('dialog', { name: '饼狗想做什么' })).toBeInTheDocument()
+    expect(screen.getByRole('dialog', { name: '饼狗状态' })).toBeInTheDocument()
     expect(onAction).toHaveBeenCalledWith(
       expect.objectContaining({
         type: 'task/event',
@@ -768,13 +794,13 @@ describe('房间互动', () => {
     }
     const { rerender } = render(<GameHome {...props} game={collectedGame()} />)
     fireEvent.click(screen.getByRole('button', { name: '饼狗，打开行动菜单' }))
-    expect(screen.getByRole('dialog', { name: '饼狗想做什么' })).toBeInTheDocument()
+    expect(screen.getByRole('dialog', { name: '饼狗状态' })).toBeInTheDocument()
 
     rerender(<GameHome {...props} game={activeGame('music')} />)
-    expect(screen.queryByRole('dialog', { name: '饼狗想做什么' })).not.toBeInTheDocument()
+    expect(screen.queryByRole('dialog', { name: '饼狗状态' })).not.toBeInTheDocument()
 
     rerender(<GameHome {...props} game={collectedGame()} />)
-    expect(screen.queryByRole('dialog', { name: '饼狗想做什么' })).not.toBeInTheDocument()
+    expect(screen.queryByRole('dialog', { name: '饼狗状态' })).not.toBeInTheDocument()
   })
 
   it('休息读条一开始就暗场，饼狗中心落在床面，并提供取消入口', () => {
@@ -903,7 +929,7 @@ describe('舞台测试与调试控件', () => {
 })
 
 describe('V4 壳层接线', () => {
-  it('状态条以状态正常为待机文案，并按休息需要与活动阶段派生', () => {
+  it('状态条保留待机与活动文案，并独立显示活力状态', () => {
     const base = collectedGame()
     const props = {
       catalog,
@@ -919,6 +945,9 @@ describe('V4 壳层接线', () => {
     const { rerender } = render(<GameHome {...props} game={base} now={1_000} />)
 
     expect(screen.getByRole('status', { name: '饼狗状态' })).toHaveTextContent('状态正常')
+    expect(screen.getByRole('status', { name: '饼狗状态' })).toHaveTextContent(
+      /低活力|中等活力|高活力/u,
+    )
 
     rerender(
       <GameHome {...props} game={{ ...base, pet: { ...base.pet, tired: true } }} now={1_000} />,
@@ -926,12 +955,16 @@ describe('V4 壳层接线', () => {
 
     const statusBar = screen.getByRole('status', { name: '饼狗状态' })
     expect(statusBar).toHaveTextContent('今天想先休息')
+    expect(statusBar).toHaveTextContent(/低活力|中等活力|高活力/u)
     expect(statusBar.closest('header')).toHaveClass('game-hud--v4')
     expect(statusBar.parentElement).toHaveClass('game-hud__actions')
 
     rerender(<GameHome {...props} game={activeGame('music')} now={2_000} />)
     expect(screen.getByRole('status', { name: '饼狗状态' })).toHaveTextContent(
       ACTIVITY_COPY.music.verb,
+    )
+    expect(screen.getByRole('status', { name: '饼狗状态' })).toHaveTextContent(
+      /低活力|中等活力|高活力/u,
     )
 
     rerender(<GameHome {...props} game={activeGame('music')} now={114_000} />)

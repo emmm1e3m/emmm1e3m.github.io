@@ -44,6 +44,7 @@ export interface RoomArea {
   buttonLabel: string
   realityButtonLabel?: string
   hotspot: { x: number; y: number }
+  realityHotspot?: { x: number; y: number }
   /** 以 1098 × 1433 房屋母版为准的饼狗中心点像素坐标。 */
   petCenter: RoomPixelPoint
   activityKinds?: readonly ActivityKind[]
@@ -54,7 +55,7 @@ export interface RoomArea {
 }
 
 /**
- * 设施热点沿用原有百分比；饼狗位置只保存房屋母版像素，渲染时统一换算。
+ * 设施热点使用房屋百分比，现实入口可单独覆写；饼狗位置统一保存母版像素。
  */
 export const ROOM_AREAS: readonly RoomArea[] = [
   {
@@ -74,6 +75,7 @@ export const ROOM_AREAS: readonly RoomArea[] = [
     label: '电脑',
     buttonLabel: '去电脑前',
     hotspot: { x: 52, y: 29 },
+    realityHotspot: { x: 52, y: 18 },
     petCenter: { x: 504, y: 409 },
     activityKinds: ['stream', 'trend'],
     interest: 'computer',
@@ -107,7 +109,7 @@ export const ROOM_AREAS: readonly RoomArea[] = [
     panel: 'piano',
     label: '电子琴',
     buttonLabel: '弹弹琴',
-    hotspot: { x: 17, y: 79 },
+    hotspot: { x: 17, y: 67 },
     petCenter: { x: 257, y: 1103 },
     activityKinds: ['music'],
     interest: 'music',
@@ -129,7 +131,7 @@ export const ROOM_AREAS: readonly RoomArea[] = [
     panel: 'record-player',
     label: '唱片机',
     buttonLabel: '放张唱片',
-    hotspot: { x: 75, y: 74 },
+    hotspot: { x: 75, y: 84 },
     petCenter: { x: 783, y: 1030 },
     interest: 'music',
     worlds: ['game', 'reality'],
@@ -150,7 +152,7 @@ export const ROOM_AREAS: readonly RoomArea[] = [
     panel: 'reality-work',
     label: '一楼电脑',
     buttonLabel: '工作',
-    hotspot: { x: 38, y: 82 },
+    hotspot: { x: 22, y: 86 },
     petCenter: { x: 420, y: 1172 },
     worlds: ['reality'],
     petLocation: 'work-computer',
@@ -195,8 +197,10 @@ export function roomAreaForWorld(area: RoomArea, world: WorldDimension): RoomAre
 
   const panel = area.realityPanel ?? area.panel
   const buttonLabel = area.realityButtonLabel ?? area.buttonLabel
-  if (panel === area.panel && buttonLabel === area.buttonLabel) return area
-  return { ...area, panel, buttonLabel }
+  const hotspot = area.realityHotspot ?? area.hotspot
+  if (panel === area.panel && buttonLabel === area.buttonLabel && hotspot === area.hotspot)
+    return area
+  return { ...area, panel, buttonLabel, hotspot }
 }
 
 export function areaForActivity(kind: ActivityKind) {

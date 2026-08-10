@@ -20,7 +20,7 @@ import {
   multiplyProbability,
   TRAVEL_FRIEND_GIFT_APPLES_BY_ID,
 } from './gameBalance'
-import { gameStateV7Schema } from './migrateGameStateV6'
+import { gameStateV8Schema } from './migrateGameStateV7'
 import { reduceGame } from './reducer'
 import { MAX_DATE_TIMESTAMP_MS } from './time'
 import type { ActivityKind, CollectionCatalog, GameState, GameTransition, ItemId } from './types'
@@ -99,12 +99,16 @@ function seedWhoseRewardRollIsBetween(minimum: number, maximum: number, rollInde
   throw new Error(`没有找到位于 [${minimum}, ${maximum}) 的第 ${rollIndex + 1} 次奖励随机值`)
 }
 
-describe('旅行饼狗 v6 领域状态', () => {
-  it('新游戏使用 schema v6、用户名、零天陪伴、10 秒活动与独立随机序列', () => {
+describe('旅行饼狗 v8 领域状态', () => {
+  it('新游戏使用 schema v8、用户名、零天陪伴、10 秒活动与独立随机序列', () => {
     const state = createInitialGameState({ now: 1_000, seed: 'save-seed' })
 
-    expect(state.schemaVersion).toBe(7)
+    expect(state.schemaVersion).toBe(8)
     expect(state.reality.streamHistory).toEqual({ completedRounds: 0, recentSessions: [] })
+    expect(state.reality.streamSettings).toEqual({
+      selfTestBvid: null,
+      dimensionPenetrationEnabled: false,
+    })
     expect(state.profile).toMatchObject({ displayName: '你', companionDays: 0 })
     expect(state.friends).toEqual({})
     expect(state.economy.apples).toBe(INITIAL_APPLES)
@@ -133,6 +137,50 @@ describe('旅行饼狗 v6 领域状态', () => {
     expect(state.random.seed).toBe('save-seed')
     expect(state.random.sequences).toEqual({ reward: 0, tasks: 1, preferences: 1 })
     expect(Object.values(state.pet.preferences).some(Boolean)).toBe(true)
+  })
+
+  it('持久更新单个自测 BV 与维度穿透开关，并允许清空自测视频', () => {
+    const initial = createInitialGameState({ now: 1_000, seed: 'stream-settings' })
+    const withBvid = successful(
+      reduceGame(initial, { type: 'reality/stream-self-test-set', bvid: 'BV1xx411c7mD' }, catalog),
+    ).state
+    const enabled = successful(
+      reduceGame(
+        withBvid,
+        { type: 'reality/stream-dimension-penetration-set', enabled: true },
+        catalog,
+      ),
+    ).state
+    const cleared = successful(
+      reduceGame(enabled, { type: 'reality/stream-self-test-set', bvid: null }, catalog),
+    ).state
+
+    expect(initial.reality.streamSettings).toEqual({
+      selfTestBvid: null,
+      dimensionPenetrationEnabled: false,
+    })
+    expect(enabled.reality.streamSettings).toEqual({
+      selfTestBvid: 'BV1xx411c7mD',
+      dimensionPenetrationEnabled: true,
+    })
+    expect(cleared.reality.streamSettings).toEqual({
+      selfTestBvid: null,
+      dimensionPenetrationEnabled: true,
+    })
+    expect(gameStateV8Schema.safeParse(cleared).success).toBe(true)
+  })
+
+  it('拒绝非法自测 BV，且不改写原状态', () => {
+    const initial = createInitialGameState({ now: 1_000, seed: 'invalid-stream-bvid' })
+    const result = reduceGame(
+      initial,
+      { type: 'reality/stream-self-test-set', bvid: 'BV123' },
+      catalog,
+    )
+
+    expect(result).toMatchObject({ ok: false, error: { code: 'INVALID_BVID' } })
+    expect(result.state).toBe(initial)
+    expect(result.effects).toEqual([])
   })
 
   it('开始活动原子扣除补给，并以绝对时间推导 10 秒边界', () => {
@@ -920,7 +968,7 @@ describe('旅行饼狗 v6 领域状态', () => {
         giftApples: 2,
       },
     })
-    expect(gameStateV7Schema.safeParse(claimed.state).success).toBe(true)
+    expect(gameStateV8Schema.safeParse(claimed.state).success).toBe(true)
   })
 
   it('电子琴只召来已认识朋友，领取后赠苹果并累计好友赠礼', () => {
@@ -1177,7 +1225,7 @@ describe('旅行饼狗 v6 领域状态', () => {
     expect(restClaimed.statistics.started.rest).toBe(Number.MAX_SAFE_INTEGER)
     expect(restClaimed.statistics.claimed.rest).toBe(Number.MAX_SAFE_INTEGER)
     expect(restClaimed.statistics.applesEarned).toBe(Number.MAX_SAFE_INTEGER)
-    expect(gameStateV7Schema.safeParse(restClaimed).success).toBe(true)
+    expect(gameStateV8Schema.safeParse(restClaimed).success).toBe(true)
   })
 
   it('活动统计达到上限后饱和，仍可生成可导出的活动状态', () => {
@@ -1195,7 +1243,7 @@ describe('旅行饼狗 v6 领域状态', () => {
     ).state
     expect(started.statistics.started.travel).toBe(Number.MAX_SAFE_INTEGER)
     expect(started.random.sequences.reward).toBe(1)
-    expect(gameStateV7Schema.safeParse(started).success).toBe(true)
+    expect(gameStateV8Schema.safeParse(started).success).toBe(true)
   })
 
   it('结束时间超出 Date 上限时在扣补给与推进随机序列前拒绝开始', () => {

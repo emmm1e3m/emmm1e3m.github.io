@@ -1,4 +1,10 @@
-import type { ActivityRun, ActivityTiming, GameState } from '@/domain'
+import {
+  getPetVitalityStatus,
+  isVitalityActive,
+  type ActivityRun,
+  type ActivityTiming,
+  type GameState,
+} from '@/domain'
 
 import { ACTIVITY_COPY, formatCountdown } from './gameCopy'
 
@@ -11,6 +17,7 @@ interface GameHudProps {
   inert?: boolean
   statusLabel: string
   vitalityDays: number
+  visitorStream?: { startedAt: number; round: number } | null
   onExit: () => void
   onCenter: () => void
   onFridge: () => void
@@ -36,6 +43,7 @@ export function GameHud({
   inert,
   statusLabel,
   vitalityDays,
+  visitorStream = null,
   onExit,
   onCenter,
   onFridge,
@@ -46,6 +54,7 @@ export function GameHud({
     game.world === 'reality' && game.reality.activeStay
       ? formatRealityStayDuration(game.reality.activeStay.enteredAt, now)
       : null
+  const vitalityStatus = getPetVitalityStatus(game.pet.preferences, isVitalityActive(game))
 
   return (
     <header className="game-hud game-hud--v3 game-hud--v4" inert={inert ? true : undefined}>
@@ -85,8 +94,21 @@ export function GameHud({
             现实 {realityStayDuration}
           </output>
         )}
+        {visitorStream && (
+          <output
+            className="visitor-stream-timer numeric-copy"
+            role="timer"
+            aria-label={`游客刷播已运行 ${formatRealityStayDuration(visitorStream.startedAt, now)}，第 ${visitorStream.round} 轮`}
+          >
+            游客 {formatRealityStayDuration(visitorStream.startedAt, now)} · 第{' '}
+            {visitorStream.round} 轮
+          </output>
+        )}
         <div className="pet-status-bar" role="status" aria-label="饼狗状态">
           <span className="pet-status-bar__label">{statusLabel}</span>
+          <span className="pet-status-bar__vitality" aria-label={`活力状态 ${vitalityStatus}`}>
+            {vitalityStatus}
+          </span>
           <span className="hud-companion">
             {game.profile.displayName}陪伴饼狗已经{' '}
             <span className="numeric-copy">{game.profile.companionDays}</span> 天

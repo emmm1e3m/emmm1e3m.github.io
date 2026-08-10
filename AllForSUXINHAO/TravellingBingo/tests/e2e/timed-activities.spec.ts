@@ -298,9 +298,9 @@ test('电子琴在 inert 弹窗后不响应，收藏墙切走面板会卸载音�
   await startGame(page, { seed: 'e2e-4', displayName: '钢琴生命周期' })
 
   await page.getByRole('button', { name: '饼狗，打开行动菜单' }).click()
-  await expect(page.getByRole('dialog', { name: '饼狗想做什么' })).toBeVisible()
+  await expect(page.getByRole('dialog', { name: '饼狗状态' })).toBeVisible()
   await page.locator('[data-hotspot="电子琴"]').click()
-  await expect(page.getByRole('dialog', { name: '饼狗想做什么' })).toHaveCount(0)
+  await expect(page.getByRole('dialog', { name: '饼狗状态' })).toHaveCount(0)
 
   const keyboard = page.locator('.piano').filter({ hasText: '和饼狗弹一小段' })
   await expect(keyboard).toBeVisible()
@@ -322,5 +322,5 @@ test('电子琴在 inert 弹窗后不响应，收藏墙切走面板会卸载音�
   await expect.poll(async () => (await readAudioProbe(page)).closes).toBe(beforePiano.closes + 1)
   await page.keyboard.press('z')
   expect((await readAudioProbe(page)).oscillators).toBe(beforePiano.oscillators + 3)
-  await expect(page.getByRole('dialog', { name: '饼狗想做什么' })).toHaveCount(0)
+  await expect(page.getByRole('dialog', { name: '饼狗状态' })).toHaveCount(0)
 })

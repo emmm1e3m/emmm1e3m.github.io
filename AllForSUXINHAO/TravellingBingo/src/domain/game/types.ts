@@ -415,6 +415,17 @@ export interface RealityStateV7 extends RealityState {
   streamHistory: StreamHistory
 }
 
+export interface StreamSettings {
+  /** 额外插入轮换序列开头的单个自测视频。 */
+  selfTestBvid: string | null
+  /** 返回游戏维度后仍运行实验性游客刷播。 */
+  dimensionPenetrationEnabled: boolean
+}
+
+export interface RealityStateV8 extends RealityStateV7 {
+  streamSettings: StreamSettings
+}
+
 export type MusicLoopMode = 'list' | 'single' | 'shuffle'
 
 /** 冻结 V4/旧 V5 存档校验专用，不属于当前播放器业务状态。 */
@@ -559,7 +570,12 @@ export interface GameStateV7 extends Omit<GameStateV6, 'schemaVersion' | 'realit
   reality: RealityStateV7
 }
 
-export type GameState = GameStateV7
+export interface GameStateV8 extends Omit<GameStateV7, 'schemaVersion' | 'reality'> {
+  schemaVersion: 8
+  reality: RealityStateV8
+}
+
+export type GameState = GameStateV8
 
 export interface ActivityTiming {
   phase: ActivityPhase
@@ -661,6 +677,8 @@ export type GameAction =
       roundsCompleted: number
       outcome: StreamSessionOutcome
     }
+  | { type: 'reality/stream-self-test-set'; bvid: string | null }
+  | { type: 'reality/stream-dimension-penetration-set'; enabled: boolean }
   | {
       type: 'reality/settle'
       stayId: string

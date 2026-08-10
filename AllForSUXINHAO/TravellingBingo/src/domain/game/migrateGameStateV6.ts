@@ -139,10 +139,11 @@ export function migrateGameStateV6ToV7(state: GameStateV6): GameStateV7 {
   }
 }
 
-export type StoredGameState = StoredGameStateThroughV6 | GameStateV7
+export type StoredGameStateThroughV7 = StoredGameStateThroughV6 | GameStateV7
+export type StoredGameState = StoredGameStateThroughV7
 
 export function migrateStoredGameStateToV7(
-  state: StoredGameState,
+  state: StoredGameStateThroughV7,
   options: MigrateGameStateV3Options,
 ): GameStateV7 {
   if (state.schemaVersion === 7) return state

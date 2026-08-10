@@ -3,11 +3,27 @@ import { describe, expect, it } from 'vitest'
 import {
   exhaustActivityPreference,
   generateActivityPreferences,
+  getPetVitalityStatus,
   getRefusalCountForRoll,
   isPetTired,
 } from './preferences'
 
 describe('饼狗活动偏好', () => {
+  it.each([
+    [{ travel: false, computer: false, music: false }, '低活力'],
+    [{ travel: true, computer: false, music: false }, '低活力'],
+    [{ travel: true, computer: true, music: false }, '中等活力'],
+    [{ travel: true, computer: true, music: true }, '高活力'],
+  ] as const)('按可做事情数量派生活力状态', (preferences, expected) => {
+    expect(getPetVitalityStatus(preferences, false)).toBe(expected)
+  })
+
+  it('有效活力魔法始终优先显示', () => {
+    expect(getPetVitalityStatus({ travel: false, computer: false, music: false }, true)).toBe(
+      '活力满满',
+    )
+  })
+
   it('按 35% / 50% / 15% 的精确边界决定拒绝数量', () => {
     expect(getRefusalCountForRoll(0)).toBe(0)
     expect(getRefusalCountForRoll(0.349_999)).toBe(0)
