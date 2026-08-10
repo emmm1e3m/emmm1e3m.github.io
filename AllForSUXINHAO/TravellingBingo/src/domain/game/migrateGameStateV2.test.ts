@@ -15,6 +15,7 @@ import { migrateGameStateV4ToV5 } from './migrateGameStateV4'
 import { migrateGameStateV5ToV6 } from './migrateGameStateV5'
 import { migrateGameStateV6ToV7 } from './migrateGameStateV6'
 import { migrateGameStateV7ToV8 } from './migrateGameStateV7'
+import { migrateGameStateV8ToV9 } from './migrateGameStateV8'
 import { reduceGame } from './reducer'
 import type { CollectionCatalog, GameStateV2, GameTransition } from './types'
 import { MAX_DATE_TIMESTAMP_MS } from './time'
@@ -24,6 +25,10 @@ const catalog: CollectionCatalog = {
   'million-shot': ['million-new'],
   'site-first': ['first-new'],
   siteFirstChronology: ['first-new'],
+}
+
+function migrateGameStateV7ToCurrent(state: Parameters<typeof migrateGameStateV7ToV8>[0]) {
+  return migrateGameStateV8ToV9(migrateGameStateV7ToV8(state))
 }
 
 function successful(transition: GameTransition): Extract<GameTransition, { ok: true }> {
@@ -139,7 +144,7 @@ describe('schemaVersion 2 -> 3 显式迁移', () => {
       preferences: { travel: false, computer: false, music: false },
     })
 
-    const migratedV5 = migrateGameStateV7ToV8(
+    const migratedV5 = migrateGameStateV7ToCurrent(
       migrateGameStateV6ToV7(
         migrateGameStateV5ToV6(
           migrateGameStateV4ToV5(migrateGameStateV3ToV4(migrated, { now: 20_000, catalog })),
@@ -159,7 +164,7 @@ describe('schemaVersion 2 -> 3 显式迁移', () => {
   it('进行中活动保持绝对时间和 legacy 双结果，原 endsAt 到点即可领取', () => {
     const migrated = migrateGameStateV2ToV3(v2Fixture(), { now: 12_000, catalog })
     const activity = migrated.activeActivity!
-    const migratedV5 = migrateGameStateV7ToV8(
+    const migratedV5 = migrateGameStateV7ToCurrent(
       migrateGameStateV6ToV7(
         migrateGameStateV5ToV6(
           migrateGameStateV4ToV5(migrateGameStateV3ToV4(migrated, { now: 12_000, catalog })),

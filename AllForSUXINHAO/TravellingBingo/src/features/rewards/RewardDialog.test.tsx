@@ -124,6 +124,9 @@ describe('RewardDialog', () => {
     )
 
     expect(screen.getByLabelText('得到 1🍎')).toHaveTextContent('1🍎')
+    expect(screen.getByLabelText('1🍎').querySelector('.apple-amount__number')).toHaveTextContent(
+      '1',
+    )
     expect(screen.queryByText(/个苹果/u)).not.toBeInTheDocument()
   })
 
@@ -188,7 +191,7 @@ describe('RewardDialog', () => {
 
     expect(screen.getByText('信号狗循着音乐来啦')).toBeInTheDocument()
     expect(screen.getByText('送来一份幸运苹果')).toBeInTheDocument()
-    expect(screen.getByText('还送来 3🍎')).toBeInTheDocument()
+    expect(screen.getByLabelText('3🍎').closest('small')).toHaveTextContent('还送来 3🍎')
     expect(screen.queryByText(/收到/u)).not.toBeInTheDocument()
 
     const friendImage = screen.getByRole('img', { name: friend.alt })

@@ -1,5 +1,6 @@
 import { useState } from 'react'
 
+import { AppleAmount } from '@/components/AppleAmount'
 import type { GameAction, GameState, ProbabilityKey } from '@/domain'
 
 const PROBABILITY_COPY: Record<ProbabilityKey, string> = {
@@ -152,7 +153,7 @@ export function DebugPanel({
 
       <div className="debug-actions">
         <button type="button" onClick={() => onAction({ type: 'debug/apples-adjust', delta: 20 })}>
-          增加 20🍎
+          增加 <AppleAmount value={20} />
         </button>
         <button
           type="button"

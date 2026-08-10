@@ -139,7 +139,7 @@ async function completeTenSecondRest(page: Page) {
   await reward.getByRole('button', { name: '回到房间' }).click()
 }
 
-test.describe('V8 高风险集成契约', () => {
+test.describe('V9 高风险集成契约', () => {
   test.beforeEach(({ browserName }, testInfo) => {
     test.skip(
       browserName !== 'chromium' || testInfo.project.name !== 'chromium',
@@ -209,8 +209,8 @@ test.describe('V8 高风险集成契约', () => {
     await page.clock.fastForward(250)
     await expect(transition).toHaveClass(/dimension-transition--in/u)
     await expect(page.getByRole('button', { name: '回到旅行饼狗游戏' })).toBeVisible()
-    await page.clock.fastForward(65_000)
-    await expect(page.getByRole('timer', { name: /本次现实停留/u })).toHaveText(/现实 01:0[45]/u)
+    await page.clock.fastForward(605_000)
+    await expect(page.getByRole('button', { name: /本次现实停留/u })).toHaveText('现实 10 分钟')
 
     await page.getByRole('button', { name: '回到旅行饼狗游戏' }).click()
     const leaveDialog = page.getByRole('dialog', { name: '回到饼屋？' })
@@ -218,7 +218,7 @@ test.describe('V8 高风险集成契约', () => {
       await leaveDialog.evaluate((element) => getComputedStyle(element).backgroundColor),
     ).not.toBe('rgba(0, 0, 0, 0)')
     await leaveDialog.getByRole('button', { name: '先不切换' }).click()
-    await expect(page.getByRole('timer', { name: /本次现实停留/u })).toBeVisible()
+    await expect(page.getByRole('button', { name: /本次现实停留/u })).toBeVisible()
 
     await page.getByRole('button', { name: '回到旅行饼狗游戏' }).click()
     await page
@@ -226,6 +226,16 @@ test.describe('V8 高风险集成契约', () => {
       .getByRole('button', { name: '回到饼屋' })
       .click()
     await expect(transition).toHaveClass(/dimension-transition--out/u)
+  })
+
+  test('现实停留不足一个苹果时直接返回，不显示结算确认', async ({ page }) => {
+    await startGame(page, { seed: 'short-reality-return-e2e', displayName: '短停留验收' })
+    await enterReality(page)
+
+    await page.getByRole('button', { name: '回到旅行饼狗游戏' }).click()
+    await expect(page.getByRole('dialog', { name: '回到饼屋？' })).toHaveCount(0)
+    await expect(page.getByRole('status', { name: '正在回到饼屋' })).toBeVisible()
+    await expect(page.getByRole('button', { name: '切换到现实生活维度' })).toBeVisible()
   })
 
   test('苹果钟使用全屏明信片墙，开始后仍可增改勾选删除待办且睡觉饼狗缓慢移动', async ({ page }) => {
@@ -256,7 +266,7 @@ test.describe('V8 高风险集成契约', () => {
     await expect(picker).not.toBeVisible()
     const selectedPostcardPreview = workPanel.locator('.reality-postcard-picker__preview')
     await expect(selectedPostcardPreview).not.toHaveAttribute('data-background-id', 'plain')
-    await expect(selectedPostcardPreview.locator('img')).toHaveCSS('object-fit', 'contain')
+    await expect(selectedPostcardPreview.locator('img')).toHaveCSS('object-fit', 'cover')
 
     await workPanel
       .getByRole('group', { name: '苹果钟时长' })

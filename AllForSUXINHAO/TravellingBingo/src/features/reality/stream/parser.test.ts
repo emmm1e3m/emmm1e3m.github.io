@@ -18,12 +18,25 @@ describe('parseStreamSelfTestInput', () => {
   })
 
   it.each([
-    'BV1xx411c7mD\nBV1B7411m7LV',
     'https://www.bilibili.com/video/BV1xx411c7mD/',
+    'https://www.bilibili.com/video/bv1xx411c7mD/?spm_id_from=333.1007',
+    'https://m.bilibili.com/video/BV1xx411c7mD',
+  ])('从完整的哔哩哔哩视频链接中提取并规范化 BV：%s', (input) => {
+    expect(parseStreamSelfTestInput(input)).toEqual({
+      ok: true,
+      bvid: 'BV1xx411c7mD',
+      errors: [],
+    })
+  })
+
+  it.each([
+    'BV1xx411c7mD\nBV1B7411m7LV',
     'https://b23.tv/abcdef',
+    'https://example.com/video/BV1xx411c7mD/',
+    'https://www.bilibili.com/read/BV1xx411c7mD/',
     '随便写点什么',
     'XX1xx411c7mD',
-  ])('拒绝非单个裸 BV 的输入：%s', (input) => {
+  ])('拒绝无法本地解析为单个 BV 的输入：%s', (input) => {
     const fetchRequest = vi.spyOn(globalThis, 'fetch').mockResolvedValue(new Response())
     const xhrRequest = vi
       .spyOn(XMLHttpRequest.prototype, 'open')
@@ -40,17 +53,20 @@ describe('parseStreamSelfTestInput', () => {
 })
 
 describe('buildStreamQueue', () => {
-  it('把自测视频放在静态快照前面，并按首次出现顺序去重', () => {
+  it('每次打乱收藏夹视频，自测视频去重后永远放在最后', () => {
     expect(
-      buildStreamQueue('BV1xx411c7mD', ['BV1At3j6EE6w', 'BV1xx411c7mD', 'BV1mkuN6HEFC']),
-    ).toEqual(['BV1xx411c7mD', 'BV1At3j6EE6w', 'BV1mkuN6HEFC'])
+      buildStreamQueue(
+        'BV1xx411c7mD',
+        ['BV1At3j6EE6w', 'BV1xx411c7mD', 'BV1mkuN6HEFC', 'BV1UZ3D6REhZ'],
+        () => 0,
+      ),
+    ).toEqual(['BV1mkuN6HEFC', 'BV1UZ3D6REhZ', 'BV1At3j6EE6w', 'BV1xx411c7mD'])
   })
 
-  it('留空时完整保留静态快照顺序', () => {
-    expect(buildStreamQueue(null, ['BV1At3j6EE6w', 'BV1mkuN6HEFC'])).toEqual([
-      'BV1At3j6EE6w',
-      'BV1mkuN6HEFC',
-    ])
+  it('没有自测视频时打乱全部静态快照', () => {
+    expect(
+      buildStreamQueue(null, ['BV1At3j6EE6w', 'BV1mkuN6HEFC', 'BV1UZ3D6REhZ'], () => 0),
+    ).toEqual(['BV1mkuN6HEFC', 'BV1UZ3D6REhZ', 'BV1At3j6EE6w'])
   })
 })
 

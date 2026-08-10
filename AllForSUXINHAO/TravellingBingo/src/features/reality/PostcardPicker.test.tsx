@@ -4,8 +4,8 @@ import realityStyles from './reality.css?raw'
 import { PostcardPicker } from './PostcardPicker'
 
 const options = [
-  { id: 'sea', title: '海边明信片', thumbnailUrl: '/sea.webp' },
-  { id: 'sunset', title: '晚霞明信片', thumbnailUrl: '/sunset.webp' },
+  { id: 'sea', title: '海边明信片', thumbnailUrl: '/sea.webp', aspectRatio: 2 / 3 },
+  { id: 'sunset', title: '晚霞明信片', thumbnailUrl: '/sunset.webp', aspectRatio: 16 / 9 },
 ]
 
 describe('PostcardPicker', () => {
@@ -75,6 +75,23 @@ describe('PostcardPicker', () => {
     )
     expect(realityStyles).not.toMatch(
       /\.reality-postcard-dialog__wall\s*\{[^}]*?(?:max-height|overflow-y):/u,
+    )
+  })
+
+  it('入口预览按当前明信片宽高比调整左栏并让图片铺满', () => {
+    const { container, rerender } = render(
+      <PostcardPicker options={options} selectedId="sea" onChange={vi.fn()} />,
+    )
+    const preview = container.querySelector<HTMLElement>('.reality-postcard-picker__preview')
+    expect(preview).toHaveStyle({ '--postcard-preview-width': '112px' })
+
+    rerender(<PostcardPicker options={options} selectedId="sunset" onChange={vi.fn()} />)
+    expect(preview).toHaveStyle({ '--postcard-preview-width': '299px' })
+    expect(realityStyles).toMatch(
+      /\.reality-postcard-picker__preview\s*\{[^}]*grid-template-columns:[^;]*--postcard-preview-width/su,
+    )
+    expect(realityStyles).toMatch(
+      /\.reality-postcard-picker__preview > img,[\s\S]*?object-fit:\s*cover;/u,
     )
   })
 })

@@ -1,11 +1,11 @@
 import { FRIEND_EVENT_IDS } from '../game/constants'
 import {
-  addProbabilityBonus,
-  APPLE_LUNCHBOX_FRIEND_BONUS,
+  addNonStackingBaseProbabilityBonus,
+  APPLE_LUNCHBOX_FRIEND_BASE_BONUS_RATE,
   DEFAULT_GAME_BALANCE,
   FRIEND_GIFT_APPLES_BY_ID,
   FRIEND_GIFT_ITEM_BY_ID,
-  LUCKY_APPLE_COLLECTION_DROP_MULTIPLIER,
+  LUCKY_APPLE_COLLECTION_BASE_BONUS_RATE,
   multiplyProbability,
   REST_COMPLETION_APPLES,
   TRAVEL_FRIEND_GIFT_APPLES_BY_ID,
@@ -132,10 +132,13 @@ export function planActivityReward(input: RewardPlanningInput): RewardPlan {
   if (input.kind === 'travel') {
     const friendRoll = nextRandom(cursor)
     cursor = friendRoll.cursor
-    const friendChance = addProbabilityBonus(
-      probabilities.travelFriend,
-      input.supplyId === 'travel-apple' ? APPLE_LUNCHBOX_FRIEND_BONUS : 0,
-    )
+    const friendChance =
+      input.supplyId === 'travel-apple'
+        ? addNonStackingBaseProbabilityBonus(
+            probabilities.travelFriend,
+            APPLE_LUNCHBOX_FRIEND_BASE_BONUS_RATE,
+          )
+        : probabilities.travelFriend
     if (friendRoll.value < friendChance) {
       const selected = chooseFriend(cursor, FRIEND_EVENT_IDS)
       if (selected !== null) {
@@ -152,10 +155,10 @@ export function planActivityReward(input: RewardPlanningInput): RewardPlan {
     const category = COLLECTION_CATEGORY_BY_ACTIVITY[input.kind]
     const drop = nextRandom(cursor)
     cursor = drop.cursor
-    // 幸运苹果只把当前活动对应的收藏概率翻倍，不改变遇友概率。
+    // 幸运苹果只增加当前活动对应的常规收藏概率，不改变遇友概率。
     const baseDropChance = probabilities[PROBABILITY_BY_ACTIVITY[input.kind]]
     const dropChance = input.usedLuckyApple
-      ? multiplyProbability(baseDropChance, LUCKY_APPLE_COLLECTION_DROP_MULTIPLIER)
+      ? addNonStackingBaseProbabilityBonus(baseDropChance, LUCKY_APPLE_COLLECTION_BASE_BONUS_RATE)
       : baseDropChance
     if (drop.value < dropChance) {
       const selected = planCollection(cursor, category, input.catalog, input.ownedCollectionIds)

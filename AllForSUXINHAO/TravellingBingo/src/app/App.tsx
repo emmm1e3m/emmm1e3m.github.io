@@ -1,4 +1,12 @@
-import { useCallback, useEffect, useMemo, useRef, useState, type FormEvent } from 'react'
+import {
+  useCallback,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+  type FormEvent,
+  type ReactNode,
+} from 'react'
 
 import {
   gameStateSchema,
@@ -8,14 +16,16 @@ import {
 import { useGameController } from '@/app/useGameController'
 import { useKeepAliveAudio, type KeepAliveAudioFactory } from '@/app/useKeepAliveAudio'
 import { useScreenWakeLock } from '@/app/useScreenWakeLock'
+import { AppleAmount } from '@/components/AppleAmount'
 import { useModalFocus } from '@/components/useModalFocus'
 import { PwaUpdatePrompt, type InstallPwaUpdate } from '@/components/PwaUpdatePrompt'
 import { loadContentCatalog, type ContentCatalog } from '@/content'
 import {
   createInitialGameState,
-  migrateStoredGameStateToV8,
+  migrateStoredGameStateToV9,
   normalizeImportedGameBalance,
   reconcileGameStateWithCatalog,
+  suspendRealityLeaseAfterLoad,
   validateImportedGameState,
   type ClaimSummary,
   type CollectionCatalog,
@@ -41,7 +51,7 @@ import {
   type BingoSaveSummary,
 } from '@/infrastructure/persistence'
 
-const GAME_VERSION = '0.8.0-demo.1'
+const GAME_VERSION = '0.9.0-demo.1'
 const DEBUG_PASSWORD = 'TravellingBingo'
 const PERIODIC_BACKUP_INTERVAL_MS = 3 * 24 * 60 * 60 * 1_000
 
@@ -141,12 +151,13 @@ function prepareStoredGame(
   catalog: CollectionCatalog,
   now: number,
 ): GameState {
-  const migrated = migrateStoredGameStateToV8(stored, { now, catalog })
+  const migrated = migrateStoredGameStateToV9(stored, { now, catalog })
   const normalized = normalizeImportedGameBalance(migrated)
   const reconciled = reconcileGameStateWithCatalog(normalized, catalog)
-  const validation = validateImportedGameState(reconciled, catalog)
+  const suspended = suspendRealityLeaseAfterLoad(reconciled)
+  const validation = validateImportedGameState(suspended, catalog)
   if (!validation.ok) throw new Error(validation.message)
-  return reconciled
+  return suspended
 }
 
 function prepareBrowserCache(
@@ -219,7 +230,7 @@ export function App({
   const [now, setNow] = useState(() => Date.now())
   const [cacheWriteFailed, setCacheWriteFailed] = useState(false)
   const [entryBusy, setEntryBusy] = useState(false)
-  const [toast, setToast] = useState<string | null>(null)
+  const [toast, setToast] = useState<ReactNode>(null)
   const [reward, setReward] = useState<ClaimSummary | null>(null)
   const [realitySettlementResult, setRealitySettlementResult] =
     useState<RealitySettlementResult | null>(null)
@@ -527,7 +538,12 @@ export function App({
       setNow(Date.now())
       for (const effect of transition.effects) {
         if (effect.type === 'item-purchased') {
-          setToast(`冰箱里补充了 ${effect.quantity} 份补给，花掉 ${effect.applesSpent}🍎。`)
+          setToast(
+            <>
+              冰箱里补充了 {effect.quantity} 份补给，花掉 <AppleAmount value={effect.applesSpent} />
+              。
+            </>,
+          )
         } else if (effect.type === 'activity-started') {
           const label = {
             travel: '旅行',
@@ -550,9 +566,17 @@ export function App({
           setPanel(null)
           setToast('天亮啦，饼狗又有精神了。')
         } else if (effect.type === 'pet-encouraged') {
-          setToast(`饼狗收下了鼓励，花掉 ${effect.applesSpent}🍎。`)
+          setToast(
+            <>
+              饼狗收下了鼓励，花掉 <AppleAmount value={effect.applesSpent} />。
+            </>,
+          )
         } else if (effect.type === 'task-progressed' && effect.completed) {
-          setToast(`小事完成，收好 ${effect.applesAwarded}🍎。`)
+          setToast(
+            <>
+              小事完成，收好 <AppleAmount value={effect.applesAwarded} />。
+            </>,
+          )
         } else if (effect.type === 'debug-applied') {
           if (effect.action === 'debug/collect-all') {
             setToast(`DEBUG：收好 ${effect.changedCount ?? 0} 份收藏与好友记录。`)
@@ -624,6 +648,44 @@ export function App({
   )
 
   const clockDeadline = useMemo(() => nextClockDeadline(game), [game])
+
+  const realityStayId =
+    screen === 'home' && game?.world === 'reality'
+      ? (game.reality.activeStay?.stayId ?? null)
+      : null
+
+  useEffect(() => {
+    if (realityStayId === null) return
+    let pageActive = true
+
+    const resumeTimer = globalThis.setTimeout(() => {
+      if (!pageActive) return
+      applyAction({ type: 'reality/session-resume', stayId: realityStayId, now: Date.now() })
+    }, 0)
+    const timer = globalThis.setInterval(() => {
+      if (!pageActive) return
+      applyAction({ type: 'reality/session-heartbeat', stayId: realityStayId, now: Date.now() })
+    }, 60_000)
+    const suspend = () => {
+      if (!pageActive) return
+      applyAction({ type: 'reality/session-suspend', stayId: realityStayId, now: Date.now() })
+      pageActive = false
+    }
+    const resume = () => {
+      if (pageActive) return
+      pageActive = true
+      applyAction({ type: 'reality/session-resume', stayId: realityStayId, now: Date.now() })
+    }
+
+    globalThis.addEventListener('pagehide', suspend)
+    globalThis.addEventListener('pageshow', resume)
+    return () => {
+      globalThis.clearTimeout(resumeTimer)
+      globalThis.clearInterval(timer)
+      globalThis.removeEventListener('pagehide', suspend)
+      globalThis.removeEventListener('pageshow', resume)
+    }
+  }, [applyAction, realityStayId])
 
   useEffect(() => {
     if (clockDeadline === null) return
@@ -793,6 +855,11 @@ export function App({
   }
 
   function leaveHome() {
+    const snapshot = getSnapshot().game
+    const stay = snapshot?.world === 'reality' ? snapshot.reality.activeStay : null
+    if (stay) {
+      applyAction({ type: 'reality/session-suspend', stayId: stay.stayId, now: Date.now() })
+    }
     setScreen('title')
     replaceGame(null)
     setRestTransitionKey(0)

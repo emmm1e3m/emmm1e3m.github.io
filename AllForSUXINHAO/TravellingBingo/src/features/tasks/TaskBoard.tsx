@@ -1,3 +1,4 @@
+import { AppleAmount } from '@/components/AppleAmount'
 import {
   getTaskPresentation,
   getTaskProgressLabel,
@@ -34,7 +35,9 @@ export function TaskBoard({ game }: { game: GameState }) {
               </span>
               <span className="task-progress" aria-label={`进度 ${getTaskProgressLabel(task)}`}>
                 <span aria-hidden="true">{getTaskProgressLabel(task)}</span>
-                <strong>+{task.rewardApples}🍎</strong>
+                <strong>
+                  <AppleAmount value={task.rewardApples} prefix="+" />
+                </strong>
               </span>
             </li>
           )

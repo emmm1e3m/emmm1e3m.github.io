@@ -18,8 +18,9 @@ describe('ITEM_COPY', () => {
     )
   })
 
-  it('明确说明幸运苹果把对应收藏概率翻倍', () => {
-    expect(ITEM_COPY['lucky-apple'].note).toBe('对应收藏概率翻倍')
+  it('明确说明苹果便当与幸运苹果分别增加一份常规概率', () => {
+    expect(ITEM_COPY['travel-apple'].note).toBe('常规遇友概率增加 100%')
+    expect(ITEM_COPY['lucky-apple'].note).toBe('常规收藏概率增加 100%')
   })
 
   it('弹琴说明认识更多朋友会提高来访与苹果收益期望', () => {

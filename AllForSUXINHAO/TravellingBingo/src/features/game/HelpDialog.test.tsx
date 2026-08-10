@@ -27,11 +27,12 @@ describe('HelpDialog', () => {
 
     expect(screen.getByText('铲铲饼屋的小纸条')).toBeVisible()
     expect(screen.getByText('既可以刷播与冲热，也可以为工作与学习计时。')).toBeVisible()
-    expect(
-      screen.getByText(
-        '每10分钟可以积攒1🍎。回到饼屋时，请确认现实里的事情是否认真完成。认真完成会带回全部苹果，否则只带回一半。',
-      ),
-    ).toBeVisible()
+    expect(screen.getByRole('heading', { name: '🍎结算' }).closest('section')).toHaveTextContent(
+      '每10分钟可以积攒1🍎。回到饼屋时，请确认现实里的事情是否认真完成。认真完成会带回全部苹果，否则只带回一半。',
+    )
+    expect(screen.getByLabelText('1🍎').querySelector('.apple-amount__number')).toHaveTextContent(
+      '1',
+    )
     expect(screen.queryByText('现实维度的小纸条')).not.toBeInTheDocument()
   })
 })

@@ -17,5 +17,6 @@ describe('TaskBoard', () => {
     expect(completedMarker).not.toHaveTextContent('好')
     expect(screen.queryByText(/已经完成|收好啦/u)).not.toBeInTheDocument()
     expect(screen.getByLabelText('进度 已完成')).toBeInTheDocument()
+    expect(container.querySelectorAll('.apple-amount__number')).toHaveLength(3)
   })
 })

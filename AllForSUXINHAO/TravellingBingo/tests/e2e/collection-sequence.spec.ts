@@ -91,6 +91,8 @@ test.describe('收藏获取序列', () => {
 
     const album = await openAlbum(page)
     await expect(album.getByRole('tab', { name: '百万直拍' })).toBeVisible()
+    await expect(album.getByRole('tab', { name: '百万直拍' })).toContainText('【2/?】')
+    await expect(album).toContainText('收藏进度【2/?】')
     await expect(album.locator('.collectible-card')).toHaveCount(2)
   })
 
@@ -176,6 +178,8 @@ test('旅行遇见朋友与明信片互斥，朋友送礼并解锁“好朋友�
 
   const album = await openAlbum(page)
   await expect(album.getByRole('tab', { name: '好朋友们' })).toBeVisible()
+  await expect(album.getByRole('tab', { name: '好朋友们' })).toContainText('【1/?】')
+  await expect(album).toContainText('收藏进度【1/?】')
   await expect(album.getByRole('tab', { name: '明信片' })).toHaveCount(0)
   await album.getByRole('tab', { name: '好朋友们' }).click()
   await expect(album.locator('.friend-card')).toHaveCount(1)
@@ -237,7 +241,9 @@ test('DEBUG 全收集包含好友，Survivors 自动播放，并可清空收集'
   expect(friendsResponse.ok()).toBe(true)
   const friends = (await friendsResponse.json()) as { items: unknown[] }
   expect(postcards.items).toHaveLength(100)
-  const expectedTotal = postcards.items.length + million.items.length + siteFirsts.items.length
+  const expectedCollectionTotal =
+    postcards.items.length + million.items.length + siteFirsts.items.length
+  const expectedAlbumTotal = expectedCollectionTotal + friends.items.length
   const survivors = million.items.find((item) => item.id === 'million-shot-108')!
   expect(survivors).toBeDefined()
 
@@ -248,7 +254,7 @@ test('DEBUG 全收集包含好友，Survivors 自动播放，并可清空收集'
   await confirmation.getByRole('button', { name: '确认全收集' }).click()
 
   const album = await openAlbum(page)
-  await expect(album).toContainText(`全部集齐 · ${expectedTotal} / ${expectedTotal}`)
+  await expect(album).toContainText(`收藏进度【${expectedAlbumTotal}/${expectedAlbumTotal}】`)
   await expect(album).not.toContainText('最近遇见的回忆排在最前面')
   await expect(album).not.toContainText('新遇见的回忆和朋友排在最前面')
   const firstDate = album.locator('.collection-date').first()
@@ -263,11 +269,15 @@ test('DEBUG 全收集包含好友，Survivors 自动播放，并可清空收集'
     ['百万直拍', million.items.length],
     ['全站第一', siteFirsts.items.length],
   ] as const) {
-    await album.getByRole('tab', { name: tabName }).click()
+    const tab = album.getByRole('tab', { name: tabName })
+    await expect(tab).toContainText(`【${count}/${count}】`)
+    await tab.click()
     await expect(album.locator('.collectible-card')).toHaveCount(count)
   }
 
-  await album.getByRole('tab', { name: '好朋友们' }).click()
+  const friendsTab = album.getByRole('tab', { name: '好朋友们' })
+  await expect(friendsTab).toContainText(`【${friends.items.length}/${friends.items.length}】`)
+  await friendsTab.click()
   await expect(album.locator('.friend-card')).toHaveCount(friends.items.length)
   await expect(album.locator('.friend-card__portrait').first()).toHaveCSS('object-fit', 'cover')
   const friendCopies = await album.locator('.friend-card').allInnerTexts()

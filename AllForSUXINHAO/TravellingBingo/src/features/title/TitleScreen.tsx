@@ -1,6 +1,7 @@
 import { useState, type ChangeEvent, type FormEvent } from 'react'
 
 import { publicAsset } from '@/app/assets'
+import { AppleAmount } from '@/components/AppleAmount'
 import { MascotSprite } from '@/components/MascotSprite'
 import { useModalFocus } from '@/components/useModalFocus'
 import { isValidDisplayName, MAX_DISPLAY_NAME_LENGTH } from '@/domain'
@@ -186,7 +187,9 @@ export function TitleScreen({
                 </div>
                 <div>
                   <dt>背包里的🍎</dt>
-                  <dd className="numeric-copy">{importPreview.apples}🍎</dd>
+                  <dd className="numeric-copy">
+                    <AppleAmount value={importPreview.apples} />
+                  </dd>
                 </div>
                 <div>
                   <dt>收藏</dt>
@@ -230,8 +233,8 @@ export function TitleScreen({
                   </span>
                 </div>
                 <span className="numeric-copy">
-                  {cachedPreview.apples}🍎 · {cachedPreview.collectionCount} 件收藏 ·{' '}
-                  {formatExportTime(cachedPreview.updatedAt)}
+                  <AppleAmount value={cachedPreview.apples} /> · {cachedPreview.collectionCount}{' '}
+                  件收藏 · {formatExportTime(cachedPreview.updatedAt)}
                 </span>
               </>
             ) : (
@@ -239,11 +242,8 @@ export function TitleScreen({
             )}
           </section>
 
-          <div className="landing-new-game">
-            <nav
-              className={`landing-actions landing-actions--entries ${cachedPreview ? '' : 'landing-actions--entries-two'}`}
-              aria-label="存档入口"
-            >
+          <div className={`landing-new-game ${cachedPreview ? '' : 'landing-new-game--three'}`}>
+            <nav className="landing-actions landing-actions--entries" aria-label="存档入口">
               {cachedPreview && (
                 <button
                   className="landing-button landing-button--primary"
@@ -280,18 +280,17 @@ export function TitleScreen({
                 />
               </label>
             </nav>
+            <section className="landing-update" aria-label="检查游戏更新">
+              <button
+                className="landing-button landing-button--quiet landing-update__button"
+                type="button"
+                disabled={updateCheckStatus === 'checking'}
+                onClick={onCheckForUpdates}
+              >
+                {updateCheckStatus === 'checking' ? '正在检查更新…' : '检查更新'}
+              </button>
+            </section>
           </div>
-
-          <section className="landing-update" aria-label="检查游戏更新">
-            <button
-              className="landing-button landing-button--quiet landing-update__button"
-              type="button"
-              disabled={updateCheckStatus === 'checking'}
-              onClick={onCheckForUpdates}
-            >
-              {updateCheckStatus === 'checking' ? '正在检查更新…' : '检查更新'}
-            </button>
-          </section>
 
           {error && (
             <p className="landing-error" role="alert">
@@ -314,7 +313,7 @@ export function TitleScreen({
             <picture>
               <source
                 srcSet={`${publicAsset('assets/game/chan-chan-house-v2-768.webp')} 768w, ${publicAsset('assets/game/chan-chan-house-v2-1098.webp')} 1098w`}
-                sizes="(max-width: 620px) 306px, (max-width: 980px) 500px, min(40vw, 560px)"
+                sizes="(max-width: 620px) 306px, (max-width: 1120px) 500px, min(40vw, 560px)"
               />
               <img
                 src={publicAsset('assets/game/chan-chan-house-v2-1098.webp')}

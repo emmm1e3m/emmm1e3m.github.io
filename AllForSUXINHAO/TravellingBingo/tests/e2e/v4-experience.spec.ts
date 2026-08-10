@@ -14,11 +14,11 @@ import {
   startGame,
 } from './support/game'
 
-test.describe('V8 房间契约', () => {
+test.describe('V9 房间契约', () => {
   test.beforeEach(({ browserName }, testInfo) => {
     test.skip(
       browserName !== 'chromium' || testInfo.project.name !== 'chromium',
-      'V8 桌面主流程只在 Chromium 验证',
+      'V9 桌面主流程只在 Chromium 验证',
     )
   })
 
@@ -59,12 +59,11 @@ test.describe('V8 房间契约', () => {
     const hudTitle = page.locator('.game-hud__center strong')
     await expect(hudTitle).toHaveText('今天也要好好吃苹果')
     await expect(hudTitle).toHaveCSS('white-space', 'nowrap')
-    await expect(page.locator('.apple-counter .numeric-copy')).toHaveText(/^\d+🍎$/u)
-    const status = page.getByRole('status', { name: '饼狗状态' })
-    await expect(status.locator('.pet-status-bar__label')).toHaveText('状态正常')
+    await expect(page.locator('.apple-counter .apple-amount')).toHaveText(/^\d+🍎$/u)
+    const status = page.getByRole('button', { name: /饼狗活力状态/u })
+    await expect(status.locator('.pet-status-bar__label')).toHaveText(/低活力|中等活力|高活力/u)
     await expect(status).toContainText('新布置测试陪伴饼狗已经 0 天')
     await expect(status).not.toContainText('🐶')
-    await expect(status.getByRole('button')).toHaveCount(0)
     await expect(page.locator('.game-page > .pet-status-bar')).toHaveCount(0)
     await expect(page.getByRole('button', { name: '查看房屋玩法说明' })).toHaveText('ℹ️')
     await expect(page.getByRole('button', { name: '切换到现实生活维度' })).toHaveText('🔃')
@@ -110,9 +109,8 @@ test.describe('V8 房间契约', () => {
     await expect(confirmation.getByRole('button', { name: '先不使用' })).toBeFocused()
     await confirmation.getByRole('button', { name: '使用活力魔法' }).click()
 
-    const petStatus = page.getByRole('status', { name: '饼狗状态' })
-    await expect(petStatus.locator('.pet-status-bar__label')).toHaveText('状态正常')
-    await expect(petStatus.locator('.pet-status-bar__vitality')).toHaveText('活力满满')
+    const petStatus = page.getByRole('button', { name: /饼狗活力状态/u })
+    await expect(petStatus.locator('.pet-status-bar__label')).toHaveText('活力满满')
     await expect(petStatus.locator('.pet-status-bar__effect')).toHaveText('活力还可陪伴 7 天')
     await expect(card).toHaveAttribute('data-interest', 'willing')
     await expect(card.getByRole('button', { name: '准备出去旅行' })).toBeEnabled()
@@ -143,7 +141,7 @@ test.describe('V8 房间契约', () => {
     const streamPanel = page.locator('.context-panel--reality-stream')
     await expect(streamPanel.getByRole('heading', { name: '视频刷播' })).toBeVisible()
     await expect(streamPanel).toContainText(
-      '输入一个自测视频 BV 号（可留空），其余视频使用本站已保存的收藏夹快照。',
+      '输入一个自测视频 BV 号或视频链接（可留空），其余视频使用本站已保存的收藏夹快照。',
     )
 
     await room.locator('[data-hotspot="二楼电脑·冲热"]').click()
@@ -158,18 +156,18 @@ test.describe('V8 房间契约', () => {
     await room.locator('[data-hotspot="一楼电脑"]').click()
     const workPanel = page.locator('.context-panel--reality-work')
     await expect(workPanel.getByRole('heading', { name: '苹果钟与待办' })).toBeVisible()
-    await workPanel.getByLabel('新待办').fill('完成 V8 验收')
+    await workPanel.getByLabel('新待办').fill('完成 V9 验收')
     await workPanel.getByRole('button', { name: '添加' }).click()
     const todo = workPanel.getByRole('list', { name: '现实生活待办' }).getByRole('listitem')
-    await expect(todo).toContainText('完成 V8 验收')
-    await todo.getByRole('checkbox', { name: '标记为已完成：完成 V8 验收' }).check()
+    await expect(todo).toContainText('完成 V9 验收')
+    await todo.getByRole('checkbox', { name: '标记为已完成：完成 V9 验收' }).check()
     await todo.getByRole('button', { name: '编辑' }).click()
-    await todo.getByLabel('待办标题').fill('完成 V8 桌面验收')
+    await todo.getByLabel('待办标题').fill('完成 V9 桌面验收')
     await todo.getByRole('button', { name: '保存' }).click()
 
     await room.locator('[data-hotspot="电脑"]').click()
     await room.locator('[data-hotspot="一楼电脑"]').click()
-    await expect(page.getByRole('list', { name: '现实生活待办' })).toContainText('完成 V8 桌面验收')
+    await expect(page.getByRole('list', { name: '现实生活待办' })).toContainText('完成 V9 桌面验收')
     await saveScreenshot(page, 'reality-work-todos.png', false)
 
     await page.clock.fastForward(10 * 60_000 + 1_000)
@@ -224,7 +222,7 @@ test.describe('V8 房间契约', () => {
     const cancelDialog = page.getByRole('alertdialog', { name: '确认取消苹果钟？' })
     await expect(cancelDialog).toContainText('不会推进相伴天数')
     await expect(cancelDialog.getByRole('button', { name: '继续专注' })).toBeFocused()
-    await cancelDialog.getByRole('button', { name: '确认取消' }).click()
+    await cancelDialog.getByRole('button', { name: '取消计时' }).click()
 
     await expect(focusOverlay).toHaveCount(0)
     await expect(workPanel.getByRole('button', { name: '开始苹果钟' })).toBeEnabled()
@@ -240,7 +238,7 @@ test.describe('V8 房间契约', () => {
       .click()
     const panelCancelDialog = page.getByRole('alertdialog', { name: '确认取消苹果钟？' })
     await expect(panelCancelDialog.getByRole('button', { name: '继续专注' })).toBeFocused()
-    await panelCancelDialog.getByRole('button', { name: '确认取消' }).click()
+    await panelCancelDialog.getByRole('button', { name: '取消计时' }).click()
 
     await expect(workPanel.getByRole('button', { name: '开始苹果钟' })).toBeEnabled()
     expect(await readCompanionDays(page)).toBe(daysBefore)

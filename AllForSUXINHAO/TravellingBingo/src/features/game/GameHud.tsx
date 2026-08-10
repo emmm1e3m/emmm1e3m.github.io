@@ -1,4 +1,6 @@
+import { AppleAmount } from '@/components/AppleAmount'
 import {
+  deriveRealityActiveDurationMs,
   getPetVitalityStatus,
   isVitalityActive,
   type ActivityRun,
@@ -15,23 +17,17 @@ interface GameHudProps {
   timing: ActivityTiming
   dirty: boolean
   inert?: boolean
-  statusLabel: string
+  statusLabel: string | null
   vitalityDays: number
-  visitorStream?: { startedAt: number; round: number } | null
+  visitorStream?: { round: number; nextRoundRemainingSeconds: number | null } | null
   onExit: () => void
   onCenter: () => void
+  onRealityTimer: () => void
+  onVisitorStream: () => void
+  onPetStatus: () => void
   onFridge: () => void
   onAlbum: () => void
   onDebug: () => void
-}
-
-function formatRealityStayDuration(enteredAt: number, now: number) {
-  const totalSeconds = Math.max(0, Math.floor((now - enteredAt) / 1_000))
-  const hours = Math.floor(totalSeconds / 3_600)
-  const minutes = Math.floor((totalSeconds % 3_600) / 60)
-  const seconds = totalSeconds % 60
-  const minuteSecond = `${minutes.toString().padStart(2, '0')}:${seconds.toString().padStart(2, '0')}`
-  return hours > 0 ? `${hours.toString().padStart(2, '0')}:${minuteSecond}` : minuteSecond
 }
 
 export function GameHud({
@@ -46,15 +42,22 @@ export function GameHud({
   visitorStream = null,
   onExit,
   onCenter,
+  onRealityTimer,
+  onVisitorStream,
+  onPetStatus,
   onFridge,
   onAlbum,
   onDebug,
 }: GameHudProps) {
-  const realityStayDuration =
+  const realityStayMinutes =
     game.world === 'reality' && game.reality.activeStay
-      ? formatRealityStayDuration(game.reality.activeStay.enteredAt, now)
+      ? Math.floor(deriveRealityActiveDurationMs(game.reality.activeStay, now) / 60_000)
       : null
   const vitalityStatus = getPetVitalityStatus(game.pet.preferences, isVitalityActive(game))
+  const visitorCountdown =
+    visitorStream?.nextRoundRemainingSeconds === null || visitorStream === null
+      ? null
+      : formatCountdown(visitorStream.nextRoundRemainingSeconds)
 
   return (
     <header className="game-hud game-hud--v3 game-hud--v4" inert={inert ? true : undefined}>
@@ -85,30 +88,35 @@ export function GameHud({
       </button>
 
       <div className="game-hud__actions">
-        {realityStayDuration && (
-          <output
+        {realityStayMinutes !== null && (
+          <button
             className="reality-stay-timer numeric-copy"
-            role="timer"
-            aria-label={`本次现实停留 ${realityStayDuration}`}
+            type="button"
+            onClick={onRealityTimer}
+            aria-label={`本次现实停留 ${realityStayMinutes} 分钟，返回游戏维度`}
           >
-            现实 {realityStayDuration}
-          </output>
+            现实 {realityStayMinutes} 分钟
+          </button>
         )}
         {visitorStream && (
-          <output
+          <button
             className="visitor-stream-timer numeric-copy"
-            role="timer"
-            aria-label={`游客刷播已运行 ${formatRealityStayDuration(visitorStream.startedAt, now)}，第 ${visitorStream.round} 轮`}
+            type="button"
+            onClick={onVisitorStream}
+            aria-label={`游客刷播第 ${visitorStream.round} 轮${visitorCountdown ? `，${visitorCountdown} 后开始下一轮` : '，正在加载本轮视频'}`}
           >
-            游客 {formatRealityStayDuration(visitorStream.startedAt, now)} · 第{' '}
-            {visitorStream.round} 轮
-          </output>
+            游客 · 第 {visitorStream.round} 轮 ·{' '}
+            {visitorCountdown ? `${visitorCountdown} 后下一轮` : '正在加载'}
+          </button>
         )}
-        <div className="pet-status-bar" role="status" aria-label="饼狗状态">
-          <span className="pet-status-bar__label">{statusLabel}</span>
-          <span className="pet-status-bar__vitality" aria-label={`活力状态 ${vitalityStatus}`}>
-            {vitalityStatus}
-          </span>
+        <button
+          className="pet-status-bar"
+          type="button"
+          onClick={onPetStatus}
+          aria-label={`饼狗活力状态 ${vitalityStatus}，打开饼狗菜单`}
+        >
+          {statusLabel && <span className="pet-status-bar__activity">{statusLabel}</span>}
+          <span className="pet-status-bar__label">{vitalityStatus}</span>
           <span className="hud-companion">
             {game.profile.displayName}陪伴饼狗已经{' '}
             <span className="numeric-copy">{game.profile.companionDays}</span> 天
@@ -118,7 +126,7 @@ export function GameHud({
               活力还可陪伴 <span className="numeric-copy">{vitalityDays}</span> 天
             </span>
           )}
-        </div>
+        </button>
         <div className="game-hud__buttons">
           <button
             className="apple-counter"
@@ -126,7 +134,9 @@ export function GameHud({
             onClick={onFridge}
             aria-label={`${game.economy.apples}🍎，打开冰箱`}
           >
-            <strong className="numeric-copy">{game.economy.apples}🍎</strong>
+            <strong>
+              <AppleAmount value={game.economy.apples} />
+            </strong>
           </button>
           <button
             className="hud-icon hud-icon--album"

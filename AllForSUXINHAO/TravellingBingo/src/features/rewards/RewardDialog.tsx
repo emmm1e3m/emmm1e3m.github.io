@@ -1,6 +1,7 @@
 import { useRef } from 'react'
 
 import { publicAsset } from '@/app/assets'
+import { AppleAmount } from '@/components/AppleAmount'
 import { MascotSprite } from '@/components/MascotSprite'
 import { useModalFocus } from '@/components/useModalFocus'
 import type { ContentCatalog } from '@/content'
@@ -86,7 +87,9 @@ export function RewardDialog({ reward, catalog, onDismiss }: RewardDialogProps) 
               <span>{friend.description}</span>
               {reward.giftItemId && <small>送来一份{ITEM_COPY[reward.giftItemId].name}</small>}
               {reward.giftApples > 0 && (
-                <small className="numeric-copy">还送来 {reward.giftApples}🍎</small>
+                <small>
+                  还送来 <AppleAmount value={reward.giftApples} />
+                </small>
               )}
             </div>
           </div>
@@ -99,8 +102,8 @@ export function RewardDialog({ reward, catalog, onDismiss }: RewardDialogProps) 
           <p className="reward-empty">认真度过的时间，也被饼狗记住了。</p>
         )}
         {!friend && reward.apples.total > 0 && (
-          <p className="reward-apples numeric-copy" aria-label={`得到 ${reward.apples.total}🍎`}>
-            {reward.apples.total}🍎
+          <p className="reward-apples" aria-label={`得到 ${reward.apples.total}🍎`}>
+            <AppleAmount value={reward.apples.total} />
           </p>
         )}
 

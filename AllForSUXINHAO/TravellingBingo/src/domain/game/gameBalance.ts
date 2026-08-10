@@ -41,11 +41,11 @@ export interface GameBalanceV2 {
   }
 }
 
-/** 幸运苹果把当次对应收藏的掉落概率翻倍，不写入存档平衡配置。 */
-export const LUCKY_APPLE_COLLECTION_DROP_MULTIPLIER = 2
+/** 幸运苹果按常规收藏概率增加 100% 的基础值，不写入存档平衡配置。 */
+export const LUCKY_APPLE_COLLECTION_BASE_BONUS_RATE = 1
 
-/** 苹果旅行便当只影响当次旅行遇见朋友，不写入存档平衡配置。 */
-export const APPLE_LUNCHBOX_FRIEND_BONUS = 0.15
+/** 苹果旅行便当按常规遇友概率增加 100% 的基础值，不写入存档平衡配置。 */
+export const APPLE_LUNCHBOX_FRIEND_BASE_BONUS_RATE = 1
 
 export const REST_COMPLETION_APPLES = 1
 
@@ -152,12 +152,19 @@ export function isValidProbability(value: number): boolean {
   return Number.isFinite(value) && value >= 0 && value <= 1
 }
 
-/** 为单次事件叠加非负概率加成，并统一封顶为 1。 */
-export function addProbabilityBonus(base: number, bonus: number): number {
-  if (!isValidProbability(base) || !Number.isFinite(bonus) || bonus < 0) {
-    throw new RangeError('概率与概率加成必须是有效的非负数')
+/**
+ * 在常规概率上增加基础值的一定比例；多个同类效果只采用最高比例，避免复合叠加。
+ * 例如基础概率为 p、100% 加成生效时，结果始终为 min(1, p + p)。
+ */
+export function addNonStackingBaseProbabilityBonus(
+  base: number,
+  ...bonusRates: readonly number[]
+): number {
+  if (!isValidProbability(base) || bonusRates.some((rate) => !Number.isFinite(rate) || rate < 0)) {
+    throw new RangeError('概率与基础概率加成比例必须是有效的非负数')
   }
-  return Math.min(1, base + bonus)
+  const highestRate = bonusRates.length > 0 ? Math.max(...bonusRates) : 0
+  return Math.min(1, base + base * highestRate)
 }
 
 /** 为单次事件按倍数放大概率，并统一封顶为 1。 */

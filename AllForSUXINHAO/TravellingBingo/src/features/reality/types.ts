@@ -25,6 +25,7 @@ export interface PostcardBackgroundOption {
   title: string
   thumbnailUrl?: string
   fullUrl?: string
+  aspectRatio?: number
   alt?: string
   description?: string
 }

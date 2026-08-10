@@ -8,8 +8,14 @@ import {
   REALITY_REWARD_INTERVAL_MS,
 } from './constants'
 import { createInitialGameState } from './createGameState'
-import { gameStateV8Schema } from './migrateGameStateV7'
-import { isProductivityAction, reduceProductivity, type ProductivityAction } from './productivity'
+import { gameStateV9Schema } from './migrateGameStateV8'
+import {
+  deriveRealityActiveDurationMs,
+  isProductivityAction,
+  reduceProductivity,
+  suspendRealityLeaseAfterLoad,
+  type ProductivityAction,
+} from './productivity'
 import { MAX_DATE_TIMESTAMP_MS } from './time'
 import type { CollectionCatalog, GameAction, GameState, GameTransition, TodoItem } from './types'
 import { generateActivityPreferences, isPetTired } from '../pet/preferences'
@@ -68,13 +74,20 @@ describe('现实维度', () => {
     expect(entered.state.reality.activeStay).toEqual({
       stayId: 'reality-stay-1',
       enteredAt: 1_000,
+      activeDurationMs: 0,
+      leaseStartedAt: 1_000,
     })
     expect(entered.state.reality.nextStaySequence).toBe(1)
     expect(original.world).toBe('game')
     expect(entered.effects).toEqual([
       {
         type: 'reality-entered',
-        stay: { stayId: 'reality-stay-1', enteredAt: 1_000 },
+        stay: {
+          stayId: 'reality-stay-1',
+          enteredAt: 1_000,
+          activeDurationMs: 0,
+          leaseStartedAt: 1_000,
+        },
       },
     ])
 
@@ -110,7 +123,83 @@ describe('现实维度', () => {
   ])('停留 %i 毫秒只奖励 %i 个完整区间', (duration, expected) => {
     const entered = successful(reduce(initialState(), { type: 'reality/enter', now: 10 })).state
     const left = successful(reduce(entered, { type: 'reality/leave', now: 10 + duration }))
-    expect(left.state.reality.pendingSettlement?.fullRewardApples).toBe(expected)
+    if (expected === 0) {
+      expect(left.state.reality.pendingSettlement).toBeNull()
+    } else {
+      expect(left.state.reality.pendingSettlement?.fullRewardApples).toBe(expected)
+    }
+  })
+
+  it('每次心跳只累计当前页面租约；载入与恢复不会补算离线间隔', () => {
+    const entered = successful(reduce(initialState(), { type: 'reality/enter', now: 1_000 })).state
+    const firstHeartbeat = successful(
+      reduce(entered, {
+        type: 'reality/session-heartbeat',
+        stayId: 'reality-stay-1',
+        now: 61_000,
+      }),
+    ).state
+    expect(firstHeartbeat.reality.activeStay).toMatchObject({
+      activeDurationMs: 60_000,
+      leaseStartedAt: 61_000,
+    })
+
+    const loaded = suspendRealityLeaseAfterLoad(firstHeartbeat)
+    expect(deriveRealityActiveDurationMs(loaded.reality.activeStay!, 600_000)).toBe(60_000)
+    const resumed = successful(
+      reduce(loaded, {
+        type: 'reality/session-resume',
+        stayId: 'reality-stay-1',
+        now: 600_000,
+      }),
+    ).state
+    const nextHeartbeat = successful(
+      reduce(resumed, {
+        type: 'reality/session-heartbeat',
+        stayId: 'reality-stay-1',
+        now: 660_000,
+      }),
+    ).state
+    expect(nextHeartbeat.reality.activeStay).toMatchObject({
+      activeDurationMs: 120_000,
+      leaseStartedAt: 660_000,
+    })
+  })
+
+  it('暂停租约后保持已累计值，离开现实不补暂停后的墙钟时间', () => {
+    const entered = successful(reduce(initialState(), { type: 'reality/enter', now: 1_000 })).state
+    const suspended = successful(
+      reduce(entered, {
+        type: 'reality/session-suspend',
+        stayId: 'reality-stay-1',
+        now: 1_000 + REALITY_REWARD_INTERVAL_MS,
+      }),
+    ).state
+    expect(suspended.reality.activeStay).toMatchObject({
+      activeDurationMs: REALITY_REWARD_INTERVAL_MS,
+      leaseStartedAt: null,
+    })
+
+    const left = successful(
+      reduce(suspended, { type: 'reality/leave', now: 1_000 + REALITY_REWARD_INTERVAL_MS * 5 }),
+    )
+    expect(left.state.reality.pendingSettlement?.fullRewardApples).toBe(1)
+    expect(left.state.reality.pendingSettlement?.activeDurationMs).toBe(REALITY_REWARD_INTERVAL_MS)
+    expect(gameStateV9Schema.safeParse(left.state).success).toBe(true)
+  })
+
+  it('不足一个苹果时直接返回游戏维度，不创建确认结算', () => {
+    const entered = successful(reduce(initialState(), { type: 'reality/enter', now: 1_000 })).state
+    const left = successful(
+      reduce(entered, {
+        type: 'reality/leave',
+        now: 1_000 + REALITY_REWARD_INTERVAL_MS - 1,
+      }),
+    )
+
+    expect(left.state.world).toBe('game')
+    expect(left.state.reality.pendingSettlement).toBeNull()
+    expect(left.effects).toEqual([])
   })
 
   it('认真给全额、不认真向下取半，并且同一待决不能重复领取', () => {
@@ -184,6 +273,7 @@ describe('现实维度', () => {
           stayId: 'reality-stay-8',
           enteredAt: 0,
           leftAt: REALITY_REWARD_INTERVAL_MS * 8,
+          activeDurationMs: REALITY_REWARD_INTERVAL_MS * 8,
           fullRewardApples: 8,
         },
       },
@@ -628,7 +718,7 @@ describe('苹果钟与通知', () => {
     expect(seventhDay.state.random.sequences.preferences).toBe(
       expectedPreferenceGeneration.nextSequence,
     )
-    expect(gameStateV8Schema.safeParse(seventhDay.state).success).toBe(true)
+    expect(gameStateV9Schema.safeParse(seventhDay.state).success).toBe(true)
     expect(seventhDay.effects).toContainEqual({
       type: 'player-effect-expired',
       effect: 'vitality',

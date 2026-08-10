@@ -9,6 +9,7 @@ import { migrateGameStateV4ToV5 } from './migrateGameStateV4'
 import { migrateGameStateV5ToV6 } from './migrateGameStateV5'
 import { migrateGameStateV6ToV7 } from './migrateGameStateV6'
 import { migrateGameStateV7ToV8 } from './migrateGameStateV7'
+import { migrateGameStateV8ToV9 } from './migrateGameStateV8'
 import { reduceGame } from './reducer'
 import type { CollectionCatalog, GameStateV1 } from './types'
 import { validateImportedGameState } from './validateImportedGameState'
@@ -19,6 +20,10 @@ const catalog: CollectionCatalog = {
   'million-shot': ['million-1'],
   'site-first': ['first-1'],
   siteFirstChronology: ['first-1'],
+}
+
+function migrateGameStateV7ToCurrent(state: Parameters<typeof migrateGameStateV7ToV8>[0]) {
+  return migrateGameStateV8ToV9(migrateGameStateV7ToV8(state))
 }
 
 function legacyState(): GameStateV1 {
@@ -178,7 +183,7 @@ describe('v1 存档显式迁移', () => {
       now: 9_000,
       catalog: expandedCatalog,
     })
-    const migrated = migrateGameStateV7ToV8(
+    const migrated = migrateGameStateV7ToCurrent(
       migrateGameStateV6ToV7(migrateGameStateV5ToV6(migrateGameStateV4ToV5(migratedV4))),
     )
     expect(validateImportedGameState(migrated, expandedCatalog)).toEqual({ ok: true })
@@ -216,7 +221,7 @@ describe('v1 存档显式迁移', () => {
 
   it('V1 已拥有的计划收藏按历史规则结算重复次数与补偿', () => {
     const legacy = legacyState()
-    const migrated = migrateGameStateV7ToV8(
+    const migrated = migrateGameStateV7ToCurrent(
       migrateGameStateV6ToV7(
         migrateGameStateV5ToV6(
           migrateGameStateV4ToV5(migrateGameStateV1ToV4(legacy, { now: 9_000, catalog })),
@@ -252,7 +257,7 @@ describe('v1 存档显式迁移', () => {
   })
 
   it('V1 冻结奖励空间不足时保持整次待领取，不截断或部分写入', () => {
-    const migrated = migrateGameStateV7ToV8(
+    const migrated = migrateGameStateV7ToCurrent(
       migrateGameStateV6ToV7(
         migrateGameStateV5ToV6(
           migrateGameStateV4ToV5(migrateGameStateV1ToV4(legacyState(), { now: 9_000, catalog })),

@@ -10,7 +10,8 @@ import {
   gameStateV5Schema as frozenGameStateV5Schema,
   gameStateV6Schema as frozenGameStateV6Schema,
   gameStateV7Schema as frozenGameStateV7Schema,
-  gameStateV8Schema as currentGameStateV8Schema,
+  gameStateV8Schema as frozenGameStateV8Schema,
+  gameStateV9Schema as currentGameStateV9Schema,
   type GameState,
   type GameStateV1,
   type GameStateV2,
@@ -20,6 +21,7 @@ import {
   type GameStateV5,
   type GameStateV6,
   type GameStateV7,
+  type GameStateV8,
   type StoredGameState,
 } from '@/domain'
 
@@ -44,10 +46,13 @@ const gameStateV6ImportSchema: z.ZodType<GameStateV6> = frozenGameStateV6Schema
 /** 已发布 V7 严格载荷；刷播历史按一次启动的任务记录。 */
 const gameStateV7ImportSchema: z.ZodType<GameStateV7> = frozenGameStateV7Schema
 
-/** V8 当前严格载荷；新增自测 BV 与维度穿透开关。 */
-const gameStateV8ImportSchema: z.ZodType<GameState> = currentGameStateV8Schema
+/** 已发布 V8 严格载荷；新增自测 BV 与维度穿透开关。 */
+const gameStateV8ImportSchema: z.ZodType<GameStateV8> = frozenGameStateV8Schema
 
-const gameStateV8ExportSchema = gameStateV8ImportSchema.superRefine((state, context) => {
+/** V9 当前严格载荷；现实停留改用可暂停的页面租约。 */
+const gameStateV9ImportSchema: z.ZodType<GameState> = currentGameStateV9Schema
+
+const gameStateV9ExportSchema = gameStateV9ImportSchema.superRefine((state, context) => {
   if (
     !state.profile.debug &&
     (state.gameBalance.activityDurationMs !== DEFAULT_GAME_BALANCE.activityDurationMs ||
@@ -65,11 +70,11 @@ const gameStateV8ExportSchema = gameStateV8ImportSchema.superRefine((state, cont
   }
 })
 
-/** 新导出只写 V8；目录总数、视频元数据与派生倒计时不属于存档。 */
-export const gameStateSchema: z.ZodType<GameState> = gameStateV8ExportSchema
+/** 新导出只写 V9；目录总数、视频元数据与派生倒计时不属于存档。 */
+export const gameStateSchema: z.ZodType<GameState> = gameStateV9ExportSchema
 
 /**
- * 导入只严格解析原始 v1/v2/v3/v4/v5/v6/v7/v8：importBingoSave 必须先按文件原值验证摘要，
+ * 导入只严格解析原始 v1/v2/v3/v4/v5/v6/v7/v8/v9：importBingoSave 必须先按文件原值验证摘要，
  * App 随后才能显式迁移、规范规则、reconcile 可安全修复的旧引用并完成语义校验。
  */
 export const importableGameStateSchema: z.ZodType<StoredGameState> = z.union([
@@ -82,6 +87,7 @@ export const importableGameStateSchema: z.ZodType<StoredGameState> = z.union([
   gameStateV6ImportSchema,
   gameStateV7ImportSchema,
   gameStateV8ImportSchema,
+  gameStateV9ImportSchema,
 ])
 
 export type ImportableGameState =
@@ -93,4 +99,5 @@ export type ImportableGameState =
   | GameStateV5LegacyMusic
   | GameStateV6
   | GameStateV7
+  | GameStateV8
   | GameState

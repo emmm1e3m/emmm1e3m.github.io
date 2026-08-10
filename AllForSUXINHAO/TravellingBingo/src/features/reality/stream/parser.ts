@@ -17,14 +17,35 @@ function normalizeBvid(value: string) {
   return `BV${value.slice(2)}`
 }
 
-/** 自测视频只接受一个裸 BV 号；留空表示只使用已发布的静态收藏夹。 */
+function parseBilibiliVideoUrl(value: string) {
+  try {
+    const url = new URL(value)
+    const isBilibiliHost = url.hostname === 'bilibili.com' || url.hostname.endsWith('.bilibili.com')
+    if (!isBilibiliHost || (url.protocol !== 'https:' && url.protocol !== 'http:')) return null
+
+    const segments = url.pathname.split('/').filter(Boolean)
+    const videoIndex = segments.findIndex((segment) => segment.toLowerCase() === 'video')
+    const candidate = videoIndex < 0 ? undefined : segments[videoIndex + 1]
+    if (candidate === undefined || candidate.slice(0, 2).toUpperCase() !== 'BV') return null
+    const normalized = normalizeBvid(candidate)
+    return BILIBILI_BVID_PATTERN.test(normalized) ? normalized : null
+  } catch {
+    return null
+  }
+}
+
+/** 自测视频接受一个裸 BV 号或完整视频链接；留空表示只使用静态收藏夹。 */
 export function parseStreamSelfTestInput(input: string): StreamParseResult {
   const value = input.trim()
   if (!value) return { ok: true, bvid: null, errors: [] }
   const hasBvidPrefix = value.slice(0, 2).toUpperCase() === 'BV'
-  const normalized = hasBvidPrefix ? normalizeBvid(value) : value
-  if (hasBvidPrefix && BILIBILI_BVID_PATTERN.test(normalized)) {
-    return { ok: true, bvid: normalized, errors: [] }
+  const bareBvid = hasBvidPrefix ? normalizeBvid(value) : null
+  const bvid =
+    bareBvid !== null && BILIBILI_BVID_PATTERN.test(bareBvid)
+      ? bareBvid
+      : parseBilibiliVideoUrl(value)
+  if (bvid !== null) {
+    return { ok: true, bvid, errors: [] }
   }
   return {
     ok: false,
@@ -34,14 +55,24 @@ export function parseStreamSelfTestInput(input: string): StreamParseResult {
         line: 1,
         input: value,
         code: 'invalid-bvid',
-        message: '自测视频请填写一个完整的 BV 号，或者留空。',
+        message: '自测视频请填写一个 BV 号或完整的哔哩哔哩视频链接，或者留空。',
       },
     ],
   }
 }
 
-export function buildStreamQueue(selfTestBvid: string | null, catalogBvids: readonly string[]) {
-  return [...new Set(selfTestBvid === null ? catalogBvids : [selfTestBvid, ...catalogBvids])]
+export function buildStreamQueue(
+  selfTestBvid: string | null,
+  catalogBvids: readonly string[],
+  random: () => number = Math.random,
+) {
+  const queue = [...new Set(catalogBvids)].filter((bvid) => bvid !== selfTestBvid)
+  for (let index = queue.length - 1; index > 0; index -= 1) {
+    const target = Math.floor(random() * (index + 1))
+    ;[queue[index], queue[target]] = [queue[target]!, queue[index]!]
+  }
+  if (selfTestBvid !== null) queue.push(selfTestBvid)
+  return queue
 }
 
 export function emptyStreamCatalogResult(): StreamParseResult {

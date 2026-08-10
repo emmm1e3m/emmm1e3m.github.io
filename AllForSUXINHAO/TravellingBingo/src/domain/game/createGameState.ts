@@ -28,7 +28,7 @@ export function createInitialGameState(options: InitialGameOptions): GameState {
   })
 
   return {
-    schemaVersion: 8,
+    schemaVersion: 9,
     profile: {
       createdAt: options.now,
       debug: options.debug ?? false,

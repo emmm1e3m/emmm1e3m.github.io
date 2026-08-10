@@ -1,5 +1,6 @@
 import { type ReactNode, useEffect, useMemo, useRef, useState } from 'react'
 
+import { AppleAmount } from '@/components/AppleAmount'
 import { PianoKeyboard } from '@/components/PianoKeyboard'
 import { type ContentCatalog } from '@/content'
 import {
@@ -501,16 +502,24 @@ export function ContextPanel({
             const isBottledMagic =
               itemId === 'bottled-speed-magic' || itemId === 'bottled-vitality-magic'
             const inventoryCount = game.inventory[itemId]
+            const inventoryCountInTitle = itemId === 'trend-toolbox'
             return (
               <article className="shop-item" key={itemId}>
                 <span className="shop-item__emoji" aria-hidden="true">
                   {item.emoji}
                 </span>
                 <div>
-                  <strong>{item.name}</strong>
+                  <strong>
+                    {item.name}
+                    {inventoryCountInTitle && (
+                      <>
+                        【<span className="numeric-copy">{inventoryCount}</span>】
+                      </>
+                    )}
+                  </strong>
                   <small>
                     {item.note}
-                    {(!isBottledMagic || inventoryCount > 0) && (
+                    {!inventoryCountInTitle && (!isBottledMagic || inventoryCount > 0) && (
                       <>
                         {' · 现有 '}
                         <span className="numeric-copy">{inventoryCount}</span> 份
@@ -523,7 +532,13 @@ export function ContextPanel({
                   disabled={!affordable}
                   onClick={() => onAction({ type: 'item/purchase', itemId })}
                 >
-                  {affordable ? `${price}🍎` : `还差 ${price - game.economy.apples}🍎`}
+                  {affordable ? (
+                    <AppleAmount value={price} />
+                  ) : (
+                    <>
+                      还差 <AppleAmount value={price - game.economy.apples} />
+                    </>
+                  )}
                 </button>
               </article>
             )

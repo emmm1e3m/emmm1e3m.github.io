@@ -21,6 +21,14 @@
   font-weight: 400;
 }
 
+.album-page--v4 .album-tab__progress {
+  margin-left: 0.16em;
+  font-family: var(--font-ui);
+  font-size: 0.78em;
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+
 .album-page--v4 .friend-card__portrait {
   object-fit: cover;
   object-position: center;

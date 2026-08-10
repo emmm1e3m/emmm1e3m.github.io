@@ -30,11 +30,11 @@ const EXPECTED_HOTSPOTS: Record<RoomAreaId, { x: number; y: number }> = {
   bed: { x: 22, y: 29 },
   computer: { x: 52, y: 29 },
   wardrobe: { x: 54, y: 44 },
-  keyboard: { x: 17, y: 67 },
+  keyboard: { x: 17, y: 67.5 },
   fridge: { x: 50, y: 59 },
-  recordPlayer: { x: 75, y: 84 },
+  recordPlayer: { x: 75, y: 81 },
   album: { x: 81, y: 60 },
-  trendComputer: { x: 72, y: 29 },
+  trendComputer: { x: 72, y: 18 },
   workComputer: { x: 22, y: 86 },
   door: { x: 92, y: 74 },
 }
@@ -99,7 +99,7 @@ describe('纵向房间配置', () => {
     ).hotspot
     const trendHotspot = ROOM_AREAS.find((area) => area.id === 'trendComputer')!.hotspot
     expect(trendHotspot.x - streamHotspot.x).toBeGreaterThanOrEqual(20)
-    expect(trendHotspot.y - streamHotspot.y).toBeGreaterThanOrEqual(10)
+    expect(trendHotspot.y).toBe(streamHotspot.y)
   })
 
   it('面板、活动和持久化位置都映射回统一坐标表', () => {

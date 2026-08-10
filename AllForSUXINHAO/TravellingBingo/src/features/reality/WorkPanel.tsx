@@ -124,7 +124,7 @@ function PomodoroConfirmDialog({
             type="button"
             onClick={onConfirm}
           >
-            {starting ? '确认开始' : '确认取消'}
+            {starting ? '确认开始' : '取消计时'}
           </button>
         </div>
       </div>
@@ -327,7 +327,7 @@ export function WorkPanel({
           {timerRunning && actions.onPomodoroCancel && (
             <button
               ref={cancelTriggerRef}
-              className="reality-secondary-button"
+              className="reality-danger-button"
               type="button"
               onClick={() => {
                 setPendingStartDurationMs(null)
@@ -360,7 +360,11 @@ export function WorkPanel({
               autoComplete="off"
               onChange={(event) => setNewTodoTitle(event.target.value)}
             />
-            <button type="submit" disabled={!newTodoTitle.trim()}>
+            <button
+              className="reality-secondary-button"
+              type="submit"
+              disabled={!newTodoTitle.trim()}
+            >
               添加
             </button>
           </div>
@@ -387,10 +391,15 @@ export function WorkPanel({
                       onChange={(event) => setEditTitle(event.target.value)}
                     />
                     <div>
-                      <button type="submit" disabled={!editTitle.trim()}>
+                      <button
+                        className="reality-primary-button"
+                        type="submit"
+                        disabled={!editTitle.trim()}
+                      >
                         保存
                       </button>
                       <button
+                        className="reality-secondary-button"
                         type="button"
                         onClick={() => {
                           setEditingTodoId(null)
@@ -419,11 +428,15 @@ export function WorkPanel({
                       {todo.dueLabel && <small>{todo.dueLabel}</small>}
                     </div>
                     <div className="reality-todo-actions">
-                      <button type="button" onClick={() => startEditing(todo)}>
+                      <button
+                        className="reality-secondary-button"
+                        type="button"
+                        onClick={() => startEditing(todo)}
+                      >
                         编辑
                       </button>
                       <button
-                        className="is-danger"
+                        className="reality-danger-button"
                         type="button"
                         onClick={(event) => askToDelete(todo, event.currentTarget)}
                       >

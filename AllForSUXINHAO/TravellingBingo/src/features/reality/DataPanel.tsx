@@ -18,6 +18,7 @@ export function DataPanel({
       aria-labelledby={headingId}
     >
       <aside className="reality-group-card reality-group-card--centered">
+        <span className="paper-tag">仅限运行组</span>
         <div>
           <div>
             <h2 id={headingId}>冲热刷播，奖品多多</h2>

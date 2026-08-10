@@ -40,6 +40,36 @@
 
 * {
   box-sizing: border-box;
+  -webkit-user-select: none;
+  user-select: none;
+}
+
+.apple-amount__number {
+  font-family: var(--font-display);
+  font-variant-numeric: tabular-nums;
+}
+
+/* 只让真正承载用户输入的控件保留文本选择，避免普通页面触发浏览器复制浮层。 */
+:where(
+  input:not([type]),
+  input[type='date'],
+  input[type='datetime-local'],
+  input[type='email'],
+  input[type='month'],
+  input[type='number'],
+  input[type='password'],
+  input[type='search'],
+  input[type='tel'],
+  input[type='text'],
+  input[type='time'],
+  input[type='url'],
+  input[type='week'],
+  textarea,
+  select,
+  [contenteditable]:not([contenteditable='false'])
+) {
+  -webkit-user-select: text;
+  user-select: text;
 }
 
 html,
@@ -90,7 +120,6 @@ body {
   min-width: 320px;
   min-height: 100dvh;
   margin: 0;
-  overflow-x: hidden;
 }
 
 button,

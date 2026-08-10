@@ -1,9 +1,10 @@
 import { describe, expect, it } from 'vitest'
 
 import {
+  addNonStackingBaseProbabilityBonus,
+  APPLE_LUNCHBOX_FRIEND_BASE_BONUS_RATE,
   DEFAULT_GAME_BALANCE,
-  LUCKY_APPLE_COLLECTION_DROP_MULTIPLIER,
-  multiplyProbability,
+  LUCKY_APPLE_COLLECTION_BASE_BONUS_RATE,
   TRAVEL_FRIEND_GIFT_APPLES_BY_ID,
 } from './gameBalance'
 
@@ -18,12 +19,14 @@ describe('当前游戏平衡', () => {
     })
   })
 
-  it('幸运苹果把对应收藏概率翻倍', () => {
+  it('幸运苹果按常规收藏概率增加 100% 的基础值', () => {
     const baseChance = DEFAULT_GAME_BALANCE.probabilities.millionShot
 
     expect(baseChance).toBe(0.3)
-    expect(LUCKY_APPLE_COLLECTION_DROP_MULTIPLIER).toBe(2)
-    expect(multiplyProbability(baseChance, LUCKY_APPLE_COLLECTION_DROP_MULTIPLIER)).toBe(0.6)
+    expect(LUCKY_APPLE_COLLECTION_BASE_BONUS_RATE).toBe(1)
+    expect(
+      addNonStackingBaseProbabilityBonus(baseChance, LUCKY_APPLE_COLLECTION_BASE_BONUS_RATE),
+    ).toBe(0.6)
   })
 
   it('旅行好友按身份固定赠送 2/3/4/3/2 个苹果', () => {
@@ -36,8 +39,16 @@ describe('当前游戏平衡', () => {
     })
   })
 
-  it('概率翻倍仍统一封顶为 100%，0% 不会凭空提高', () => {
-    expect(multiplyProbability(0.95, LUCKY_APPLE_COLLECTION_DROP_MULTIPLIER)).toBe(1)
-    expect(multiplyProbability(0, LUCKY_APPLE_COLLECTION_DROP_MULTIPLIER)).toBe(0)
+  it('基础概率加成不复合叠加、统一封顶，0% 不会凭空提高', () => {
+    expect(addNonStackingBaseProbabilityBonus(0.2, APPLE_LUNCHBOX_FRIEND_BASE_BONUS_RATE)).toBe(0.4)
+    expect(
+      addNonStackingBaseProbabilityBonus(
+        0.2,
+        APPLE_LUNCHBOX_FRIEND_BASE_BONUS_RATE,
+        LUCKY_APPLE_COLLECTION_BASE_BONUS_RATE,
+      ),
+    ).toBe(0.4)
+    expect(addNonStackingBaseProbabilityBonus(0.95, 1)).toBe(1)
+    expect(addNonStackingBaseProbabilityBonus(0, 1)).toBe(0)
   })
 })

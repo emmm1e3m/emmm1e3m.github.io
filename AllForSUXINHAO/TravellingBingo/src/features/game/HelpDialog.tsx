@@ -1,5 +1,6 @@
 import { useRef } from 'react'
 
+import { AppleAmount } from '@/components/AppleAmount'
 import { useModalFocus } from '@/components/useModalFocus'
 import type { WorldDimension } from '@/domain'
 
@@ -41,7 +42,9 @@ export function HelpDialog({ open, world = 'game', onClose }: HelpDialogProps) {
             <section>
               <h3>🍎结算</h3>
               <p>
-                每10分钟可以积攒1🍎。回到饼屋时，请确认现实里的事情是否认真完成。认真完成会带回全部苹果，否则只带回一半。
+                每10分钟可以积攒
+                <AppleAmount value={1} />
+                。回到饼屋时，请确认现实里的事情是否认真完成。认真完成会带回全部苹果，否则只带回一半。
               </p>
             </section>
           </div>

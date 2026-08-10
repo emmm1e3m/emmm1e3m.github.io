@@ -451,7 +451,7 @@ test('播放器跨房间面板、收藏墙与苹果钟时保持同一个 iframe 
     .click()
   await page
     .getByRole('alertdialog', { name: '确认取消苹果钟？' })
-    .getByRole('button', { name: '确认取消' })
+    .getByRole('button', { name: '取消计时' })
     .click()
 })
 

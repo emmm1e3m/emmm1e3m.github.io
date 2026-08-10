@@ -3,6 +3,8 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import type { ContentCatalog, RecordPlayerVideo } from '@/content'
 import {
   deriveActivityTiming,
+  deriveRealityActiveDurationMs,
+  REALITY_REWARD_INTERVAL_MS,
   type ActivityKind,
   type ClaimSummary,
   type GameAction,
@@ -182,7 +184,7 @@ function ActivePomodoroOverlay({
       musicStarter={
         controller.state.activeRequest ? undefined : (
           <button
-            className="reality-primary-button pomodoro-focus__start-music"
+            className="reality-secondary-button pomodoro-focus__start-music"
             type="button"
             onClick={() => {
               const firstTrack = catalog.recordPlayerVideos[0]
@@ -190,7 +192,7 @@ function ActivePomodoroOverlay({
               if (request) onTaskEvent({ type: 'record-player-opened', bvid: request.track.bvid })
             }}
           >
-            播放全站第一
+            打开唱片机
           </button>
         )
       }
@@ -234,6 +236,7 @@ export function GameHome({
   const [walking, setWalking] = useState(false)
   const [walkingDirection, setWalkingDirection] = useState<RoomWalkingDirection>('right')
   const [sleeping, setSleeping] = useState(false)
+  const [petMenuOpenRequest, setPetMenuOpenRequest] = useState(0)
   const [helpOpen, setHelpOpen] = useState(false)
   const [dimensionDialog, setDimensionDialog] = useState<DimensionDialogMode | null>(null)
   const [dimensionTransition, setDimensionTransition] = useState<DimensionTransitionState | null>(
@@ -293,28 +296,25 @@ export function GameHome({
     streamPlayback.state.status === 'opening' ||
     streamPlayback.state.status === 'waiting' ||
     streamPlayback.state.status === 'blocked'
-  const visitorStreamQueue = useMemo(
-    () => buildStreamQueue(game.reality.streamSettings.selfTestBvid, streamCatalogBvids),
-    [game.reality.streamSettings.selfTestBvid, streamCatalogBvids],
-  )
-
   useEffect(() => {
     if (!game.reality.streamSettings.dimensionPenetrationEnabled || loginStreamActive) {
       stopVisitorStream()
       return
     }
-    startVisitorStream(visitorStreamQueue, {
+    startVisitorStream(streamCatalogBvids, {
       videoIntervalMs: streamVideoIntervalMs,
       roundIntervalMs: streamRoundDurationMs,
+      selfTestBvid: game.reality.streamSettings.selfTestBvid,
     })
   }, [
     game.reality.streamSettings.dimensionPenetrationEnabled,
+    game.reality.streamSettings.selfTestBvid,
     loginStreamActive,
     streamRoundDurationMs,
     streamVideoIntervalMs,
     startVisitorStream,
     stopVisitorStream,
-    visitorStreamQueue,
+    streamCatalogBvids,
   ])
 
   const startLoginStream = useCallback<StreamPlaybackController['start']>(
@@ -450,6 +450,18 @@ export function GameHome({
   function toggleDimension() {
     if (pendingRealitySettlement || dimensionTransition) return
     if (game.world === 'reality') {
+      // 非 PC 恢复态由不可取消的 return-required 弹窗接管，必须让用户显式确认返回。
+      if (realityBlocked) return
+
+      const activeStay = game.reality.activeStay
+      const fullRewardApples = activeStay
+        ? Math.floor(deriveRealityActiveDurationMs(activeStay, now) / REALITY_REWARD_INTERVAL_MS)
+        : 0
+      if (fullRewardApples < 1) {
+        startDimensionTransition('game')
+        return
+      }
+
       setDimensionDialog('confirm-leave')
       return
     }
@@ -484,13 +496,13 @@ export function GameHome({
   const vitalityDays = vitality
     ? Math.max(0, vitality.expiresAfterCompanionDay - game.profile.companionDays)
     : 0
-  const petStatusLabel = activity
+  const petStatusLabel: string | null = activity
     ? timing.phase === 'ready'
       ? `${ACTIVITY_COPY[activity.kind].name}完成了`
       : ACTIVITY_COPY[activity.kind].verb
     : game.pet.tired
       ? '今天想先休息'
-      : '状态正常'
+      : null
 
   return (
     <BilibiliPlayerProvider state={game.musicPlayer} onAction={onAction} tracks={playerTracks}>
@@ -521,12 +533,18 @@ export function GameHome({
             visitorStreamPlayback.state.startedAt === null
               ? null
               : {
-                  startedAt: visitorStreamPlayback.state.startedAt,
                   round: visitorStreamPlayback.state.round,
+                  nextRoundRemainingSeconds: (() => {
+                    const remainingMs = visitorStreamPlayback.getNextRoundRemainingMs()
+                    return remainingMs === null ? null : Math.ceil(remainingMs / 1_000)
+                  })(),
                 }
           }
           onExit={onExit}
           onCenter={() => navigate(activity ? 'activity' : 'status')}
+          onRealityTimer={toggleDimension}
+          onVisitorStream={() => navigate('reality-stream')}
+          onPetStatus={() => setPetMenuOpenRequest((request) => request + 1)}
           onFridge={() => navigate('fridge')}
           onAlbum={() => navigate('album')}
           onDebug={() => navigate('debug')}
@@ -552,6 +570,7 @@ export function GameHome({
             walking={walking && !activity}
             walkingDirection={walkingDirection}
             sleeping={sleeping}
+            petMenuOpenRequest={petMenuOpenRequest}
             restDarkness={
               activity?.kind === 'rest' ? Math.min(0.84, 0.16 + timing.progress * 0.68) : 0
             }

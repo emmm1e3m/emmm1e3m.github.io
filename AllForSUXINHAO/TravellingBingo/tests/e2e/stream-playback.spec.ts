@@ -108,8 +108,13 @@ test.describe('现实刷播浏览器契约', () => {
     await expect.poll(() => openedPages.length).toBeGreaterThanOrEqual(STATIC_BVIDS.length)
     await expect(panel).toContainText('本轮播放中')
     await expect
-      .poll(() => openedPages.slice(0, STATIC_BVIDS.length).map((item) => item.url()))
-      .toEqual([...canonicalUrls])
+      .poll(() =>
+        openedPages
+          .slice(0, STATIC_BVIDS.length)
+          .map((item) => item.url())
+          .sort(),
+      )
+      .toEqual([...canonicalUrls].sort())
     expect(unexpectedRequests).toEqual([])
 
     await expect(panel).toContainText('本次完成轮次1', { timeout: 10_000 })
@@ -151,7 +156,7 @@ test.describe('现实刷播浏览器契约', () => {
         }
       }, BROWSER_SAVE_KEY)
     await expect.poll(readPersistedHistory).toMatchObject({
-      schemaVersion: 8,
+      schemaVersion: 9,
       streamSettings: { selfTestBvid: null, dimensionPenetrationEnabled: false },
       completedRounds: 1,
       recentSessions: [expect.objectContaining({ roundsCompleted: 1, outcome: 'completed' })],
@@ -191,22 +196,18 @@ test.describe('现实刷播浏览器契约', () => {
       element.setAttribute('data-e2e-guest-node', 'first-round')
     })
     await expect(firstFrame).toHaveAttribute('src', /autoplay=1.*danmaku=0.*t=0.*muted=1/u)
-    await expect(page.getByRole('timer', { name: /游客刷播已运行/u })).toContainText('第 1 轮')
+    await expect(page.getByRole('button', { name: /游客刷播第 1 轮/u })).toContainText('第 1 轮')
 
     await page.getByRole('button', { name: '回到旅行饼狗游戏' }).click()
-    await page
-      .getByRole('dialog', { name: '回到饼屋？' })
-      .getByRole('button', { name: '回到饼屋' })
-      .click()
     await expect(page.locator('.game-page')).toHaveAttribute('data-world', 'game')
     await expect(page.locator('[data-e2e-guest-node="first-round"]')).toHaveCount(1)
-    await expect(page.getByRole('timer', { name: /游客刷播已运行/u })).toBeVisible()
+    await expect(page.getByRole('button', { name: /游客刷播第 1 轮/u })).toBeVisible()
 
     await expect(page.locator('[data-e2e-guest-node="first-round"]')).toHaveCount(0, {
       timeout: 8_000,
     })
     await expect(guestFrames).toHaveCount(1)
-    await expect(page.getByRole('timer', { name: /游客刷播已运行/u })).toContainText('第 2 轮')
+    await expect(page.getByRole('button', { name: /游客刷播第 2 轮/u })).toContainText('第 2 轮')
     await expect
       .poll(() =>
         page.evaluate((key) => {
@@ -243,12 +244,12 @@ test.describe('现实刷播浏览器契约', () => {
     await panel.getByRole('button', { name: '开始登录刷播' }).click()
     const loginPage = await loginPagePromise
     await expect(guestFrames).toHaveCount(0)
-    await expect(loginPage).toHaveURL([...canonicalUrls][0]!)
+    await expect.poll(() => canonicalUrls.has(loginPage.url())).toBe(true)
 
     await panel.getByRole('button', { name: '停止登录刷播' }).click()
     await expect.poll(() => loginPage.isClosed()).toBe(true)
     await expect(guestFrames).toHaveCount(1)
-    await expect(page.getByRole('timer', { name: /游客刷播已运行/u })).toContainText('第 1 轮')
+    await expect(page.getByRole('button', { name: /游客刷播第 1 轮/u })).toContainText('第 1 轮')
     expect(unexpectedRequests).toEqual([])
   })
 })

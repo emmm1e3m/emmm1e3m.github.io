@@ -20,6 +20,7 @@ export function buildUnlockedPostcardBackgrounds(
         title: item.title,
         thumbnailUrl: thumbnail ? publicAsset(thumbnail.path) : undefined,
         fullUrl: full ? publicAsset(full.path) : undefined,
+        aspectRatio: full && full.height > 0 ? full.width / full.height : undefined,
         alt: item.alt,
         description: item.caption,
       },

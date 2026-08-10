@@ -71,6 +71,25 @@ function contentCatalog(
   }
 }
 
+function friend(id: FriendItem['id'], name: string = id): FriendItem {
+  return {
+    id,
+    name,
+    kind: 'dog',
+    description: `${name}的介绍。`,
+    alt: `${name}头像`,
+    image: {
+      path: `assets/friends/${id}.webp`,
+      width: 320,
+      height: 480,
+      byteLength: 1,
+      mime: 'image/webp',
+      sha256: '0'.repeat(64),
+    },
+    sourceCell: 1,
+  }
+}
+
 function gameWithCollections(entries: ReadonlyArray<[string, number]>): GameState {
   const game = createInitialGameState({ now: 1_000, seed: 'album-regression' })
   return {
@@ -120,13 +139,15 @@ describe('饼狗的收藏墙', () => {
     renderAlbum(catalog, game)
 
     const dialog = screen.getByRole('dialog', { name: '饼狗的收藏墙' })
-    expect(within(dialog).getByRole('tab', { name: '明信片' })).toBeInTheDocument()
-    expect(within(dialog).getByRole('tab', { name: '全站第一' })).toBeInTheDocument()
+    expect(within(dialog).getByText('收藏进度【2/?】')).toBeVisible()
+    expect(within(dialog).getByRole('tab', { name: '明信片【1/?】' })).toBeInTheDocument()
+    expect(within(dialog).getByRole('tab', { name: '全站第一【1/1】' })).toBeInTheDocument()
     expect(within(dialog).queryByRole('tab', { name: '百万直拍' })).not.toBeInTheDocument()
     expect(within(dialog).queryByText(millionShot.title)).not.toBeInTheDocument()
     expect(within(dialog).queryByText('???')).not.toBeInTheDocument()
+    expect(within(dialog).queryByText(/2\/4/u)).not.toBeInTheDocument()
 
-    fireEvent.click(within(dialog).getByRole('tab', { name: '全站第一' }))
+    fireEvent.click(within(dialog).getByRole('tab', { name: '全站第一【1/1】' }))
     expect(within(dialog).getByRole('button', { name: /已经获得的全站第一/u })).toBeVisible()
     expect(within(dialog).queryByText(oldestPostcard.title)).not.toBeInTheDocument()
   })
@@ -158,12 +179,13 @@ describe('饼狗的收藏墙', () => {
     ])
     const { rerender } = renderAlbum(originalCatalog, game)
 
-    expect(screen.getByText('全部集齐 · 3 / 3')).toBeVisible()
+    expect(screen.getByText('收藏进度【3/3】')).toBeVisible()
 
     const addedLater = collectible('postcard-added-later', 'postcard', '后来新增的明信片')
     const expandedCatalog = contentCatalog([...originalCatalog.items, addedLater])
     rerender(<AlbumHarness catalog={expandedCatalog} game={game} />)
 
+    expect(screen.getByText('收藏进度【3/?】')).toBeVisible()
     expect(screen.queryByText(/3\s*\/\s*4/u)).not.toBeInTheDocument()
     expect(screen.queryByText(addedLater.title)).not.toBeInTheDocument()
     expect(screen.getByRole('button', { name: /最早的明信片/u })).toBeVisible()
@@ -185,7 +207,7 @@ describe('饼狗的收藏墙', () => {
     renderAlbum(catalog, gameWithCollections([[oldestPostcard.id, 1_000]]))
 
     expect(
-      screen.getByRole('tab', { name: '明信片' }).querySelector('.album-tab__label'),
+      screen.getByRole('tab', { name: '明信片【1/1】' }).querySelector('.album-tab__label'),
     ).not.toBeNull()
     const card = screen.getByRole('button', { name: /最早的明信片/u })
     expect(card.querySelector('img')).toHaveClass(
@@ -196,23 +218,8 @@ describe('饼狗的收藏墙', () => {
   })
 
   it('好友图片使用 cover，卡片只保留相遇次数而不显示收到苹果', () => {
-    const friend: FriendItem = {
-      id: 'signal-dog',
-      name: '信号狗',
-      kind: 'dog',
-      description: '从信号里跑来的朋友。',
-      alt: '信号狗头像',
-      image: {
-        path: 'assets/friends/signal-dog.webp',
-        width: 320,
-        height: 480,
-        byteLength: 1,
-        mime: 'image/webp',
-        sha256: '0'.repeat(64),
-      },
-      sourceCell: 1,
-    }
-    const catalog = contentCatalog([], [], [friend])
+    const signalDog = friend('signal-dog', '信号狗')
+    const catalog = contentCatalog([], [], [signalDog])
     const initial = gameWithCollections([])
     const game: GameState = {
       ...initial,
@@ -228,10 +235,62 @@ describe('饼狗的收藏墙', () => {
     }
     renderAlbum(catalog, game)
 
+    expect(screen.getByText('收藏进度【1/1】')).toBeVisible()
+    expect(screen.getByRole('tab', { name: '好朋友们【1/1】' })).toBeVisible()
     expect(screen.getByRole('img', { name: '信号狗头像' })).toHaveClass('friend-card__portrait')
     expect(screen.getByText('见过 3 次')).toBeVisible()
     expect(screen.queryByText(/收到/u)).not.toBeInTheDocument()
     expect(screen.queryByText(/12🍎/u)).not.toBeInTheDocument()
+  })
+
+  it('好友进度在四位时隐藏动态总数，认识目录中的全部好友后才显示五分之五', () => {
+    const friends = [
+      friend('class-representative-bing', '朋友1'),
+      friend('san-hao-rabbit', '朋友2'),
+      friend('xin-hao-rabbit', '朋友3'),
+      friend('signal-dog', '朋友4'),
+      friend('bili-bing', '朋友5'),
+    ]
+    const catalog = contentCatalog([], [], friends)
+    const initial = gameWithCollections([])
+    const fourFriends: GameState = {
+      ...initial,
+      friends: Object.fromEntries(
+        friends.slice(0, 4).map((item, index) => [
+          item.id,
+          {
+            id: item.id,
+            firstMetAt: 1_000 + index,
+            lastMetAt: 2_000 + index,
+            encounterCount: 1,
+            totalGiftApples: 0,
+          },
+        ]),
+      ),
+    }
+    const { rerender } = renderAlbum(catalog, fourFriends)
+
+    expect(screen.getByRole('tab', { name: '好朋友们【4/?】' })).toBeVisible()
+    expect(screen.getByText('收藏进度【4/?】')).toBeVisible()
+    expect(screen.queryByText(/4\/5/u)).not.toBeInTheDocument()
+
+    const allFriends: GameState = {
+      ...fourFriends,
+      friends: {
+        ...fourFriends.friends,
+        [friends[4].id]: {
+          id: friends[4].id,
+          firstMetAt: 1_005,
+          lastMetAt: 2_005,
+          encounterCount: 1,
+          totalGiftApples: 0,
+        },
+      },
+    }
+    rerender(<AlbumHarness catalog={catalog} game={allFriends} />)
+
+    expect(screen.getByRole('tab', { name: '好朋友们【5/5】' })).toBeVisible()
+    expect(screen.getByText('收藏进度【5/5】')).toBeVisible()
   })
 
   it('图片详情可进入 contain 全屏，提供同源下载并在关闭后返回图片按钮', () => {

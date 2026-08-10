@@ -21,6 +21,9 @@ describe('DebugPanel', () => {
     const defaultDuration = screen.getByRole('button', { name: '10 秒' })
     expect(defaultDuration).toHaveAttribute('aria-pressed', 'true')
     expect(screen.queryByRole('button', { name: '112 秒' })).not.toBeInTheDocument()
+    const addApples = screen.getByRole('button', { name: '增加 20🍎' })
+    expect(addApples).toHaveTextContent('增加 20🍎')
+    expect(addApples.querySelector('.apple-amount__number')).toHaveTextContent('20')
 
     fireEvent.click(defaultDuration)
     expect(onAction).toHaveBeenCalledWith({ type: 'debug/duration-set', durationMs: 10_000 })

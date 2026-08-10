@@ -216,12 +216,6 @@
   cursor: default;
 }
 
-.room-card--v3 .room-bingo-badge {
-  top: 2.2%;
-  left: 2.2%;
-  font-size: 0.68rem;
-}
-
 .room-card--v3 .room-hotspot--text {
   min-width: 76px;
   min-height: 44px;
@@ -298,15 +292,16 @@
 }
 
 .pet-menu__vitality {
-  display: grid;
-  grid-template-columns: 3rem minmax(0, 1fr);
+  display: flex;
   gap: 0.35rem;
   align-items: center;
+  white-space: nowrap;
 }
 
 .pet-menu__vitality strong,
 .pet-menu__vitality span {
   font-size: 0.72rem;
+  white-space: nowrap;
 }
 
 .day-night-overlay.is-resting {

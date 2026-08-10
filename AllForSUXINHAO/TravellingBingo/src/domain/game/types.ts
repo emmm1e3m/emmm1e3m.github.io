@@ -286,16 +286,32 @@ export interface PlayerState {
   }
 }
 
-export interface RealityStay {
+/** 已发布 V4-V8 的现实停留形状；仅供严格导入与迁移。 */
+export interface RealityStayV8 {
   stayId: string
   enteredAt: number
 }
 
-export interface RealitySettlement {
+/**
+ * 当前现实停留。activeDurationMs 只累计浏览器页面实际持有租约的时间；
+ * leaseStartedAt 为 null 时计时暂停，重新进入游戏后从新的租约起点继续。
+ */
+export interface RealityStay extends RealityStayV8 {
+  activeDurationMs: number
+  leaseStartedAt: number | null
+}
+
+/** 已发布 V4-V8 的现实结算形状；仅供严格导入与迁移。 */
+export interface RealitySettlementV8 {
   stayId: string
   enteredAt: number
   leftAt: number
   fullRewardApples: number
+}
+
+export interface RealitySettlement extends RealitySettlementV8 {
+  /** 本段停留中由页面租约证明的实际累计时长。 */
+  activeDurationMs: number
 }
 
 export type RealityRewardDecision = 'serious' | 'not-serious'
@@ -335,8 +351,8 @@ export interface PomodoroStateV4 {
 
 export interface RealityStateV4 {
   nextStaySequence: number
-  activeStay: RealityStay | null
-  pendingSettlement: RealitySettlement | null
+  activeStay: RealityStayV8 | null
+  pendingSettlement: RealitySettlementV8 | null
   todos: Record<string, TodoItem>
   pomodoro: PomodoroStateV4
 }
@@ -369,8 +385,8 @@ export interface PomodoroState {
 
 export interface RealityState {
   nextStaySequence: number
-  activeStay: RealityStay | null
-  pendingSettlement: RealitySettlement | null
+  activeStay: RealityStayV8 | null
+  pendingSettlement: RealitySettlementV8 | null
   todos: Record<string, TodoItem>
   pomodoro: PomodoroState
 }
@@ -416,7 +432,7 @@ export interface RealityStateV7 extends RealityState {
 }
 
 export interface StreamSettings {
-  /** 额外插入轮换序列开头的单个自测视频。 */
+  /** 额外插入轮换序列末尾的单个自测视频。 */
   selfTestBvid: string | null
   /** 返回游戏维度后仍运行实验性游客刷播。 */
   dimensionPenetrationEnabled: boolean
@@ -424,6 +440,11 @@ export interface StreamSettings {
 
 export interface RealityStateV8 extends RealityStateV7 {
   streamSettings: StreamSettings
+}
+
+export interface RealityStateV9 extends Omit<RealityStateV8, 'activeStay' | 'pendingSettlement'> {
+  activeStay: RealityStay | null
+  pendingSettlement: RealitySettlement | null
 }
 
 export type MusicLoopMode = 'list' | 'single' | 'shuffle'
@@ -575,7 +596,12 @@ export interface GameStateV8 extends Omit<GameStateV7, 'schemaVersion' | 'realit
   reality: RealityStateV8
 }
 
-export type GameState = GameStateV8
+export interface GameStateV9 extends Omit<GameStateV8, 'schemaVersion' | 'reality'> {
+  schemaVersion: 9
+  reality: RealityStateV9
+}
+
+export type GameState = GameStateV9
 
 export interface ActivityTiming {
   phase: ActivityPhase
@@ -663,6 +689,9 @@ export type GameAction =
   | { type: 'task/event'; event: TaskEvent; now: number }
   | { type: 'reality/enter'; now: number }
   | { type: 'reality/leave'; now: number }
+  | { type: 'reality/session-resume'; stayId: string; now: number }
+  | { type: 'reality/session-heartbeat'; stayId: string; now: number }
+  | { type: 'reality/session-suspend'; stayId: string; now: number }
   | {
       type: 'reality/stream-session-progress'
       sessionId: string

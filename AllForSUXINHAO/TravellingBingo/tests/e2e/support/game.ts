@@ -124,9 +124,10 @@ export async function buySupply(page: Page, itemName: string) {
 export async function readSupplyCount(page: Page, itemName: string) {
   await openRoomArea(page, '冰箱')
   const item = page.locator('.shop-item').filter({ hasText: itemName })
-  const text = await item.locator('small').innerText()
-  const match = /现有\s*(\d+)\s*份/u.exec(text)
-  if (!match) throw new Error(`无法读取“${itemName}”数量：${text}`)
+  const title = await item.locator('strong').innerText()
+  const note = await item.locator('small').innerText()
+  const match = /【\s*(\d+)\s*】$/u.exec(title) ?? /现有\s*(\d+)\s*份/u.exec(note)
+  if (!match) throw new Error(`无法读取“${itemName}”数量：${title}；${note}`)
   return Number(match[1])
 }
 

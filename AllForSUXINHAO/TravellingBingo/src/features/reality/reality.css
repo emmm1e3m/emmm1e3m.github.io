@@ -167,6 +167,10 @@
   justify-content: center;
 }
 
+.reality-group-card--centered > .paper-tag {
+  align-self: center;
+}
+
 .reality-group-card--centered .reality-primary-link {
   align-self: center;
   width: min(100%, 16rem);
@@ -187,7 +191,7 @@
   color: #fffaf2;
   background: var(--apple, #b63748);
   box-shadow: 0 3px 0 #762b35;
-  font-size: 0.76rem;
+  font-size: var(--v4-body-copy-size, 0.9rem);
   font-weight: 850;
   line-height: 1.25;
   text-align: center;
@@ -226,7 +230,23 @@
 }
 
 .reality-stream-panel__instruction {
-  margin-top: 0;
+  margin: 0;
+}
+
+.reality-stream-guidance {
+  display: grid;
+  gap: 0.55rem;
+  color: var(--muted, #765752);
+  font-size: var(--v4-body-copy-size, 0.9rem);
+  font-weight: 650;
+  line-height: 1.6;
+}
+
+.reality-stream-guidance ul {
+  display: grid;
+  gap: 0.3rem;
+  margin: 0;
+  padding-left: 1.25rem;
 }
 
 .reality-stream-field {
@@ -237,26 +257,8 @@
 .reality-stream-field > span,
 .reality-stream-modes legend {
   color: var(--ink, #432c29);
-  font-size: 0.76rem;
+  font-size: var(--v4-body-copy-size, 0.9rem);
   font-weight: 900;
-}
-
-.reality-stream-field textarea {
-  width: 100%;
-  min-height: 8.5rem;
-  resize: vertical;
-  padding: 0.75rem;
-  border: 1.5px solid #caa181;
-  border-radius: 14px 17px 13px 16px;
-  color: var(--ink, #432c29);
-  background: #fffdf8;
-  font: 700 0.76rem/1.55 var(--body-font, inherit);
-  overflow-wrap: anywhere;
-}
-
-.reality-stream-field textarea:focus-visible {
-  outline: 3px solid color-mix(in srgb, var(--apple, #b63748) 28%, transparent);
-  outline-offset: 2px;
 }
 
 .reality-stream-settings {
@@ -273,15 +275,14 @@
   border-radius: 12px 15px 11px 14px;
   color: var(--ink, #432c29);
   background: #fffdf8;
-  font: 750 0.74rem/1.4 var(--body-font, inherit);
+  font: 750 var(--v4-body-copy-size, 0.9rem) / 1.4 var(--body-font, inherit);
 }
 
 .reality-stream-field > small,
-.reality-stream-shared-settings,
-.reality-stream-visitor-note {
+.reality-stream-shared-settings {
   margin: 0;
   color: var(--muted, #765752);
-  font-size: 0.65rem;
+  font-size: var(--v4-support-copy-size, 0.82rem);
   font-weight: 700;
   line-height: 1.5;
 }
@@ -289,7 +290,7 @@
 .reality-stream-setting-error {
   margin: -0.25rem 0 0;
   color: #762b35;
-  font-size: 0.68rem;
+  font-size: var(--v4-support-copy-size, 0.82rem);
   font-weight: 750;
 }
 
@@ -307,35 +308,23 @@
 }
 
 .reality-stream-modes > label {
-  min-height: 4.2rem;
+  min-height: 44px;
   display: flex;
   align-items: center;
   gap: 0.55rem;
-  padding: 0.62rem;
-  border: 1.5px solid #ddc1a1;
-  border-radius: 14px 16px 13px 15px;
-  background: #fff8ed;
+  padding: 0.2rem 0;
   cursor: pointer;
 }
 
 .reality-stream-modes input {
+  width: 1.1rem;
+  height: 1.1rem;
   flex: 0 0 auto;
   accent-color: var(--apple, #b63748);
 }
 
-.reality-stream-modes label > span {
-  display: grid;
-  gap: 0.08rem;
-}
-
 .reality-stream-modes strong {
-  font-size: 0.75rem;
-}
-
-.reality-stream-modes small {
-  color: var(--muted, #765752);
-  font-size: 0.65rem;
-  line-height: 1.35;
+  font-size: var(--v4-body-copy-size, 0.9rem);
 }
 
 .reality-stream-penetration {
@@ -361,21 +350,14 @@
 }
 
 .reality-stream-penetration strong {
-  font-size: 0.76rem;
+  font-size: var(--v4-body-copy-size, 0.9rem);
 }
 
 .reality-stream-penetration small {
   color: var(--muted, #765752);
-  font-size: 0.65rem;
+  font-size: var(--v4-support-copy-size, 0.82rem);
   font-weight: 700;
   line-height: 1.45;
-}
-
-.reality-stream-visitor-note {
-  padding: 0.62rem 0.72rem;
-  border-left: 3px solid #b88d67;
-  border-radius: 0 10px 10px 0;
-  background: rgb(255 248 237 / 78%);
 }
 
 .visitor-stream-layer {
@@ -413,7 +395,7 @@
   border-radius: 13px;
   color: #762b35;
   background: #fff0ef;
-  font-size: 0.72rem;
+  font-size: var(--v4-body-copy-size, 0.9rem);
 }
 
 .reality-stream-errors ul {
@@ -443,12 +425,12 @@
 
 .reality-stream-status > div > span {
   color: var(--muted, #765752);
-  font-size: 0.62rem;
+  font-size: var(--v4-support-copy-size, 0.82rem);
   font-weight: 750;
 }
 
 .reality-stream-status > div > strong {
-  font-size: 0.82rem;
+  font-size: var(--v4-body-copy-size, 0.9rem);
   overflow-wrap: anywhere;
 }
 
@@ -460,7 +442,7 @@
 .reality-stream-status__message {
   margin: 0;
   color: var(--muted, #765752);
-  font-size: 0.69rem;
+  font-size: var(--v4-support-copy-size, 0.82rem);
   font-weight: 700;
   line-height: 1.5;
 }
@@ -485,7 +467,7 @@
 .reality-stream-history > div > span,
 .reality-stream-history > p {
   color: var(--muted, #765752);
-  font-size: 0.65rem;
+  font-size: var(--v4-support-copy-size, 0.82rem);
   font-weight: 700;
 }
 
@@ -509,12 +491,12 @@
   padding: 0.5rem 0.6rem;
   border-radius: 10px;
   background: #fff8ed;
-  font-size: 0.7rem;
+  font-size: var(--v4-body-copy-size, 0.9rem);
 }
 
 .reality-stream-history li > span {
   color: var(--muted, #765752);
-  font-size: 0.64rem;
+  font-size: var(--v4-support-copy-size, 0.82rem);
   text-align: right;
 }
 
@@ -609,20 +591,6 @@
   margin-top: 0.85rem;
 }
 
-.reality-todo-create button,
-.reality-todo-edit button,
-.reality-todo-actions button {
-  min-height: 36px;
-  padding: 0.42rem 0.6rem;
-  border: 1.5px solid #aa7d61;
-  border-radius: 10px;
-  color: var(--ink, #432c29);
-  background: #fff;
-  font-size: 0.68rem;
-  font-weight: 850;
-  cursor: pointer;
-}
-
 .reality-pomodoro-explanation {
   margin: 0.72rem 0 0;
   color: var(--muted, #765752);
@@ -669,7 +637,7 @@
 .reality-postcard-picker__preview {
   min-height: 168px;
   display: grid;
-  grid-template-columns: minmax(112px, 0.8fr) minmax(0, 1.2fr);
+  grid-template-columns: clamp(112px, var(--postcard-preview-width, 42%), 58%) minmax(0, 1fr);
   align-items: stretch;
   gap: 0;
   margin-top: 0.8rem;
@@ -688,7 +656,7 @@
   place-items: center;
   color: #876552;
   background: #ead8c4;
-  object-fit: contain;
+  object-fit: cover;
   object-position: center;
   font-size: 0.78rem;
   font-weight: 850;
@@ -1005,12 +973,6 @@
   gap: 0.35rem;
 }
 
-.reality-todo-actions button.is-danger {
-  color: #8f2838;
-  border-color: #d09a9d;
-  background: #fff0f0;
-}
-
 .reality-todo-edit {
   grid-column: 1 / -1;
   display: grid;
@@ -1053,8 +1015,7 @@
   font-family: var(--font-ui, 'TravellingBingo UI', 'Microsoft YaHei UI', sans-serif);
 }
 
-.pomodoro-focus__background,
-.pomodoro-focus__wash {
+.pomodoro-focus__background {
   position: absolute;
   inset: 0;
   width: 100%;
@@ -1065,12 +1026,6 @@
   z-index: 0;
   object-fit: cover;
   object-position: center;
-}
-
-.pomodoro-focus__wash {
-  z-index: 1;
-  background: linear-gradient(100deg, rgb(255 248 237 / 36%), rgb(57 37 32 / 24%));
-  backdrop-filter: blur(1px);
 }
 
 .pomodoro-focus {
@@ -1270,34 +1225,10 @@ body:has(.persistent-bilibili-player--focus.is-expanded) .pomodoro-focus__worksp
   font: inherit;
 }
 
-.pomodoro-focus__todo-create button,
-.pomodoro-focus__todo-edit button,
-.pomodoro-focus__todo-actions button {
-  min-height: 40px;
-  padding: 0.42rem 0.62rem;
-  border: 1.5px solid #aa7d61;
-  border-radius: 10px;
-  color: var(--ink, #432c29);
-  background: #fff;
-  font-size: 0.68rem;
-  font-weight: 850;
-  cursor: pointer;
-}
-
-.pomodoro-focus__todo-create button:disabled,
-.pomodoro-focus__todo-edit button:disabled {
-  opacity: 0.48;
-  cursor: not-allowed;
-}
-
 .pomodoro-focus__todo-actions,
 .pomodoro-focus__todo-edit > div {
   display: flex;
   gap: 0.35rem;
-}
-
-.pomodoro-focus__todo-actions button.is-danger {
-  color: #922f3e;
 }
 
 .pomodoro-focus__todo-edit {

@@ -16,10 +16,17 @@ import type { VisitorStreamState } from './stream/useVisitorStreamPlayback'
 import './reality.css'
 
 const STREAM_INSTRUCTION =
-  '输入一个自测视频 BV 号（可留空），其余视频使用本站已保存的收藏夹快照。请允许网站弹出窗口，并先在哔哩哔哩设置【自动开播】与【播完暂停】。如果设备或者网络较为卡顿，可以适当增加时长以使视频完全加载。登录时尽量不要连续刷播超过5小时以避免黑号。'
+  '输入一个自测视频 BV 号或视频链接（可留空），其余视频使用本站已保存的收藏夹快照。'
 
-const VISITOR_STREAM_INSTRUCTION =
-  '同一局域网下应当只能有一台账号和一台设备参与刷播。维度穿透刷播是实验性功能，条件允许时请尽量使用打开新页面的方式（在登录状态下）'
+const STREAM_GUIDANCE = [
+  '请允许网站弹出窗口，并先在哔哩哔哩设置【自动开播】与【播完暂停】。',
+  '如果设备或者网络较为卡顿，可以适当增加时长以使视频完全加载。',
+  '登录时尽量不要连续刷播超过5小时以避免黑号。',
+  '同一局域网下应当只能有一台账号和一台设备参与刷播。',
+  '维度穿透刷播是实验性功能，条件允许时请尽量使用打开新页面的方式（在登录状态下）。',
+] as const
+
+const VISITOR_STREAM_INSTRUCTION = STREAM_GUIDANCE.at(-1)!
 
 export interface StreamSessionHistoryItem {
   sessionId: string
@@ -172,7 +179,16 @@ export function StreamPanel({
           <h2 id={headingId}>视频刷播</h2>
         </div>
       </div>
-      <p className="reality-panel__intro reality-stream-panel__instruction">{STREAM_INSTRUCTION}</p>
+      <div className="reality-stream-guidance">
+        <p className="reality-panel__intro reality-stream-panel__instruction">
+          {STREAM_INSTRUCTION}
+        </p>
+        <ul>
+          {STREAM_GUIDANCE.map((item) => (
+            <li key={item}>{item}</li>
+          ))}
+        </ul>
+      </div>
 
       <label className="reality-stream-field" htmlFor={`${headingId}-input`}>
         <span>自测视频 BV 号（可留空）</span>
@@ -181,7 +197,7 @@ export function StreamPanel({
           aria-label="自测视频BV号"
           value={input}
           disabled={controlsLocked}
-          placeholder="BV1xx411c7mD"
+          placeholder="BV...（或视频链接）"
           autoCapitalize="off"
           autoCorrect="off"
           spellCheck={false}
@@ -192,7 +208,7 @@ export function StreamPanel({
             if (nextResult.ok) onSelfTestBvidChange(nextResult.bvid)
           }}
         />
-        <small>收藏夹快照中有 {staticVideoCount} 个视频，自测视频会排在最前面。</small>
+        <small>收藏夹快照中有 {staticVideoCount} 个视频，自测视频会排在最后。</small>
       </label>
       {!inputResult.ok && (
         <p className="reality-stream-setting-error" role="alert">
@@ -289,8 +305,6 @@ export function StreamPanel({
           <small>开启后，没有登录刷播时会自动运行游客刷播，回到游戏维度也会继续。</small>
         </span>
       </label>
-      <p className="reality-stream-visitor-note">{VISITOR_STREAM_INSTRUCTION}</p>
-
       <div className="reality-stream-actions">
         {playback.status === 'blocked' ? (
           <>

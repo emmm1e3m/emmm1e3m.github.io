@@ -89,6 +89,7 @@ function idleVisitorStreamPlayback(): VisitorStreamController {
     },
     start: vi.fn(() => true),
     stop: vi.fn(),
+    getNextRoundRemainingMs: vi.fn(() => null),
   }
 }
 

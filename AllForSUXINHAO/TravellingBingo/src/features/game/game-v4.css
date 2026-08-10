@@ -4,15 +4,24 @@
 }
 
 .game-page--v4 .game-hud--v4 {
-  --v4-hud-copy-size: clamp(0.76rem, 0.9vw, 0.9rem);
-  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+  --v4-hud-copy-size: clamp(0.7rem, 0.84vw, 0.86rem);
+  display: flex;
+  flex-wrap: nowrap;
+  gap: 0.45rem;
+  overflow-x: auto;
+  overflow-y: hidden;
+  scrollbar-width: none;
+}
+
+.game-page--v4 .game-hud--v4::-webkit-scrollbar {
+  display: none;
 }
 
 .game-hud--v4 .exit-button--text,
 .game-hud--v4 .game-hud__center > strong,
 .game-hud--v4 .game-hud__center > small,
 .game-hud--v4 .pet-status-bar__label,
-.game-hud--v4 .pet-status-bar__vitality,
+.game-hud--v4 .pet-status-bar__activity,
 .game-hud--v4 .pet-status-bar__effect,
 .game-hud--v4 .hud-companion,
 .game-hud--v4 .reality-stay-timer,
@@ -88,13 +97,19 @@
   font-weight: 700;
 }
 
-.game-hud--v4 .game-hud__center {
-  position: absolute;
-  z-index: 1;
-  top: 50%;
-  left: 50%;
+.game-hud--v4 .game-hud__leading {
   min-width: max-content;
-  transform: translate(-50%, -50%);
+  display: flex;
+  flex: 0 0 auto;
+  align-items: center;
+  gap: 0.4rem;
+}
+
+.game-hud--v4 .game-hud__center {
+  position: static;
+  min-width: max-content;
+  flex: 0 0 auto;
+  transform: none;
   white-space: nowrap;
 }
 
@@ -127,7 +142,9 @@
 
 .game-hud--v4 .game-hud__actions {
   min-width: 0;
-  justify-self: stretch;
+  flex: 0 0 auto;
+  margin-left: auto;
+  justify-content: flex-end;
   gap: 0.35rem;
 }
 
@@ -169,7 +186,7 @@
 }
 
 .game-page--v4 .pet-status-bar__label,
-.game-page--v4 .pet-status-bar__vitality,
+.game-page--v4 .pet-status-bar__activity,
 .game-page--v4 .pet-status-bar__effect,
 .game-page--v4 .hud-companion {
   min-width: 0;
@@ -180,7 +197,7 @@
 }
 
 .game-page--v4 .pet-status-bar__label,
-.game-page--v4 .pet-status-bar__vitality {
+.game-page--v4 .pet-status-bar__activity {
   font-weight: 700;
 }
 
@@ -441,11 +458,6 @@
 .room-card--v4 .room-mascot--actor:hover,
 .room-card--v4 .room-mascot--actor:focus-visible {
   transform: translate(-50%, -50%) scale(1.04);
-}
-
-.room-card--v4 .room-bingo-badge {
-  top: max(12px, 2.2%);
-  left: max(12px, 2.2%);
 }
 
 /* 活动拒绝态仍可询问饼狗，但不能直接启动活动。 */
@@ -726,7 +738,7 @@
   }
 }
 
-/* 中等与窄宽度都保持一行；空间不足时整条顶栏可横向浏览，不隐藏文字。 */
+/* 中等与窄宽度都保持一行；左右组按内容自然排布，空间不足时整条顶栏可横向浏览。 */
 @media (max-width: 1200px) {
   .game-page.game-page--v4 {
     --hud-height: 68px;
@@ -734,16 +746,13 @@
 
   .game-page--v4 .game-hud--v4 {
     --v4-hud-copy-size: clamp(0.62rem, 1vw, 0.72rem);
-    display: flex;
-    flex-wrap: nowrap;
     gap: 0.3rem;
-    overflow-x: auto;
-    overflow-y: hidden;
-    scrollbar-width: thin;
   }
 
   .game-hud--v4 .game-hud__leading {
+    display: flex;
     flex: 0 0 auto;
+    gap: 0.3rem;
   }
 
   .game-hud--v4 .game-hud__center {
@@ -758,8 +767,9 @@
     min-width: max-content;
     display: flex;
     flex: 0 0 auto;
+    margin-left: auto;
     gap: 0.3rem;
-    justify-content: flex-start;
+    justify-content: flex-end;
   }
 
   .game-page--v4 .pet-status-bar {
@@ -848,7 +858,6 @@
   line-height: 1.1;
 }
 
-.room-card--v4 .room-bingo-badge,
 .game-page--v4 .paper-tag,
 .game-page--v4 .eyebrow,
 .game-page--v4 .bingo-stamp,
@@ -936,9 +945,6 @@
 .game-page--v4 .reality-data-card__method > strong,
 .game-page--v4 .reality-card-index,
 .game-page--v4 .reality-choice-button small,
-.game-page--v4 .reality-todo-create button,
-.game-page--v4 .reality-todo-edit button,
-.game-page--v4 .reality-todo-actions button,
 .game-page--v4 .reality-postcard-option__placeholder,
 .game-page--v4 .reality-todo-create > label,
 .game-page--v4 .reality-todo-copy small,
@@ -955,6 +961,9 @@
 .game-page--v4 .reality-secondary-button,
 .game-page--v4 .reality-danger-button,
 .game-page--v4 .reality-choice-button strong,
+.game-page--v4 .reality-todo-create button,
+.game-page--v4 .reality-todo-edit button,
+.game-page--v4 .reality-todo-actions button,
 .game-page--v4 .reality-todo-copy strong {
   font-size: var(--v4-body-copy-size);
 }

@@ -8,9 +8,9 @@ const HOTSPOTS = [
   { name: '床铺', x: 22, y: 29 },
   { name: '电脑', x: 52, y: 29 },
   { name: '衣架', x: 54, y: 44 },
-  { name: '电子琴', x: 17, y: 67 },
+  { name: '电子琴', x: 17, y: 67.5 },
   { name: '冰箱', x: 50, y: 59 },
-  { name: '唱片机', x: 75, y: 84 },
+  { name: '唱片机', x: 75, y: 81 },
   { name: '收藏墙', x: 81, y: 60 },
   { name: '房门', x: 92, y: 74 },
 ] as const
@@ -202,6 +202,7 @@ test('房间等比图层、热点与饼狗落点共用同一套母版坐标', as
   ])
   await expect(room.getByRole('button', { name: '数据', exact: true })).toHaveCount(0)
   await expect(room.getByRole('button', { name: '工作', exact: true })).toHaveCount(0)
+  await expect(room.locator('.room-bingo-badge')).toHaveCount(0)
   await expect(room.locator('.room-hotspot').first()).toHaveCSS(
     'font-family',
     /TravellingBingo Display/u,
@@ -378,6 +379,17 @@ test('1024px 房间中刷播与冲热在悬停放大后仍保持分离', async (
   const stream = room.getByRole('button', { name: '刷播', exact: true })
   const trend = room.getByRole('button', { name: '冲热（开发中）', exact: true })
 
+  const [streamAlignedBox, trendAlignedBox] = await Promise.all([
+    stream.boundingBox(),
+    trend.boundingBox(),
+  ])
+  expect(streamAlignedBox && trendAlignedBox).toBeTruthy()
+  expectNear(
+    streamAlignedBox!.y + streamAlignedBox!.height / 2,
+    trendAlignedBox!.y + trendAlignedBox!.height / 2,
+    1,
+  )
+
   await stream.hover()
   let [streamBox, trendBox] = await Promise.all([stream.boundingBox(), trend.boundingBox()])
   expect(streamBox && trendBox).toBeTruthy()
@@ -489,6 +501,56 @@ test('待机饼狗先静止，再走动并回到休息状态', async ({ page }, 
   await expect(mascot).toHaveClass(/is-wander-resting/u)
   await expect(mascot).not.toHaveClass(/is-wander-moving/u)
   await expect(mascot.locator('.mascot-sprite--idle')).toBeVisible()
+})
+
+test('1024 与 1440 房间中饼狗菜单跟随角色且不会溢出母版', async ({ page }, testInfo) => {
+  test.skip(testInfo.project.name !== 'chromium', '菜单几何只在 Desktop Chromium 验证')
+  await page.setViewportSize({ width: 1024, height: 768 })
+  await startGame(page, { displayName: '菜单定位测试', seed: 'pet-menu-anchor-e2e' })
+
+  const room = page.getByRole('region', { name: '铲铲饼屋互动场景' })
+  const stage = room.locator('.room-stage')
+  const actor = room.getByRole('button', { name: '饼狗，打开行动菜单' })
+
+  async function expectAnchoredMenu(hotspotName: '床铺' | '唱片机') {
+    await room.locator(`[data-hotspot="${hotspotName}"]`).click()
+    await page.waitForTimeout(650)
+    await actor.click()
+
+    const menu = page.getByRole('dialog', { name: '饼狗状态' })
+    await expect(menu).toBeVisible()
+    const [stageBox, actorBox, menuBox] = await Promise.all([
+      stage.boundingBox(),
+      actor.boundingBox(),
+      menu.boundingBox(),
+    ])
+    expect(stageBox && actorBox && menuBox).toBeTruthy()
+    expect(menuBox!.x).toBeGreaterThanOrEqual(stageBox!.x)
+    expect(menuBox!.y).toBeGreaterThanOrEqual(stageBox!.y)
+    expect(menuBox!.x + menuBox!.width).toBeLessThanOrEqual(stageBox!.x + stageBox!.width)
+    expect(menuBox!.y + menuBox!.height).toBeLessThanOrEqual(stageBox!.y + stageBox!.height)
+    expect(boxesOverlap(actorBox!, menuBox!)).toBe(false)
+
+    const vitality = menu.getByLabel('饼狗活力状态')
+    await expect(vitality).toHaveCSS('white-space', 'nowrap')
+    const [labelBox, valueBox] = await Promise.all([
+      vitality.locator('strong').boundingBox(),
+      vitality.locator('span').boundingBox(),
+    ])
+    expect(labelBox && valueBox).toBeTruthy()
+    expectNear(labelBox!.y + labelBox!.height / 2, valueBox!.y + valueBox!.height / 2, 1)
+
+    await menu.getByRole('button', { name: '收起菜单' }).click()
+  }
+
+  for (const viewport of [
+    { width: 1024, height: 768 },
+    { width: 1440, height: 900 },
+  ]) {
+    await page.setViewportSize(viewport)
+    await expectAnchoredMenu('床铺')
+    await expectAnchoredMenu('唱片机')
+  }
 })
 
 test('饼狗站在冰箱前时热点与角色都能用普通鼠标点击', async ({ page }, testInfo) => {

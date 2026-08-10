@@ -32,6 +32,10 @@ function tabLabel(tab: AlbumTab) {
   return tab === 'friends' ? '好朋友们' : categoryLabel(tab)
 }
 
+function progressLabel(collected: number, total: number) {
+  return `${collected}/${total > 0 && collected === total ? total : '?'}`
+}
+
 function largestImage(item: CollectibleItem) {
   return [...item.images].sort((left, right) => right.width - left.width)[0]
 }
@@ -113,7 +117,8 @@ export function AlbumView({ catalog, game, onClose, onInspect, onPlayerOpened }:
   )
   const knownFriends = useMemo(
     () =>
-      Object.values(game.friends)
+      catalog.friends
+        .map((friend) => game.friends[friend.id])
         .filter((entry) => entry !== undefined)
         .sort(
           (left, right) =>
@@ -121,7 +126,7 @@ export function AlbumView({ catalog, game, onClose, onInspect, onPlayerOpened }:
             left.firstMetAt - right.firstMetAt ||
             left.id.localeCompare(right.id),
         ),
-    [game.friends],
+    [catalog.friends, game.friends],
   )
   const unlockedTabs: AlbumTab[] = [
     ...CATEGORY_ORDER.filter((category) => ownedItems.some((item) => item.category === category)),
@@ -147,7 +152,8 @@ export function AlbumView({ catalog, game, onClose, onInspect, onPlayerOpened }:
     focusPeers: [PLAYER_FOCUS_PEER],
   })
   const tabRefs = useRef<Array<HTMLButtonElement | null>>([])
-  const allCollected = catalog.items.length > 0 && ownedItems.length === catalog.items.length
+  const totalCatalogCount = catalog.items.length + catalog.friends.length
+  const totalOwnedCount = ownedItems.length + knownFriends.length
   const visibleItems =
     activeTab && activeTab !== 'friends'
       ? ownedItems.filter((item) => item.category === activeTab)
@@ -190,7 +196,9 @@ export function AlbumView({ catalog, game, onClose, onInspect, onPlayerOpened }:
       <header className="album-header">
         <div>
           <h2 id="album-title">饼狗的收藏墙</h2>
-          {allCollected && <p>{`全部集齐 · ${ownedItems.length} / ${catalog.items.length}`}</p>}
+          {totalOwnedCount > 0 && (
+            <p>{`收藏进度【${progressLabel(totalOwnedCount, totalCatalogCount)}】`}</p>
+          )}
         </div>
         <button ref={albumCloseRef} className="text-close-button" type="button" onClick={onClose}>
           关闭收藏墙
@@ -200,25 +208,36 @@ export function AlbumView({ catalog, game, onClose, onInspect, onPlayerOpened }:
       {unlockedTabs.length > 0 ? (
         <>
           <div className="album-tabs" role="tablist" aria-label="已解锁的收藏分类">
-            {unlockedTabs.map((value, index) => (
-              <button
-                key={value}
-                className={activeTab === value ? 'is-active' : ''}
-                type="button"
-                role="tab"
-                id={`album-tab-${value}`}
-                aria-controls="album-panel"
-                aria-selected={activeTab === value}
-                tabIndex={activeTab === value ? 0 : -1}
-                ref={(element) => {
-                  tabRefs.current[index] = element
-                }}
-                onKeyDown={(event) => handleTabKey(event, index)}
-                onClick={() => setTab(value)}
-              >
-                <span className="album-tab__label">{tabLabel(value)}</span>
-              </button>
-            ))}
+            {unlockedTabs.map((value, index) => {
+              const collected =
+                value === 'friends'
+                  ? knownFriends.length
+                  : ownedItems.filter((item) => item.category === value).length
+              const total =
+                value === 'friends' ? catalog.friends.length : catalog.categoryCounts[value]
+              return (
+                <button
+                  key={value}
+                  className={activeTab === value ? 'is-active' : ''}
+                  type="button"
+                  role="tab"
+                  id={`album-tab-${value}`}
+                  aria-controls="album-panel"
+                  aria-selected={activeTab === value}
+                  tabIndex={activeTab === value ? 0 : -1}
+                  ref={(element) => {
+                    tabRefs.current[index] = element
+                  }}
+                  onKeyDown={(event) => handleTabKey(event, index)}
+                  onClick={() => setTab(value)}
+                >
+                  <span className="album-tab__label">{tabLabel(value)}</span>
+                  <span className="album-tab__progress">
+                    {`【${progressLabel(collected, total)}】`}
+                  </span>
+                </button>
+              )
+            })}
           </div>
 
           <div

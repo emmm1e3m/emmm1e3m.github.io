@@ -2,7 +2,7 @@ import { describe, expect, it } from 'vitest'
 
 import { MAX_APPLES } from '../game/constants'
 import { createInitialGameState } from '../game/createGameState'
-import { gameStateV8Schema } from '../game/migrateGameStateV7'
+import { gameStateV9Schema } from '../game/migrateGameStateV8'
 import { reduceGame } from '../game/reducer'
 import type {
   CollectionCatalog,
@@ -19,6 +19,7 @@ import {
   hasRetiredTask,
   isTaskCompleted,
   meetsTaskInstanceAssignmentRequirements,
+  MAX_TASK_TEMPLATE_REWARD_APPLES,
   reconcileTaskBoardAvailability,
   refreshCompletedTaskBoard,
   replaceRetiredTaskBoard,
@@ -94,8 +95,11 @@ describe('今日 Bingo 任务板', () => {
       'remember-postcard': 2,
       'remember-million': 2,
       'remember-first': 3,
-      'stage-test': 4,
+      'stage-test': 3,
     })
+    expect(Math.max(...Object.values(TASK_LIBRARY).map((template) => template.rewardApples))).toBe(
+      MAX_TASK_TEMPLATE_REWARD_APPLES,
+    )
     expect(TASK_LIBRARY['greet-bingo'].rewardApples).toBe(1)
 
     for (let sequence = 0; sequence < 20; sequence += 1) {
@@ -153,7 +157,7 @@ describe('今日 Bingo 任务板', () => {
     expect(completed.state.tasks.completedAt).toBe(1_000)
     expect(completed.state.tasks.active.every(isTaskCompleted)).toBe(true)
     expect(completed.effects[0]).toMatchObject({ completed: true })
-    expect(gameStateV8Schema.safeParse(completed.state).success).toBe(true)
+    expect(gameStateV9Schema.safeParse(completed.state).success).toBe(true)
   })
 
   it('最近六项会优先避开，直到候选触发组不足', () => {
@@ -809,8 +813,8 @@ describe('今日 Bingo 任务板', () => {
       ),
     )
 
-    expect(result.state.economy.apples).toBe(applesBefore + 4)
-    expect(result.state.statistics.applesEarned).toBe(4)
+    expect(result.state.economy.apples).toBe(applesBefore + 3)
+    expect(result.state.statistics.applesEarned).toBe(3)
     expect(result.state.tasks.completedCount).toBe(state.tasks.completedCount + 1)
     expect(result.state.tasks.oneOffCompleted).toContain('stage-test')
     expect(result.state.tasks.active.every(isTaskCompleted)).toBe(true)
@@ -822,7 +826,7 @@ describe('今日 Bingo 任务板', () => {
         type: 'task-progressed',
         taskId: 'stage-test',
         completed: true,
-        applesAwarded: 4,
+        applesAwarded: 3,
       },
     ])
 
@@ -919,6 +923,26 @@ describe('今日 Bingo 任务板', () => {
     expect(result.state.economy.apples).toBe(state.economy.apples + 1)
     expect(result.effects).toMatchObject([
       { type: 'task-progressed', taskId: 'open-backpack', applesAwarded: 1 },
+    ])
+  })
+
+  it('旧档已经签发的 4 苹果舞台任务不会被新模板上限截断', () => {
+    const base = createInitialGameState({ now: 0, seed: 'historical-stage-reward' })
+    const historicalTask = { ...task('stage-test'), rewardApples: 4 }
+    const state = withTasks(base, [historicalTask, task('wardrobe-choice'), task('record-time')])
+    const result = successful(
+      reduceGame(
+        state,
+        { type: 'task/event', event: { type: 'stage-test-opened' }, now: 100 },
+        catalog,
+      ),
+    )
+
+    expect(TASK_LIBRARY['stage-test'].rewardApples).toBe(3)
+    expect(result.state.tasks.active[0].rewardApples).toBe(4)
+    expect(result.state.economy.apples).toBe(state.economy.apples + 4)
+    expect(result.effects).toMatchObject([
+      { type: 'task-progressed', taskId: 'stage-test', applesAwarded: 4 },
     ])
   })
 

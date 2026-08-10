@@ -1,4 +1,4 @@
-import { useId, useRef, useState } from 'react'
+import { useId, useRef, useState, type CSSProperties } from 'react'
 import { createPortal } from 'react-dom'
 
 import { useModalFocus } from '@/components/useModalFocus'
@@ -150,6 +150,13 @@ export function PostcardPicker({
       <div
         className="reality-postcard-picker__preview"
         data-background-id={selected?.id ?? 'plain'}
+        style={
+          {
+            '--postcard-preview-width': selected?.aspectRatio
+              ? `${Math.round(168 * selected.aspectRatio)}px`
+              : '42%',
+          } as CSSProperties
+        }
       >
         {selected?.thumbnailUrl ? (
           <img

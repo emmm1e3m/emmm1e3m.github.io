@@ -70,7 +70,7 @@ function CancelDialog({ phaseLabel, onClose, onConfirm, returnFocus }: CancelDia
             继续{phaseLabel}
           </button>
           <button className="reality-danger-button" type="button" onClick={onConfirm}>
-            确认取消
+            取消计时
           </button>
         </div>
       </div>
@@ -247,8 +247,6 @@ export function PomodoroFocusOverlay({
       data-background-id={background?.id ?? 'plain'}
     >
       {backgroundUrl && <img className="pomodoro-focus__background" src={backgroundUrl} alt="" />}
-      <span className="pomodoro-focus__wash" aria-hidden="true" />
-
       <section
         ref={dialogRef}
         className="pomodoro-focus"
@@ -294,7 +292,7 @@ export function PomodoroFocusOverlay({
             </p>
             <button
               ref={cancelButtonRef}
-              className="reality-secondary-button pomodoro-focus__cancel"
+              className="reality-danger-button pomodoro-focus__cancel"
               type="button"
               onClick={() => setConfirmingCancel(true)}
             >
@@ -322,7 +320,11 @@ export function PomodoroFocusOverlay({
                 autoComplete="off"
                 onChange={(event) => setNewTodoTitle(event.target.value)}
               />
-              <button type="submit" disabled={!newTodoTitle.trim()}>
+              <button
+                className="reality-secondary-button"
+                type="submit"
+                disabled={!newTodoTitle.trim()}
+              >
                 添加
               </button>
             </form>
@@ -348,10 +350,15 @@ export function PomodoroFocusOverlay({
                           onChange={(event) => setEditTitle(event.target.value)}
                         />
                         <div>
-                          <button type="submit" disabled={!editTitle.trim()}>
+                          <button
+                            className="reality-primary-button"
+                            type="submit"
+                            disabled={!editTitle.trim()}
+                          >
                             保存
                           </button>
                           <button
+                            className="reality-secondary-button"
                             type="button"
                             onClick={() => {
                               setEditingTodoId(null)
@@ -377,11 +384,15 @@ export function PomodoroFocusOverlay({
                         </label>
                         <span className="pomodoro-focus__todo-title">{todo.title}</span>
                         <span className="pomodoro-focus__todo-actions">
-                          <button type="button" onClick={() => startEditing(todo)}>
+                          <button
+                            className="reality-secondary-button"
+                            type="button"
+                            onClick={() => startEditing(todo)}
+                          >
                             编辑
                           </button>
                           <button
-                            className="is-danger"
+                            className="reality-danger-button"
                             type="button"
                             onClick={(event) => askToDelete(todo, event.currentTarget)}
                           >

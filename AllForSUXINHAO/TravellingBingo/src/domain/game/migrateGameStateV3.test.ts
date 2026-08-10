@@ -20,6 +20,7 @@ import { migrateGameStateV4ToV5 } from './migrateGameStateV4'
 import { gameStateV6Schema, migrateGameStateV5ToV6 } from './migrateGameStateV5'
 import { migrateGameStateV6ToV7 } from './migrateGameStateV6'
 import { migrateGameStateV7ToV8 } from './migrateGameStateV7'
+import { migrateGameStateV8ToV9 } from './migrateGameStateV8'
 import type { CollectionCatalog, GameStateV1, GameStateV3 } from './types'
 import { MAX_DATE_TIMESTAMP_MS } from './time'
 import { validateImportedGameState } from './validateImportedGameState'
@@ -32,6 +33,10 @@ const catalog: CollectionCatalog = {
 }
 
 const migrationOptions = { now: 500_000, catalog }
+
+function migrateGameStateV7ToCurrent(state: Parameters<typeof migrateGameStateV7ToV8>[0]) {
+  return migrateGameStateV8ToV9(migrateGameStateV7ToV8(state))
+}
 
 function v3Fixture(options: { active?: boolean; debug?: boolean } = {}): GameStateV3 {
   const active = options.active ?? true
@@ -304,7 +309,7 @@ describe('schemaVersion 3 -> 4 显式迁移', () => {
       expect(v6.activeActivity?.rewardPlan).toEqual(rewardPlan)
       expect(gameStateV6Schema.safeParse(v6).success).toBe(true)
       expect(
-        validateImportedGameState(migrateGameStateV7ToV8(migrateGameStateV6ToV7(v6)), catalog),
+        validateImportedGameState(migrateGameStateV7ToCurrent(migrateGameStateV6ToV7(v6)), catalog),
       ).toEqual({ ok: true })
     },
   )
@@ -354,7 +359,7 @@ describe('schemaVersion 3 -> 4 显式迁移', () => {
     expect(gameStateV4Schema.safeParse(migrated).success).toBe(true)
     expect(
       validateImportedGameState(
-        migrateGameStateV7ToV8(
+        migrateGameStateV7ToCurrent(
           migrateGameStateV6ToV7(migrateGameStateV5ToV6(migrateGameStateV4ToV5(migrated))),
         ),
         catalog,

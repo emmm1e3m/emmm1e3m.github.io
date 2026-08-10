@@ -10,6 +10,8 @@ function fakeWindow() {
   return { close: vi.fn() } as unknown as Window
 }
 
+const KEEP_ORDER_RANDOM = () => 0.999_999
+
 describe('useStreamPlayback', () => {
   afterEach(() => {
     vi.restoreAllMocks()
@@ -25,6 +27,7 @@ describe('useStreamPlayback', () => {
     const { result } = renderHook(() =>
       useStreamPlayback({
         catalogBvids: ['BV1xx411c7mD', 'BV1B7411m7LV', 'BV17x411w7KC'],
+        random: KEEP_ORDER_RANDOM,
       }),
     )
 
@@ -77,6 +80,41 @@ describe('useStreamPlayback', () => {
     expect(result.current.getRemainingMs()).toBe(12_000)
     act(() => vi.advanceTimersByTime(12_000))
     expect(result.current.getRemainingMs()).toBe(2_000)
+  })
+
+  it('每轮重新打乱收藏夹，自测视频在每轮都最后打开', () => {
+    vi.useFakeTimers()
+    vi.spyOn(window, 'open').mockImplementation(() => fakeWindow())
+    const random = vi
+      .fn<() => number>()
+      .mockReturnValueOnce(0.999_999)
+      .mockReturnValueOnce(0.999_999)
+      .mockReturnValueOnce(0)
+      .mockReturnValueOnce(0)
+    const catalogBvids = ['BV1At3j6EE6w', 'BV1mkuN6HEFC', 'BV1UZ3D6REhZ']
+    const selfTestBvid = 'BV1xx411c7mD'
+    const { result } = renderHook(() =>
+      useStreamPlayback({ catalogBvids, roundDurationMs: 1_000, random }),
+    )
+
+    act(() =>
+      result.current.start(selfTestBvid, 'tabs', {
+        openDelayMs: 1_000,
+      }),
+    )
+    act(() => vi.advanceTimersByTime(3_000))
+    const firstRound = vi
+      .mocked(window.open)
+      .mock.calls.map(([url]) => new URL(String(url)).pathname.split('/').filter(Boolean)[1])
+    expect(firstRound).toEqual([...catalogBvids, selfTestBvid])
+
+    act(() => vi.advanceTimersByTime(1_000))
+    act(() => vi.advanceTimersByTime(3_000))
+    const secondRound = vi
+      .mocked(window.open)
+      .mock.calls.slice(4)
+      .map(([url]) => new URL(String(url)).pathname.split('/').filter(Boolean)[1])
+    expect(secondRound).toEqual([catalogBvids[1], catalogBvids[2], catalogBvids[0], selfTestBvid])
   })
 
   it('每轮只上报进度，手动停止时把多轮汇总成一次会话', () => {

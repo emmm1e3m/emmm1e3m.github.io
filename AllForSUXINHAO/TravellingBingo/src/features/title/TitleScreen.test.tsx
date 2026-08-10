@@ -33,6 +33,18 @@ const cachedPreview = {
   companionDays: 2,
 }
 
+const importPreview = {
+  fileName: '旅行饼狗存档.bingo',
+  exportedAt: 1_000,
+  gameVersion: '0.8.0-demo.1',
+  apples: 12,
+  collectionCount: 4,
+  activityLabel: '在铲铲饼屋休息',
+  debug: false,
+  displayName: '小饼干',
+  companionDays: 2,
+}
+
 describe('TitleScreen 新游戏称呼', () => {
   it('拒绝空白称呼并标记输入错误', () => {
     const onStart = vi.fn()
@@ -109,6 +121,9 @@ describe('TitleScreen 新游戏称呼', () => {
     ).toEqual(['继续', '全新旅程', '本地存档'])
     expect(screen.getByRole('button', { name: '继续' })).toHaveClass('landing-button--primary')
     expect(screen.getByRole('button', { name: '全新旅程' })).toHaveClass('landing-button--quiet')
+    expect(screen.getByLabelText('20🍎').querySelector('.apple-amount__number')).toHaveTextContent(
+      '20',
+    )
     fireEvent.click(screen.getByRole('button', { name: '继续' }))
     expect(onContinueCached).toHaveBeenCalledOnce()
     expect(screen.getByRole('region', { name: '缓存存档摘要' })).toHaveTextContent('20🍎')
@@ -138,6 +153,14 @@ describe('TitleScreen 新游戏称呼', () => {
     expect(screen.getByRole('link', { name: '打开微博主页 7760819929' })).toHaveAttribute(
       'href',
       'https://weibo.com/7760819929',
+    )
+  })
+
+  it('导入存档摘要的苹果数字也使用统一数字字体节点', () => {
+    render(<TitleScreen {...props()} importPreview={importPreview} />)
+
+    expect(screen.getByLabelText('12🍎').querySelector('.apple-amount__number')).toHaveTextContent(
+      '12',
     )
   })
 })

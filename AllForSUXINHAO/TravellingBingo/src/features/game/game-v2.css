@@ -58,22 +58,6 @@
   margin: 0 auto;
 }
 
-.room-bingo-badge {
-  position: absolute;
-  z-index: 4;
-  top: 2.5%;
-  left: 2.2%;
-  transform: rotate(-4deg);
-  padding: 0.45rem 0.72rem;
-  border: 1px solid rgb(88 60 53 / 45%);
-  border-radius: 999px;
-  color: var(--v2-red-dark);
-  background: rgb(255 248 237 / 88%);
-  box-shadow: 0 4px 14px rgb(82 43 31 / 12%);
-  font: 400 0.76rem/1 var(--v2-display);
-  backdrop-filter: blur(8px);
-}
-
 .game-page--v2 .room-mascot--actor {
   --pet-x: 43%;
   --pet-y: 78%;
@@ -113,9 +97,10 @@
 .pet-menu {
   position: absolute;
   z-index: 12;
-  right: 2.5%;
-  bottom: 3.5%;
+  top: var(--pet-menu-y);
+  left: clamp(25%, var(--pet-menu-x), 75%);
   width: min(285px, 43%);
+  max-width: calc(100% - 16px);
   display: grid;
   gap: 0.4rem;
   padding: 0.72rem;
@@ -125,6 +110,21 @@
   box-shadow: 0 16px 38px rgb(72 40 30 / 22%);
   backdrop-filter: blur(12px);
   animation: pet-menu-in 180ms ease both;
+}
+
+.pet-menu--above {
+  transform: translate(-50%, calc(-100% - 3.75rem));
+}
+
+.pet-menu--below {
+  transform: translate(-50%, 3.75rem);
+}
+
+.pet-menu.is-following-pet {
+  will-change: top, left;
+  transition:
+    top var(--pet-menu-transition, 620ms) ease-in-out,
+    left var(--pet-menu-transition, 620ms) ease-in-out;
 }
 
 .pet-menu__heading {
@@ -912,11 +912,9 @@
 @keyframes pet-menu-in {
   from {
     opacity: 0;
-    transform: translateY(8px) scale(0.98);
   }
   to {
     opacity: 1;
-    transform: none;
   }
 }
 
@@ -982,13 +980,8 @@
   }
 
   .pet-menu {
-    right: 3%;
-    bottom: 3%;
+    left: clamp(32%, var(--pet-menu-x), 68%);
     width: min(250px, 62%);
-  }
-
-  .room-bingo-badge {
-    font-size: 0.6rem;
   }
 
   .game-page--v2 .context-panel {

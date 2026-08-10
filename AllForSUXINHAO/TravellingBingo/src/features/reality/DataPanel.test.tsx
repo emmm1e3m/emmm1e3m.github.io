@@ -9,6 +9,7 @@ describe('DataPanel', () => {
     render(<DataPanel />)
 
     expect(screen.getByRole('heading', { name: '冲热刷播，奖品多多' })).toBeInTheDocument()
+    expect(screen.getByText('仅限运行组')).toBeVisible()
     expect(screen.queryByText(/冲热功能还在准备中/u)).not.toBeInTheDocument()
     expect(screen.queryByText(/需要参与实际运行时/u)).not.toBeInTheDocument()
     expect(screen.queryByText('玩法说明')).not.toBeInTheDocument()

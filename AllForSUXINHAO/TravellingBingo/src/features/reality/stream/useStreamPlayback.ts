@@ -60,6 +60,7 @@ export interface UseStreamPlaybackOptions {
   readonly catalogBvids?: readonly string[]
   readonly completedRounds?: number
   readonly roundDurationMs?: number
+  readonly random?: () => number
   readonly onRoundCompleted?: (event: StreamRoundCompletion) => void
   readonly onSessionEnded?: (event: StreamSessionEnd) => void
 }
@@ -95,6 +96,8 @@ interface StreamRuntime {
   sessionStopAfterMs: number | null
   mode: StreamPlaybackMode | null
   sourceInput: string
+  selfTestBvid: string | null
+  catalogBvids: string[]
   bvids: string[]
   openDelayMs: number
   roundDurationMs: number
@@ -116,6 +119,8 @@ function createRuntime(): StreamRuntime {
     sessionStopAfterMs: null,
     mode: null,
     sourceInput: '',
+    selfTestBvid: null,
+    catalogBvids: [],
     bvids: [],
     openDelayMs: STREAM_OPEN_DELAY_MS,
     roundDurationMs: STREAM_ROUND_DURATION_MS,
@@ -199,6 +204,7 @@ export function useStreamPlayback({
   catalogBvids = [],
   completedRounds = 0,
   roundDurationMs = STREAM_ROUND_DURATION_MS,
+  random = Math.random,
   onRoundCompleted,
   onSessionEnded,
 }: UseStreamPlaybackOptions = {}): StreamPlaybackController {
@@ -210,6 +216,7 @@ export function useStreamPlayback({
   const completedRoundsRef = useRef(completedRounds)
   const catalogBvidsRef = useRef([...catalogBvids])
   const roundDurationRef = useRef(normalizeRoundDuration(roundDurationMs))
+  const randomRef = useRef(random)
   const [state, setState] = useState<StreamPlaybackState>(() => toState(createRuntime()))
   const reconcileRef = useRef<() => void>(() => undefined)
 
@@ -232,6 +239,10 @@ export function useStreamPlayback({
   useEffect(() => {
     roundDurationRef.current = normalizeRoundDuration(roundDurationMs)
   }, [roundDurationMs])
+
+  useEffect(() => {
+    randomRef.current = random
+  }, [random])
 
   const publish = useCallback(() => {
     setState(toState(runtimeRef.current))
@@ -355,12 +366,15 @@ export function useStreamPlayback({
   }, [enterBlocked, publish, scheduleNextDeadline])
 
   const beginRound = useCallback(
-    (round: number, durationMs = roundDurationRef.current) => {
+    (round: number, durationMs = roundDurationRef.current, existingQueue?: readonly string[]) => {
       const runtime = runtimeRef.current
       clearTimer()
       closeHandles()
       runtime.round = round
       runtime.roundDurationMs = durationMs
+      runtime.bvids = existingQueue
+        ? [...existingQueue]
+        : buildStreamQueue(runtime.selfTestBvid, runtime.catalogBvids, randomRef.current)
       runtime.nextIndex = 0
       runtime.nextActionAt = null
       runtime.status = 'opening'
@@ -474,7 +488,7 @@ export function useStreamPlayback({
         return result
       }
 
-      const bvids = buildStreamQueue(result.bvid, catalogBvidsRef.current)
+      const bvids = buildStreamQueue(result.bvid, catalogBvidsRef.current, randomRef.current)
       if (bvids.length === 0) {
         const emptyResult = emptyStreamCatalogResult()
         clearTimer()
@@ -498,7 +512,8 @@ export function useStreamPlayback({
       const startedAt = Date.now()
       runtime.mode = mode
       runtime.sourceInput = input
-      runtime.bvids = bvids
+      runtime.selfTestBvid = result.bvid
+      runtime.catalogBvids = [...catalogBvidsRef.current]
       runtime.openDelayMs = openDelayMs
       runtime.sessionId = createSessionId()
       runtime.sessionStartedAt = startedAt
@@ -507,7 +522,7 @@ export function useStreamPlayback({
         stopAfterMs === null ? null : globalThis.performance.now() + stopAfterMs
       runtime.sessionStopAfterMs = stopAfterMs
       runtime.errors = []
-      beginRound(completedRoundsRef.current + 1)
+      beginRound(completedRoundsRef.current + 1, roundDurationRef.current, bvids)
       return result
     },
     [beginRound, clearTimer, closeHandles, publish],
@@ -523,7 +538,7 @@ export function useStreamPlayback({
     ) {
       return false
     }
-    beginRound(runtime.round, runtime.roundDurationMs)
+    beginRound(runtime.round, runtime.roundDurationMs, runtime.bvids)
     return true
   }, [beginRound])
 

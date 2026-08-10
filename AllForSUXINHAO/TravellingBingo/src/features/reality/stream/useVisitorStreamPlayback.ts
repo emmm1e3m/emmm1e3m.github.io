@@ -9,7 +9,7 @@ import {
   STREAM_MIN_VIDEO_INTERVAL_MS,
 } from '@/domain'
 
-import { buildVisitorStreamUrl } from './parser'
+import { buildStreamQueue, buildVisitorStreamUrl } from './parser'
 
 export type VisitorStreamStatus = 'idle' | 'opening' | 'waiting'
 
@@ -22,6 +22,7 @@ export interface VisitorStreamFrame {
 export interface VisitorStreamSettings {
   readonly videoIntervalMs?: number
   readonly roundIntervalMs?: number
+  readonly selfTestBvid?: string | null
 }
 
 export interface VisitorStreamState {
@@ -40,6 +41,7 @@ export interface VisitorStreamController {
   readonly state: VisitorStreamState
   readonly start: (bvids: readonly string[], settings?: VisitorStreamSettings) => boolean
   readonly stop: () => void
+  readonly getNextRoundRemainingMs: () => number | null
 }
 
 interface VisitorRuntime {
@@ -48,6 +50,8 @@ interface VisitorRuntime {
   round: number
   completedRounds: number
   frames: VisitorStreamFrame[]
+  catalogBvids: string[]
+  selfTestBvid: string | null
   bvids: string[]
   videoIntervalMs: number
   roundIntervalMs: number
@@ -65,6 +69,8 @@ function createRuntime(): VisitorRuntime {
     round: 0,
     completedRounds: 0,
     frames: [],
+    catalogBvids: [],
+    selfTestBvid: null,
     bvids: [],
     videoIntervalMs: STREAM_DEFAULT_VIDEO_INTERVAL_MS,
     roundIntervalMs: STREAM_DEFAULT_ROUND_INTERVAL_MS,
@@ -100,12 +106,19 @@ function normalizeInterval(value: number | undefined, min: number, max: number, 
  * 实验性游客刷播只调度官方 player iframe，不读取跨站状态，也不向 B 站 API 发请求。
  * 所有步骤共用一个基于 performance.now() 截止时间的一次性计时器。
  */
-export function useVisitorStreamPlayback(): VisitorStreamController {
+export function useVisitorStreamPlayback(
+  random: () => number = Math.random,
+): VisitorStreamController {
   const runtimeRef = useRef<VisitorRuntime>(createRuntime())
+  const randomRef = useRef(random)
   const timerRef = useRef<ReturnType<typeof globalThis.setTimeout> | null>(null)
   const timerGenerationRef = useRef(0)
   const reconcileRef = useRef<() => void>(() => undefined)
   const [state, setState] = useState<VisitorStreamState>(() => toState(createRuntime()))
+
+  useEffect(() => {
+    randomRef.current = random
+  }, [random])
 
   const publish = useCallback(() => setState(toState(runtimeRef.current)), [])
 
@@ -158,13 +171,16 @@ export function useVisitorStreamPlayback(): VisitorStreamController {
   }, [publish, scheduleAt])
 
   const beginRound = useCallback(
-    (round: number) => {
+    (round: number, existingQueue?: readonly string[]) => {
       const runtime = runtimeRef.current
       clearTimer()
       runtime.roundIntervalMs = runtime.nextRoundIntervalMs
       runtime.status = 'opening'
       runtime.round = round
       runtime.frames = []
+      runtime.bvids = existingQueue
+        ? [...existingQueue]
+        : buildStreamQueue(runtime.selfTestBvid, runtime.catalogBvids, randomRef.current)
       runtime.nextIndex = 0
       runtime.nextActionAt = null
       runtime.message = `游客刷播第 ${round} 轮正在加载视频`
@@ -201,9 +217,16 @@ export function useVisitorStreamPlayback(): VisitorStreamController {
     publish()
   }, [clearTimer, publish])
 
+  const getNextRoundRemainingMs = useCallback(() => {
+    const runtime = runtimeRef.current
+    if (runtime.status !== 'waiting' || runtime.nextActionAt === null) return null
+    return Math.max(0, runtime.nextActionAt - globalThis.performance.now())
+  }, [])
+
   const start = useCallback(
     (sourceBvids: readonly string[], settings: VisitorStreamSettings = {}) => {
-      const bvids = [...new Set(sourceBvids)]
+      const selfTestBvid = settings.selfTestBvid ?? null
+      const catalogBvids = [...new Set(sourceBvids)].filter((bvid) => bvid !== selfTestBvid)
       const videoIntervalMs = normalizeInterval(
         settings.videoIntervalMs,
         STREAM_MIN_VIDEO_INTERVAL_MS,
@@ -216,26 +239,35 @@ export function useVisitorStreamPlayback(): VisitorStreamController {
         STREAM_MAX_ROUND_INTERVAL_MS,
         STREAM_DEFAULT_ROUND_INTERVAL_MS,
       )
-      if (bvids.length === 0 || videoIntervalMs === null || roundIntervalMs === null) return false
+      if (
+        (catalogBvids.length === 0 && selfTestBvid === null) ||
+        videoIntervalMs === null ||
+        roundIntervalMs === null
+      ) {
+        return false
+      }
 
-      const signature = `${bvids.join(',')}|${videoIntervalMs}`
+      const signature = `${catalogBvids.join(',')}|${selfTestBvid ?? ''}|${videoIntervalMs}`
       const current = runtimeRef.current
       if (current.status !== 'idle' && current.signature === signature) {
         current.nextRoundIntervalMs = roundIntervalMs
         return true
       }
 
+      const bvids = buildStreamQueue(selfTestBvid, catalogBvids, randomRef.current)
       clearTimer()
       runtimeRef.current = {
         ...createRuntime(),
         startedAt: Date.now(),
+        catalogBvids,
+        selfTestBvid,
         bvids,
         videoIntervalMs,
         roundIntervalMs,
         nextRoundIntervalMs: roundIntervalMs,
         signature,
       }
-      beginRound(1)
+      beginRound(1, bvids)
       return true
     },
     [beginRound, clearTimer],
@@ -254,5 +286,5 @@ export function useVisitorStreamPlayback(): VisitorStreamController {
     }
   }, [clearTimer])
 
-  return { state, start, stop }
+  return { state, start, stop, getNextRoundRemainingMs }
 }

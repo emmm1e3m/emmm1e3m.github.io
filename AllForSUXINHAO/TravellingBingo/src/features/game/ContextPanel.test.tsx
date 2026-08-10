@@ -107,7 +107,12 @@ function gameInReality(): GameState {
     world: 'reality',
     reality: {
       ...game.reality,
-      activeStay: { stayId: 'reality-stay-test', enteredAt: 1_000 },
+      activeStay: {
+        stayId: 'reality-stay-test',
+        enteredAt: 1_000,
+        activeDurationMs: 0,
+        leaseStartedAt: 1_000,
+      },
     },
   }
 }
@@ -151,6 +156,7 @@ function idleVisitorStreamPlayback(): VisitorStreamController {
     },
     start: vi.fn(() => true),
     stop: vi.fn(),
+    getNextRoundRemainingMs: vi.fn(() => null),
   }
 }
 
@@ -374,6 +380,11 @@ describe('ContextPanel 信息栏交互', () => {
     expect(vitalityCard).toHaveTextContent('✨')
     expect(speedCard).not.toHaveTextContent(/现有\s*0\s*份/u)
     expect(vitalityCard).not.toHaveTextContent(/现有\s*0\s*份/u)
+    const toolboxCard = screen.getByText(/热度工具箱/u).closest('article')
+    expect(toolboxCard).toHaveTextContent('热度工具箱【0】')
+    expect(toolboxCard).toHaveTextContent('陪饼狗向全站第一冲刺')
+    expect(toolboxCard).not.toHaveTextContent(/现有\s*0\s*份/u)
+    expect(toolboxCard?.querySelector('small')).toHaveTextContent('陪饼狗向全站第一冲刺')
 
     rerender(
       <ContextPanel

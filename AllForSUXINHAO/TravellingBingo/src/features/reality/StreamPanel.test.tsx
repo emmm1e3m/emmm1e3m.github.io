@@ -1,5 +1,6 @@
-import { fireEvent, render, screen } from '@testing-library/react'
+import { fireEvent, render, screen, within } from '@testing-library/react'
 
+import realityStyles from './reality.css?raw'
 import {
   STREAM_INSTRUCTION,
   VISITOR_STREAM_INSTRUCTION,
@@ -73,12 +74,16 @@ describe('StreamPanel', () => {
     const onVideoIntervalChange = vi.fn()
     render(<StreamPanel {...props({ onStart, onSelfTestBvidChange, onVideoIntervalChange })} />)
 
-    expect(screen.getByText(STREAM_INSTRUCTION)).toHaveTextContent(
+    expect(screen.getByText(STREAM_INSTRUCTION)).toBeVisible()
+    expect(screen.getByText(/如果设备或者网络较为卡顿/u)).toHaveTextContent(
       '可以适当增加时长以使视频完全加载',
     )
-    expect(screen.getByText(STREAM_INSTRUCTION)).not.toHaveTextContent('按设置的间隔依次打开')
+    expect(screen.queryByText(/按设置的间隔依次打开/u)).not.toBeInTheDocument()
     expect(screen.getByText(VISITOR_STREAM_INSTRUCTION)).toBeVisible()
+    expect(document.querySelectorAll('.reality-stream-guidance')).toHaveLength(1)
+    expect(realityStyles).not.toMatch(/\.reality-stream-visitor-note|border-left:\s*3px/u)
     expect(screen.getByText(/收藏夹快照中有 3 个视频/u)).toBeVisible()
+    expect(screen.getByPlaceholderText('BV...（或视频链接）')).toBeVisible()
 
     fireEvent.change(screen.getByRole('textbox', { name: '自测视频BV号' }), {
       target: { value: 'BV1xx411c7mD' },
@@ -100,9 +105,10 @@ describe('StreamPanel', () => {
     })
   })
 
-  it('留空使用静态快照；链接、多行与无效范围会明确阻止启动', () => {
+  it('留空使用静态快照；完整链接可解析，多行与无效范围会明确阻止启动', () => {
     const onStart = vi.fn(() => ({ ok: true as const, bvid: null, errors: [] as const }))
-    render(<StreamPanel {...props({ onStart })} />)
+    const onSelfTestBvidChange = vi.fn()
+    render(<StreamPanel {...props({ onStart, onSelfTestBvidChange })} />)
 
     fireEvent.click(screen.getByRole('button', { name: '开始登录刷播' }))
     expect(onStart).toHaveBeenCalledWith('', 'popup', {
@@ -113,7 +119,14 @@ describe('StreamPanel', () => {
     fireEvent.change(screen.getByRole('textbox', { name: '自测视频BV号' }), {
       target: { value: 'https://www.bilibili.com/video/BV1xx411c7mD/' },
     })
-    expect(screen.getByRole('alert')).toHaveTextContent('一个完整的 BV 号')
+    expect(screen.queryByRole('alert')).not.toBeInTheDocument()
+    expect(screen.getByRole('button', { name: '开始登录刷播' })).toBeEnabled()
+    expect(onSelfTestBvidChange).toHaveBeenLastCalledWith('BV1xx411c7mD')
+
+    fireEvent.change(screen.getByRole('textbox', { name: '自测视频BV号' }), {
+      target: { value: 'BV1xx411c7mD\nBV1At3j6EE6w' },
+    })
+    expect(screen.getByRole('alert')).toHaveTextContent('一个 BV 号或完整的哔哩哔哩视频链接')
     expect(screen.getByRole('button', { name: '开始登录刷播' })).toBeDisabled()
 
     fireEvent.change(screen.getByRole('textbox', { name: '自测视频BV号' }), {
@@ -202,7 +215,11 @@ describe('StreamPanel', () => {
     expect(screen.getByLabelText('刷播状态')).toHaveTextContent('游客运行时间02:05')
     expect(screen.getByLabelText('刷播状态')).toHaveTextContent('游客轮次4')
     expect(screen.getByText('按时完成 · 6 轮')).toBeVisible()
-    expect(screen.getAllByRole('listitem')).toHaveLength(1)
+    expect(
+      within(
+        screen.getByRole('heading', { name: '最近任务' }).parentElement!.parentElement!,
+      ).getAllByRole('listitem'),
+    ).toHaveLength(1)
   })
 
   it('DEBUG 修改轮次间隔时区分本轮快照与下一轮设置', () => {

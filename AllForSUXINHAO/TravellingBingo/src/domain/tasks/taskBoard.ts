@@ -26,11 +26,15 @@ export interface TaskAssignmentRequirement {
   minimum: number
 }
 
+export const MAX_TASK_TEMPLATE_REWARD_APPLES = 3
+export type TaskTemplateRewardApples = 0 | 1 | 2 | typeof MAX_TASK_TEMPLATE_REWARD_APPLES
+
 export interface TaskTemplate extends TaskPresentation {
   id: TaskId
   triggerGroup: TaskTriggerGroup
   target: number
-  rewardApples: number
+  /** 新签发任务的奖励上限为 3；历史实例仍保留自己的 number 快照。 */
+  rewardApples: TaskTemplateRewardApples
   oneOff?: boolean
   /** 只影响新任务的签发；已经签发的任务继续使用自身快照。 */
   assignmentRequirements?: readonly TaskAssignmentRequirement[]
@@ -144,7 +148,7 @@ export const TASK_LIBRARY: Readonly<Record<TaskId, TaskTemplate>> = {
     title: '奇迹饼狗',
     description: '完成一次舞台测试',
     target: 1,
-    rewardApples: 4,
+    rewardApples: 3,
     oneOff: true,
   },
 }

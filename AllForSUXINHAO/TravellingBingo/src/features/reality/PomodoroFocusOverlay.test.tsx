@@ -26,7 +26,11 @@ function createProps(
       { id: 'todo-1', title: '整理桌面', completed: false },
       { id: 'todo-2', title: '写一封信', completed: true },
     ],
-    musicStarter: <button type="button">播放全站第一</button>,
+    musicStarter: (
+      <button className="reality-secondary-button" type="button">
+        打开唱片机
+      </button>
+    ),
     onTodoCreate: vi.fn(),
     onTodoUpdate: vi.fn(),
     onTodoCompletionChange: vi.fn(),
@@ -42,7 +46,8 @@ describe('PomodoroFocusOverlay', () => {
     const { container } = render(<PomodoroFocusOverlay {...props} />)
 
     const dialog = screen.getByRole('dialog', { name: '和饼狗一起专注' })
-    const playerButton = screen.getByRole('button', { name: '播放全站第一' })
+    const playerButton = screen.getByRole('button', { name: '打开唱片机' })
+    expect(playerButton).toHaveClass('reality-secondary-button')
     expect(dialog.parentElement?.parentElement).toBe(document.body)
     expect(container).not.toContainElement(dialog)
     expect(dialog).toContainElement(playerButton)
@@ -53,6 +58,10 @@ describe('PomodoroFocusOverlay', () => {
     expect(
       dialog.closest('[data-modal-backdrop]')?.querySelector('.pomodoro-focus__background'),
     ).toHaveAttribute('src', '/postcard-full.webp')
+    expect(
+      dialog.closest('[data-modal-backdrop]')?.querySelector('.pomodoro-focus__wash'),
+    ).toBeNull()
+    expect(realityStyles).not.toContain('.pomodoro-focus__wash')
     await waitFor(() => expect(dialog.querySelector('.pomodoro-focus__info')).toHaveFocus())
   })
 
@@ -145,7 +154,7 @@ describe('PomodoroFocusOverlay', () => {
     await waitFor(() => expect(screen.getByRole('button', { name: '继续专注' })).toHaveFocus())
     expect(props.onCancel).not.toHaveBeenCalled()
 
-    fireEvent.click(screen.getByRole('button', { name: '确认取消' }))
+    fireEvent.click(screen.getByRole('button', { name: '取消计时' }))
     expect(props.onCancel).toHaveBeenCalledWith('pomodoro-1')
   })
 
@@ -161,7 +170,9 @@ describe('PomodoroFocusOverlay', () => {
     render(<PomodoroFocusOverlay {...props} />)
 
     expect(screen.getByRole('dialog', { name: '休息一下吧' })).toBeVisible()
-    fireEvent.click(screen.getByRole('button', { name: '取消本次计时' }))
+    const cancelTimer = screen.getByRole('button', { name: '取消本次计时' })
+    expect(cancelTimer).toHaveClass('reality-danger-button')
+    fireEvent.click(cancelTimer)
     await waitFor(() => expect(screen.getByRole('button', { name: '继续休息' })).toHaveFocus())
   })
 

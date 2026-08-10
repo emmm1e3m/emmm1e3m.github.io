@@ -34,7 +34,12 @@ function createProps(actions = createActions()): WorkPanelProps {
       canStart: true,
     },
     unlockedBackgrounds: [
-      { id: 'postcard-1', title: '海边明信片', thumbnailUrl: '/postcard-1.webp' },
+      {
+        id: 'postcard-1',
+        title: '海边明信片',
+        thumbnailUrl: '/postcard-1.webp',
+        aspectRatio: 2 / 3,
+      },
       { id: 'postcard-2', title: '晚霞明信片' },
     ],
     selectedBackgroundId: 'postcard-1',
@@ -129,6 +134,7 @@ describe('WorkPanel', () => {
     )
     expect(preview).toHaveAttribute('data-background-id', 'postcard-1')
     expect(background).toHaveAttribute('src', '/postcard-1.webp')
+    expect(preview).toHaveStyle({ '--postcard-preview-width': '112px' })
     expect(screen.getByText('明信片 · 海边明信片')).toBeVisible()
   })
 
@@ -155,14 +161,16 @@ describe('WorkPanel', () => {
     expect(screen.getByRole('button', { name: '开始苹果钟' })).toBeDisabled()
     expect(screen.getByRole('button', { name: '选择陪伴明信片' })).toBeDisabled()
 
-    fireEvent.click(screen.getByRole('button', { name: '取消本次计时' }))
+    const cancelTimer = screen.getByRole('button', { name: '取消本次计时' })
+    expect(cancelTimer).toHaveClass('reality-danger-button')
+    fireEvent.click(cancelTimer)
     expect(actions.onPomodoroCancel).not.toHaveBeenCalled()
     expect(
       screen.getByRole('alertdialog', { name: '确认取消苹果钟？' }).parentElement?.parentElement,
     ).toBe(document.body)
     expect(screen.getByText(/不会计入相伴的下一天/u)).toBeVisible()
     await waitFor(() => expect(screen.getByRole('button', { name: '继续专注' })).toHaveFocus())
-    fireEvent.click(screen.getByRole('button', { name: '确认取消' }))
+    fireEvent.click(screen.getByRole('button', { name: '取消计时' }))
     expect(actions.onPomodoroCancel).toHaveBeenCalledWith('pomodoro-running')
   })
 
@@ -218,6 +226,7 @@ describe('WorkPanel', () => {
 
     fireEvent.change(screen.getByLabelText('新待办'), { target: { value: '  收拾桌面  ' } })
     fireEvent.click(screen.getByRole('button', { name: '添加' }))
+    expect(screen.getByRole('button', { name: '添加' })).toHaveClass('reality-secondary-button')
     expect(actions.onTodoCreate).toHaveBeenCalledWith('收拾桌面')
 
     fireEvent.click(screen.getAllByRole('button', { name: '编辑' })[0]!)

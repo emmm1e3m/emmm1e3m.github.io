@@ -160,7 +160,12 @@ function RealityStreamHarness() {
       world: 'reality',
       reality: {
         ...base.reality,
-        activeStay: { stayId: 'reality-stream-stay', enteredAt: 1_000 },
+        activeStay: {
+          stayId: 'reality-stream-stay',
+          enteredAt: 1_000,
+          activeDurationMs: 0,
+          leaseStartedAt: 1_000,
+        },
       },
     }
   })
@@ -308,7 +313,7 @@ describe('收藏墙模态框', () => {
     )
 
     const dialog = screen.getByRole('dialog', { name: '饼狗的收藏墙' })
-    expect(within(dialog).getByRole('tab', { name: '明信片' })).toBeInTheDocument()
+    expect(within(dialog).getByRole('tab', { name: '明信片【1/1】' })).toBeInTheDocument()
     expect(within(dialog).queryByRole('tab', { name: '百万直拍' })).not.toBeInTheDocument()
     expect(within(dialog).queryByText('尚未获得的百万直拍')).not.toBeInTheDocument()
     expect(within(dialog).queryByText('???')).not.toBeInTheDocument()
@@ -394,7 +399,12 @@ describe('收藏墙模态框', () => {
       world: 'reality',
       reality: {
         ...focusBase.reality,
-        activeStay: { stayId: 'player-focus-stay', enteredAt: 1_000 },
+        activeStay: {
+          stayId: 'player-focus-stay',
+          enteredAt: 1_000,
+          activeDurationMs: 0,
+          leaseStartedAt: 1_000,
+        },
         pomodoro: {
           ...focusBase.reality.pomodoro,
           session: {
@@ -929,7 +939,7 @@ describe('舞台测试与调试控件', () => {
 })
 
 describe('V4 壳层接线', () => {
-  it('状态条保留待机与活动文案，并独立显示活力状态', () => {
+  it('状态条用活力替代普通待机文案，仍保留休息与活动文案', async () => {
     const base = collectedGame()
     const props = {
       catalog,
@@ -944,43 +954,50 @@ describe('V4 壳层接线', () => {
     }
     const { rerender } = render(<GameHome {...props} game={base} now={1_000} />)
 
-    expect(screen.getByRole('status', { name: '饼狗状态' })).toHaveTextContent('状态正常')
-    expect(screen.getByRole('status', { name: '饼狗状态' })).toHaveTextContent(
-      /低活力|中等活力|高活力/u,
-    )
+    const idleStatus = screen.getByRole('button', { name: /饼狗活力状态/u })
+    expect(idleStatus).not.toHaveTextContent('状态正常')
+    expect(idleStatus).toHaveTextContent(/低活力|中等活力|高活力/u)
+    fireEvent.click(idleStatus)
+    expect(await screen.findByRole('dialog', { name: '饼狗状态' })).toBeInTheDocument()
+    fireEvent.click(screen.getByRole('button', { name: '收起菜单' }))
 
     rerender(
       <GameHome {...props} game={{ ...base, pet: { ...base.pet, tired: true } }} now={1_000} />,
     )
 
-    const statusBar = screen.getByRole('status', { name: '饼狗状态' })
+    const statusBar = screen.getByRole('button', { name: /饼狗活力状态/u })
     expect(statusBar).toHaveTextContent('今天想先休息')
     expect(statusBar).toHaveTextContent(/低活力|中等活力|高活力/u)
     expect(statusBar.closest('header')).toHaveClass('game-hud--v4')
     expect(statusBar.parentElement).toHaveClass('game-hud__actions')
 
     rerender(<GameHome {...props} game={activeGame('music')} now={2_000} />)
-    expect(screen.getByRole('status', { name: '饼狗状态' })).toHaveTextContent(
+    expect(screen.getByRole('button', { name: /饼狗活力状态/u })).toHaveTextContent(
       ACTIVITY_COPY.music.verb,
     )
-    expect(screen.getByRole('status', { name: '饼狗状态' })).toHaveTextContent(
+    expect(screen.getByRole('button', { name: /饼狗活力状态/u })).toHaveTextContent(
       /低活力|中等活力|高活力/u,
     )
 
     rerender(<GameHome {...props} game={activeGame('music')} now={114_000} />)
-    expect(screen.getByRole('status', { name: '饼狗状态' })).toHaveTextContent(
+    expect(screen.getByRole('button', { name: /饼狗活力状态/u })).toHaveTextContent(
       `${ACTIVITY_COPY.music.name}完成了`,
     )
   })
 
-  it('现实停留计时跟随 GameHome 的 now，跨过一小时后切换格式并在回屋后消失', () => {
+  it('现实停留不足一个苹果时，点击计时按钮直接播放返回过场且不弹确认', async () => {
     const base = collectedGame()
     const realityGame: GameState = {
       ...base,
       world: 'reality',
       reality: {
         ...base.reality,
-        activeStay: { stayId: 'game-home-hud-timer', enteredAt: 1_000 },
+        activeStay: {
+          stayId: 'game-home-hud-timer',
+          enteredAt: 1_000,
+          activeDurationMs: 0,
+          leaseStartedAt: 1_000,
+        },
       },
     }
     const props = {
@@ -997,11 +1014,24 @@ describe('V4 壳层接线', () => {
     }
     const { rerender } = render(<GameHome {...props} game={realityGame} now={62_000} />)
 
-    expect(screen.getByRole('timer', { name: '本次现实停留 01:01' })).toBeInTheDocument()
+    const timer = screen.getByRole('button', {
+      name: '本次现实停留 1 分钟，返回游戏维度',
+    })
+    fireEvent.click(timer)
+    expect(screen.queryByRole('dialog', { name: '回到饼屋？' })).not.toBeInTheDocument()
+    expect(screen.getByRole('status', { name: '正在回到饼屋' })).toBeInTheDocument()
+    await waitFor(() =>
+      expect(props.onAction).toHaveBeenCalledWith({
+        type: 'reality/leave',
+        now: expect.any(Number),
+      }),
+    )
     rerender(<GameHome {...props} game={realityGame} now={3_662_000} />)
-    expect(screen.getByRole('timer', { name: '本次现实停留 01:01:01' })).toBeInTheDocument()
+    expect(
+      screen.getByRole('button', { name: '本次现实停留 61 分钟，返回游戏维度' }),
+    ).toBeInTheDocument()
     rerender(<GameHome {...props} game={base} now={3_662_000} />)
-    expect(screen.queryByRole('timer')).not.toBeInTheDocument()
+    expect(screen.queryByText(/现实 \d+ 分钟/u)).not.toBeInTheDocument()
   })
 
   it('桌面精细指针环境先介绍现实维度，确认后播放过场再进入', async () => {
@@ -1046,7 +1076,12 @@ describe('V4 壳层接线', () => {
       world: 'reality',
       reality: {
         ...base.reality,
-        activeStay: { stayId: 'reality-leave-confirmation', enteredAt: 500 },
+        activeStay: {
+          stayId: 'reality-leave-confirmation',
+          enteredAt: 500,
+          activeDurationMs: 10 * 60_000,
+          leaseStartedAt: 500,
+        },
       },
     }
     render(
@@ -1150,7 +1185,12 @@ describe('V4 壳层接线', () => {
       world: 'reality',
       reality: {
         ...base.reality,
-        activeStay: { stayId: 'restored-reality-stay', enteredAt: 500 },
+        activeStay: {
+          stayId: 'restored-reality-stay',
+          enteredAt: 500,
+          activeDurationMs: 0,
+          leaseStartedAt: 500,
+        },
         pomodoro: {
           ...base.reality.pomodoro,
           session: {
@@ -1231,6 +1271,7 @@ describe('V4 壳层接线', () => {
           stayId: 'reality-stay-1',
           enteredAt: 1_000,
           leftAt: 1_201_000,
+          activeDurationMs: 1_200_000,
           fullRewardApples: 2,
         },
       },
@@ -1288,7 +1329,12 @@ describe('V4 壳层接线', () => {
       world: 'reality',
       reality: {
         ...base.reality,
-        activeStay: { stayId: 'reality-pomodoro-stay', enteredAt: 1_000 },
+        activeStay: {
+          stayId: 'reality-pomodoro-stay',
+          enteredAt: 1_000,
+          activeDurationMs: 0,
+          leaseStartedAt: 1_000,
+        },
         todos: {
           'focus-todo': {
             id: 'focus-todo',
@@ -1383,7 +1429,9 @@ describe('V4 壳层接线', () => {
       now: expect.any(Number),
     })
 
-    fireEvent.click(screen.getByRole('button', { name: '播放全站第一' }))
+    const recordPlayerButton = screen.getByRole('button', { name: '打开唱片机' })
+    expect(recordPlayerButton).toHaveClass('reality-secondary-button')
+    fireEvent.click(recordPlayerButton)
     const player = await screen.findByRole('complementary', { name: '持久播放器' })
     expect(screen.getByTitle('Bilibili 外链播放器：收藏播放器桥接测试')).not.toHaveAttribute(
       'inert',
@@ -1426,7 +1474,7 @@ describe('V4 壳层接线', () => {
 
     fireEvent.click(screen.getByRole('button', { name: '取消本次计时' }))
     await waitFor(() => expect(screen.getByRole('button', { name: '继续休息' })).toHaveFocus())
-    fireEvent.click(screen.getByRole('button', { name: '确认取消' }))
+    fireEvent.click(screen.getByRole('button', { name: '取消计时' }))
     expect(onAction).toHaveBeenCalledWith({
       type: 'pomodoro/cancel',
       sessionId: 'pomodoro-room-request',

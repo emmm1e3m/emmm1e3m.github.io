@@ -1,5 +1,5 @@
 import { createInitialGameState } from './createGameState'
-import { gameStateV8Schema } from './migrateGameStateV7'
+import { gameStateV9Schema } from './migrateGameStateV8'
 import type { ActivityRun, CollectionCatalog, GameState } from './types'
 import { validateImportedGameState } from './validateImportedGameState'
 
@@ -270,7 +270,7 @@ describe('导入存档与当前收藏目录的一致性', () => {
       },
     ]
 
-    expect(gameStateV8Schema.safeParse(state).success).toBe(true)
+    expect(gameStateV9Schema.safeParse(state).success).toBe(true)
     expect(validateImportedGameState(state, catalog)).toMatchObject({
       ok: false,
       code: 'TASK_BOARD_INVALID',
@@ -284,7 +284,7 @@ describe('导入存档与当前收藏目录的一致性', () => {
     task.progress = 0
     task.seenKeys = ['opened']
 
-    expect(gameStateV8Schema.safeParse(state).success).toBe(true)
+    expect(gameStateV9Schema.safeParse(state).success).toBe(true)
     expect(validateImportedGameState(state, catalog)).toMatchObject({
       ok: false,
       code: 'TASK_BOARD_INVALID',
@@ -323,7 +323,7 @@ describe('导入存档与当前收藏目录的一致性', () => {
       },
     ]
 
-    expect(gameStateV8Schema.safeParse(state).success).toBe(true)
+    expect(gameStateV9Schema.safeParse(state).success).toBe(true)
     expect(validateImportedGameState(state, catalog)).toMatchObject({
       ok: false,
       code: 'TASK_BOARD_INVALID',

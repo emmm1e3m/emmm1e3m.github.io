@@ -1,9 +1,8 @@
 import {
-  addProbabilityBonus,
-  APPLE_LUNCHBOX_FRIEND_BONUS,
+  addNonStackingBaseProbabilityBonus,
+  APPLE_LUNCHBOX_FRIEND_BASE_BONUS_RATE,
   type GameProbabilities,
-  LUCKY_APPLE_COLLECTION_DROP_MULTIPLIER,
-  multiplyProbability,
+  LUCKY_APPLE_COLLECTION_BASE_BONUS_RATE,
 } from '../game/gameBalance'
 import type {
   ActivityKind,
@@ -56,10 +55,12 @@ export function getLuckyAppleAvailability(
   }
   if (
     kind === 'travel' &&
-    addProbabilityBonus(
-      state.gameBalance.probabilities.travelFriend,
-      supplyId === 'travel-apple' ? APPLE_LUNCHBOX_FRIEND_BONUS : 0,
-    ) >= 1
+    (supplyId === 'travel-apple'
+      ? addNonStackingBaseProbabilityBonus(
+          state.gameBalance.probabilities.travelFriend,
+          APPLE_LUNCHBOX_FRIEND_BASE_BONUS_RATE,
+        )
+      : state.gameBalance.probabilities.travelFriend) >= 1
   ) {
     return {
       canUse: false,
@@ -77,7 +78,8 @@ export function getLuckyAppleAvailability(
     }
   }
   if (
-    multiplyProbability(baseDropChance, LUCKY_APPLE_COLLECTION_DROP_MULTIPLIER) <= baseDropChance
+    addNonStackingBaseProbabilityBonus(baseDropChance, LUCKY_APPLE_COLLECTION_BASE_BONUS_RATE) <=
+    baseDropChance
   ) {
     return {
       canUse: false,

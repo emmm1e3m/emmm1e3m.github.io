@@ -6,6 +6,7 @@ import { getPetVitalityStatus, isVitalityActive, type GameState, type TaskEvent 
 
 import { ACTIVITY_COPY } from './gameCopy'
 import {
+  ROOM_CANVAS,
   ROOM_AREAS,
   roomAreaForWorld,
   roomAreaVisibleInWorld,
@@ -57,11 +58,22 @@ function poseForRoom({
 interface PetMenuProps {
   game: GameState
   open: boolean
+  anchorPoint: RoomPixelPoint
+  followingPet: boolean
+  transitionMs: number
   onClose: () => void
   onPanel: (panel: PanelId) => void
 }
 
-function PetMenu({ game, open, onClose, onPanel }: PetMenuProps) {
+function PetMenu({
+  game,
+  open,
+  anchorPoint,
+  followingPet,
+  transitionMs,
+  onClose,
+  onPanel,
+}: PetMenuProps) {
   const menuRef = useRef<HTMLDivElement>(null)
   const pet = readPet(game)
 
@@ -72,14 +84,23 @@ function PetMenu({ game, open, onClose, onPanel }: PetMenuProps) {
   if (!open) return null
   const activity = game.activeActivity
   const vitalityStatus = getPetVitalityStatus(pet.preferences, isVitalityActive(game))
+  const anchor = roomPointToPercent(anchorPoint)
+  const verticalPlacement = anchorPoint.y < ROOM_CANVAS.height * 0.42 ? 'below' : 'above'
 
   return (
     <div
       ref={menuRef}
-      className="pet-menu"
+      className={`pet-menu pet-menu--${verticalPlacement} ${followingPet ? 'is-following-pet' : ''}`}
       id="pet-action-menu"
       role="dialog"
       aria-label="饼狗状态"
+      style={
+        {
+          '--pet-menu-x': `${anchor.x}%`,
+          '--pet-menu-y': `${anchor.y}%`,
+          '--pet-menu-transition': `${transitionMs}ms`,
+        } as CSSProperties
+      }
       onKeyDown={(event) => {
         if (event.key === 'Escape') {
           event.stopPropagation()
@@ -128,6 +149,7 @@ interface RoomSceneProps {
   onToggleDimension?: () => void
   onTaskEvent: (event: TaskEvent) => void
   wanderRandom?: () => number
+  petMenuOpenRequest?: number
 }
 
 export type RoomWalkingDirection = 'left' | 'right'
@@ -154,6 +176,7 @@ export function RoomScene({
   onToggleDimension = () => undefined,
   onTaskEvent,
   wanderRandom = Math.random,
+  petMenuOpenRequest = 0,
 }: RoomSceneProps) {
   const [menuOpen, setMenuOpen] = useState(false)
   const [wanderState, setWanderState] = useState<{
@@ -171,6 +194,7 @@ export function RoomScene({
     () => globalThis.matchMedia?.('(prefers-reduced-motion: reduce)').matches ?? false,
   )
   const petButtonRef = useRef<HTMLButtonElement>(null)
+  const handledPetMenuOpenRequest = useRef(petMenuOpenRequest)
   const travelling = game.activeActivity?.kind === 'travel'
   const wanderEligible =
     game.activeActivity === null &&
@@ -230,6 +254,23 @@ export function RoomScene({
     const frame = globalThis.requestAnimationFrame(() => setMenuOpen(false))
     return () => globalThis.cancelAnimationFrame(frame)
   }, [travelling])
+
+  useEffect(() => {
+    if (petMenuOpenRequest <= handledPetMenuOpenRequest.current) return
+    const frame = globalThis.requestAnimationFrame(() => {
+      if (petMenuOpenRequest <= handledPetMenuOpenRequest.current) return
+      handledPetMenuOpenRequest.current = petMenuOpenRequest
+      if (travelling) {
+        onPanel('activity')
+        return
+      }
+
+      setMenuOpen(true)
+      onTaskEvent({ type: 'pet-menu-opened' })
+      if (game.activeActivity) onPanel('activity')
+    })
+    return () => globalThis.cancelAnimationFrame(frame)
+  }, [game.activeActivity, onPanel, onTaskEvent, petMenuOpenRequest, travelling])
 
   function hotspotHidden(hotspot: RoomArea) {
     if (!roomAreaVisibleInWorld(hotspot, game.world)) return true
@@ -304,9 +345,6 @@ export function RoomScene({
             onClick={closeRoomLayers}
           />
         )}
-        <span className="room-bingo-badge" aria-hidden="true">
-          Bingo!
-        </span>
         {ROOM_AREAS.map((configuredHotspot) => {
           if (hotspotHidden(configuredHotspot)) return null
           const hotspot = roomAreaForWorld(configuredHotspot, game.world)
@@ -380,6 +418,9 @@ export function RoomScene({
         <PetMenu
           game={game}
           open={menuOpen && !travelling}
+          anchorPoint={visiblePetCenter}
+          followingPet={walking || wanderMoving}
+          transitionMs={wanderMoving ? wanderState.durationMs : 620}
           onClose={() => closePetMenu(true)}
           onPanel={(nextPanel) => {
             onPanel(nextPanel)

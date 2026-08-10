@@ -10,7 +10,7 @@ import {
 import { saturatingAddSafeCounter } from './counters'
 import { isPetTired } from '../pet/preferences'
 import { resolveVitalityForCompanionDayAdvance } from '../player/vitality'
-import { isValidTimestamp } from './time'
+import { isValidTimestamp, MAX_DATE_TIMESTAMP_MS } from './time'
 import type {
   CollectionCatalog,
   GameAction,
@@ -19,6 +19,7 @@ import type {
   GameState,
   GameTransition,
   PomodoroSession,
+  RealityStay,
   TodoItem,
 } from './types'
 import { validateCollectionCatalog } from './validateCollectionCatalog'
@@ -29,6 +30,9 @@ export type ProductivityAction = Extract<
     type:
       | 'reality/enter'
       | 'reality/leave'
+      | 'reality/session-resume'
+      | 'reality/session-heartbeat'
+      | 'reality/session-suspend'
       | 'reality/settle'
       | 'todo/create'
       | 'todo/update'
@@ -44,6 +48,9 @@ export type ProductivityAction = Extract<
 const PRODUCTIVITY_ACTION_TYPES = new Set<ProductivityAction['type']>([
   'reality/enter',
   'reality/leave',
+  'reality/session-resume',
+  'reality/session-heartbeat',
+  'reality/session-suspend',
   'reality/settle',
   'todo/create',
   'todo/update',
@@ -106,7 +113,12 @@ function enterReality(
     return fail(state, 'INVALID_AMOUNT', '现实停留次数已达到存档上限')
   }
   const sequence = state.reality.nextStaySequence + 1
-  const stay = { stayId: `reality-stay-${sequence}`, enteredAt: action.now }
+  const stay: RealityStay = {
+    stayId: `reality-stay-${sequence}`,
+    enteredAt: action.now,
+    activeDurationMs: 0,
+    leaseStartedAt: action.now,
+  }
   return succeed(
     {
       ...state,
@@ -119,6 +131,77 @@ function enterReality(
     },
     [{ type: 'reality-entered', stay }],
   )
+}
+
+/** 载入缓存或本地存档时关闭旧页面遗留的租约，不把离线间隔计入现实时间。 */
+export function suspendRealityLeaseAfterLoad(state: GameState): GameState {
+  const stay = state.reality.activeStay
+  if (stay === null || stay.leaseStartedAt === null) return state
+  return {
+    ...state,
+    reality: {
+      ...state.reality,
+      activeStay: { ...stay, leaseStartedAt: null },
+    },
+  }
+}
+
+/** 当前页面内可展示、可结算的现实活跃时长。 */
+export function deriveRealityActiveDurationMs(stay: RealityStay, now: number): number {
+  return stay.activeDurationMs + (stay.leaseStartedAt === null ? 0 : now - stay.leaseStartedAt)
+}
+
+function updateRealityLease(
+  state: GameState,
+  action: Extract<
+    ProductivityAction,
+    {
+      type: 'reality/session-resume' | 'reality/session-heartbeat' | 'reality/session-suspend'
+    }
+  >,
+): GameTransition {
+  if (!isValidTimestamp(action.now)) return fail(state, 'INVALID_TIME', '现实计时时间无效')
+  const stay = state.reality.activeStay
+  if (state.world !== 'reality' || stay === null) {
+    return fail(state, 'REALITY_STAY_NOT_ACTIVE', '当前没有进行中的现实停留')
+  }
+  if (stay.stayId !== action.stayId) {
+    return fail(state, 'RUN_ID_MISMATCH', '现实计时请求与当前停留不一致')
+  }
+
+  if (action.type === 'reality/session-resume') {
+    if (stay.leaseStartedAt !== null) return succeed(state)
+    if (action.now < stay.enteredAt) {
+      return fail(state, 'INVALID_TIME', '现实计时不能早于进入时间')
+    }
+    return succeed({
+      ...state,
+      reality: {
+        ...state.reality,
+        activeStay: { ...stay, leaseStartedAt: action.now },
+      },
+    })
+  }
+
+  if (stay.leaseStartedAt === null) return succeed(state)
+  if (action.now < stay.leaseStartedAt) {
+    return fail(state, 'INVALID_TIME', '现实计时不能早于上次心跳')
+  }
+  const activeDurationMs = stay.activeDurationMs + (action.now - stay.leaseStartedAt)
+  if (!Number.isSafeInteger(activeDurationMs) || activeDurationMs > MAX_DATE_TIMESTAMP_MS) {
+    return fail(state, 'INVALID_TIME', '现实计时累计时长无效')
+  }
+  return succeed({
+    ...state,
+    reality: {
+      ...state.reality,
+      activeStay: {
+        ...stay,
+        activeDurationMs,
+        leaseStartedAt: action.type === 'reality/session-suspend' ? null : action.now,
+      },
+    },
+  })
 }
 
 function leaveReality(
@@ -136,12 +219,19 @@ function leaveReality(
   if (action.now < stay.enteredAt) {
     return fail(state, 'INVALID_TIME', '离开时间不能早于进入时间')
   }
-
-  const settlement = {
-    ...stay,
-    leftAt: action.now,
-    fullRewardApples: Math.floor((action.now - stay.enteredAt) / REALITY_REWARD_INTERVAL_MS),
+  if (stay.leaseStartedAt !== null && action.now < stay.leaseStartedAt) {
+    return fail(state, 'INVALID_TIME', '离开时间不能早于上次心跳')
   }
+
+  const activeDurationMs = deriveRealityActiveDurationMs(stay, action.now)
+  const settlement = {
+    stayId: stay.stayId,
+    enteredAt: stay.enteredAt,
+    leftAt: action.now,
+    activeDurationMs,
+    fullRewardApples: Math.floor(activeDurationMs / REALITY_REWARD_INTERVAL_MS),
+  }
+  const pendingSettlement = settlement.fullRewardApples >= 1 ? settlement : null
   return succeed(
     {
       ...state,
@@ -149,10 +239,10 @@ function leaveReality(
       reality: {
         ...state.reality,
         activeStay: null,
-        pendingSettlement: settlement,
+        pendingSettlement,
       },
     },
-    [{ type: 'reality-reward-pending', settlement }],
+    pendingSettlement === null ? [] : [{ type: 'reality-reward-pending', settlement }],
   )
 }
 
@@ -609,6 +699,10 @@ export function reduceProductivity(
       return enterReality(state, action)
     case 'reality/leave':
       return leaveReality(state, action)
+    case 'reality/session-resume':
+    case 'reality/session-heartbeat':
+    case 'reality/session-suspend':
+      return updateRealityLease(state, action)
     case 'reality/settle':
       return settleReality(state, action)
     case 'todo/create':

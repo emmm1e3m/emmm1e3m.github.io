@@ -60,6 +60,7 @@ function renderRoom({
   dimensionToggleDisabled,
   onToggleDimension,
   wanderRandom,
+  petMenuOpenRequest,
 }: {
   game?: GameState
   area?: RoomArea
@@ -75,6 +76,7 @@ function renderRoom({
   dimensionToggleDisabled?: Parameters<typeof RoomScene>[0]['dimensionToggleDisabled']
   onToggleDimension?: Parameters<typeof RoomScene>[0]['onToggleDimension']
   wanderRandom?: Parameters<typeof RoomScene>[0]['wanderRandom']
+  petMenuOpenRequest?: Parameters<typeof RoomScene>[0]['petMenuOpenRequest']
 } = {}) {
   return render(
     <RoomScene
@@ -98,6 +100,7 @@ function renderRoom({
       onToggleDimension={onToggleDimension}
       onTaskEvent={vi.fn()}
       wanderRandom={wanderRandom}
+      petMenuOpenRequest={petMenuOpenRequest}
     />,
   )
 }
@@ -111,6 +114,7 @@ describe('房屋场景定位与返回交互', () => {
     expect(room.querySelectorAll('.room-stage')).toHaveLength(1)
     expect(room.querySelectorAll('.room-picture')).toHaveLength(1)
     expect(room.querySelectorAll('.room-picture img[src*="chan-chan-house-v2-"]')).toHaveLength(1)
+    expect(room.querySelector('.room-bingo-badge')).toBeNull()
 
     expect(gameV3Styles).not.toContain('var(--room-backdrop-image)')
     expect(gameV3Styles).toMatch(
@@ -122,6 +126,95 @@ describe('房屋场景定位与返回交互', () => {
     expect(gameV3Styles).toMatch(
       /\.game-page--v3 \.room-card--v3\s*\{[^}]*background:\s*transparent;/su,
     )
+  })
+
+  it('饼狗菜单跟随当前可见坐标，并按所在楼层选择上下方且保持活力状态单行', () => {
+    const fridge = ROOM_AREAS.find((area) => area.id === 'fridge')!
+    const { rerender } = renderRoom({ area: fridge, panel: 'fridge' })
+
+    fireEvent.click(screen.getByRole('button', { name: '饼狗，打开行动菜单' }))
+    let menu = screen.getByRole('dialog', { name: '饼狗状态' })
+    expect(menu).toHaveClass('pet-menu--above')
+    expect(Number.parseFloat(menu.style.getPropertyValue('--pet-menu-x'))).toBeCloseTo(
+      (fridge.petCenter.x / ROOM_CANVAS.width) * 100,
+      12,
+    )
+    expect(Number.parseFloat(menu.style.getPropertyValue('--pet-menu-y'))).toBeCloseTo(
+      (fridge.petCenter.y / ROOM_CANVAS.height) * 100,
+      12,
+    )
+
+    const bed = ROOM_AREAS.find((area) => area.id === 'bed')!
+    rerender(
+      <RoomScene
+        game={createInitialGameState({ now: 1_000, seed: 'room-menu-follow' })}
+        panel="rest"
+        area={bed}
+        walking
+        walkingDirection="left"
+        sleeping={false}
+        restDarkness={0}
+        onArea={vi.fn()}
+        onPanel={vi.fn()}
+        onBackgroundActivate={vi.fn()}
+        onHelp={vi.fn()}
+        onTaskEvent={vi.fn()}
+      />,
+    )
+    menu = screen.getByRole('dialog', { name: '饼狗状态' })
+    expect(menu).toHaveClass('pet-menu--below', 'is-following-pet')
+    expect(Number.parseFloat(menu.style.getPropertyValue('--pet-menu-x'))).toBeCloseTo(
+      (bed.petCenter.x / ROOM_CANVAS.width) * 100,
+      12,
+    )
+    expect(gameV3Styles).toMatch(
+      /\.pet-menu__vitality\s*\{[^}]*display:\s*flex;[^}]*white-space:\s*nowrap;/su,
+    )
+  })
+
+  it('外部打开请求只处理一次，并复用点击饼狗的任务事件', async () => {
+    const onTaskEvent = vi.fn()
+    const game = createInitialGameState({ now: 1_000, seed: 'room-menu-request' })
+    const commonProps = {
+      game,
+      panel: 'status' as const,
+      area: DEFAULT_ROOM_AREA,
+      walking: false,
+      walkingDirection: 'right' as const,
+      sleeping: false,
+      restDarkness: 0,
+      onArea: vi.fn(),
+      onPanel: vi.fn(),
+      onBackgroundActivate: vi.fn(),
+      onHelp: vi.fn(),
+      onTaskEvent,
+    }
+    const { rerender, unmount } = render(<RoomScene {...commonProps} petMenuOpenRequest={0} />)
+
+    rerender(<RoomScene {...commonProps} petMenuOpenRequest={1} />)
+    await act(
+      () =>
+        new Promise<void>((resolve) => {
+          globalThis.requestAnimationFrame(() => resolve())
+        }),
+    )
+    expect(screen.getByRole('dialog', { name: '饼狗状态' })).toBeInTheDocument()
+    expect(onTaskEvent).toHaveBeenCalledTimes(1)
+
+    rerender(<RoomScene {...commonProps} petMenuOpenRequest={1} />)
+    expect(onTaskEvent).toHaveBeenCalledTimes(1)
+
+    fireEvent.click(screen.getByRole('button', { name: '收起菜单' }))
+    unmount()
+    render(<RoomScene {...commonProps} petMenuOpenRequest={1} />)
+    await act(
+      () =>
+        new Promise<void>((resolve) => {
+          globalThis.requestAnimationFrame(() => resolve())
+        }),
+    )
+    expect(screen.queryByRole('dialog', { name: '饼狗状态' })).not.toBeInTheDocument()
+    expect(onTaskEvent).toHaveBeenCalledTimes(1)
   })
 
   it('房间、信息栏和播放器的可见留白只使用一份场景间距', () => {
@@ -524,7 +617,7 @@ describe('房屋场景定位与返回交互', () => {
     fireEvent.click(screen.getByRole('button', { name: '冲热（开发中）' }))
     expect(screen.getByRole('button', { name: '冲热（开发中）' })).toHaveStyle({
       '--x': '72%',
-      '--y': '29%',
+      '--y': '18%',
     })
     expect(onArea).toHaveBeenLastCalledWith(
       expect.objectContaining({

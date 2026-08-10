@@ -1,11 +1,11 @@
 import { describe, expect, it } from 'vitest'
 
 import {
-  addProbabilityBonus,
-  APPLE_LUNCHBOX_FRIEND_BONUS,
+  addNonStackingBaseProbabilityBonus,
+  APPLE_LUNCHBOX_FRIEND_BASE_BONUS_RATE,
   FRIEND_GIFT_APPLES_BY_ID,
   FRIEND_GIFT_ITEM_BY_ID,
-  LUCKY_APPLE_COLLECTION_DROP_MULTIPLIER,
+  LUCKY_APPLE_COLLECTION_BASE_BONUS_RATE,
   multiplyProbability,
   REST_COMPLETION_APPLES,
   TRAVEL_FRIEND_GIFT_APPLES_BY_ID,
@@ -72,21 +72,6 @@ function plan(
     usedLuckyApple: false,
     probabilities: certainDrop,
   })
-}
-
-function seedWhoseRollIsBelow(limit: number, rollIndex: number): string {
-  for (let index = 0; index < 10_000; index += 1) {
-    const seed = `bonus-boundary-${rollIndex}-${index}`
-    let cursor = createRandomCursor(seed)
-    let value = 0
-    for (let roll = 0; roll <= rollIndex; roll += 1) {
-      const next = nextRandom(cursor)
-      cursor = next.cursor
-      value = next.value
-    }
-    if (value < limit) return seed
-  }
-  throw new Error(`没有找到小于 ${limit} 的第 ${rollIndex + 1} 次随机值`)
 }
 
 function seedWhoseRollIsBetween(minimum: number, maximum: number, rollIndex: number): string {
@@ -181,7 +166,7 @@ describe('收藏奖励无重复规则', () => {
     ).toBe('first-new')
   })
 
-  it('幸运苹果把 10% 收藏概率翻倍到 20%，不再按百分点相加', () => {
+  it('幸运苹果在 10% 常规收藏概率上增加 100% 的基础值', () => {
     const rewardSeed = seedWhoseRollIsBetween(0.1, 0.2, 0)
     const input = {
       kind: 'stream' as const,
@@ -204,8 +189,8 @@ describe('收藏奖励无重复规则', () => {
     })
   })
 
-  it('苹果旅行便当把 0% 遇友概率提高 15 个百分点，普通便当没有加成', () => {
-    const rewardSeed = seedWhoseRollIsBelow(APPLE_LUNCHBOX_FRIEND_BONUS, 0)
+  it('苹果旅行便当在 10% 常规遇友概率上增加 100% 的基础值', () => {
+    const rewardSeed = seedWhoseRollIsBetween(0.1, 0.2, 0)
     const input = {
       kind: 'travel' as const,
       rewardSeed,
@@ -216,13 +201,27 @@ describe('收藏奖励无重复规则', () => {
         postcard: 0,
         millionShot: 0,
         siteFirst: 0,
-        travelFriend: 0,
+        travelFriend: 0.1,
         musicFriend: 0,
       },
     }
 
     expect(planActivityReward({ ...input, supplyId: 'travel-basic' }).friendId).toBeNull()
     expect(planActivityReward({ ...input, supplyId: 'travel-apple' }).friendId).not.toBeNull()
+  })
+
+  it('苹果旅行便当不会让 0% 常规遇友概率凭空提高', () => {
+    const reward = planActivityReward({
+      kind: 'travel',
+      rewardSeed: 'zero-friend-chance',
+      catalog,
+      ownedCollectionIds: new Set(),
+      supplyId: 'travel-apple',
+      usedLuckyApple: false,
+      probabilities: { ...certainDrop, travelFriend: 0 },
+    })
+
+    expect(reward.friendId).toBeNull()
   })
 
   it('旅行先判朋友，命中后与明信片严格互斥并规划确定性道具', () => {
@@ -339,7 +338,7 @@ describe('收藏奖励无重复规则', () => {
     })
   })
 
-  it('旅行未遇友时，幸运苹果把 10% 明信片概率翻倍到 20%', () => {
+  it('旅行未遇友时，幸运苹果在 10% 明信片概率上增加 100% 的基础值', () => {
     const rewardSeed = seedWhoseRollIsBetween(0.1, 0.2, 1)
     const reward = planActivityReward({
       kind: 'travel',
@@ -380,13 +379,19 @@ describe('收藏奖励无重复规则', () => {
     })
   })
 
-  it('便当仍按百分点相加，幸运苹果改为倍数计算，并统一封顶为 100%', () => {
-    expect(addProbabilityBonus(0, 0)).toBe(0)
-    expect(addProbabilityBonus(0, APPLE_LUNCHBOX_FRIEND_BONUS)).toBe(0.15)
-    expect(addProbabilityBonus(0.85, APPLE_LUNCHBOX_FRIEND_BONUS)).toBe(1)
-    expect(addProbabilityBonus(0.95, APPLE_LUNCHBOX_FRIEND_BONUS)).toBe(1)
-    expect(multiplyProbability(0, LUCKY_APPLE_COLLECTION_DROP_MULTIPLIER)).toBe(0)
-    expect(multiplyProbability(0.3, LUCKY_APPLE_COLLECTION_DROP_MULTIPLIER)).toBe(0.6)
-    expect(multiplyProbability(0.8, LUCKY_APPLE_COLLECTION_DROP_MULTIPLIER)).toBe(1)
+  it('便当与幸运苹果都增加一份基础概率，同类效果不叠加并封顶 100%', () => {
+    expect(addNonStackingBaseProbabilityBonus(0)).toBe(0)
+    expect(addNonStackingBaseProbabilityBonus(0.1, APPLE_LUNCHBOX_FRIEND_BASE_BONUS_RATE)).toBe(0.2)
+    expect(addNonStackingBaseProbabilityBonus(0.3, LUCKY_APPLE_COLLECTION_BASE_BONUS_RATE)).toBe(
+      0.6,
+    )
+    expect(
+      addNonStackingBaseProbabilityBonus(
+        0.3,
+        APPLE_LUNCHBOX_FRIEND_BASE_BONUS_RATE,
+        LUCKY_APPLE_COLLECTION_BASE_BONUS_RATE,
+      ),
+    ).toBe(0.6)
+    expect(addNonStackingBaseProbabilityBonus(0.8, 1)).toBe(1)
   })
 })

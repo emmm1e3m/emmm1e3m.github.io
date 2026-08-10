@@ -1,4 +1,4 @@
-import { render, screen } from '@testing-library/react'
+import { fireEvent, render, screen } from '@testing-library/react'
 
 import { createInitialGameState, deriveActivityTiming } from '@/domain'
 
@@ -38,10 +38,13 @@ describe('GameHud', () => {
         activity={null}
         timing={deriveActivityTiming(null, 1_000)}
         dirty={false}
-        statusLabel="状态很好"
+        statusLabel={null}
         vitalityDays={0}
         onExit={vi.fn()}
         onCenter={vi.fn()}
+        onRealityTimer={vi.fn()}
+        onVisitorStream={vi.fn()}
+        onPetStatus={vi.fn()}
         onFridge={vi.fn()}
         onAlbum={vi.fn()}
         onDebug={vi.fn()}
@@ -53,13 +56,15 @@ describe('GameHud', () => {
     expect(center.querySelector('strong')).toHaveTextContent('今天也要好好吃苹果')
     expect(screen.queryByText('今天也要')).not.toBeInTheDocument()
     expect(center.closest('header')).toHaveClass('game-hud--v4')
-    expect(screen.getByRole('status', { name: '饼狗状态' }).closest('header')).toBe(
-      center.closest('header'),
+    const petStatus = screen.getByRole('button', {
+      name: '饼狗活力状态 高活力，打开饼狗菜单',
+    })
+    expect(petStatus.closest('header')).toBe(center.closest('header'))
+    expect(petStatus).toHaveTextContent('高活力你陪伴饼狗已经 0 天')
+    expect(screen.queryByText('状态正常')).not.toBeInTheDocument()
+    expect(screen.getByLabelText('18🍎').querySelector('.apple-amount__number')).toHaveTextContent(
+      '18',
     )
-    expect(screen.getByRole('status', { name: '饼狗状态' })).toHaveTextContent(
-      '状态很好高活力你陪伴饼狗已经 0 天',
-    )
-    expect(screen.getByLabelText('活力状态 高活力')).toBeInTheDocument()
   })
 
   it('独立显示活力状态，不覆盖正在进行的活动文案', () => {
@@ -81,13 +86,18 @@ describe('GameHud', () => {
       vitalityDays: 0,
       onExit: vi.fn(),
       onCenter: vi.fn(),
+      onRealityTimer: vi.fn(),
+      onVisitorStream: vi.fn(),
+      onPetStatus: vi.fn(),
       onFridge: vi.fn(),
       onAlbum: vi.fn(),
       onDebug: vi.fn(),
     } as const
     const { rerender } = render(<GameHud {...props} game={game} />)
 
-    const status = screen.getByRole('status', { name: '饼狗状态' })
+    const status = screen.getByRole('button', {
+      name: '饼狗活力状态 中等活力，打开饼狗菜单',
+    })
     expect(status).toHaveTextContent('正在弹琴')
     expect(status).toHaveTextContent('中等活力')
 
@@ -108,7 +118,11 @@ describe('GameHud', () => {
         }}
       />,
     )
-    expect(status).toHaveTextContent('活力满满')
+    expect(
+      screen.getByRole('button', {
+        name: '饼狗活力状态 活力满满，打开饼狗菜单',
+      }),
+    ).toHaveTextContent('活力满满')
   })
 
   it('为顶栏各块分别提供协调的圆角矩形背景', () => {
@@ -135,51 +149,101 @@ describe('GameHud', () => {
     )
   })
 
-  it('1200px 以下保持单行流式布局，空间不足时整条顶栏横向浏览', () => {
+  it('顶栏按性质分成左右两组，标题参与布局且右组自动靠右', () => {
     expect(gameV4Styles).toMatch(
-      /@media \(max-width: 1200px\)\s*\{[\s\S]*?\.game-page--v4 \.game-hud--v4\s*\{[^}]*display:\s*flex;[^}]*flex-wrap:\s*nowrap;[^}]*overflow-x:\s*auto;[^}]*overflow-y:\s*hidden;/u,
+      /\.game-page--v4 \.game-hud--v4\s*\{[^}]*display:\s*flex;[^}]*flex-wrap:\s*nowrap;[^}]*overflow-x:\s*auto;[^}]*overflow-y:\s*hidden;/u,
     )
     expect(gameV4Styles).toMatch(
-      /@media \(max-width: 1200px\)\s*\{[\s\S]*?\.game-hud--v4 \.game-hud__center\s*\{[^}]*position:\s*static;[^}]*min-width:\s*max-content;[^}]*flex:\s*0 0 auto;[^}]*transform:\s*none;/u,
+      /\.game-hud--v4 \.game-hud__leading\s*\{[^}]*display:\s*flex;[^}]*flex:\s*0 0 auto;/u,
     )
     expect(gameV4Styles).toMatch(
-      /@media \(max-width: 1200px\)\s*\{[\s\S]*?\.game-hud--v4 \.game-hud__actions\s*\{[^}]*min-width:\s*max-content;[^}]*display:\s*flex;[^}]*flex:\s*0 0 auto;/u,
+      /\.game-hud--v4 \.game-hud__center\s*\{[^}]*position:\s*static;[^}]*min-width:\s*max-content;[^}]*flex:\s*0 0 auto;[^}]*transform:\s*none;/u,
     )
-    expect(gameV4Styles).not.toContain("'companion companion buttons'")
-    expect(gameV4Styles).not.toContain("'actions actions actions'")
+    expect(gameV4Styles).toMatch(
+      /\.game-hud--v4 \.game-hud__actions\s*\{[^}]*flex:\s*0 0 auto;[^}]*margin-left:\s*auto;[^}]*justify-content:\s*flex-end;/u,
+    )
+    expect(gameV4Styles).not.toMatch(
+      /\.game-hud--v4 \.game-hud__center\s*\{[^}]*position:\s*absolute;/u,
+    )
   })
 
-  it('现实停留计时只由 enteredAt 与传入 now 格式化，回到游戏后隐藏', () => {
+  it('现实停留只显示整分钟，点击后请求返回游戏维度', () => {
     const base = createInitialGameState({ now: 1_000, seed: 'v4-reality-timer' })
     const reality = {
       ...base,
       world: 'reality' as const,
       reality: {
         ...base.reality,
-        activeStay: { stayId: 'hud-stay', enteredAt: 1_000 },
+        activeStay: {
+          stayId: 'hud-stay',
+          enteredAt: 1_000,
+          activeDurationMs: 0,
+          leaseStartedAt: 1_000,
+        },
       },
     }
     const props = {
       activity: null,
       timing: deriveActivityTiming(null, 1_000),
       dirty: false,
-      statusLabel: '状态正常',
+      statusLabel: null,
       vitalityDays: 0,
       onExit: vi.fn(),
       onCenter: vi.fn(),
+      onRealityTimer: vi.fn(),
+      onVisitorStream: vi.fn(),
+      onPetStatus: vi.fn(),
       onFridge: vi.fn(),
       onAlbum: vi.fn(),
       onDebug: vi.fn(),
     } as const
     const { rerender } = render(<GameHud {...props} game={reality} now={62_000} />)
 
-    expect(screen.getByRole('timer', { name: '本次现实停留 01:01' })).toHaveTextContent(
-      '现实 01:01',
-    )
+    const realityTimer = screen.getByRole('button', {
+      name: '本次现实停留 1 分钟，返回游戏维度',
+    })
+    expect(realityTimer).toHaveTextContent('现实 1 分钟')
+    fireEvent.click(realityTimer)
+    expect(props.onRealityTimer).toHaveBeenCalledOnce()
     rerender(<GameHud {...props} game={reality} now={3_662_000} />)
-    expect(screen.getByRole('timer', { name: '本次现实停留 01:01:01' })).toBeInTheDocument()
+    expect(
+      screen.getByRole('button', { name: '本次现实停留 61 分钟，返回游戏维度' }),
+    ).toBeInTheDocument()
     rerender(<GameHud {...props} game={base} now={3_662_000} />)
-    expect(screen.queryByRole('timer')).not.toBeInTheDocument()
+    expect(screen.queryByText(/现实 \d+ 分钟/u)).not.toBeInTheDocument()
+  })
+
+  it('游客刷播显示当前轮次与下一轮倒计时，点击后打开刷播页', () => {
+    const game = createInitialGameState({ now: 1_000, seed: 'v4-visitor-timer' })
+    const onVisitorStream = vi.fn()
+
+    render(
+      <GameHud
+        game={game}
+        now={10_000}
+        activity={null}
+        timing={deriveActivityTiming(null, 10_000)}
+        dirty={false}
+        statusLabel={null}
+        vitalityDays={0}
+        visitorStream={{ round: 3, nextRoundRemainingSeconds: 65 }}
+        onExit={vi.fn()}
+        onCenter={vi.fn()}
+        onRealityTimer={vi.fn()}
+        onVisitorStream={onVisitorStream}
+        onPetStatus={vi.fn()}
+        onFridge={vi.fn()}
+        onAlbum={vi.fn()}
+        onDebug={vi.fn()}
+      />,
+    )
+
+    const visitorTimer = screen.getByRole('button', {
+      name: '游客刷播第 3 轮，01:05 后开始下一轮',
+    })
+    expect(visitorTimer).toHaveTextContent('游客 · 第 3 轮 · 01:05 后下一轮')
+    fireEvent.click(visitorTimer)
+    expect(onVisitorStream).toHaveBeenCalledOnce()
   })
 
   it('全站默认与可点击区域使用 CSS 内联 SVG 场景指针', () => {

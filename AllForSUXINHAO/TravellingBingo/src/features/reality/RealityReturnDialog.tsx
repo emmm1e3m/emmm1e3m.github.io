@@ -1,5 +1,6 @@
 import { useId, useRef } from 'react'
 
+import { AppleAmount } from '@/components/AppleAmount'
 import { useModalFocus } from '@/components/useModalFocus'
 
 import type { RealityReturnDialogProps } from './types'
@@ -39,7 +40,10 @@ export function RealityReturnDialog({
         <span className="reality-eyebrow">欢迎回来</span>
         <h2 id={titleId}>现实里的事情认真完成了吗？</h2>
         <p id={descriptionId}>
-          这段时间一共攒下 <strong>{fullRewardApples}🍎</strong>
+          这段时间一共攒下{' '}
+          <strong>
+            <AppleAmount value={fullRewardApples} />
+          </strong>
           。请如实告诉饼狗；如果没有认真完成，饼狗会只把一半带回家。
         </p>
         <div className="reality-dialog__actions reality-return-dialog__actions">
