@@ -182,7 +182,6 @@ test.describe('V9 房间契约', () => {
     await expect(resultDialog).toBeVisible()
     await page.clock.resume()
     await expect(page.locator('.reality-settlement-result-backdrop')).toHaveCSS('opacity', '1')
-    await page.clock.runFor(400)
     await expect(resultDialog).toContainText('收好 1🍎')
     await expect(resultDialog.getByRole('button', { name: '收好啦' })).toBeFocused()
     await expect.poll(() => readAppleCount(page)).toBe(applesBefore + 1)

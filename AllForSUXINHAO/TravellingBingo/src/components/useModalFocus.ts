@@ -259,6 +259,8 @@ export function useModalFocus<T extends HTMLElement>(
     const initialFocusReached = activeInside
       ? document.activeElement !== dialog
       : focusInside(dialog, optionsRef.current.initialFocus)
+    const focusVisibilityRoot =
+      dialog.closest<HTMLElement>('.modal-backdrop, [data-modal-backdrop]') ?? dialog
     let focusRetryFrame: number | null = null
     let focusRetryTimer: ReturnType<typeof globalThis.setTimeout> | null = null
 
@@ -271,8 +273,8 @@ export function useModalFocus<T extends HTMLElement>(
     }
 
     if (!initialFocusReached) {
-      dialog.addEventListener('animationend', retryInitialFocus)
-      dialog.addEventListener('transitionend', retryInitialFocus)
+      focusVisibilityRoot.addEventListener('animationend', retryInitialFocus)
+      focusVisibilityRoot.addEventListener('transitionend', retryInitialFocus)
       if (typeof window.requestAnimationFrame === 'function') {
         focusRetryFrame = window.requestAnimationFrame(retryInitialFocus)
       }
@@ -337,8 +339,8 @@ export function useModalFocus<T extends HTMLElement>(
     return () => {
       document.removeEventListener('keydown', handleKeyDown, true)
       document.removeEventListener('focusin', handleFocusIn)
-      dialog.removeEventListener('animationend', retryInitialFocus)
-      dialog.removeEventListener('transitionend', retryInitialFocus)
+      focusVisibilityRoot.removeEventListener('animationend', retryInitialFocus)
+      focusVisibilityRoot.removeEventListener('transitionend', retryInitialFocus)
       if (focusRetryFrame !== null) window.cancelAnimationFrame(focusRetryFrame)
       if (focusRetryTimer !== null) globalThis.clearTimeout(focusRetryTimer)
 

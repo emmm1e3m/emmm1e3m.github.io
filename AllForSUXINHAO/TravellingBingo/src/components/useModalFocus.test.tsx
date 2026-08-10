@@ -92,18 +92,17 @@ function AnimatedModalHarness({ visible }: { visible: boolean }) {
   })
 
   return (
-    <section
-      ref={dialogRef}
-      role="dialog"
-      aria-modal="true"
-      aria-label="淡入弹窗"
-      tabIndex={-1}
+    <div
+      data-modal-backdrop
+      data-testid="animated-modal-backdrop"
       style={{ opacity: visible ? 1 : 0 }}
     >
-      <button type="button" data-initial-focus>
-        返回房间
-      </button>
-    </section>
+      <section ref={dialogRef} role="dialog" aria-modal="true" aria-label="淡入弹窗" tabIndex={-1}>
+        <button type="button" data-initial-focus>
+          返回房间
+        </button>
+      </section>
+    </div>
   )
 }
 
@@ -197,7 +196,7 @@ describe('useModalFocus', () => {
     expect(returnButton).not.toHaveFocus()
 
     rerender(<AnimatedModalHarness visible />)
-    fireEvent.animationEnd(dialog)
+    fireEvent.animationEnd(screen.getByTestId('animated-modal-backdrop'))
 
     expect(returnButton).toHaveFocus()
   })
