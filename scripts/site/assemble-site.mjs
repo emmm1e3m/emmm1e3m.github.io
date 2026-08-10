@@ -7,6 +7,7 @@ const workspaceRoot = resolve(fileURLToPath(new URL('../..', import.meta.url)))
 const outputRoot = resolve(workspaceRoot, '_site')
 const buildRoot = resolve(workspaceRoot, 'dist/travelling-bingo')
 const rootEntry = resolve(workspaceRoot, 'index.html')
+const standalonePlayerEntry = resolve(buildRoot, 'bilibili-multi-player.html')
 const runId = `${process.pid}-${randomUUID()}`
 const stagingRoot = resolve(workspaceRoot, `_site.__staging-${runId}`)
 const backupRoot = resolve(workspaceRoot, `_site.__backup-${runId}`)
@@ -61,6 +62,7 @@ assertOwnedDirectory(backupRoot, /^_site\.__backup-[\w-]+$/u)
 await requireRegularFile(rootEntry, '根首页')
 await requireDirectory(buildRoot, 'TravellingBingo 构建产物')
 await requireRegularFile(resolve(buildRoot, 'index.html'), 'TravellingBingo 构建入口')
+await requireRegularFile(standalonePlayerEntry, 'B站多播放器独立页')
 await rejectSymbolicLinks(buildRoot)
 
 let outputBackedUp = false

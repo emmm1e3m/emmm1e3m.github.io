@@ -254,6 +254,8 @@ export function App({
   const preparedCacheRef = useRef<PreparedBrowserCache | null>(null)
   const periodicBackupInFlight = useRef(false)
   const pwaUpdateBackupPending = useRef(false)
+  const automaticTitleUpdateCheckRequested = useRef(false)
+  const updateCheckInFlight = useRef(false)
   const pwaUpdateBackupRequest = useRef<{
     snapshot: GameState
     request: Promise<void>
@@ -504,13 +506,14 @@ export function App({
       })
   }
 
-  function requestUpdateCheck() {
-    if (updateCheckStatus === 'checking') return
+  const requestUpdateCheck = useCallback(() => {
+    if (updateCheckInFlight.current) return false
     if (!checkForUpdatesOverride && !('serviceWorker' in globalThis.navigator)) {
       setUpdateCheckStatus('unsupported')
       setToast('当前浏览器不支持离线更新。')
-      return
+      return false
     }
+    updateCheckInFlight.current = true
     setUpdateCheckStatus('checking')
     setToast(null)
     void checkForUpdates()
@@ -522,7 +525,23 @@ export function App({
         setUpdateCheckStatus('error')
         setToast(error instanceof Error ? error.message : '检查更新没有成功，请稍后再试。')
       })
-  }
+      .finally(() => {
+        updateCheckInFlight.current = false
+      })
+    return true
+  }, [checkForUpdates, checkForUpdatesOverride])
+
+  useEffect(() => {
+    if (screen !== 'title') {
+      automaticTitleUpdateCheckRequested.current = false
+      return
+    }
+    if (!catalog || !cacheReady) return
+    if (automaticTitleUpdateCheckRequested.current || updateCheckStatus === 'unsupported') {
+      return
+    }
+    if (requestUpdateCheck()) automaticTitleUpdateCheckRequested.current = true
+  }, [cacheReady, catalog, requestUpdateCheck, screen, updateCheckStatus])
 
   const applyAction = useCallback(
     (action: GameAction) => {

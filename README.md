@@ -65,7 +65,7 @@ npm run dev -- --host localhost --port 5173 --strictPort --open "/AllForSUXINHAO
 - 新导出使用 `schemaVersion: 9` 与 `gameVersion: 0.9.0-demo.1`。导入严格支持 V1–V9：先校验原始 payload 摘要，再迁移、规范、协调当前目录并做最终语义校验。
 - 旧缓存迁移或目录协调后，会把 V9 payload、`gameVersion` 与缓存更新时间一起写回；浏览器缓存外层 `cacheVersion` 仍保持 1。历史 V6→V7 迁移仍将每条旧刷播轮次独立转换成一条 legacy 任务记录，不按时间猜测合并；V7→V8 初始化维度穿透与自测 BV，V8→V9 增加现实计时租约。旧 V8 的活跃现实停留没有心跳证据，迁移时累计时长归零，不按缓存时间补算离线奖励。
 - 存档包含正在进行的活动、现实停留与待结算奖励、魔法状态、待办、苹果钟、播放器的当前曲目和循环模式、刷播累计轮次与最近 10 次任务记录，以及单个可选自测 BV 和维度穿透开关；重新打开页面不会恢复正在运行的刷播或播放器进度，也不复制收藏目录或视频元数据。
-- “检查更新”只保留在标题页，结果使用临时提示；检测到新版本时会先备份缓存进度，再提供更新安装。
+- “检查更新”只保留在标题页；首次进入或从旅程返回标题页时各自动检查一次，同一次停留不会因页面重绘重复检查，按钮仍可手动再查。结果使用临时提示；检测到新版本时会先备份缓存进度，再提供更新安装。
 - 守候音频只在进入旅程的明确用户手势后创建并保持开启，不在状态栏暴露技术开关。浏览器、系统节能或后台策略仍可能挂起页面。
 - 以触屏为主的移动设备在旅程运行且页面可见时会请求屏幕常亮；页面隐藏时释放，重新可见时再请求。浏览器不支持或拒绝权限不会阻断游戏，也不代表切到后台后仍能持续运行。
 
@@ -111,3 +111,4 @@ powershell -NoProfile -ExecutionPolicy Bypass -File scripts/maintenance/clean-wo
 
 - [站点根首页](https://emmm1e3m.github.io/)
 - [旅行饼狗](https://emmm1e3m.github.io/AllForSUXINHAO/TravellingBingo/)
+- [B站多播放器生成器](https://emmm1e3m.github.io/AllForSUXINHAO/TravellingBingo/bilibili-multi-player.html)：输入一个 BV 号或完整视频链接，生成指定数量且默认从头静音自动开播的官方内嵌播放器。

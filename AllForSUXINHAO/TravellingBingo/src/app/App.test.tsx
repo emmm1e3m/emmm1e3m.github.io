@@ -1244,16 +1244,39 @@ describe('旅行饼狗应用控制器', () => {
     expect(audio.context.resume).toHaveBeenCalledOnce()
   })
 
-  it('标题页的“检查更新”只调用显式检查入口并弹出无更新结果', async () => {
-    const checkForUpdates = vi.fn().mockResolvedValue(undefined)
-    render(<App checkForUpdates={checkForUpdates} />)
+  it('标题页每次进入时自动检查一次，停留期间的重渲染不会重复检查', async () => {
+    const initialCheck = deferred<boolean | void>()
+    const checkForUpdates = vi
+      .fn()
+      .mockImplementationOnce(() => initialCheck.promise)
+      .mockResolvedValue(undefined)
+    const view = render(<App checkForUpdates={checkForUpdates} />)
 
     await screen.findByRole('button', { name: '开始新旅程' })
-    fireEvent.click(screen.getByRole('button', { name: '检查更新' }))
+    await waitFor(() => expect(checkForUpdates).toHaveBeenCalledOnce())
+    view.rerender(<App checkForUpdates={checkForUpdates} />)
+    expect(checkForUpdates).toHaveBeenCalledOnce()
+
+    initialCheck.resolve(undefined)
     await waitFor(() =>
       expect(screen.getByTestId('title-update-status')).toHaveTextContent('checked'),
     )
     expect(checkForUpdates).toHaveBeenCalledOnce()
+
+    await startNewJourney()
+    fireEvent.click(screen.getByRole('button', { name: '离开' }))
+
+    await waitFor(() => expect(checkForUpdates).toHaveBeenCalledTimes(2))
+  })
+
+  it('自动检查完成后仍可用“检查更新”手动再检查并展示原有结果', async () => {
+    const checkForUpdates = vi.fn().mockResolvedValue(undefined)
+    render(<App checkForUpdates={checkForUpdates} />)
+
+    await waitFor(() => expect(checkForUpdates).toHaveBeenCalledOnce())
+    fireEvent.click(screen.getByRole('button', { name: '检查更新' }))
+
+    await waitFor(() => expect(checkForUpdates).toHaveBeenCalledTimes(2))
     expect(appServiceWorker.updateServiceWorker).not.toHaveBeenCalled()
     expect(screen.getByText('铲铲饼屋暂时没有新布置啦')).toBeVisible()
   })
@@ -1278,7 +1301,6 @@ describe('旅行饼狗应用控制器', () => {
 
     const view = render(<App />)
     await screen.findByRole('button', { name: '开始新旅程' })
-    fireEvent.click(screen.getByRole('button', { name: '检查更新' }))
 
     await waitFor(() =>
       expect(screen.getByTestId('title-update-status')).toHaveTextContent('checked'),

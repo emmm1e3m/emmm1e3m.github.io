@@ -1,0 +1,375 @@
+<!doctype html>
+<html lang="zh-CN">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta
+      http-equiv="Content-Security-Policy"
+      content="default-src 'none'; frame-src https://player.bilibili.com; style-src 'unsafe-inline'; script-src 'unsafe-inline'; connect-src 'none'; img-src data:; base-uri 'none'; form-action 'none'; object-src 'none'"
+    />
+    <meta name="color-scheme" content="light" />
+    <title>B站多播放器生成器</title>
+    <style>
+      :root {
+        color: #533a34;
+        background: #f5e8d5;
+        font-family:
+          system-ui,
+          -apple-system,
+          BlinkMacSystemFont,
+          'Segoe UI',
+          'Microsoft YaHei',
+          sans-serif;
+        font-synthesis: none;
+      }
+
+      * {
+        box-sizing: border-box;
+      }
+
+      body {
+        min-width: 320px;
+        min-height: 100vh;
+        margin: 0;
+        background:
+          radial-gradient(circle at 12% 0%, rgb(255 255 255 / 72%), transparent 32rem),
+          linear-gradient(160deg, #f8eddc 0%, #ead0b6 100%);
+      }
+
+      button,
+      input {
+        font: inherit;
+      }
+
+      button {
+        min-height: 3rem;
+        border: 2px solid #a9263d;
+        border-radius: 1rem;
+        padding: 0.72rem 1.2rem;
+        color: #fff;
+        background: #c9364f;
+        cursor: pointer;
+      }
+
+      button:hover {
+        transform: translateY(-1px);
+        box-shadow: 0 0.35rem 0 rgb(118 73 58 / 14%);
+      }
+
+      button:focus-visible,
+      input:focus-visible {
+        outline: 3px solid #e16875;
+        outline-offset: 2px;
+      }
+
+      .page-shell {
+        width: min(76rem, calc(100% - 2rem));
+        margin: 0 auto;
+        padding: clamp(1.5rem, 4vw, 3.5rem) 0 4rem;
+      }
+
+      .hero,
+      .control-panel,
+      .player-card {
+        border: 2px solid #d8b493;
+        background: rgb(255 250 243 / 94%);
+        box-shadow: 0 0.75rem 2rem rgb(101 63 48 / 8%);
+      }
+
+      .hero {
+        border-radius: 2rem;
+        padding: clamp(1.4rem, 4vw, 2.4rem);
+      }
+
+      .eyebrow {
+        margin: 0 0 0.45rem;
+        color: #bd4257;
+        font-weight: 700;
+        letter-spacing: 0.08em;
+      }
+
+      h1 {
+        margin: 0;
+        font-size: clamp(1.9rem, 5vw, 3.6rem);
+        line-height: 1.12;
+      }
+
+      .intro,
+      .boundary-note,
+      .status {
+        line-height: 1.7;
+      }
+
+      .intro {
+        max-width: 54rem;
+        margin: 1rem 0 0;
+        color: #74584f;
+      }
+
+      .control-panel {
+        margin-top: 1.25rem;
+        border-radius: 1.5rem;
+        padding: clamp(1.2rem, 3vw, 2rem);
+      }
+
+      .controls {
+        display: grid;
+        grid-template-columns: minmax(16rem, 1fr) minmax(9rem, 12rem);
+        gap: 1rem;
+        align-items: end;
+      }
+
+      label {
+        display: grid;
+        gap: 0.5rem;
+        font-weight: 700;
+      }
+
+      input {
+        width: 100%;
+        min-height: 3rem;
+        border: 2px solid #d8b493;
+        border-radius: 1rem;
+        padding: 0.7rem 0.9rem;
+        color: #533a34;
+        background: #fff;
+      }
+
+      .actions {
+        display: flex;
+        margin-top: 1rem;
+      }
+
+      .status {
+        min-height: 1.7em;
+        margin: 1rem 0 0;
+        color: #6e493f;
+        font-weight: 700;
+      }
+
+      .status[data-error='true'] {
+        color: #a9263d;
+      }
+
+      .boundary-note {
+        margin: 0.75rem 0 0;
+        color: #74584f;
+        font-size: 0.94rem;
+      }
+
+      .player-grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(min(100%, 21rem), 1fr));
+        gap: 1rem;
+        margin-top: 1.25rem;
+      }
+
+      .player-grid:empty {
+        display: none;
+      }
+
+      .player-card {
+        min-width: 0;
+        overflow: hidden;
+        border-radius: 1.25rem;
+      }
+
+      .player-label {
+        margin: 0;
+        padding: 0.75rem 1rem;
+        font-weight: 700;
+      }
+
+      iframe {
+        display: block;
+        width: 100%;
+        aspect-ratio: 16 / 9;
+        border: 0;
+        background: #221b19;
+      }
+
+      @media (max-width: 42rem) {
+        .page-shell {
+          width: min(100% - 1rem, 76rem);
+          padding-top: 0.5rem;
+        }
+
+        .hero,
+        .control-panel {
+          border-radius: 1.25rem;
+        }
+
+        .controls {
+          grid-template-columns: 1fr;
+        }
+
+        .actions button {
+          width: 100%;
+        }
+      }
+
+      @media (prefers-reduced-motion: reduce) {
+        button {
+          transition: none;
+        }
+      }
+    </style>
+  </head>
+  <body>
+    <main class="page-shell">
+      <section class="hero" aria-labelledby="page-title">
+        <p class="eyebrow">独立播放器工具</p>
+        <h1 id="page-title">一次生成多个内嵌播放器</h1>
+        <p class="intro">
+          填写一个 BV
+          号或完整的哔哩哔哩视频链接，再指定播放器数量。每个播放器使用相同视频，并从开头请求静音自动开播。
+        </p>
+      </section>
+
+      <section class="control-panel" aria-label="播放器设置">
+        <form id="player-form" novalidate>
+          <div class="controls">
+            <label for="video-input">
+              视频 BV 号或链接
+              <input
+                id="video-input"
+                name="video"
+                type="text"
+                inputmode="url"
+                autocomplete="off"
+                placeholder="BV...（或 bilibili.com/video/... 链接）"
+                required
+              />
+            </label>
+            <label for="player-count">
+              播放器数量
+              <input
+                id="player-count"
+                name="count"
+                type="number"
+                min="1"
+                max="100"
+                value="4"
+                required
+              />
+            </label>
+          </div>
+
+          <div class="actions">
+            <button type="submit">生成 / 重建</button>
+          </div>
+        </form>
+
+        <p class="status" id="status" role="status" aria-live="polite">尚未生成播放器。</p>
+        <p class="boundary-note">
+          生成后的播放器会一直保留，只有再次点击“生成 /
+          重建”才会替换整组。播放器默认静音以提高自动开播成功率，可在播放器内恢复声音；自动开播仍可能受浏览器策略影响。本页不读取跨站状态，也不使用代理、接口请求或外部脚本。
+        </p>
+      </section>
+
+      <section class="player-grid" id="player-grid" aria-label="已生成的播放器"></section>
+    </main>
+
+    <script>
+      ;(() => {
+        'use strict'
+
+        const PLAYER_ORIGIN = 'https://player.bilibili.com'
+        const BVID_PATTERN = /^BV[0-9A-Za-z]{10}$/u
+
+        const form = document.querySelector('#player-form')
+        const videoInput = document.querySelector('#video-input')
+        const countInput = document.querySelector('#player-count')
+        const playerGrid = document.querySelector('#player-grid')
+        const status = document.querySelector('#status')
+
+        function normalizeBvid(candidate) {
+          if (candidate.slice(0, 2).toUpperCase() !== 'BV') return null
+          const normalized = `BV${candidate.slice(2)}`
+          return BVID_PATTERN.test(normalized) ? normalized : null
+        }
+
+        function parseBvid(value) {
+          const input = value.trim()
+          const bareBvid = normalizeBvid(input)
+          if (bareBvid) return bareBvid
+
+          try {
+            const url = new URL(input)
+            const isBilibiliHost =
+              url.hostname === 'bilibili.com' || url.hostname.endsWith('.bilibili.com')
+            if (!isBilibiliHost || (url.protocol !== 'https:' && url.protocol !== 'http:')) {
+              return null
+            }
+            const segments = url.pathname.split('/').filter(Boolean)
+            const videoIndex = segments.findIndex((segment) => segment.toLowerCase() === 'video')
+            return videoIndex < 0 ? null : normalizeBvid(segments[videoIndex + 1] || '')
+          } catch {
+            return null
+          }
+        }
+
+        function buildPlayerUrl(bvid) {
+          const url = new URL('/player.html', PLAYER_ORIGIN)
+          url.searchParams.set('bvid', bvid)
+          url.searchParams.set('p', '1')
+          url.searchParams.set('autoplay', '1')
+          url.searchParams.set('muted', '1')
+          url.searchParams.set('danmaku', '0')
+          url.searchParams.set('t', '0')
+          return url.toString()
+        }
+
+        function createPlayer(bvid, index) {
+          const card = document.createElement('article')
+          card.className = 'player-card'
+
+          const label = document.createElement('p')
+          label.className = 'player-label'
+          label.textContent = `播放器 ${index}`
+
+          const iframe = document.createElement('iframe')
+          iframe.src = buildPlayerUrl(bvid)
+          iframe.title = `Bilibili 内嵌播放器 ${index}：${bvid}`
+          iframe.loading = 'eager'
+          iframe.referrerPolicy = 'strict-origin-when-cross-origin'
+          iframe.allow = 'autoplay; fullscreen; picture-in-picture'
+          iframe.allowFullscreen = true
+          iframe.setAttribute('scrolling', 'no')
+
+          card.append(label, iframe)
+          return card
+        }
+
+        function setStatus(message, isError = false) {
+          status.textContent = message
+          status.dataset.error = String(isError)
+        }
+
+        form.addEventListener('submit', (event) => {
+          event.preventDefault()
+          const bvid = parseBvid(videoInput.value)
+          const count = Number(countInput.value)
+
+          if (!bvid) {
+            setStatus('请输入有效的 BV 号或完整 bilibili.com/video/... 视频链接。', true)
+            videoInput.focus()
+            return
+          }
+          if (!Number.isInteger(count) || count < 1 || count > 100) {
+            setStatus('播放器数量需要是 1 到 100 之间的整数。', true)
+            countInput.focus()
+            return
+          }
+
+          const fragment = document.createDocumentFragment()
+          for (let index = 1; index <= count; index += 1) {
+            fragment.append(createPlayer(bvid, index))
+          }
+          playerGrid.replaceChildren(fragment)
+          setStatus(`已生成 ${count} 个 ${bvid} 播放器，均已请求从头静音自动开播。`)
+        })
+      })()
+    </script>
+  </body>
+</html>

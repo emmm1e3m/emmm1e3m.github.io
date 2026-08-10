@@ -13,7 +13,12 @@ if (!siteRootStats.isDirectory() || siteRootStats.isSymbolicLink()) {
   throw new Error('发布目录必须是工作区内的普通目录')
 }
 
-const requiredFiles = ['index.html', '.nojekyll', 'AllForSUXINHAO/TravellingBingo/index.html']
+const requiredFiles = [
+  'index.html',
+  '.nojekyll',
+  'AllForSUXINHAO/TravellingBingo/index.html',
+  'AllForSUXINHAO/TravellingBingo/bilibili-multi-player.html',
+]
 for (const relativePath of requiredFiles) {
   await access(resolve(siteRoot, relativePath))
 }
@@ -159,6 +164,7 @@ for (const entry of hashedCodeEntries) {
 function isAllowedGameFile(relativePath) {
   if (
     relativePath === 'index.html' ||
+    relativePath === 'bilibili-multi-player.html' ||
     relativePath === 'manifest.webmanifest' ||
     relativePath === 'sw.js' ||
     relativePath === 'registerSW.js' ||

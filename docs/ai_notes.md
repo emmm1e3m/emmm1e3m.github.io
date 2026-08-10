@@ -149,7 +149,7 @@ public/assets/game/chan-chan-house-v2-1098.webp
 ## 浏览器能力边界
 
 - 通知权限只能在用户点击后请求。当前实现使用页面计时器并在 `focus` / `visibilitychange` 时补检查；页面完全关闭、系统休眠或浏览器冻结时不能保证准点系统通知。
-- “检查更新”调用当前 Service Worker registration 的 `update()`。无 Service Worker、未注册或网络失败时显示对应状态；检查本身不强制安装更新。
+- 首次进入或从旅程返回标题页时自动调用一次“检查更新”；同一次标题页停留以 ref 去重，目录、缓存、提示等重绘不会再次触发，玩家仍可用按钮手动再查。自动与手动检查共用当前 Service Worker registration 的 `update()`、状态和提示流程。无 Service Worker、未注册或网络失败时沿用对应状态；检查本身不强制安装更新。
 - `needRefresh` 首次表明检测到新版本时自动下载当前缓存档；随后安装该版本前再次调用同一幂等备份入口，避免无备份刷新。
 - 周期备份以 `lastPeriodicBackupRequestedAt ?? firstCachedAt` 为基准判断三天间隔；成功请求后写回 `lastPeriodicBackupRequestedAt`，避免重复下载。
 - `prepareBrowserCache` 只要 payload 迁移/规范/协调/暂停旧页面租约后形成新对象或 `gameVersion` 过旧，就用 `updateBrowserGameCache` 同步 V9 payload、`0.9.0-demo.1` 与 `updatedAt`；保留 `saveId`、`firstCachedAt`、`lastPeriodicBackupRequestedAt` 和外层 `cacheVersion: 1`。
