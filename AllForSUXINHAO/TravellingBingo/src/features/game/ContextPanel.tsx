@@ -25,7 +25,6 @@ import {
   buildUnlockedPostcardBackgrounds,
   type RealityNotificationPermission,
   type StreamPlaybackController,
-  type VisitorStreamController,
 } from '@/features/reality'
 import { TaskBoard } from '@/features/tasks/TaskBoard'
 
@@ -54,11 +53,6 @@ interface ContextPanelProps {
   notificationPermission?: RealityNotificationPermission
   onRequestNotificationPermission?: () => void
   streamPlayback: StreamPlaybackController
-  visitorStreamPlayback: VisitorStreamController
-  streamVideoIntervalMs: number
-  onStreamVideoIntervalChange: (intervalMs: number) => void
-  streamRoundDurationSeconds: number
-  onStreamRoundDurationChange: (seconds: number) => void
 }
 
 function toDomainCatalog(catalog: ContentCatalog): CollectionCatalog {
@@ -152,10 +146,6 @@ function RealityPanel({
   pomodoroCancelRequestToken,
   onPomodoroCancelRequestHandled,
   streamPlayback,
-  visitorStreamPlayback,
-  streamVideoIntervalMs,
-  onStreamVideoIntervalChange,
-  streamRoundDurationSeconds,
 }: {
   panel: Extract<PanelId, 'reality-stream' | 'reality-trend' | 'reality-work'>
   game: GameState
@@ -167,10 +157,6 @@ function RealityPanel({
   pomodoroCancelRequestToken?: number | null
   onPomodoroCancelRequestHandled?: (token: number) => void
   streamPlayback: StreamPlaybackController
-  visitorStreamPlayback: VisitorStreamController
-  streamVideoIntervalMs: number
-  onStreamVideoIntervalChange: (intervalMs: number) => void
-  streamRoundDurationSeconds: number
 }) {
   const [selectedDurationMs, setSelectedDurationMs] = useState(25 * 60_000)
   const todoSequenceRef = useRef(0)
@@ -198,26 +184,18 @@ function RealityPanel({
   if (panel === 'reality-stream') {
     return (
       <StreamPanel
-        now={now}
         completedRounds={game.reality.streamHistory.completedRounds}
         recentSessions={game.reality.streamHistory.recentSessions}
-        staticVideoCount={catalog.streamVideos.length}
+        standaloneHistory={streamPlayback.standaloneHistory}
         selfTestBvid={game.reality.streamSettings.selfTestBvid}
-        dimensionPenetrationEnabled={game.reality.streamSettings.dimensionPenetrationEnabled}
-        videoIntervalMs={streamVideoIntervalMs}
-        roundIntervalMs={streamRoundDurationSeconds * 1_000}
+        favoriteId={game.reality.streamSettings.favoriteId}
         playback={streamPlayback.state}
-        visitorPlayback={visitorStreamPlayback.state}
-        getRemainingMs={streamPlayback.getRemainingMs}
-        getStopRemainingMs={streamPlayback.getStopRemainingMs}
         onStart={streamPlayback.start}
-        onResume={streamPlayback.resume}
         onStop={streamPlayback.stop}
         onSelfTestBvidChange={(bvid) => onAction({ type: 'reality/stream-self-test-set', bvid })}
-        onDimensionPenetrationChange={(enabled) =>
-          onAction({ type: 'reality/stream-dimension-penetration-set', enabled })
+        onFavoriteChange={(favoriteId) =>
+          onAction({ type: 'reality/stream-favorite-set', favoriteId })
         }
-        onVideoIntervalChange={onStreamVideoIntervalChange}
       />
     )
   }
@@ -298,11 +276,6 @@ export function ContextPanel({
   notificationPermission,
   onRequestNotificationPermission,
   streamPlayback,
-  visitorStreamPlayback,
-  streamVideoIntervalMs,
-  onStreamVideoIntervalChange,
-  streamRoundDurationSeconds,
-  onStreamRoundDurationChange,
 }: ContextPanelProps) {
   const [popupBlocked, setPopupBlocked] = useState(false)
   const [cancelRunId, setCancelRunId] = useState<string | null>(null)
@@ -769,10 +742,6 @@ export function ContextPanel({
           pomodoroCancelRequestToken={pomodoroCancelRequestToken}
           onPomodoroCancelRequestHandled={onPomodoroCancelRequestHandled}
           streamPlayback={streamPlayback}
-          visitorStreamPlayback={visitorStreamPlayback}
-          streamVideoIntervalMs={streamVideoIntervalMs}
-          onStreamVideoIntervalChange={onStreamVideoIntervalChange}
-          streamRoundDurationSeconds={streamRoundDurationSeconds}
         />
       </PanelFrame>
     )
@@ -781,13 +750,7 @@ export function ContextPanel({
   if (panel === 'debug') {
     return (
       <PanelFrame key={panel} panel={panel} tag="调试门牌" className="debug-panel-shell">
-        <DebugPanel
-          game={game}
-          onAction={onAction}
-          onBackup={onBackup}
-          streamRoundDurationSeconds={streamRoundDurationSeconds}
-          onStreamRoundDurationChange={onStreamRoundDurationChange}
-        />
+        <DebugPanel game={game} onAction={onAction} onBackup={onBackup} />
       </PanelFrame>
     )
   }

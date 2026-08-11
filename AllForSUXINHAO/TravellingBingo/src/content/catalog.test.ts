@@ -25,7 +25,6 @@ const siteFirstCatalog = siteFirstCatalogSchema.parse(siteFirstCatalogJson)
 const postcardCatalog = postcardCatalogSchema.parse(postcardCatalogJson)
 const friendCatalog = friendCatalogSchema.parse(friendCatalogJson)
 const videoCatalog = bilibiliVideoCatalogSchema.parse(videoCatalogJson)
-const STREAM_BVIDS = ['BV1At3j6EE6w', 'BV1mkuN6HEFC', 'BV1UZ3D6REhZ']
 
 describe('收藏目录契约', () => {
   it('校验公开海报目录与真实来源明信片契约', () => {
@@ -147,38 +146,6 @@ describe('收藏目录契约', () => {
     expect(bilibiliVideoCatalogSchema.safeParse(reversed).success).toBe(false)
   })
 
-  it('刷播目录固定收藏夹并拒绝缺项、重复和首页乱序', () => {
-    expect(videoCatalog.folders.streaming.favoriteId).toBe(3963921644)
-    expect(videoCatalog.streamPlaylist.sourceFavoriteId).toBe(3963921644)
-    expect(videoCatalog.streamPlaylist.items.map((video) => video.bvid)).toEqual(STREAM_BVIDS)
-
-    const wrongFavorite = structuredClone(videoCatalogJson)
-    wrongFavorite.folders.streaming.favoriteId = 1
-    expect(bilibiliVideoCatalogSchema.safeParse(wrongFavorite).success).toBe(false)
-
-    const missingItem = structuredClone(videoCatalogJson)
-    missingItem.streamPlaylist.items.pop()
-    expect(bilibiliVideoCatalogSchema.safeParse(missingItem).success).toBe(false)
-
-    const duplicateItem = structuredClone(videoCatalogJson)
-    duplicateItem.streamPlaylist.items[1] = {
-      ...structuredClone(duplicateItem.streamPlaylist.items[0]!),
-      favoriteOrder: 2,
-    }
-    expect(bilibiliVideoCatalogSchema.safeParse(duplicateItem).success).toBe(false)
-
-    const wrongOrder = structuredClone(videoCatalogJson)
-    const first = structuredClone(wrongOrder.streamPlaylist.items[0]!)
-    const second = structuredClone(wrongOrder.streamPlaylist.items[1]!)
-    wrongOrder.streamPlaylist.items[0] = { ...second, favoriteOrder: 1 }
-    wrongOrder.streamPlaylist.items[1] = { ...first, favoriteOrder: 2 }
-    expect(bilibiliVideoCatalogSchema.safeParse(wrongOrder).success).toBe(false)
-
-    const incompleteLatestPage = structuredClone(videoCatalogJson)
-    incompleteLatestPage.folders.streaming.latestPage.items.pop()
-    expect(bilibiliVideoCatalogSchema.safeParse(incompleteLatestPage).success).toBe(false)
-  })
-
   it('拒绝越过公开目录的图片路径', () => {
     const invalid = structuredClone(postcardCatalogJson)
     invalid.items[0]!.images[0]!.path = '../private/original.webp'
@@ -226,7 +193,6 @@ describe('目录合并与收藏进度', () => {
     expect(catalog.recordPlayerVideos.map((video) => video.displayTitle)).toEqual(
       siteFirstDisplayTitles,
     )
-    expect(catalog.streamVideos.map((video) => video.bvid)).toEqual(STREAM_BVIDS)
   })
 
   it('拒绝海报内嵌视频与集中视频目录发生漂移', () => {

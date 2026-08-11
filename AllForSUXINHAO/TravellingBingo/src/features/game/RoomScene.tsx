@@ -144,6 +144,7 @@ interface RoomSceneProps {
   pomodoroRunning?: boolean
   onRequestCancelPomodoro?: () => void
   onHelp: () => void
+  onUpdateNotice?: () => void
   dimensionToggleRef?: Ref<HTMLButtonElement>
   dimensionToggleDisabled?: boolean
   onToggleDimension?: () => void
@@ -171,6 +172,7 @@ export function RoomScene({
   pomodoroRunning = false,
   onRequestCancelPomodoro,
   onHelp,
+  onUpdateNotice = () => undefined,
   dimensionToggleRef,
   dimensionToggleDisabled = false,
   onToggleDimension = () => undefined,
@@ -433,6 +435,15 @@ export function RoomScene({
           aria-hidden="true"
         />
       </div>
+      <button
+        className="room-corner-control room-corner-control--notice"
+        type="button"
+        onClick={onUpdateNotice}
+        aria-label="查看更新公告"
+        aria-haspopup="dialog"
+      >
+        <span aria-hidden="true">#️⃣</span>
+      </button>
       <button
         className="room-corner-control room-corner-control--help"
         type="button"

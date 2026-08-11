@@ -485,55 +485,6 @@
           }
         ]
       }
-    },
-    "streaming": {
-      "favoriteId": 3963921644,
-      "title": "测试【勿删】",
-      "sourceUrl": "https://space.bilibili.com/294620744/favlist?fid=3963921644&ftype=create",
-      "reportedItemCount": 3,
-      "visibleItemCount": 3,
-      "latestPage": {
-        "pageNumber": 1,
-        "pageSize": 20,
-        "items": [
-          {
-            "bvid": "BV1At3j6EE6w",
-            "title": "《囍》三机位 國組十九歲idol實力演繹“霸王別姬” 【4K直拍｜苏新皓】",
-            "authorName": "招财ZHAOCAI_苏新皓",
-            "authorMid": 3546895945304798,
-            "publishedAt": "2026-07-26T15:48:55.000+08:00",
-            "durationSeconds": 308,
-            "coverUrl": "https://i2.hdslb.com/bfs/archive/2b7cdfc68c2d046edc0cbb4d7ad97ad32c77fe6b.jpg",
-            "sourceUrl": "https://www.bilibili.com/video/BV1At3j6EE6w/",
-            "favoriteId": 3963921644,
-            "favoriteOrder": 1
-          },
-          {
-            "bvid": "BV1mkuN6HEFC",
-            "title": "【苏新皓｜直拍】甲乙丙丁 “你我怎么两清”双机位",
-            "authorName": "在_苏新皓",
-            "authorMid": 1377062418,
-            "publishedAt": "2026-08-08T00:29:58.000+08:00",
-            "durationSeconds": 249,
-            "coverUrl": "https://i2.hdslb.com/bfs/archive/da2834477bb556fa6dfcfdbbee112d9bf8d7021a.jpg",
-            "sourceUrl": "https://www.bilibili.com/video/BV1mkuN6HEFC/",
-            "favoriteId": 3963921644,
-            "favoriteOrder": 2
-          },
-          {
-            "bvid": "BV1UZ3D6REhZ",
-            "title": "【苏新皓｜《Power》四机位4k直拍】梦寐以求演唱会 完全巨星幼年体",
-            "authorName": "不眠夜_苏新皓",
-            "authorMid": 3493285647616917,
-            "publishedAt": "2026-08-02T09:21:36.000+08:00",
-            "durationSeconds": 260,
-            "coverUrl": "https://i0.hdslb.com/bfs/archive/8200ec47d43c2d201e331d73446e78d28bf881e6.jpg",
-            "sourceUrl": "https://www.bilibili.com/video/BV1UZ3D6REhZ/",
-            "favoriteId": 3963921644,
-            "favoriteOrder": 3
-          }
-        ]
-      }
     }
   },
   "videos": {
@@ -716,18 +667,6 @@
       "sourceUrl": "https://www.bilibili.com/video/BV1AeBqBuETA/",
       "favoriteId": 1130054521,
       "favoriteOrder": 35
-    },
-    "BV1At3j6EE6w": {
-      "bvid": "BV1At3j6EE6w",
-      "title": "《囍》三机位 國組十九歲idol實力演繹“霸王別姬” 【4K直拍｜苏新皓】",
-      "authorName": "招财ZHAOCAI_苏新皓",
-      "authorMid": 3546895945304798,
-      "publishedAt": "2026-07-26T15:48:55.000+08:00",
-      "durationSeconds": 308,
-      "coverUrl": "https://i2.hdslb.com/bfs/archive/2b7cdfc68c2d046edc0cbb4d7ad97ad32c77fe6b.jpg",
-      "sourceUrl": "https://www.bilibili.com/video/BV1At3j6EE6w/",
-      "favoriteId": 3963921644,
-      "favoriteOrder": 1
     },
     "BV1bBRNBPEgR": {
       "bvid": "BV1bBRNBPEgR",
@@ -1005,18 +944,6 @@
       "favoriteId": 3489626721,
       "favoriteOrder": 8
     },
-    "BV1mkuN6HEFC": {
-      "bvid": "BV1mkuN6HEFC",
-      "title": "【苏新皓｜直拍】甲乙丙丁 “你我怎么两清”双机位",
-      "authorName": "在_苏新皓",
-      "authorMid": 1377062418,
-      "publishedAt": "2026-08-08T00:29:58.000+08:00",
-      "durationSeconds": 249,
-      "coverUrl": "https://i2.hdslb.com/bfs/archive/da2834477bb556fa6dfcfdbbee112d9bf8d7021a.jpg",
-      "sourceUrl": "https://www.bilibili.com/video/BV1mkuN6HEFC/",
-      "favoriteId": 3963921644,
-      "favoriteOrder": 2
-    },
     "BV1mLDRBtE91": {
       "bvid": "BV1mLDRBtE91",
       "title": "【苏新皓｜8K直拍】ECHO！三机位直拍｜260412 浪漫主义演唱会",
@@ -1088,18 +1015,6 @@
       "sourceUrl": "https://www.bilibili.com/video/BV1TEJPzxEPd/",
       "favoriteId": 3489626721,
       "favoriteOrder": 17
-    },
-    "BV1UZ3D6REhZ": {
-      "bvid": "BV1UZ3D6REhZ",
-      "title": "【苏新皓｜《Power》四机位4k直拍】梦寐以求演唱会 完全巨星幼年体",
-      "authorName": "不眠夜_苏新皓",
-      "authorMid": 3493285647616917,
-      "publishedAt": "2026-08-02T09:21:36.000+08:00",
-      "durationSeconds": 260,
-      "coverUrl": "https://i0.hdslb.com/bfs/archive/8200ec47d43c2d201e331d73446e78d28bf881e6.jpg",
-      "sourceUrl": "https://www.bilibili.com/video/BV1UZ3D6REhZ/",
-      "favoriteId": 3963921644,
-      "favoriteOrder": 3
     },
     "BV1v1ddBsEW8": {
       "bvid": "BV1v1ddBsEW8",
@@ -1564,48 +1479,6 @@
         "coverUrl": "https://i0.hdslb.com/bfs/archive/6a5bd608470ff24d8456474ef73883f0db809088.jpg",
         "sourceUrl": "https://www.bilibili.com/video/BV1D23262EaD/",
         "favoriteId": 3489626721,
-        "favoriteOrder": 3
-      }
-    ]
-  },
-  "streamPlaylist": {
-    "sourceFavoriteId": 3963921644,
-    "selectionRule": "固定使用收藏夹 fid=3963921644 的全部可见视频；运行时只读取同源静态目录。",
-    "items": [
-      {
-        "bvid": "BV1At3j6EE6w",
-        "title": "《囍》三机位 國組十九歲idol實力演繹“霸王別姬” 【4K直拍｜苏新皓】",
-        "authorName": "招财ZHAOCAI_苏新皓",
-        "authorMid": 3546895945304798,
-        "publishedAt": "2026-07-26T15:48:55.000+08:00",
-        "durationSeconds": 308,
-        "coverUrl": "https://i2.hdslb.com/bfs/archive/2b7cdfc68c2d046edc0cbb4d7ad97ad32c77fe6b.jpg",
-        "sourceUrl": "https://www.bilibili.com/video/BV1At3j6EE6w/",
-        "favoriteId": 3963921644,
-        "favoriteOrder": 1
-      },
-      {
-        "bvid": "BV1mkuN6HEFC",
-        "title": "【苏新皓｜直拍】甲乙丙丁 “你我怎么两清”双机位",
-        "authorName": "在_苏新皓",
-        "authorMid": 1377062418,
-        "publishedAt": "2026-08-08T00:29:58.000+08:00",
-        "durationSeconds": 249,
-        "coverUrl": "https://i2.hdslb.com/bfs/archive/da2834477bb556fa6dfcfdbbee112d9bf8d7021a.jpg",
-        "sourceUrl": "https://www.bilibili.com/video/BV1mkuN6HEFC/",
-        "favoriteId": 3963921644,
-        "favoriteOrder": 2
-      },
-      {
-        "bvid": "BV1UZ3D6REhZ",
-        "title": "【苏新皓｜《Power》四机位4k直拍】梦寐以求演唱会 完全巨星幼年体",
-        "authorName": "不眠夜_苏新皓",
-        "authorMid": 3493285647616917,
-        "publishedAt": "2026-08-02T09:21:36.000+08:00",
-        "durationSeconds": 260,
-        "coverUrl": "https://i0.hdslb.com/bfs/archive/8200ec47d43c2d201e331d73446e78d28bf881e6.jpg",
-        "sourceUrl": "https://www.bilibili.com/video/BV1UZ3D6REhZ/",
-        "favoriteId": 3963921644,
         "favoriteOrder": 3
       }
     ]

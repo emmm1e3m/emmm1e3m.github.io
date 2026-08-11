@@ -156,6 +156,30 @@ describe('TitleScreen 新游戏称呼', () => {
     )
   })
 
+  it('在头像与已有记录之间展示公告入口，并复用公告弹窗', () => {
+    render(<TitleScreen {...props()} cachedPreview={cachedPreview} />)
+
+    const socialLinks = screen.getByRole('navigation', { name: '微博主页' })
+    const noticeButton = screen.getByRole('button', { name: /更新公告 · 饼屋的新布置/u })
+    const cachedSummary = screen.getByRole('region', { name: '缓存存档摘要' })
+    expect(socialLinks.compareDocumentPosition(noticeButton)).toBe(Node.DOCUMENT_POSITION_FOLLOWING)
+    expect(noticeButton.compareDocumentPosition(cachedSummary)).toBe(
+      Node.DOCUMENT_POSITION_FOLLOWING,
+    )
+    expect(noticeButton).toHaveTextContent('目前刷播功能不稳定，请暂时不要通过此方式刷播')
+
+    noticeButton.focus()
+    fireEvent.click(noticeButton)
+    const dialog = screen.getByRole('dialog', { name: '饼屋的新布置' })
+    expect(dialog).toHaveTextContent('刷播独立成窗')
+    expect(dialog).toHaveTextContent('手机也能进入现实维度')
+    expect(dialog).toHaveTextContent('目前刷播功能不稳定，请暂时不要通过此方式刷播')
+
+    fireEvent.click(screen.getByRole('button', { name: '收好啦' }))
+    expect(screen.queryByRole('dialog', { name: '饼屋的新布置' })).not.toBeInTheDocument()
+    expect(noticeButton).toHaveFocus()
+  })
+
   it('导入存档摘要的苹果数字也使用统一数字字体节点', () => {
     render(<TitleScreen {...props()} importPreview={importPreview} />)
 

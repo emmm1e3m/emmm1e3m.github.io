@@ -10,15 +10,16 @@ import {
   startGame,
 } from './support/game'
 
-async function expectPcOnlyRealityDialog(page: Page) {
+async function expectMobileRealityAndTrendRestriction(page: Page) {
   const toggle = page.getByRole('button', { name: '切换到现实生活维度' })
   await toggle.click()
-  const dialog = page.getByRole('dialog', { name: '请使用电脑浏览器' })
+  const dialog = page.getByRole('dialog', { name: '进入现实维度？' })
   const backdrop = page.locator('.dimension-dialog-backdrop')
   await expect(backdrop).toHaveCount(1)
   await expect(backdrop).toHaveCSS('position', 'fixed')
   await expect(dialog).toHaveAttribute('aria-modal', 'true')
-  await expect(dialog).toContainText('鼠标或触控板')
+  await expect(dialog).toContainText('也可以进行真正的刷播和冲热')
+  await expect(dialog).not.toContainText(/鼠标|触控板|指针/u)
 
   const geometry = await backdrop.evaluate((element) => {
     const box = element.getBoundingClientRect()
@@ -38,12 +39,12 @@ async function expectPcOnlyRealityDialog(page: Page) {
   expect(Math.abs(geometry.width - geometry.viewportWidth)).toBeLessThanOrEqual(1)
   expect(Math.abs(geometry.height - geometry.viewportHeight)).toBeLessThanOrEqual(1)
 
-  const heading = dialog.getByRole('heading', { name: '请使用电脑浏览器' })
-  const confirmButton = dialog.getByRole('button', { name: '知道了' })
+  const heading = dialog.getByRole('heading', { name: '进入现实维度？' })
+  const confirmButton = dialog.getByRole('button', { name: '进入现实维度' })
   await expectElementWithinViewport(dialog)
   await expectElementWithinViewport(heading)
   await expect(confirmButton).toBeFocused()
-  await expectMinimumTouchTarget(confirmButton, '电脑浏览器提示确认按钮')
+  await expectMinimumTouchTarget(confirmButton, '现实维度确认按钮')
 
   const typography = await dialog.evaluate((element) => ({
     titleSize: Number.parseFloat(getComputedStyle(element.querySelector('h2')!).fontSize),
@@ -60,10 +61,16 @@ async function expectPcOnlyRealityDialog(page: Page) {
 
   await toggle.click()
   await page
-    .getByRole('dialog', { name: '请使用电脑浏览器' })
-    .getByRole('button', { name: '知道了' })
+    .getByRole('dialog', { name: '进入现实维度？' })
+    .getByRole('button', { name: '进入现实维度' })
     .click()
-  await expect(page.locator('[data-hotspot="一楼电脑"]')).toHaveCount(0)
+  const trend = page.locator('[data-hotspot="二楼电脑·冲热"]')
+  await expect(trend).toBeVisible()
+  await trend.click()
+  const trendDialog = page.getByRole('dialog', { name: '冲热请使用电脑端' })
+  await expect(trendDialog).toContainText('可以先使用刷播，或为工作与学习计时')
+  await expect(trendDialog).not.toContainText(/鼠标|触控板|指针/u)
+  await trendDialog.getByRole('button', { name: '知道了' }).click()
 }
 
 test.describe('375 × 667 移动端可访问性', () => {
@@ -134,7 +141,9 @@ for (const viewport of [
   { width: 375, height: 667, label: '375 × 667' },
   { width: 390, height: 844, label: '390 × 844' },
 ] as const) {
-  test(`${viewport.label} 移动浏览器只显示完整的现实维度电脑提示`, async ({ page }, testInfo) => {
+  test(`${viewport.label} 移动浏览器可进入现实维度且冲热单独限制电脑端`, async ({
+    page,
+  }, testInfo) => {
     test.skip(testInfo.project.name !== 'mobile-chromium', '只在移动 Chromium 项目验证')
     await page.setViewportSize(viewport)
     await startGame(page, {
@@ -147,7 +156,7 @@ for (const viewport of [
     await expectMinimumTouchTarget(hud.locator('.apple-counter'), 'HUD 苹果按钮')
     await expectMinimumTouchTarget(hud.locator('.hud-icon--album'), 'HUD 收藏墙按钮')
     await expectMinimumTouchTarget(hud.locator('.debug-chip'), 'HUD DEBUG 按钮')
-    await expectPcOnlyRealityDialog(page)
+    await expectMobileRealityAndTrendRestriction(page)
     await expectNoHorizontalOverflow(page)
     await saveScreenshot(page, `mobile-${viewport.width}x${viewport.height}-pc-only.png`, false)
   })

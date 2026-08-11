@@ -5,6 +5,7 @@ import { AppleAmount } from '@/components/AppleAmount'
 import { MascotSprite } from '@/components/MascotSprite'
 import { useModalFocus } from '@/components/useModalFocus'
 import { isValidDisplayName, MAX_DISPLAY_NAME_LENGTH } from '@/domain'
+import { UpdateNoticeCard, UpdateNoticeDialog } from '@/features/update-notice/UpdateNotice'
 
 import './title.css'
 
@@ -82,6 +83,7 @@ export function TitleScreen({
   const [displayName, setDisplayName] = useState('')
   const [nameTouched, setNameTouched] = useState(false)
   const [newJourneyOpen, setNewJourneyOpen] = useState(false)
+  const [updateNoticeOpen, setUpdateNoticeOpen] = useState(false)
   const normalizedName = displayName.trim()
   const validName = isValidDisplayName(normalizedName)
   const newJourneyDialogRef = useModalFocus<HTMLFormElement>(
@@ -160,6 +162,8 @@ export function TitleScreen({
               />
             </a>
           </nav>
+
+          <UpdateNoticeCard onOpen={() => setUpdateNoticeOpen(true)} />
 
           {importPreview && (
             <section className="landing-import" aria-label="存档摘要">
@@ -399,6 +403,7 @@ export function TitleScreen({
           </form>
         </div>
       )}
+      <UpdateNoticeDialog open={updateNoticeOpen} onClose={() => setUpdateNoticeOpen(false)} />
     </main>
   )
 }

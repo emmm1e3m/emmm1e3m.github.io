@@ -30,7 +30,7 @@ const EXPECTED_HOTSPOTS: Record<RoomAreaId, { x: number; y: number }> = {
   bed: { x: 22, y: 29 },
   computer: { x: 52, y: 29 },
   wardrobe: { x: 54, y: 44 },
-  keyboard: { x: 17, y: 67.5 },
+  keyboard: { x: 17, y: 67 },
   fridge: { x: 50, y: 59 },
   recordPlayer: { x: 75, y: 81 },
   album: { x: 81, y: 60 },

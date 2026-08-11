@@ -1,321 +1,210 @@
 import { act, renderHook } from '@testing-library/react'
 
 import {
-  STREAM_OPEN_DELAY_MS,
-  STREAM_ROUND_DURATION_MS,
+  STREAM_POPUP_FEATURES,
+  STREAM_POPUP_NAME,
+  buildStreamPlayerUrl,
   useStreamPlayback,
 } from './useStreamPlayback'
 
 function fakeWindow() {
-  return { close: vi.fn() } as unknown as Window
+  const handle = {
+    closed: false,
+    close: vi.fn(() => {
+      handle.closed = true
+    }),
+    postMessage: vi.fn(),
+  }
+  return handle as unknown as Window
 }
 
-const KEEP_ORDER_RANDOM = () => 0.999_999
+function playerEvent(sessionId: string, event: Record<string, unknown>) {
+  return {
+    type: 'travelling-bingo:stream-player',
+    version: 1,
+    sessionId,
+    ...event,
+  }
+}
 
 describe('useStreamPlayback', () => {
   afterEach(() => {
+    localStorage.clear()
     vi.restoreAllMocks()
     vi.useRealTimers()
   })
 
-  it.each([
-    ['popup', 'popup=yes,width=960,height=720'],
-    ['tabs', undefined],
-  ] as const)('%s 模式都按默认 8 秒依次打开', (mode, features) => {
-    vi.useFakeTimers()
-    vi.spyOn(window, 'open').mockImplementation(() => fakeWindow())
-    const { result } = renderHook(() =>
-      useStreamPlayback({
-        catalogBvids: ['BV1xx411c7mD', 'BV1B7411m7LV', 'BV17x411w7KC'],
-        random: KEEP_ORDER_RANDOM,
+  it('构造同源独立页参数，不复制收藏夹视频列表', () => {
+    const url = new URL(
+      buildStreamPlayerUrl({
+        baseUrl: 'https://example.com/AllForSUXINHAO/TravellingBingo/index.html',
+        favoriteId: 3986840044,
+        selfTestBvid: 'BV1xx411c7mD',
+        stopAfterMs: 5 * 3_600_000,
+        sessionId: 'session-1',
       }),
     )
 
-    act(() => result.current.start('', mode))
+    expect(url.pathname).toBe('/AllForSUXINHAO/TravellingBingo/stream-player.html')
+    expect(Object.fromEntries(url.searchParams)).toEqual({
+      favoriteId: '3986840044',
+      sessionId: 'session-1',
+      autostart: '1',
+      selfTest: 'BV1xx411c7mD',
+      stopHours: '5',
+    })
+  })
+
+  it('用户点击时同步打开单一竖向窗口', () => {
+    vi.useFakeTimers()
+    vi.setSystemTime(new Date('2026-08-11T08:00:00Z'))
+    const handle = fakeWindow()
+    vi.spyOn(window, 'open').mockReturnValue(handle)
+    const { result } = renderHook(() => useStreamPlayback())
+
+    act(() => {
+      expect(
+        result.current.start('BV1xx411c7mD', {
+          favoriteId: 3682220021,
+          stopAfterMs: null,
+        }),
+      ).toMatchObject({ ok: true, bvid: 'BV1xx411c7mD' })
+    })
 
     expect(window.open).toHaveBeenCalledTimes(1)
-    expect(window.open).toHaveBeenNthCalledWith(
-      1,
-      'https://www.bilibili.com/video/BV1xx411c7mD/?autoplay=1&t=0',
-      '_blank',
-      ...(features === undefined ? [] : [features]),
+    expect(window.open).toHaveBeenCalledWith(
+      expect.stringContaining('stream-player.html?'),
+      STREAM_POPUP_NAME,
+      STREAM_POPUP_FEATURES,
     )
-    expect(result.current.getRemainingMs()).toBe(STREAM_OPEN_DELAY_MS)
-
-    act(() => vi.advanceTimersByTime(STREAM_OPEN_DELAY_MS))
-    expect(window.open).toHaveBeenCalledTimes(2)
-    expect(result.current.state.status).toBe('opening')
-
-    act(() => vi.advanceTimersByTime(STREAM_OPEN_DELAY_MS))
-    expect(window.open).toHaveBeenCalledTimes(3)
-    expect(result.current.state).toMatchObject({ status: 'waiting', openedCount: 3 })
-    expect(result.current.getRemainingMs()).toBe(STREAM_ROUND_DURATION_MS)
-    expect(vi.getTimerCount()).toBe(1)
-  })
-
-  it('自定义打开间隔按会话快照，运行中的属性变化不会改动本次任务', () => {
-    vi.useFakeTimers()
-    vi.spyOn(window, 'open').mockImplementation(() => fakeWindow())
-    const { result, rerender } = renderHook(
-      ({ roundDurationMs }) =>
-        useStreamPlayback({ catalogBvids: ['BV1B7411m7LV'], roundDurationMs }),
-      { initialProps: { roundDurationMs: 1_000 } },
-    )
-
-    act(() =>
-      result.current.start('BV1xx411c7mD', 'popup', {
-        openDelayMs: 12_000,
-      }),
-    )
-    rerender({ roundDurationMs: 2_000 })
-    act(() => vi.advanceTimersByTime(11_999))
-    expect(window.open).toHaveBeenCalledOnce()
-    act(() => vi.advanceTimersByTime(1))
-    expect(window.open).toHaveBeenCalledTimes(2)
-    expect(result.current.getRemainingMs()).toBe(1_000)
-
-    act(() => vi.advanceTimersByTime(1_000))
-    expect(result.current.state.round).toBe(2)
-    expect(window.open).toHaveBeenCalledTimes(3)
-    expect(result.current.getRemainingMs()).toBe(12_000)
-    act(() => vi.advanceTimersByTime(12_000))
-    expect(result.current.getRemainingMs()).toBe(2_000)
-  })
-
-  it('每轮重新打乱收藏夹，自测视频在每轮都最后打开', () => {
-    vi.useFakeTimers()
-    vi.spyOn(window, 'open').mockImplementation(() => fakeWindow())
-    const random = vi
-      .fn<() => number>()
-      .mockReturnValueOnce(0.999_999)
-      .mockReturnValueOnce(0.999_999)
-      .mockReturnValueOnce(0)
-      .mockReturnValueOnce(0)
-    const catalogBvids = ['BV1At3j6EE6w', 'BV1mkuN6HEFC', 'BV1UZ3D6REhZ']
-    const selfTestBvid = 'BV1xx411c7mD'
-    const { result } = renderHook(() =>
-      useStreamPlayback({ catalogBvids, roundDurationMs: 1_000, random }),
-    )
-
-    act(() =>
-      result.current.start(selfTestBvid, 'tabs', {
-        openDelayMs: 1_000,
-      }),
-    )
-    act(() => vi.advanceTimersByTime(3_000))
-    const firstRound = vi
-      .mocked(window.open)
-      .mock.calls.map(([url]) => new URL(String(url)).pathname.split('/').filter(Boolean)[1])
-    expect(firstRound).toEqual([...catalogBvids, selfTestBvid])
-
-    act(() => vi.advanceTimersByTime(1_000))
-    act(() => vi.advanceTimersByTime(3_000))
-    const secondRound = vi
-      .mocked(window.open)
-      .mock.calls.slice(4)
-      .map(([url]) => new URL(String(url)).pathname.split('/').filter(Boolean)[1])
-    expect(secondRound).toEqual([catalogBvids[1], catalogBvids[2], catalogBvids[0], selfTestBvid])
-  })
-
-  it('每轮只上报进度，手动停止时把多轮汇总成一次会话', () => {
-    vi.useFakeTimers()
-    vi.setSystemTime(100_000)
-    vi.spyOn(window, 'open').mockImplementation(() => fakeWindow())
-    const onRoundCompleted = vi.fn()
-    const onSessionEnded = vi.fn()
-    const { result } = renderHook(() =>
-      useStreamPlayback({
-        roundDurationMs: 1_000,
-        onRoundCompleted,
-        onSessionEnded,
-      }),
-    )
-
-    act(() => result.current.start('BV1xx411c7mD', 'tabs'))
-    act(() => vi.advanceTimersByTime(2_000))
-    expect(onRoundCompleted).toHaveBeenCalledTimes(2)
-    expect(result.current.state.sessionRoundsCompleted).toBe(2)
-
-    act(() => result.current.stop())
-    expect(onSessionEnded).toHaveBeenCalledOnce()
-    expect(onSessionEnded).toHaveBeenCalledWith(
-      expect.objectContaining({
-        startedAt: 100_000,
-        endedAt: 102_000,
-        roundsCompleted: 2,
-        outcome: 'stopped',
-      }),
-    )
-    const event = onSessionEnded.mock.calls[0]![0]
-    expect(
-      onRoundCompleted.mock.calls.every(([round]) => round.sessionId === event.sessionId),
-    ).toBe(true)
-    expect(result.current.state.status).toBe('stopped')
-    expect(vi.getTimerCount()).toBe(0)
-  })
-
-  it('定时停止按会话总时长完成，0 轮也只记录一次', () => {
-    vi.useFakeTimers()
-    vi.setSystemTime(200_000)
-    const handle = fakeWindow()
-    vi.spyOn(window, 'open').mockImplementationOnce(() => handle)
-    const onSessionEnded = vi.fn()
-    const { result } = renderHook(() =>
-      useStreamPlayback({ catalogBvids: ['BV1B7411m7LV'], onSessionEnded }),
-    )
-
-    act(() =>
-      result.current.start('BV1xx411c7mD', 'popup', {
-        openDelayMs: 8_000,
-        stopAfterMs: 5_000,
-      }),
-    )
-    expect(result.current.getStopRemainingMs()).toBe(5_000)
-    act(() => vi.advanceTimersByTime(5_000))
-
-    expect(window.open).toHaveBeenCalledOnce()
-    expect(handle.close as ReturnType<typeof vi.fn>).toHaveBeenCalledOnce()
-    expect(result.current.state.status).toBe('completed')
-    expect(onSessionEnded).toHaveBeenCalledWith(
-      expect.objectContaining({
-        startedAt: 200_000,
-        endedAt: 205_000,
-        roundsCompleted: 0,
-        outcome: 'completed',
-      }),
-    )
-    expect(vi.getTimerCount()).toBe(0)
-  })
-
-  it('定时停止跨多轮时计入截止前完整结束的轮次', () => {
-    vi.useFakeTimers()
-    vi.spyOn(window, 'open').mockImplementation(() => fakeWindow())
-    const onRoundCompleted = vi.fn()
-    const onSessionEnded = vi.fn()
-    const { result } = renderHook(() =>
-      useStreamPlayback({ roundDurationMs: 1_000, onRoundCompleted, onSessionEnded }),
-    )
-
-    act(() =>
-      result.current.start('BV1xx411c7mD', 'tabs', {
-        stopAfterMs: 2_500,
-      }),
-    )
-    act(() => vi.advanceTimersByTime(2_500))
-
-    expect(onRoundCompleted).toHaveBeenCalledTimes(2)
-    expect(onSessionEnded).toHaveBeenCalledWith(
-      expect.objectContaining({ roundsCompleted: 2, outcome: 'completed' }),
-    )
-    expect(window.open).toHaveBeenCalledTimes(3)
-    expect(result.current.state.status).toBe('completed')
-  })
-
-  it('弹窗拦截期间仍保留定时停止，继续时从本轮完整重试', () => {
-    vi.useFakeTimers()
-    const resumedHandles = [fakeWindow(), fakeWindow()]
-    vi.spyOn(window, 'open')
-      .mockImplementationOnce(() => null)
-      .mockImplementationOnce(() => resumedHandles[0]!)
-      .mockImplementationOnce(() => resumedHandles[1]!)
-    const onSessionEnded = vi.fn()
-    const { result } = renderHook(() =>
-      useStreamPlayback({ catalogBvids: ['BV1B7411m7LV'], onSessionEnded }),
-    )
-
-    act(() =>
-      result.current.start('BV1xx411c7mD', 'popup', {
-        openDelayMs: 1_000,
-        stopAfterMs: 5_000,
-      }),
-    )
-    expect(result.current.state.status).toBe('blocked')
-    expect(vi.getTimerCount()).toBe(1)
-
-    act(() => vi.advanceTimersByTime(1_000))
-    act(() => expect(result.current.resume()).toBe(true))
-    expect(result.current.state.status).toBe('opening')
-    act(() => vi.advanceTimersByTime(1_000))
-    expect(result.current.state.status).toBe('waiting')
-
-    act(() => vi.advanceTimersByTime(3_000))
-    expect(result.current.state.status).toBe('completed')
-    expect(onSessionEnded).toHaveBeenCalledWith(
-      expect.objectContaining({ roundsCompleted: 0, outcome: 'completed' }),
-    )
-  })
-
-  it('页面恢复只推进当前到期步骤，并始终只保留一个计时器', () => {
-    vi.useFakeTimers()
-    vi.spyOn(window, 'open').mockImplementation(() => fakeWindow())
-    const { result } = renderHook(() =>
-      useStreamPlayback({
-        catalogBvids: ['BV1xx411c7mD', 'BV1B7411m7LV', 'BV17x411w7KC'],
-      }),
-    )
-    act(() => result.current.start('', 'tabs'))
-
-    act(() => vi.advanceTimersByTime(STREAM_OPEN_DELAY_MS - 1))
-    act(() => {
-      window.dispatchEvent(new Event('focus'))
-      window.dispatchEvent(new Event('pageshow'))
-      document.dispatchEvent(new Event('visibilitychange'))
+    expect(result.current.state).toMatchObject({
+      status: 'opening',
+      favoriteId: 3682220021,
+      selfTestBvid: 'BV1xx411c7mD',
     })
-    expect(window.open).toHaveBeenCalledOnce()
-    expect(vi.getTimerCount()).toBe(1)
-
-    act(() => vi.advanceTimersByTime(1))
-    expect(window.open).toHaveBeenCalledTimes(2)
-    act(() => {
-      window.dispatchEvent(new Event('focus'))
-      window.dispatchEvent(new Event('pageshow'))
-    })
-    expect(window.open).toHaveBeenCalledTimes(2)
-    expect(vi.getTimerCount()).toBe(1)
   })
 
-  it('解析错误不打开窗口，范围错误不会被静默改成另一种设置', () => {
+  it('无效输入不会误开页面', () => {
     const open = vi.spyOn(window, 'open')
     const { result } = renderHook(() => useStreamPlayback())
 
     act(() => {
-      expect(result.current.start('https://b23.tv/short', 'popup').ok).toBe(false)
-    })
-    expect(open).not.toHaveBeenCalled()
-    expect(result.current.state.errors).toEqual([
-      expect.objectContaining({ line: 1, code: 'invalid-bvid', message: expect.any(String) }),
-    ])
-
-    expect(() => {
-      act(() =>
-        result.current.start('BV1xx411c7mD', 'tabs', {
-          openDelayMs: 61_000,
+      expect(
+        result.current.start('not-a-video', {
+          favoriteId: 3682220021,
+          stopAfterMs: null,
         }),
-      )
-    }).toThrow('1–60 秒')
+      ).toMatchObject({ ok: false })
+    })
+
     expect(open).not.toHaveBeenCalled()
+    expect(result.current.state.errors).toHaveLength(1)
   })
 
-  it('停止、beforeunload 与卸载都会关闭仍持有的窗口', () => {
+  it('只接收当前同源窗口的状态，并把整轮与任务各记录一次', () => {
     vi.useFakeTimers()
-    const handles = [fakeWindow(), fakeWindow(), fakeWindow()]
-    vi.spyOn(window, 'open')
-      .mockImplementationOnce(() => handles[0]!)
-      .mockImplementationOnce(() => handles[1]!)
-      .mockImplementationOnce(() => handles[2]!)
-    const { result, unmount } = renderHook(() => useStreamPlayback())
+    vi.setSystemTime(new Date('2026-08-11T08:00:00Z'))
+    const handle = fakeWindow()
+    const otherHandle = fakeWindow()
+    vi.spyOn(window, 'open').mockReturnValue(handle)
+    const onRoundCompleted = vi.fn()
+    const onSessionEnded = vi.fn()
+    const { result } = renderHook(() => useStreamPlayback({ onRoundCompleted, onSessionEnded }))
 
-    act(() => result.current.start('BV1xx411c7mD', 'popup'))
+    act(() => {
+      result.current.start('', { favoriteId: 3682220021, stopAfterMs: null })
+    })
+    const sessionId = result.current.state.sessionId!
+
+    act(() => {
+      window.dispatchEvent(
+        new MessageEvent('message', {
+          origin: window.location.origin,
+          source: otherHandle,
+          data: playerEvent(sessionId, {
+            event: 'status',
+            status: 'waiting',
+            round: 99,
+            openedCount: 6,
+            totalCount: 6,
+            nextRoundAt: Date.now() + 310_000,
+            message: '伪造状态',
+          }),
+        }),
+      )
+    })
+    expect(result.current.state.round).toBe(0)
+
+    act(() => {
+      window.dispatchEvent(
+        new MessageEvent('message', {
+          origin: window.location.origin,
+          source: handle,
+          data: playerEvent(sessionId, {
+            event: 'status',
+            status: 'waiting',
+            round: 1,
+            openedCount: 6,
+            totalCount: 6,
+            nextRoundAt: Date.now() + 310_000,
+            message: '第 1 轮运行中',
+          }),
+        }),
+      )
+    })
+    expect(result.current.state).toMatchObject({
+      status: 'waiting',
+      round: 1,
+      openedCount: 6,
+      totalCount: 6,
+    })
+
+    const completedAt = Date.now() + 310_000
+    act(() => {
+      window.dispatchEvent(
+        new MessageEvent('message', {
+          origin: window.location.origin,
+          source: handle,
+          data: playerEvent(sessionId, { event: 'round-completed', round: 1, completedAt }),
+        }),
+      )
+      window.dispatchEvent(
+        new MessageEvent('message', {
+          origin: window.location.origin,
+          source: handle,
+          data: playerEvent(sessionId, {
+            event: 'ended',
+            endedAt: completedAt,
+            roundsCompleted: 1,
+            outcome: 'completed',
+          }),
+        }),
+      )
+    })
+
+    expect(onRoundCompleted).toHaveBeenCalledTimes(1)
+    expect(onSessionEnded).toHaveBeenCalledTimes(1)
+    expect(onSessionEnded).toHaveBeenCalledWith(
+      expect.objectContaining({ sessionId, roundsCompleted: 1, outcome: 'completed' }),
+    )
+    expect(result.current.state.status).toBe('completed')
+  })
+
+  it('停止时向当前窗口发出同源命令并关闭页面', () => {
+    const handle = fakeWindow()
+    vi.spyOn(window, 'open').mockReturnValue(handle)
+    const onSessionEnded = vi.fn()
+    const { result } = renderHook(() => useStreamPlayback({ onSessionEnded }))
+
+    act(() => result.current.start('', { favoriteId: 3986840044, stopAfterMs: null }))
+    const sessionId = result.current.state.sessionId
     act(() => result.current.stop())
-    expect(handles[0]!.close as ReturnType<typeof vi.fn>).toHaveBeenCalledOnce()
 
-    act(() => result.current.start('BV1xx411c7mD', 'popup'))
-    act(() => window.dispatchEvent(new Event('beforeunload')))
-    expect(handles[1]!.close as ReturnType<typeof vi.fn>).toHaveBeenCalledOnce()
-
-    act(() => result.current.start('BV1xx411c7mD', 'popup'))
-    unmount()
-    expect(handles[2]!.close as ReturnType<typeof vi.fn>).toHaveBeenCalledOnce()
-    expect(vi.getTimerCount()).toBe(0)
+    expect(handle.postMessage).toHaveBeenCalledWith(
+      expect.objectContaining({ event: 'stop', sessionId }),
+      window.location.origin,
+    )
+    expect(handle.close).toHaveBeenCalledTimes(1)
+    expect(onSessionEnded).toHaveBeenCalledWith(expect.objectContaining({ outcome: 'stopped' }))
   })
 })

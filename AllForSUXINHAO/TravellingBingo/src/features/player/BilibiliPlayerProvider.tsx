@@ -1,4 +1,12 @@
-import { type PropsWithChildren, useCallback, useEffect, useMemo, useReducer, useRef } from 'react'
+import {
+  type PropsWithChildren,
+  useCallback,
+  useEffect,
+  useLayoutEffect,
+  useMemo,
+  useReducer,
+  useRef,
+} from 'react'
 import { createPortal } from 'react-dom'
 
 import type { GameAction, MusicPlayerState } from '@/domain/game/types'
@@ -70,7 +78,7 @@ export function PersistentPlayerDock({
   const endTimerRef = useRef<ReturnType<typeof globalThis.setTimeout> | null>(null)
   const timelineRef = useRef<PlaybackTimeline>(initialTimeline())
 
-  useEffect(() => {
+  useLayoutEffect(() => {
     controllerRef.current = controller
   }, [controller])
 
@@ -110,7 +118,7 @@ export function PersistentPlayerDock({
     return timeline.playedMs
   }, [clearEndTimer])
 
-  useEffect(() => {
+  useLayoutEffect(() => {
     clearEndTimer()
     timelineRef.current = initialTimeline()
     if (request) ensureTimeline(request)

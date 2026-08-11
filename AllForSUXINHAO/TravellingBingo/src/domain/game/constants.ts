@@ -149,10 +149,6 @@ export const MAX_PLAYLIST_NAME_LENGTH = 60
 export const MAX_PLAYLIST_TRACKS = 100
 export const BILIBILI_BVID_PATTERN = /^BV[0-9A-Za-z]{10}$/
 
-/** 刷播设置同时供登录刷播与维度穿透刷播使用。 */
-export const STREAM_DEFAULT_VIDEO_INTERVAL_MS = 8_000
-export const STREAM_DEFAULT_ROUND_INTERVAL_MS = 310_000
-export const STREAM_MIN_VIDEO_INTERVAL_MS = 1_000
-export const STREAM_MAX_VIDEO_INTERVAL_MS = 60_000
-export const STREAM_MIN_ROUND_INTERVAL_MS = 1_000
-export const STREAM_MAX_ROUND_INTERVAL_MS = 3_600_000
+/** 刷播只允许选择随版本发布的两个本地收藏夹快照。 */
+export const STREAM_FAVORITE_IDS = [3682220021, 3986840044] as const
+export const DEFAULT_STREAM_FAVORITE_ID = STREAM_FAVORITE_IDS[0]

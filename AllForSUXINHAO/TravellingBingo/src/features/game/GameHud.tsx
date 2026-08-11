@@ -19,11 +19,9 @@ interface GameHudProps {
   inert?: boolean
   statusLabel: string | null
   vitalityDays: number
-  visitorStream?: { round: number; nextRoundRemainingSeconds: number | null } | null
   onExit: () => void
   onCenter: () => void
   onRealityTimer: () => void
-  onVisitorStream: () => void
   onPetStatus: () => void
   onFridge: () => void
   onAlbum: () => void
@@ -39,11 +37,9 @@ export function GameHud({
   inert,
   statusLabel,
   vitalityDays,
-  visitorStream = null,
   onExit,
   onCenter,
   onRealityTimer,
-  onVisitorStream,
   onPetStatus,
   onFridge,
   onAlbum,
@@ -54,10 +50,6 @@ export function GameHud({
       ? Math.floor(deriveRealityActiveDurationMs(game.reality.activeStay, now) / 60_000)
       : null
   const vitalityStatus = getPetVitalityStatus(game.pet.preferences, isVitalityActive(game))
-  const visitorCountdown =
-    visitorStream?.nextRoundRemainingSeconds === null || visitorStream === null
-      ? null
-      : formatCountdown(visitorStream.nextRoundRemainingSeconds)
 
   return (
     <header className="game-hud game-hud--v3 game-hud--v4" inert={inert ? true : undefined}>
@@ -96,17 +88,6 @@ export function GameHud({
             aria-label={`本次现实停留 ${realityStayMinutes} 分钟，返回游戏维度`}
           >
             现实 {realityStayMinutes} 分钟
-          </button>
-        )}
-        {visitorStream && (
-          <button
-            className="visitor-stream-timer numeric-copy"
-            type="button"
-            onClick={onVisitorStream}
-            aria-label={`游客刷播第 ${visitorStream.round} 轮${visitorCountdown ? `，${visitorCountdown} 后开始下一轮` : '，正在加载本轮视频'}`}
-          >
-            游客 · 第 {visitorStream.round} 轮 ·{' '}
-            {visitorCountdown ? `${visitorCountdown} 后下一轮` : '正在加载'}
           </button>
         )}
         <button

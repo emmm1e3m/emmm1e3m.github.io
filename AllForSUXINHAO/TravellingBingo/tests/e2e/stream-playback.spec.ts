@@ -1,51 +1,43 @@
-import { expect, test, type BrowserContext, type Page, type Request } from '@playwright/test'
+import { expect, test, type BrowserContext, type Request } from '@playwright/test'
 
-import { enterReality, openDebugPanel, startGame } from './support/game'
+import { enterReality, startGame } from './support/game'
 
-const STATIC_BVIDS = ['BV1At3j6EE6w', 'BV1mkuN6HEFC', 'BV1UZ3D6REhZ'] as const
+const FAVORITE_BVID = 'BV1sBgr69E9j'
 const SELF_TEST_BVID = 'BV1xx411c7mD'
-const BROWSER_SAVE_KEY = 'travelling-bingo:browser-save:v1'
-const DEBUG_ROUND_DURATION_SECONDS = 5
 
-function isCanonicalVideoDocument(request: Request, canonicalUrls: ReadonlySet<string>) {
-  return (
-    request.method() === 'GET' &&
-    request.resourceType() === 'document' &&
-    canonicalUrls.has(request.url())
-  )
-}
-
-async function guardExternalRequests(
-  context: BrowserContext,
-  appOrigin: string,
-  allowedLoginUrls: ReadonlySet<string> = new Set(),
-) {
+async function guardStreamRequests(context: BrowserContext, appOrigin: string) {
+  const favoriteRequests: string[] = []
+  const playerRequests: string[] = []
   const unexpectedRequests: string[] = []
+
   await context.route('**/*', async (route) => {
     const request = route.request()
     const url = new URL(request.url())
     if (url.origin === appOrigin) {
+      if (url.pathname.endsWith('/favourites/3986840044.txt')) {
+        favoriteRequests.push(url.toString())
+        await route.fulfill({
+          status: 200,
+          contentType: 'text/plain; charset=utf-8',
+          body: `${FAVORITE_BVID}\n`,
+        })
+        return
+      }
       await route.continue()
       return
     }
-    if (isCanonicalVideoDocument(request, allowedLoginUrls)) {
-      await route.fulfill({
-        status: 200,
-        contentType: 'text/html; charset=utf-8',
-        body: '<!doctype html><title>测试视频页</title>',
-      })
-      return
-    }
+
     if (
       request.method() === 'GET' &&
       request.resourceType() === 'document' &&
       url.origin === 'https://player.bilibili.com' &&
       url.pathname === '/player.html'
     ) {
+      playerRequests.push(url.toString())
       await route.fulfill({
         status: 200,
         contentType: 'text/html; charset=utf-8',
-        body: '<!doctype html><title>测试游客播放器</title>',
+        body: '<!doctype html><title>拦截的官方播放器</title>',
       })
       return
     }
@@ -54,202 +46,92 @@ async function guardExternalRequests(
     await route.abort()
   })
 
-  return unexpectedRequests
+  return { favoriteRequests, playerRequests, unexpectedRequests }
 }
 
-async function setStreamRoundDuration(page: Page) {
-  await openDebugPanel(page)
-  await page
-    .getByRole('spinbutton', { name: '刷播轮次时长（秒）' })
-    .fill(String(DEBUG_ROUND_DURATION_SECONDS))
-  await page.getByRole('button', { name: '应用刷播时长' }).click()
-}
-
-async function openStreamPanel(page: Page) {
+async function openStreamPanel(page: Parameters<typeof enterReality>[0]) {
   await enterReality(page)
   await page.getByRole('button', { name: '刷播', exact: true }).click()
   return page.locator('.context-panel--reality-stream')
 }
 
-test.describe('现实刷播浏览器契约', () => {
+function isOfficialPlayerUrl(value: string | null, bvid: string) {
+  if (value === null) return false
+  const url = new URL(value)
+  return (
+    url.origin === 'https://player.bilibili.com' &&
+    url.pathname === '/player.html' &&
+    url.searchParams.get('bvid') === bvid &&
+    url.searchParams.get('autoplay') === '1' &&
+    url.searchParams.get('muted') === '1' &&
+    url.searchParams.get('t') === '0'
+  )
+}
+
+test.describe('独立刷播页真实流程', () => {
   test.use({ serviceWorkers: 'block' })
 
   test.beforeEach(({ browserName }, testInfo) => {
     test.skip(
       browserName !== 'chromium' || testInfo.project.name !== 'chromium',
-      '刷播窗口与游客 iframe 只在桌面 Chromium 验证',
+      '独立刷播窗口只在桌面 Chromium 跑一次完整流程',
     )
   })
 
-  test('登录刷播使用静态快照，并把多轮汇总为一次任务', async ({ context, page }, testInfo) => {
+  test('主游戏配置后自动启动，按5秒建播放器，DEBUG轮末统一重建', async ({
+    context,
+    page,
+  }, testInfo) => {
     const appOrigin = new URL(testInfo.project.use.baseURL as string).origin
-    const canonicalUrls = new Set(
-      STATIC_BVIDS.map((bvid) => `https://www.bilibili.com/video/${bvid}/?autoplay=1&t=0`),
-    )
-    const unexpectedRequests = await guardExternalRequests(context, appOrigin, canonicalUrls)
-    const openedPages: Page[] = []
-    context.on('page', (openedPage) => {
-      if (openedPage !== page) openedPages.push(openedPage)
-    })
+    const requests = await guardStreamRequests(context, appOrigin)
 
     await startGame(page, {
       displayName: '刷播测试',
-      seed: 'stream-playback-e2e',
-      debug: true,
+      seed: 'stream-player-v10-e2e',
     })
-    await setStreamRoundDuration(page)
     const panel = await openStreamPanel(page)
-    await expect(panel.getByRole('textbox', { name: '自测视频BV号' })).toHaveValue('')
-    await panel.getByRole('spinbutton', { name: '视频间隔（秒）' }).fill('1')
-    await panel.getByRole('spinbutton', { name: '定时停止（小时）' }).fill('0.003')
+    await panel.getByRole('radio', { name: '测试' }).check()
+    await panel.getByRole('textbox', { name: '自测视频BV号或链接' }).fill(SELF_TEST_BVID)
 
-    const sessionStartedAt = await page.evaluate(() => Date.now())
-    await panel.getByRole('button', { name: '开始登录刷播' }).click()
-    await expect.poll(() => openedPages.length).toBeGreaterThanOrEqual(STATIC_BVIDS.length)
-    await expect(panel).toContainText('本轮播放中')
-    await expect
-      .poll(() =>
-        openedPages
-          .slice(0, STATIC_BVIDS.length)
-          .map((item) => item.url())
-          .sort(),
-      )
-      .toEqual([...canonicalUrls].sort())
-    expect(unexpectedRequests).toEqual([])
+    const popupPromise = context.waitForEvent('page')
+    await panel.getByRole('button', { name: '开始刷播' }).click()
+    const popup = await popupPromise
+    await popup.waitForLoadState('domcontentloaded')
+    await expect(popup.getByRole('heading', { name: '刷播播放器' })).toBeVisible()
 
-    await expect(panel).toContainText('本次完成轮次1', { timeout: 10_000 })
-    await expect(panel).toContainText('已按时完成', { timeout: 12_000 })
-    await expect(panel.getByText('按时完成 · 1 轮')).toBeVisible()
-    await expect.poll(() => openedPages.every((openedPage) => openedPage.isClosed())).toBe(true)
-
-    const readPersistedHistory = () =>
-      page.evaluate((key) => {
-        const serialized = localStorage.getItem(key)
-        if (serialized === null) return null
-        const cache = JSON.parse(serialized) as {
-          payload?: {
-            schemaVersion?: number
-            reality?: {
-              streamSettings?: {
-                selfTestBvid?: string | null
-                dimensionPenetrationEnabled?: boolean
-              }
-              streamHistory?: {
-                completedRounds?: number
-                recentSessions?: Array<{
-                  startedAt?: number
-                  endedAt?: number
-                  roundsCompleted?: number
-                  outcome?: string
-                }>
-              }
-            }
-          }
-        }
-        return {
-          serialized,
-          now: Date.now(),
-          schemaVersion: cache.payload?.schemaVersion,
-          streamSettings: cache.payload?.reality?.streamSettings,
-          completedRounds: cache.payload?.reality?.streamHistory?.completedRounds,
-          recentSessions: cache.payload?.reality?.streamHistory?.recentSessions,
-        }
-      }, BROWSER_SAVE_KEY)
-    await expect.poll(readPersistedHistory).toMatchObject({
-      schemaVersion: 9,
-      streamSettings: { selfTestBvid: null, dimensionPenetrationEnabled: false },
-      completedRounds: 1,
-      recentSessions: [expect.objectContaining({ roundsCompleted: 1, outcome: 'completed' })],
-    })
-    const persistedHistory = await readPersistedHistory()
-    const record = persistedHistory?.recentSessions?.[0]
-    expect(record?.startedAt).toBeGreaterThanOrEqual(sessionStartedAt)
-    expect(record?.endedAt).toBeLessThanOrEqual(persistedHistory?.now ?? 0)
-    expect(persistedHistory?.recentSessions).toHaveLength(1)
-    expect(persistedHistory?.serialized).not.toContain('streamRoundDurationMs')
-    expect(persistedHistory?.serialized).not.toContain('openDelayMs')
-    expect(unexpectedRequests).toEqual([])
-  })
-
-  test('游客刷播跨维度保留同一节点，并在整轮结束后统一重建', async ({
-    context,
-    page,
-  }, testInfo) => {
-    const appOrigin = new URL(testInfo.project.use.baseURL as string).origin
-    const unexpectedRequests = await guardExternalRequests(context, appOrigin)
-
-    await startGame(page, {
-      displayName: '游客刷播测试',
-      seed: 'visitor-stream-cross-dimension',
-      debug: true,
-    })
-    await setStreamRoundDuration(page)
-    const panel = await openStreamPanel(page)
-    await panel.getByRole('textbox', { name: '自测视频BV号' }).fill(SELF_TEST_BVID)
-    await panel.getByRole('spinbutton', { name: '视频间隔（秒）' }).fill('1')
-    await panel.getByRole('checkbox', { name: /维度穿透/u }).check()
-
-    const guestFrames = page.locator('.visitor-stream-layer iframe')
-    await expect(guestFrames).toHaveCount(STATIC_BVIDS.length + 1, { timeout: 6_000 })
-    const firstFrame = guestFrames.first()
-    await firstFrame.evaluate((element) => {
-      element.setAttribute('data-e2e-guest-node', 'first-round')
-    })
-    await expect(firstFrame).toHaveAttribute('src', /autoplay=1.*danmaku=0.*t=0.*muted=1/u)
-    await expect(page.getByRole('button', { name: /游客刷播第 1 轮/u })).toContainText('第 1 轮')
-
-    await page.getByRole('button', { name: '回到旅行饼狗游戏' }).click()
-    await expect(page.locator('.game-page')).toHaveAttribute('data-world', 'game')
-    await expect(page.locator('[data-e2e-guest-node="first-round"]')).toHaveCount(1)
-    await expect(page.getByRole('button', { name: /游客刷播第 1 轮/u })).toBeVisible()
-
-    await expect(page.locator('[data-e2e-guest-node="first-round"]')).toHaveCount(0, {
-      timeout: 8_000,
-    })
-    await expect(guestFrames).toHaveCount(1)
-    await expect(page.getByRole('button', { name: /游客刷播第 2 轮/u })).toContainText('第 2 轮')
-    await expect
-      .poll(() =>
-        page.evaluate((key) => {
-          const cache = JSON.parse(localStorage.getItem(key) ?? 'null') as {
-            payload?: { reality?: { streamSettings?: unknown } }
-          } | null
-          return cache?.payload?.reality?.streamSettings
-        }, BROWSER_SAVE_KEY),
-      )
-      .toEqual({ selfTestBvid: SELF_TEST_BVID, dimensionPenetrationEnabled: true })
-    expect(unexpectedRequests).toEqual([])
-  })
-
-  test('登录刷播占用时卸载游客 iframe，停止后按开关自动接棒', async ({
-    context,
-    page,
-  }, testInfo) => {
-    const appOrigin = new URL(testInfo.project.use.baseURL as string).origin
-    const canonicalUrls = new Set(
-      STATIC_BVIDS.map((bvid) => `https://www.bilibili.com/video/${bvid}/?autoplay=1&t=0`),
+    const playerFrames = popup.locator('[data-testid="player-host"] iframe')
+    await expect.poll(() => requests.favoriteRequests.length).toBe(1)
+    await expect(playerFrames).toHaveCount(1)
+    expect(isOfficialPlayerUrl(await playerFrames.first().getAttribute('src'), FAVORITE_BVID)).toBe(
+      true,
     )
-    const unexpectedRequests = await guardExternalRequests(context, appOrigin, canonicalUrls)
 
-    await startGame(page, {
-      displayName: '互斥刷播测试',
-      seed: 'visitor-login-exclusive',
-    })
-    const panel = await openStreamPanel(page)
-    await panel.getByRole('checkbox', { name: /维度穿透/u }).check()
-    const guestFrames = page.locator('.visitor-stream-layer iframe')
-    await expect(guestFrames).toHaveCount(1)
+    await expect(playerFrames).toHaveCount(2, { timeout: 7_000 })
+    expect(isOfficialPlayerUrl(await playerFrames.nth(1).getAttribute('src'), SELF_TEST_BVID)).toBe(
+      true,
+    )
+    expect(requests.playerRequests).toHaveLength(2)
 
-    const loginPagePromise = context.waitForEvent('page')
-    await panel.getByRole('button', { name: '开始登录刷播' }).click()
-    const loginPage = await loginPagePromise
-    await expect(guestFrames).toHaveCount(0)
-    await expect.poll(() => canonicalUrls.has(loginPage.url())).toBe(true)
+    const title = popup.getByRole('heading', { name: '刷播播放器' })
+    for (let click = 0; click < 5; click += 1) await title.click()
+    await popup.getByRole('textbox', { name: 'DEBUG密码' }).fill('SUperView')
+    await popup.getByRole('button', { name: '解锁DEBUG' }).click()
+    await popup.getByRole('checkbox', { name: '显示播放器' }).check()
+    await expect(popup.locator('[data-testid="player-host"]')).toHaveClass(
+      /stream-frames--visible/u,
+    )
 
-    await panel.getByRole('button', { name: '停止登录刷播' }).click()
-    await expect.poll(() => loginPage.isClosed()).toBe(true)
-    await expect(guestFrames).toHaveCount(1)
-    await expect(page.getByRole('button', { name: /游客刷播第 1 轮/u })).toContainText('第 1 轮')
-    expect(unexpectedRequests).toEqual([])
+    await playerFrames.first().evaluate((frame) => frame.setAttribute('data-first-round', 'true'))
+    await popup.getByRole('spinbutton', { name: '轮次间隔（秒）' }).fill('1')
+    await popup.getByRole('button', { name: '应用到当前轮' }).click()
+
+    await expect(popup.locator('[data-first-round="true"]')).toHaveCount(0, { timeout: 3_000 })
+    await expect(playerFrames).toHaveCount(1)
+    await expect(popup.locator('[data-status]')).toHaveAttribute('data-round', '2')
+
+    await popup.getByRole('button', { name: '停止刷播' }).click()
+    await page.bringToFront()
+    await expect(panel.getByText('已停止 · 1 轮')).toBeVisible()
+    expect(requests.unexpectedRequests).toEqual([])
   })
 })

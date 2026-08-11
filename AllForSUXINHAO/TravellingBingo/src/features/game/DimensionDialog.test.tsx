@@ -27,10 +27,14 @@ describe('DimensionDialog', () => {
     expect(onConfirm).toHaveBeenCalledOnce()
   })
 
-  it('非 PC 恢复现实存档时仍要求显式返回，不能取消', () => {
-    render(<DimensionDialog mode="return-required" onCancel={vi.fn()} onConfirm={vi.fn()} />)
+  it('冲热的电脑端提示不暴露设备检测细节', () => {
+    render(<DimensionDialog mode="trend-pc-required" onCancel={vi.fn()} onConfirm={vi.fn()} />)
 
-    expect(screen.getByRole('dialog', { name: '先回到饼屋' })).toBeInTheDocument()
+    const dialog = screen.getByRole('dialog', { name: '冲热请使用电脑端' })
+    expect(dialog).toHaveTextContent('可以先使用刷播，或为工作与学习计时')
+    expect(dialog).not.toHaveTextContent('鼠标')
+    expect(dialog).not.toHaveTextContent('触控板')
+    expect(dialog).not.toHaveTextContent('指针')
     expect(screen.queryByRole('button', { name: '先不切换' })).not.toBeInTheDocument()
   })
 

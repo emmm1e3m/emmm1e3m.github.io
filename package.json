@@ -15,6 +15,7 @@
     "lint": "eslint AllForSUXINHAO/TravellingBingo/src scripts",
     "test": "vitest run --config AllForSUXINHAO/TravellingBingo/vite.config.ts",
     "test:video-catalog": "node --test scripts/research/bilibili-video-catalog.test.mjs",
+    "test:favourites": "node --test scripts/research/bilibili-favourites.test.mjs",
     "test:watch": "vitest --config AllForSUXINHAO/TravellingBingo/vite.config.ts",
     "test:e2e": "playwright test --config AllForSUXINHAO/TravellingBingo/playwright.config.ts",
     "format": "prettier --write \"AllForSUXINHAO/TravellingBingo/**/*.{ts,tsx,css,html,json}\" \"scripts/**/*.mjs\" package.json",
@@ -33,7 +34,8 @@
     "site:verify": "node scripts/site/verify-site.mjs",
     "research:sync:postcards": "node scripts/research/sync-postcard-catalog.mjs",
     "research:sync:bilibili": "node scripts/research/sync-bilibili-video-catalog.mjs --refresh",
-    "verify": "npm run format:check && npm run lint && npm run typecheck && npm run test && npm run test:video-catalog && npm run assets:verify"
+    "research:sync:favourites": "node scripts/research/sync-bilibili-favourites.mjs --refresh",
+    "verify": "npm run format:check && npm run lint && npm run typecheck && npm run test && npm run test:video-catalog && npm run test:favourites && npm run assets:verify"
   },
   "dependencies": {
     "react": "^19.2.8",

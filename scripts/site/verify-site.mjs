@@ -4,6 +4,7 @@ import { fileURLToPath } from 'node:url'
 
 const workspaceRoot = resolve(fileURLToPath(new URL('../..', import.meta.url)))
 const siteRoot = resolve(workspaceRoot, '_site')
+const favouriteIds = ['3682220021', '3986840044']
 
 if (!siteRoot.startsWith(`${workspaceRoot}${sep}`)) {
   throw new Error('发布目录越界')
@@ -17,7 +18,10 @@ const requiredFiles = [
   'index.html',
   '.nojekyll',
   'AllForSUXINHAO/TravellingBingo/index.html',
-  'AllForSUXINHAO/TravellingBingo/bilibili-multi-player.html',
+  'AllForSUXINHAO/TravellingBingo/stream-player.html',
+  ...favouriteIds.map(
+    (favouriteId) => `AllForSUXINHAO/TravellingBingo/favourites/${favouriteId}.txt`,
+  ),
 ]
 for (const relativePath of requiredFiles) {
   await access(resolve(siteRoot, relativePath))
@@ -49,6 +53,17 @@ if (unexpectedRootEntries.length > 0 || rootEntries.length !== allowedRootEntrie
 }
 
 const gameRoot = resolve(siteRoot, 'AllForSUXINHAO/TravellingBingo')
+for (const favouriteId of favouriteIds) {
+  const [source, published] = await Promise.all([
+    readFile(
+      resolve(workspaceRoot, `AllForSUXINHAO/TravellingBingo/favourites/${favouriteId}.txt`),
+    ),
+    readFile(resolve(gameRoot, `favourites/${favouriteId}.txt`)),
+  ])
+  if (!source.equals(published)) {
+    throw new Error(`${favouriteId}.txt 与仓库收藏夹快照不一致`)
+  }
+}
 const allForSuxinhaoEntries = await readdir(resolve(siteRoot, 'AllForSUXINHAO'), {
   withFileTypes: true,
 })
@@ -62,6 +77,16 @@ if (unexpectedEntries.length > 0 || allForSuxinhaoEntries.length !== 1) {
 }
 
 const serviceWorker = await readFile(resolve(gameRoot, 'sw.js'), 'utf8')
+if (
+  !serviceWorker.includes(
+    'ignoreURLParametersMatching:[/^(?:favoriteId|selfTest|stopHours|sessionId|autostart)$/u]',
+  )
+) {
+  throw new Error('Service Worker 没有忽略刷播页的受控配置参数')
+}
+if (!serviceWorker.includes('stream-player\\.html(?:$|\\?)')) {
+  throw new Error('Service Worker 的游戏首页导航回退没有排除独立刷播页')
+}
 const webManifest = JSON.parse(await readFile(resolve(gameRoot, 'manifest.webmanifest'), 'utf8'))
 const expectedManifestIcons = [
   { src: 'icons/app-icon-192.png', sizes: '192x192', type: 'image/png', purpose: 'any' },
@@ -121,6 +146,8 @@ const fixedAssetEntries = precacheEntries.filter(
     entry.url.startsWith('icons/') ||
     entry.url === 'data/friends.json' ||
     entry.url === 'data/video-catalog.json' ||
+    entry.url === 'favourites/3682220021.txt' ||
+    entry.url === 'favourites/3986840044.txt' ||
     (entry.url.startsWith('assets/collectibles/') && entry.url.endsWith('-480.webp')),
 )
 if (fixedAssetEntries.length === 0) throw new Error('Service Worker 缺少固定名资源预缓存项')
@@ -164,7 +191,7 @@ for (const entry of hashedCodeEntries) {
 function isAllowedGameFile(relativePath) {
   if (
     relativePath === 'index.html' ||
-    relativePath === 'bilibili-multi-player.html' ||
+    relativePath === 'stream-player.html' ||
     relativePath === 'manifest.webmanifest' ||
     relativePath === 'sw.js' ||
     relativePath === 'registerSW.js' ||
@@ -183,6 +210,7 @@ function isAllowedGameFile(relativePath) {
       relativePath,
     ) ||
     /^data\/[a-z0-9][a-z0-9-]*\.json$/u.test(relativePath) ||
+    /^favourites\/(?:3682220021|3986840044)\.txt$/u.test(relativePath) ||
     /^icons\/[a-z0-9][a-z0-9-]*\.png$/u.test(relativePath)
   )
 }
@@ -198,6 +226,7 @@ const allowedGameDirectories = new Set([
   'assets/game',
   'assets/links',
   'data',
+  'favourites',
   'icons',
 ])
 
@@ -233,6 +262,8 @@ for (const relativePath of publishedGameFiles.filter(
     entry.startsWith('icons/') ||
     entry === 'data/friends.json' ||
     entry === 'data/video-catalog.json' ||
+    entry === 'favourites/3682220021.txt' ||
+    entry === 'favourites/3986840044.txt' ||
     (entry.startsWith('assets/collectibles/') && entry.endsWith('-480.webp')),
 )) {
   const precacheEntry = precacheByUrl.get(relativePath)
@@ -271,6 +302,16 @@ for (const dataFile of ['data/friends.json', 'data/video-catalog.json']) {
   if (!publishedGameFiles.includes(dataFile)) {
     throw new Error(`发布包缺少运行时数据：${dataFile}`)
   }
+}
+
+const expectedFavouriteFiles = favouriteIds.map((favouriteId) => `favourites/${favouriteId}.txt`)
+const publishedFavouriteFiles = publishedGameFiles
+  .filter((entry) => entry.startsWith('favourites/'))
+  .sort()
+if (JSON.stringify(publishedFavouriteFiles) !== JSON.stringify(expectedFavouriteFiles)) {
+  throw new Error(
+    `发布包刷播收藏夹快照不精确：实际 ${publishedFavouriteFiles.join(', ') || '为空'}`,
+  )
 }
 
 if (!publishedGameFiles.some((entry) => entry.startsWith('assets/fonts/'))) {

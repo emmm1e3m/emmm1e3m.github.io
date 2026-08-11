@@ -25,20 +25,15 @@ import {
   PomodoroFocusOverlay,
   RealityReturnDialog,
   RealitySettlementResultDialog,
-  STREAM_OPEN_DELAY_MS,
-  STREAM_ROUND_DURATION_MS,
-  buildStreamQueue,
-  parseStreamSelfTestInput,
   buildRealityTodoViews,
   buildUnlockedPostcardBackgrounds,
   type RealityNotificationPermission,
   type StreamRoundCompletion,
   type StreamSessionEnd,
-  type StreamPlaybackController,
   useStreamPlayback,
-  useVisitorStreamPlayback,
 } from '@/features/reality'
 import { RewardDialog } from '@/features/rewards/RewardDialog'
+import { UpdateNoticeDialog } from '@/features/update-notice/UpdateNotice'
 
 import './game-v2.css'
 import './game-v3.css'
@@ -115,7 +110,7 @@ interface GameHomeProps {
   onDismissRealitySettlementResult?: () => void
   notificationPermission?: RealityNotificationPermission
   onRequestNotificationPermission?: () => void
-  canEnterReality?: () => boolean
+  canUseTrend?: () => boolean
   /** 每次成功休息后递增，使日夜过场可在连续休息时重新播放。 */
   restTransitionKey?: number
 }
@@ -228,7 +223,7 @@ export function GameHome({
   onDismissRealitySettlementResult,
   notificationPermission = 'unsupported',
   onRequestNotificationPermission,
-  canEnterReality = detectPcBrowser,
+  canUseTrend = detectPcBrowser,
   restTransitionKey,
 }: GameHomeProps) {
   const activity = game.activeActivity
@@ -238,6 +233,7 @@ export function GameHome({
   const [sleeping, setSleeping] = useState(false)
   const [petMenuOpenRequest, setPetMenuOpenRequest] = useState(0)
   const [helpOpen, setHelpOpen] = useState(false)
+  const [updateNoticeOpen, setUpdateNoticeOpen] = useState(false)
   const [dimensionDialog, setDimensionDialog] = useState<DimensionDialogMode | null>(null)
   const [dimensionTransition, setDimensionTransition] = useState<DimensionTransitionState | null>(
     null,
@@ -250,8 +246,6 @@ export function GameHome({
   const [vitalityPromptRequest, setVitalityPromptRequest] = useState<VitalityPromptRequest | null>(
     null,
   )
-  const [streamRoundDurationMs, setStreamRoundDurationMs] = useState(STREAM_ROUND_DURATION_MS)
-  const [streamVideoIntervalMs, setStreamVideoIntervalMs] = useState(STREAM_OPEN_DELAY_MS)
   const walkTimerRef = useRef<ReturnType<typeof globalThis.setTimeout> | null>(null)
   const visiblePetCenterRef = useRef<RoomPixelPoint | null>(null)
   const sleepTimerRef = useRef<ReturnType<typeof globalThis.setTimeout> | null>(null)
@@ -277,61 +271,10 @@ export function GameHome({
     },
     [onAction],
   )
-  const streamCatalogBvids = useMemo(
-    () => catalog.streamVideos.map((video) => video.bvid),
-    [catalog.streamVideos],
-  )
   const streamPlayback = useStreamPlayback({
-    catalogBvids: streamCatalogBvids,
-    completedRounds: game.reality.streamHistory.completedRounds,
-    roundDurationMs: streamRoundDurationMs,
     onRoundCompleted: handleStreamRoundCompleted,
     onSessionEnded: handleStreamSessionEnded,
   })
-  const visitorStreamPlayback = useVisitorStreamPlayback()
-  const startVisitorStream = visitorStreamPlayback.start
-  const stopVisitorStream = visitorStreamPlayback.stop
-  const startStreamPlayback = streamPlayback.start
-  const loginStreamActive =
-    streamPlayback.state.status === 'opening' ||
-    streamPlayback.state.status === 'waiting' ||
-    streamPlayback.state.status === 'blocked'
-  useEffect(() => {
-    if (!game.reality.streamSettings.dimensionPenetrationEnabled || loginStreamActive) {
-      stopVisitorStream()
-      return
-    }
-    startVisitorStream(streamCatalogBvids, {
-      videoIntervalMs: streamVideoIntervalMs,
-      roundIntervalMs: streamRoundDurationMs,
-      selfTestBvid: game.reality.streamSettings.selfTestBvid,
-    })
-  }, [
-    game.reality.streamSettings.dimensionPenetrationEnabled,
-    game.reality.streamSettings.selfTestBvid,
-    loginStreamActive,
-    streamRoundDurationMs,
-    streamVideoIntervalMs,
-    startVisitorStream,
-    stopVisitorStream,
-    streamCatalogBvids,
-  ])
-
-  const startLoginStream = useCallback<StreamPlaybackController['start']>(
-    (input, mode, settings) => {
-      const inputResult = parseStreamSelfTestInput(input)
-      if (!inputResult.ok || buildStreamQueue(inputResult.bvid, streamCatalogBvids).length === 0) {
-        return startStreamPlayback(input, mode, settings)
-      }
-      stopVisitorStream()
-      return startStreamPlayback(input, mode, settings)
-    },
-    [startStreamPlayback, stopVisitorStream, streamCatalogBvids],
-  )
-  const coordinatedStreamPlayback = useMemo<StreamPlaybackController>(
-    () => ({ ...streamPlayback, start: startLoginStream }),
-    [startLoginStream, streamPlayback],
-  )
   const handlePetCenterChange = useCallback((point: RoomPixelPoint) => {
     visiblePetCenterRef.current = point
   }, [])
@@ -370,15 +313,13 @@ export function GameHome({
   const pendingRealitySettlement = game.reality.pendingSettlement
   const pomodoroActive =
     game.reality.pomodoro.session !== null && game.reality.pomodoro.session.status !== 'completed'
-  const realityBlocked = game.world === 'reality' && !canEnterReality()
   const visibleDimensionDialog: DimensionDialogMode | null = dimensionTransition
     ? null
-    : realityBlocked
-      ? 'return-required'
-      : dimensionDialog
+    : dimensionDialog
   const overlayOpen =
     panel === 'album' ||
     helpOpen ||
+    updateNoticeOpen ||
     reward !== null ||
     realitySettlementResult !== null ||
     pendingRealitySettlement !== null ||
@@ -391,6 +332,11 @@ export function GameHome({
   }
 
   function moveTo(area: RoomArea) {
+    if (area.panel === 'reality-trend' && !canUseTrend()) {
+      setDimensionDialog('trend-pc-required')
+      return
+    }
+
     onPanel(area.panel)
     if (activity) return
 
@@ -411,6 +357,11 @@ export function GameHome({
   }
 
   function navigate(panelId: PanelId | null) {
+    if (panelId === 'reality-trend' && !canUseTrend()) {
+      setDimensionDialog('trend-pc-required')
+      return
+    }
+
     if (panelId === null || panelId === 'activity' || panelId === 'debug' || panelId === 'status') {
       onPanel(panelId)
       return
@@ -450,9 +401,6 @@ export function GameHome({
   function toggleDimension() {
     if (pendingRealitySettlement || dimensionTransition) return
     if (game.world === 'reality') {
-      // 非 PC 恢复态由不可取消的 return-required 弹窗接管，必须让用户显式确认返回。
-      if (realityBlocked) return
-
       const activeStay = game.reality.activeStay
       const fullRewardApples = activeStay
         ? Math.floor(deriveRealityActiveDurationMs(activeStay, now) / REALITY_REWARD_INTERVAL_MS)
@@ -466,7 +414,7 @@ export function GameHome({
       return
     }
 
-    setDimensionDialog(canEnterReality() ? 'confirm-enter' : 'pc-required')
+    setDimensionDialog('confirm-enter')
   }
 
   function startDimensionTransition(target: WorldDimension) {
@@ -528,22 +476,9 @@ export function GameHome({
           inert={overlayOpen}
           statusLabel={petStatusLabel}
           vitalityDays={vitalityDays}
-          visitorStream={
-            visitorStreamPlayback.state.status === 'idle' ||
-            visitorStreamPlayback.state.startedAt === null
-              ? null
-              : {
-                  round: visitorStreamPlayback.state.round,
-                  nextRoundRemainingSeconds: (() => {
-                    const remainingMs = visitorStreamPlayback.getNextRoundRemainingMs()
-                    return remainingMs === null ? null : Math.ceil(remainingMs / 1_000)
-                  })(),
-                }
-          }
           onExit={onExit}
           onCenter={() => navigate(activity ? 'activity' : 'status')}
           onRealityTimer={toggleDimension}
-          onVisitorStream={() => navigate('reality-stream')}
           onPetStatus={() => setPetMenuOpenRequest((request) => request + 1)}
           onFridge={() => navigate('fridge')}
           onAlbum={() => navigate('album')}
@@ -580,6 +515,7 @@ export function GameHome({
             onPanel={(nextPanel) => navigate(nextPanel)}
             onBackgroundActivate={() => onPanel('status')}
             onHelp={() => setHelpOpen(true)}
+            onUpdateNotice={() => setUpdateNoticeOpen(true)}
             dimensionToggleRef={dimensionToggleRef}
             dimensionToggleDisabled={
               pendingRealitySettlement !== null || dimensionTransition !== null
@@ -634,35 +570,12 @@ export function GameHome({
                   }}
                   notificationPermission={notificationPermission}
                   onRequestNotificationPermission={onRequestNotificationPermission}
-                  streamPlayback={coordinatedStreamPlayback}
-                  visitorStreamPlayback={visitorStreamPlayback}
-                  streamVideoIntervalMs={streamVideoIntervalMs}
-                  onStreamVideoIntervalChange={setStreamVideoIntervalMs}
-                  streamRoundDurationSeconds={streamRoundDurationMs / 1_000}
-                  onStreamRoundDurationChange={(seconds) =>
-                    setStreamRoundDurationMs(seconds * 1_000)
-                  }
+                  streamPlayback={streamPlayback}
                 />
               </aside>
             </div>
           )}
         </div>
-
-        {visitorStreamPlayback.state.status !== 'idle' && (
-          <div className="visitor-stream-layer" aria-hidden="true" inert>
-            {visitorStreamPlayback.state.frames.map((frame) => (
-              <iframe
-                key={frame.id}
-                src={frame.url}
-                title={`游客刷播 ${frame.bvid}`}
-                allow="autoplay"
-                referrerPolicy="strict-origin-when-cross-origin"
-                tabIndex={-1}
-                inert
-              />
-            ))}
-          </div>
-        )}
 
         {panel === 'album' && (
           <AlbumView
@@ -683,6 +596,7 @@ export function GameHome({
         )}
 
         <HelpDialog open={helpOpen} world={game.world} onClose={() => setHelpOpen(false)} />
+        <UpdateNoticeDialog open={updateNoticeOpen} onClose={() => setUpdateNoticeOpen(false)} />
         {dimensionTransition && (
           <div
             className={`dimension-transition dimension-transition--${dimensionTransition.phase} dimension-transition--to-${dimensionTransition.target}`}
@@ -751,21 +665,13 @@ export function GameHome({
             mode={visibleDimensionDialog}
             onCancel={() => setDimensionDialog(null)}
             onConfirm={() => {
-              if (visibleDimensionDialog === 'pc-required') {
+              if (visibleDimensionDialog === 'trend-pc-required') {
                 setDimensionDialog(null)
                 return
               }
 
-              if (
-                visibleDimensionDialog === 'confirm-leave' ||
-                visibleDimensionDialog === 'return-required'
-              ) {
+              if (visibleDimensionDialog === 'confirm-leave') {
                 startDimensionTransition('game')
-                return
-              }
-
-              if (!canEnterReality()) {
-                setDimensionDialog('pc-required')
                 return
               }
 

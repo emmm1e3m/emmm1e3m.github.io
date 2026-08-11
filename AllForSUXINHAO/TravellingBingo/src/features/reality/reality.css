@@ -261,12 +261,6 @@
   font-weight: 900;
 }
 
-.reality-stream-settings {
-  display: grid;
-  grid-template-columns: repeat(2, minmax(0, 1fr));
-  gap: 0.55rem;
-}
-
 .reality-stream-field input {
   width: 100%;
   min-height: 2.75rem;
@@ -278,8 +272,7 @@
   font: 750 var(--v4-body-copy-size, 0.9rem) / 1.4 var(--body-font, inherit);
 }
 
-.reality-stream-field > small,
-.reality-stream-shared-settings {
+.reality-stream-field > small {
   margin: 0;
   color: var(--muted, #765752);
   font-size: var(--v4-support-copy-size, 0.82rem);
@@ -325,58 +318,6 @@
 
 .reality-stream-modes strong {
   font-size: var(--v4-body-copy-size, 0.9rem);
-}
-
-.reality-stream-penetration {
-  display: flex;
-  align-items: flex-start;
-  gap: 0.62rem;
-  padding: 0.72rem;
-  border: 1.5px solid #ddc1a1;
-  border-radius: 14px 17px 13px 16px;
-  background: #fff8ed;
-  cursor: pointer;
-}
-
-.reality-stream-penetration input {
-  margin-top: 0.18rem;
-  flex: 0 0 auto;
-  accent-color: var(--apple, #b63748);
-}
-
-.reality-stream-penetration > span {
-  display: grid;
-  gap: 0.14rem;
-}
-
-.reality-stream-penetration strong {
-  font-size: var(--v4-body-copy-size, 0.9rem);
-}
-
-.reality-stream-penetration small {
-  color: var(--muted, #765752);
-  font-size: var(--v4-support-copy-size, 0.82rem);
-  font-weight: 700;
-  line-height: 1.45;
-}
-
-.visitor-stream-layer {
-  position: fixed;
-  top: 0;
-  left: -10000px;
-  width: 640px;
-  height: 360px;
-  overflow: hidden;
-  pointer-events: none;
-}
-
-.visitor-stream-layer iframe {
-  position: absolute;
-  inset: 0;
-  width: 640px;
-  height: 360px;
-  border: 0;
-  pointer-events: none;
 }
 
 .reality-stream-actions {
@@ -1361,8 +1302,7 @@ body:has(.persistent-bilibili-player--focus.is-expanded) .pomodoro-focus__worksp
 }
 
 @media (max-width: 680px) {
-  .reality-stream-modes,
-  .reality-stream-settings {
+  .reality-stream-modes {
     grid-template-columns: minmax(0, 1fr);
   }
 

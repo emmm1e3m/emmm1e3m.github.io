@@ -33,7 +33,7 @@ export function HelpDialog({ open, world = 'game', onClose }: HelpDialogProps) {
           <div className="help-dialog__sections">
             <section>
               <h3>数据与工作</h3>
-              <p>既可以刷播与冲热，也可以为工作与学习计时。</p>
+              <p>既可以刷播与冲热，也可以为工作与学习计时。冲热目前仅在电脑端开放。</p>
             </section>
             <section>
               <h3>完整苹果钟</h3>

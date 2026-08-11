@@ -109,7 +109,7 @@ export const ROOM_AREAS: readonly RoomArea[] = [
     panel: 'piano',
     label: '电子琴',
     buttonLabel: '弹弹琴',
-    hotspot: { x: 17, y: 67.5 },
+    hotspot: { x: 17, y: 67 },
     petCenter: { x: 257, y: 1103 },
     activityKinds: ['music'],
     interest: 'music',

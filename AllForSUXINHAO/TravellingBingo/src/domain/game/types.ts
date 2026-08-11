@@ -1,4 +1,10 @@
-import type { FRIEND_EVENT_IDS, ITEM_IDS, LEGACY_ITEM_IDS, PIANO_NOTE_IDS } from './constants'
+import type {
+  FRIEND_EVENT_IDS,
+  ITEM_IDS,
+  LEGACY_ITEM_IDS,
+  PIANO_NOTE_IDS,
+  STREAM_FAVORITE_IDS,
+} from './constants'
 import type { GameBalance, GameBalanceV2, ProbabilityKey } from './gameBalance'
 
 export type LegacyActivityKind = 'travel' | 'stream' | 'trend'
@@ -431,7 +437,8 @@ export interface RealityStateV7 extends RealityState {
   streamHistory: StreamHistory
 }
 
-export interface StreamSettings {
+/** V8/V9 已发布的刷播设置；只用于冻结存档校验与迁移。 */
+export interface StreamSettingsV8 {
   /** 额外插入轮换序列末尾的单个自测视频。 */
   selfTestBvid: string | null
   /** 返回游戏维度后仍运行实验性游客刷播。 */
@@ -439,12 +446,25 @@ export interface StreamSettings {
 }
 
 export interface RealityStateV8 extends RealityStateV7 {
-  streamSettings: StreamSettings
+  streamSettings: StreamSettingsV8
 }
 
 export interface RealityStateV9 extends Omit<RealityStateV8, 'activeStay' | 'pendingSettlement'> {
   activeStay: RealityStay | null
   pendingSettlement: RealitySettlement | null
+}
+
+export type StreamFavoriteId = (typeof STREAM_FAVORITE_IDS)[number]
+
+export interface StreamSettings {
+  /** 额外插入轮换序列末尾的单个自测视频。 */
+  selfTestBvid: string | null
+  /** 当前刷播使用的本地收藏夹快照。 */
+  favoriteId: StreamFavoriteId
+}
+
+export interface RealityStateV10 extends Omit<RealityStateV9, 'streamSettings'> {
+  streamSettings: StreamSettings
 }
 
 export type MusicLoopMode = 'list' | 'single' | 'shuffle'
@@ -601,7 +621,12 @@ export interface GameStateV9 extends Omit<GameStateV8, 'schemaVersion' | 'realit
   reality: RealityStateV9
 }
 
-export type GameState = GameStateV9
+export interface GameStateV10 extends Omit<GameStateV9, 'schemaVersion' | 'reality'> {
+  schemaVersion: 10
+  reality: RealityStateV10
+}
+
+export type GameState = GameStateV10
 
 export interface ActivityTiming {
   phase: ActivityPhase
@@ -661,6 +686,7 @@ export type GameErrorCode =
   | 'POMODORO_NOT_RUNNING'
   | 'DUPLICATE_ID'
   | 'INVALID_BVID'
+  | 'INVALID_STREAM_FAVORITE'
   | 'DEBUG_REQUIRED'
 
 export interface GameError {
@@ -707,7 +733,7 @@ export type GameAction =
       outcome: StreamSessionOutcome
     }
   | { type: 'reality/stream-self-test-set'; bvid: string | null }
-  | { type: 'reality/stream-dimension-penetration-set'; enabled: boolean }
+  | { type: 'reality/stream-favorite-set'; favoriteId: StreamFavoriteId }
   | {
       type: 'reality/settle'
       stayId: string

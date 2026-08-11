@@ -148,17 +148,6 @@ function videosMatch(
   )
 }
 
-function favoriteVideosMatch(
-  left: z.infer<typeof bilibiliVideoSchema>,
-  right: z.infer<typeof bilibiliVideoSchema>,
-) {
-  return (
-    videosMatch(left, right) &&
-    left.favoriteId === right.favoriteId &&
-    left.favoriteOrder === right.favoriteOrder
-  )
-}
-
 const baseCollectibleFields = {
   id: z.string().regex(/^[a-z0-9]+(?:-[a-z0-9]+)*$/),
   title: z.string().trim().min(1),
@@ -498,7 +487,6 @@ export const bilibiliVideoCatalogSchema = z
       .object({
         millionShots: bilibiliFolderSnapshotSchema,
         siteFirsts: bilibiliFolderSnapshotSchema,
-        streaming: bilibiliFolderSnapshotSchema,
       })
       .strict(),
     videos: z.record(bvidSchema, bilibiliVideoSchema),
@@ -513,13 +501,6 @@ export const bilibiliVideoCatalogSchema = z
         sourceFavoriteId: z.number().int().positive().safe(),
         selectionRule: z.string().trim().min(1),
         items: z.array(bilibiliVideoSchema).length(8),
-      })
-      .strict(),
-    streamPlaylist: z
-      .object({
-        sourceFavoriteId: z.literal(3963921644),
-        selectionRule: z.string().trim().min(1),
-        items: z.array(bilibiliVideoSchema).min(1),
       })
       .strict(),
   })
@@ -581,81 +562,6 @@ export const bilibiliVideoCatalogSchema = z
           code: 'custom',
           path: ['recordPlayer', 'items', index],
           message: '唱片机曲库必须按全站第一 chronology 第 1–8 项排列',
-        })
-      }
-    })
-
-    if (catalog.streamPlaylist.sourceFavoriteId !== catalog.folders.streaming.favoriteId) {
-      context.addIssue({
-        code: 'custom',
-        path: ['streamPlaylist', 'sourceFavoriteId'],
-        message: '刷播目录必须来自指定收藏夹快照',
-      })
-    }
-    if (catalog.folders.streaming.favoriteId !== 3963921644) {
-      context.addIssue({
-        code: 'custom',
-        path: ['folders', 'streaming', 'favoriteId'],
-        message: '刷播收藏夹 ID 无效',
-      })
-    }
-    if (catalog.streamPlaylist.items.length !== catalog.folders.streaming.visibleItemCount) {
-      context.addIssue({
-        code: 'custom',
-        path: ['streamPlaylist', 'items'],
-        message: '刷播目录必须包含收藏夹全部可见视频',
-      })
-    }
-    if (
-      catalog.folders.streaming.latestPage.items.length !==
-      Math.min(
-        catalog.folders.streaming.visibleItemCount,
-        catalog.folders.streaming.latestPage.pageSize,
-      )
-    ) {
-      context.addIssue({
-        code: 'custom',
-        path: ['folders', 'streaming', 'latestPage', 'items'],
-        message: '刷播收藏夹首页数量与可见视频数不一致',
-      })
-    }
-
-    const seenStreamVideos = new Set<string>()
-    catalog.streamPlaylist.items.forEach((video, index) => {
-      const indexed = catalog.videos[video.bvid]
-      if (indexed === undefined || !videosMatch(video, indexed)) {
-        context.addIssue({
-          code: 'custom',
-          path: ['streamPlaylist', 'items', index],
-          message: '刷播视频必须与视频索引内容一致',
-        })
-      }
-      if (
-        video.favoriteId !== catalog.folders.streaming.favoriteId ||
-        video.favoriteOrder !== index + 1
-      ) {
-        context.addIssue({
-          code: 'custom',
-          path: ['streamPlaylist', 'items', index],
-          message: '刷播视频必须按收藏夹顺序排列',
-        })
-      }
-      if (seenStreamVideos.has(video.bvid)) {
-        context.addIssue({
-          code: 'custom',
-          path: ['streamPlaylist', 'items', index, 'bvid'],
-          message: '刷播视频不能重复',
-        })
-      }
-      seenStreamVideos.add(video.bvid)
-    })
-    catalog.folders.streaming.latestPage.items.forEach((video, index) => {
-      const streamVideo = catalog.streamPlaylist.items[index]
-      if (streamVideo === undefined || !favoriteVideosMatch(video, streamVideo)) {
-        context.addIssue({
-          code: 'custom',
-          path: ['folders', 'streaming', 'latestPage', 'items', index],
-          message: '刷播目录必须与收藏夹首页顺序一致',
         })
       }
     })

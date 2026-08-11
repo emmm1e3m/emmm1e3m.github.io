@@ -26,7 +26,9 @@ describe('HelpDialog', () => {
     render(<HelpDialog open world="reality" onClose={vi.fn()} />)
 
     expect(screen.getByText('铲铲饼屋的小纸条')).toBeVisible()
-    expect(screen.getByText('既可以刷播与冲热，也可以为工作与学习计时。')).toBeVisible()
+    expect(
+      screen.getByText('既可以刷播与冲热，也可以为工作与学习计时。冲热目前仅在电脑端开放。'),
+    ).toBeVisible()
     expect(screen.getByRole('heading', { name: '🍎结算' }).closest('section')).toHaveTextContent(
       '每10分钟可以积攒1🍎。回到饼屋时，请确认现实里的事情是否认真完成。认真完成会带回全部苹果，否则只带回一半。',
     )

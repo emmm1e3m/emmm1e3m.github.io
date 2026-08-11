@@ -6,12 +6,14 @@ import { canUseLuckyApple, getLuckyAppleAvailability } from '../rewards/luckyApp
 import { createRandomCursor, nextRandom } from '../rewards/prng'
 import {
   BASE_ACTIVITY_DURATION_MS,
+  DEFAULT_STREAM_FAVORITE_ID,
   INITIAL_APPLES,
   ITEM_PRICES,
   MAX_APPLES,
   MAX_COMPANION_DAYS,
   PET_ENCOURAGEMENT_APPLE_COST,
   POMODORO_PRESETS,
+  STREAM_FAVORITE_IDS,
 } from './constants'
 import { createInitialGameState } from './createGameState'
 import {
@@ -20,10 +22,17 @@ import {
   LUCKY_APPLE_COLLECTION_BASE_BONUS_RATE,
   TRAVEL_FRIEND_GIFT_APPLES_BY_ID,
 } from './gameBalance'
-import { gameStateV9Schema } from './migrateGameStateV8'
+import { gameStateV10Schema } from './migrateGameStateV9'
 import { reduceGame } from './reducer'
 import { MAX_DATE_TIMESTAMP_MS } from './time'
-import type { ActivityKind, CollectionCatalog, GameState, GameTransition, ItemId } from './types'
+import type {
+  ActivityKind,
+  CollectionCatalog,
+  GameAction,
+  GameState,
+  GameTransition,
+  ItemId,
+} from './types'
 
 const catalog: CollectionCatalog = {
   postcard: ['postcard-1', 'postcard-2'],
@@ -99,15 +108,15 @@ function seedWhoseRewardRollIsBetween(minimum: number, maximum: number, rollInde
   throw new Error(`没有找到位于 [${minimum}, ${maximum}) 的第 ${rollIndex + 1} 次奖励随机值`)
 }
 
-describe('旅行饼狗 v8 领域状态', () => {
-  it('新游戏使用 schema v8、用户名、零天陪伴、10 秒活动与独立随机序列', () => {
+describe('旅行饼狗 v10 领域状态', () => {
+  it('新游戏使用 schema v10、用户名、零天陪伴、10 秒活动与独立随机序列', () => {
     const state = createInitialGameState({ now: 1_000, seed: 'save-seed' })
 
-    expect(state.schemaVersion).toBe(9)
+    expect(state.schemaVersion).toBe(10)
     expect(state.reality.streamHistory).toEqual({ completedRounds: 0, recentSessions: [] })
     expect(state.reality.streamSettings).toEqual({
       selfTestBvid: null,
-      dimensionPenetrationEnabled: false,
+      favoriteId: DEFAULT_STREAM_FAVORITE_ID,
     })
     expect(state.profile).toMatchObject({ displayName: '你', companionDays: 0 })
     expect(state.friends).toEqual({})
@@ -139,35 +148,43 @@ describe('旅行饼狗 v8 领域状态', () => {
     expect(Object.values(state.pet.preferences).some(Boolean)).toBe(true)
   })
 
-  it('持久更新单个自测 BV 与维度穿透开关，并允许清空自测视频', () => {
+  it('持久更新单个自测 BV 与收藏夹，并允许清空自测视频', () => {
     const initial = createInitialGameState({ now: 1_000, seed: 'stream-settings' })
     const withBvid = successful(
       reduceGame(initial, { type: 'reality/stream-self-test-set', bvid: 'BV1xx411c7mD' }, catalog),
     ).state
-    const enabled = successful(
+    const selected = successful(
       reduceGame(
         withBvid,
-        { type: 'reality/stream-dimension-penetration-set', enabled: true },
+        { type: 'reality/stream-favorite-set', favoriteId: STREAM_FAVORITE_IDS[1] },
+        catalog,
+      ),
+    ).state
+    const unchanged = successful(
+      reduceGame(
+        selected,
+        { type: 'reality/stream-favorite-set', favoriteId: STREAM_FAVORITE_IDS[1] },
         catalog,
       ),
     ).state
     const cleared = successful(
-      reduceGame(enabled, { type: 'reality/stream-self-test-set', bvid: null }, catalog),
+      reduceGame(selected, { type: 'reality/stream-self-test-set', bvid: null }, catalog),
     ).state
 
     expect(initial.reality.streamSettings).toEqual({
       selfTestBvid: null,
-      dimensionPenetrationEnabled: false,
+      favoriteId: DEFAULT_STREAM_FAVORITE_ID,
     })
-    expect(enabled.reality.streamSettings).toEqual({
+    expect(selected.reality.streamSettings).toEqual({
       selfTestBvid: 'BV1xx411c7mD',
-      dimensionPenetrationEnabled: true,
+      favoriteId: STREAM_FAVORITE_IDS[1],
     })
+    expect(unchanged).toBe(selected)
     expect(cleared.reality.streamSettings).toEqual({
       selfTestBvid: null,
-      dimensionPenetrationEnabled: true,
+      favoriteId: STREAM_FAVORITE_IDS[1],
     })
-    expect(gameStateV9Schema.safeParse(cleared).success).toBe(true)
+    expect(gameStateV10Schema.safeParse(cleared).success).toBe(true)
   })
 
   it('拒绝非法自测 BV，且不改写原状态', () => {
@@ -179,6 +196,19 @@ describe('旅行饼狗 v8 领域状态', () => {
     )
 
     expect(result).toMatchObject({ ok: false, error: { code: 'INVALID_BVID' } })
+    expect(result.state).toBe(initial)
+    expect(result.effects).toEqual([])
+  })
+
+  it('拒绝未发布的刷播收藏夹，且不改写原状态', () => {
+    const initial = createInitialGameState({ now: 1_000, seed: 'invalid-stream-favorite' })
+    const result = reduceGame(
+      initial,
+      { type: 'reality/stream-favorite-set', favoriteId: 3963921644 } as unknown as GameAction,
+      catalog,
+    )
+
+    expect(result).toMatchObject({ ok: false, error: { code: 'INVALID_STREAM_FAVORITE' } })
     expect(result.state).toBe(initial)
     expect(result.effects).toEqual([])
   })
@@ -971,7 +1001,7 @@ describe('旅行饼狗 v8 领域状态', () => {
         giftApples: 2,
       },
     })
-    expect(gameStateV9Schema.safeParse(claimed.state).success).toBe(true)
+    expect(gameStateV10Schema.safeParse(claimed.state).success).toBe(true)
   })
 
   it('电子琴只召来已认识朋友，领取后赠苹果并累计好友赠礼', () => {
@@ -1228,7 +1258,7 @@ describe('旅行饼狗 v8 领域状态', () => {
     expect(restClaimed.statistics.started.rest).toBe(Number.MAX_SAFE_INTEGER)
     expect(restClaimed.statistics.claimed.rest).toBe(Number.MAX_SAFE_INTEGER)
     expect(restClaimed.statistics.applesEarned).toBe(Number.MAX_SAFE_INTEGER)
-    expect(gameStateV9Schema.safeParse(restClaimed).success).toBe(true)
+    expect(gameStateV10Schema.safeParse(restClaimed).success).toBe(true)
   })
 
   it('活动统计达到上限后饱和，仍可生成可导出的活动状态', () => {
@@ -1246,7 +1276,7 @@ describe('旅行饼狗 v8 领域状态', () => {
     ).state
     expect(started.statistics.started.travel).toBe(Number.MAX_SAFE_INTEGER)
     expect(started.random.sequences.reward).toBe(1)
-    expect(gameStateV9Schema.safeParse(started).success).toBe(true)
+    expect(gameStateV10Schema.safeParse(started).success).toBe(true)
   })
 
   it('结束时间超出 Date 上限时在扣补给与推进随机序列前拒绝开始', () => {

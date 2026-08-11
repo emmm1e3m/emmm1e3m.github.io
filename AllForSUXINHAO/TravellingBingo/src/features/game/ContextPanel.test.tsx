@@ -4,7 +4,7 @@ import type { ReactNode } from 'react'
 import type { ContentCatalog, RecordPlayerVideo } from '@/content'
 import { createInitialGameState, type GameAction, type GameState } from '@/domain'
 import { BilibiliPlayerProvider, PersistentPlayerDock } from '@/features/player'
-import type { StreamPlaybackController, VisitorStreamController } from '@/features/reality'
+import type { StreamPlaybackController } from '@/features/reality'
 
 import { ContextPanel } from './ContextPanel'
 
@@ -46,7 +46,6 @@ const contentCatalog: ContentCatalog = {
   friendById: {},
   videosByBvid: Object.fromEntries(recordVideos.map((video) => [video.bvid, video])),
   recordPlayerVideos: recordVideos,
-  streamVideos: [],
 }
 
 function gameWithActiveTravel(): GameState {
@@ -121,42 +120,24 @@ function idleStreamPlayback(): StreamPlaybackController {
   return {
     state: {
       status: 'idle',
+      sessionId: null,
+      startedAt: null,
+      favoriteId: 3682220021,
+      selfTestBvid: null,
+      stopAfterMs: null,
       round: 0,
       sessionRoundsCompleted: 0,
-      openDelayMs: 8_000,
-      roundDurationMs: 310_000,
-      stopAfterMs: null,
-      mode: null,
-      sourceInput: '',
-      parsedBvids: [],
       openedCount: 0,
+      totalCount: 0,
+      nextRoundAt: null,
       message: '尚未开始刷播',
       errors: [],
     },
+    standaloneHistory: [],
     start: vi.fn(() => ({ ok: true as const, bvid: null, errors: [] as const })),
-    resume: vi.fn(() => true),
     stop: vi.fn(),
     getRemainingMs: vi.fn(() => null),
     getStopRemainingMs: vi.fn(() => null),
-  }
-}
-
-function idleVisitorStreamPlayback(): VisitorStreamController {
-  return {
-    state: {
-      status: 'idle',
-      startedAt: null,
-      round: 0,
-      completedRounds: 0,
-      frames: [],
-      bvids: [],
-      videoIntervalMs: 8_000,
-      roundIntervalMs: 310_000,
-      message: '游客刷播未运行',
-    },
-    start: vi.fn(() => true),
-    stop: vi.fn(),
-    getNextRoundRemainingMs: vi.fn(() => null),
   }
 }
 
@@ -169,11 +150,6 @@ const commonProps = {
   onBackup: vi.fn(),
   onTaskEvent: vi.fn(),
   streamPlayback: idleStreamPlayback(),
-  visitorStreamPlayback: idleVisitorStreamPlayback(),
-  streamVideoIntervalMs: 8_000,
-  onStreamVideoIntervalChange: vi.fn(),
-  streamRoundDurationSeconds: 310,
-  onStreamRoundDurationChange: vi.fn(),
 }
 
 function PlayerHarness({ children }: { children: ReactNode }) {

@@ -1,5 +1,5 @@
 import { act, fireEvent, render, screen, within } from '@testing-library/react'
-import { type PropsWithChildren, useState } from 'react'
+import { type PropsWithChildren, useLayoutEffect, useState } from 'react'
 
 import type { GameAction, MusicPlayerState } from '@/domain/game/types'
 
@@ -68,6 +68,7 @@ interface PlayerHarnessProps
   onAction?: (action: MusicPlayerAction) => void
   onExpandRequest?: () => void
   playerTracks?: readonly BilibiliPlayerTrack[]
+  loadImmediately?: boolean
 }
 
 function PlayerHarness({
@@ -78,6 +79,7 @@ function PlayerHarness({
   onAction,
   onExpandRequest,
   playerTracks = tracks,
+  loadImmediately = false,
   ...providerProps
 }: PlayerHarnessProps) {
   const [state, setState] = useState(initialState)
@@ -93,8 +95,26 @@ function PlayerHarness({
     >
       {children}
       {dock && <PersistentPlayerDock compact={compact} onExpandRequest={onExpandRequest} />}
+      {loadImmediately && <ImmediateIframeLoad />}
     </BilibiliPlayerProvider>
   )
+}
+
+/** 在同一次 commit 的 layout 阶段触发 load，覆盖 iframe 比被动 effect 更快完成的情况。 */
+function ImmediateIframeLoad() {
+  const controller = useBilibiliPlayerController()
+  const requestId = controller.state.activeRequest?.requestId ?? null
+  const playbackRevision = controller.state.playbackRevision
+
+  useLayoutEffect(() => {
+    if (requestId === null || !controller.state.playing) return
+    const iframe = document.querySelector<HTMLIFrameElement>(
+      `[data-testid="persistent-bilibili-player"] iframe[data-request-id="${requestId}"][data-playback-revision="${playbackRevision}"]`,
+    )
+    iframe?.dispatchEvent(new Event('load'))
+  }, [controller.state.playing, playbackRevision, requestId])
+
+  return null
 }
 
 function Probe() {
@@ -360,6 +380,23 @@ describe('BilibiliPlayerProvider', () => {
       `Bilibili 外链播放器：${mode === 'single' ? '曲目 1' : '曲目 2'}`,
     )
     expect(new URL((nextIframe as HTMLIFrameElement).src).searchParams.get('t')).toBe('0')
+  })
+
+  it('新请求的 iframe 在 commit 后立即 load 仍会启动结束计时', () => {
+    vi.useFakeTimers()
+    vi.setSystemTime(0)
+    render(
+      <PlayerHarness loadImmediately>
+        <Probe />
+      </PlayerHarness>,
+    )
+    fireEvent.click(screen.getByRole('button', { name: '选择第一首' }))
+    const requestId = Number(screen.getByTestId('request-id').textContent)
+
+    act(() => vi.advanceTimersByTime(3_000))
+
+    expect(screen.getByTestId('active-bvid')).toHaveTextContent(tracks[1]!.bvid)
+    expect(Number(screen.getByTestId('request-id').textContent)).toBe(requestId + 1)
   })
 
   it('固定曲库外的收藏视频在单曲模式播完后以相同来源从 0 秒重播', () => {

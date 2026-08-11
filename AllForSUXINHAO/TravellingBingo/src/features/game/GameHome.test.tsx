@@ -42,7 +42,6 @@ const catalog: ContentCatalog = {
   friendById: {},
   videosByBvid: {},
   recordPlayerVideos: [],
-  streamVideos: [],
 }
 
 const domainCatalog: CollectionCatalog = {
@@ -82,7 +81,6 @@ const videoCatalog: ContentCatalog = {
   friendById: {},
   videosByBvid: { [albumVideo.bvid]: albumVideo },
   recordPlayerVideos: [],
-  streamVideos: [],
 }
 
 function collectedGame(): GameState {
@@ -190,7 +188,7 @@ function RealityStreamHarness() {
       onExit={vi.fn()}
       onBackup={vi.fn()}
       onDismissReward={vi.fn()}
-      canEnterReality={() => true}
+      canUseTrend={() => true}
     />
   )
 }
@@ -294,7 +292,6 @@ describe('收藏墙模态框', () => {
       friendById: {},
       videosByBvid: {},
       recordPlayerVideos: [],
-      streamVideos: [],
     }
     render(
       <GameHome
@@ -331,7 +328,7 @@ describe('收藏墙模态框', () => {
       onExit: vi.fn(),
       onBackup: vi.fn(),
       onDismissReward: vi.fn(),
-      canEnterReality: () => true,
+      canUseTrend: () => true,
     } as const
     const { rerender } = render(
       <GameHome {...commonProps} game={videoCollectedGame()} panel="album" />,
@@ -442,26 +439,24 @@ describe('现实刷播运行时', () => {
     } as unknown as Window
     const openSpy = vi.spyOn(window, 'open').mockReturnValue(openedWindow)
 
-    const { unmount } = render(<RealityStreamHarness />)
-    fireEvent.change(screen.getByRole('textbox', { name: '自测视频BV号' }), {
+    render(<RealityStreamHarness />)
+    fireEvent.change(screen.getByRole('textbox', { name: '自测视频BV号或链接' }), {
       target: { value: 'BV1xx411c7mD' },
     })
-    fireEvent.click(screen.getByRole('button', { name: '开始登录刷播' }))
+    fireEvent.click(screen.getByRole('button', { name: '开始刷播' }))
 
     await waitFor(() => expect(openSpy).toHaveBeenCalledOnce())
-    expect(screen.getByText('本轮播放中')).toBeVisible()
+    expect(screen.getByText('独立页正在准备')).toBeVisible()
 
     fireEvent.click(screen.getByRole('button', { name: '工作' }))
     expect(screen.getByRole('heading', { name: '苹果钟与待办' })).toBeVisible()
 
     fireEvent.click(screen.getByRole('button', { name: '刷播' }))
-    expect(screen.getByText('本轮播放中')).toBeVisible()
-    expect(screen.getByRole('textbox', { name: '自测视频BV号' })).toBeDisabled()
-    expect(screen.getByRole('textbox', { name: '自测视频BV号' })).toHaveValue('BV1xx411c7mD')
+    expect(screen.getByText('独立页正在准备')).toBeVisible()
+    expect(screen.getByRole('textbox', { name: '自测视频BV号或链接' })).toBeDisabled()
+    expect(screen.getByRole('textbox', { name: '自测视频BV号或链接' })).toHaveValue('BV1xx411c7mD')
     expect(openSpy).toHaveBeenCalledOnce()
-
-    unmount()
-    expect(openedWindow.close).toHaveBeenCalledOnce()
+    expect(openedWindow.close).not.toHaveBeenCalled()
     openSpy.mockRestore()
   })
 })
@@ -543,6 +538,23 @@ describe('房间互动', () => {
     expect(screen.getByText('饼狗今天的心情')).toBeInTheDocument()
   })
 
+  it('从房间左上角打开更新公告，关闭后把焦点还给入口', () => {
+    render(<RoomPanelHarness />)
+
+    const noticeButton = screen.getByRole('button', { name: '查看更新公告' })
+    expect(noticeButton).toHaveTextContent('#️⃣')
+    noticeButton.focus()
+    fireEvent.click(noticeButton)
+
+    const dialog = screen.getByRole('dialog', { name: '饼屋的新布置' })
+    expect(dialog).toHaveTextContent('刷播独立成窗')
+    expect(dialog).toHaveTextContent('目前刷播功能不稳定，请暂时不要通过此方式刷播')
+    fireEvent.keyDown(document, { key: 'Escape' })
+
+    expect(screen.queryByRole('dialog', { name: '饼屋的新布置' })).not.toBeInTheDocument()
+    expect(noticeButton).toHaveFocus()
+  })
+
   it('现实维度没有选中设施时也回退到待机信息页', () => {
     const base = collectedGame()
     render(
@@ -558,7 +570,7 @@ describe('房间互动', () => {
         onExit={vi.fn()}
         onBackup={vi.fn()}
         onDismissReward={vi.fn()}
-        canEnterReality={() => true}
+        canUseTrend={() => true}
       />,
     )
 
@@ -1010,7 +1022,7 @@ describe('V4 壳层接线', () => {
       onExit: vi.fn(),
       onBackup: vi.fn(),
       onDismissReward: vi.fn(),
-      canEnterReality: () => true,
+      canUseTrend: () => true,
     }
     const { rerender } = render(<GameHome {...props} game={realityGame} now={62_000} />)
 
@@ -1048,7 +1060,7 @@ describe('V4 壳层接线', () => {
       onExit: vi.fn(),
       onBackup: vi.fn(),
       onDismissReward: vi.fn(),
-      canEnterReality: () => true,
+      canUseTrend: () => true,
     }
     render(<GameHome {...props} game={game} />)
 
@@ -1097,7 +1109,7 @@ describe('V4 壳层接线', () => {
         onExit={vi.fn()}
         onBackup={vi.fn()}
         onDismissReward={vi.fn()}
-        canEnterReality={() => true}
+        canUseTrend={() => true}
       />,
     )
 
@@ -1119,7 +1131,7 @@ describe('V4 壳层接线', () => {
     )
   })
 
-  it('非桌面精细指针环境拒绝进入现实维度', () => {
+  it('移动端也可以打开现实维度确认', () => {
     const onAction = vi.fn()
     render(
       <GameHome
@@ -1134,51 +1146,43 @@ describe('V4 壳层接线', () => {
         onExit={vi.fn()}
         onBackup={vi.fn()}
         onDismissReward={vi.fn()}
-        canEnterReality={() => false}
+        canUseTrend={() => false}
       />,
     )
 
     fireEvent.click(screen.getByRole('button', { name: '切换到现实生活维度' }))
-    expect(screen.getByRole('dialog', { name: '请使用电脑浏览器' })).toHaveTextContent(
-      '鼠标或触控板',
-    )
+    expect(screen.getByRole('dialog', { name: '进入现实维度？' })).toBeInTheDocument()
     expect(onAction).not.toHaveBeenCalledWith(expect.objectContaining({ type: 'reality/enter' }))
-
-    fireEvent.click(screen.getByRole('button', { name: '知道了' }))
-    expect(screen.queryByRole('dialog', { name: '请使用电脑浏览器' })).not.toBeInTheDocument()
   })
 
-  it('确认期间失去桌面精细指针能力时重新拒绝进入', () => {
-    const onAction = vi.fn()
-    let supported = true
+  it('冲热入口单独要求电脑端，但不暴露设备检测细节', () => {
+    const game = collectedGame()
     render(
       <GameHome
-        game={collectedGame()}
+        game={{ ...game, world: 'reality' }}
         catalog={catalog}
         now={1_000}
         panel={null}
         dirty={false}
         reward={null}
         onPanel={vi.fn()}
-        onAction={onAction}
+        onAction={vi.fn()}
         onExit={vi.fn()}
         onBackup={vi.fn()}
         onDismissReward={vi.fn()}
-        canEnterReality={() => supported}
+        canUseTrend={() => false}
       />,
     )
 
-    fireEvent.click(screen.getByRole('button', { name: '切换到现实生活维度' }))
-    supported = false
-    fireEvent.click(screen.getByRole('button', { name: '进入现实维度' }))
-
-    expect(screen.getByRole('dialog', { name: '请使用电脑浏览器' })).toBeInTheDocument()
-    expect(onAction).not.toHaveBeenCalledWith(expect.objectContaining({ type: 'reality/enter' }))
+    fireEvent.click(screen.getByRole('button', { name: '冲热（开发中）' }))
+    const dialog = screen.getByRole('dialog', { name: '冲热请使用电脑端' })
+    expect(dialog).toHaveTextContent('冲热功能目前只在电脑端开放')
+    expect(dialog).not.toHaveTextContent(/鼠标|触控板|指针/u)
+    expect(screen.queryByRole('heading', { name: '冲热刷播，奖品多多' })).not.toBeInTheDocument()
   })
 
-  it('非 PC 恢复现实维度存档时要求用户显式返回饼屋', async () => {
+  it('移动端恢复现实维度存档时可以继续专注', () => {
     const onAction = vi.fn()
-    const onPanel = vi.fn()
     const base = collectedGame()
     const restoredRealityGame: GameState = {
       ...base,
@@ -1218,32 +1222,19 @@ describe('V4 壳层接线', () => {
         panel={null}
         dirty={false}
         reward={null}
-        onPanel={onPanel}
+        onPanel={vi.fn()}
         onAction={onAction}
         onExit={vi.fn()}
         onBackup={vi.fn()}
         onDismissReward={vi.fn()}
-        canEnterReality={() => false}
+        canUseTrend={() => false}
       />,
     )
 
-    const dialog = screen.getByRole('dialog', { name: '先回到饼屋' })
     const focusDialog = screen.getByRole('dialog', { name: '和饼狗一起专注' })
-    const returnButton = screen.getByRole('button', { name: '返回饼屋' })
-    expect(dialog).toHaveTextContent('当前浏览器不支持继续')
-    expect(focusDialog.closest('[inert]')).not.toBeNull()
-    await waitFor(() => expect(returnButton).toHaveFocus())
+    expect(screen.queryByRole('dialog', { name: '先回到饼屋' })).not.toBeInTheDocument()
+    expect(focusDialog.closest('[inert]')).toBeNull()
     expect(onAction).not.toHaveBeenCalledWith(expect.objectContaining({ type: 'reality/leave' }))
-
-    fireEvent.keyDown(document, { key: 'Escape' })
-    expect(screen.getByRole('dialog', { name: '先回到饼屋' })).toBeInTheDocument()
-
-    fireEvent.click(returnButton)
-    expect(screen.getByRole('status', { name: '正在回到饼屋' })).toBeInTheDocument()
-    await waitFor(() => {
-      expect(onPanel).toHaveBeenCalledWith(null)
-      expect(onAction).toHaveBeenCalledWith({ type: 'reality/leave', now: expect.any(Number) })
-    })
   })
 
   it('现实返回后由待结算弹窗确认奖励', () => {
@@ -1260,7 +1251,7 @@ describe('V4 壳层接线', () => {
       onExit: vi.fn(),
       onBackup: vi.fn(),
       onDismissReward: vi.fn(),
-      canEnterReality: () => true,
+      canUseTrend: () => true,
     }
 
     const pendingGame: GameState = {
@@ -1377,7 +1368,7 @@ describe('V4 壳层接线', () => {
       onExit: vi.fn(),
       onBackup: vi.fn(),
       onDismissReward: vi.fn(),
-      canEnterReality: () => true,
+      canUseTrend: () => true,
     } as const
     const { rerender } = render(<GameHome {...commonFocusProps} game={focusGame} now={2_000} />)
 

@@ -29,6 +29,7 @@ import {
   MAX_COMPANION_DAYS,
   MAX_ITEM_STACK,
   PET_ENCOURAGEMENT_APPLE_COST,
+  STREAM_FAVORITE_IDS,
 } from './constants'
 import {
   createDefaultGameBalance,
@@ -1071,11 +1072,14 @@ function setStreamSelfTest(
   })
 }
 
-function setStreamDimensionPenetration(
+function setStreamFavorite(
   state: GameState,
-  action: Extract<GameAction, { type: 'reality/stream-dimension-penetration-set' }>,
+  action: Extract<GameAction, { type: 'reality/stream-favorite-set' }>,
 ): GameTransition {
-  if (state.reality.streamSettings.dimensionPenetrationEnabled === action.enabled) {
+  if (!STREAM_FAVORITE_IDS.includes(action.favoriteId)) {
+    return fail(state, 'INVALID_STREAM_FAVORITE', '刷播收藏夹无效')
+  }
+  if (state.reality.streamSettings.favoriteId === action.favoriteId) {
     return succeed(state)
   }
   return succeed({
@@ -1084,7 +1088,7 @@ function setStreamDimensionPenetration(
       ...state.reality,
       streamSettings: {
         ...state.reality.streamSettings,
-        dimensionPenetrationEnabled: action.enabled,
+        favoriteId: action.favoriteId,
       },
     },
   })
@@ -1124,8 +1128,8 @@ function reducePreparedGame(
       return endStreamSession(state, action)
     case 'reality/stream-self-test-set':
       return setStreamSelfTest(state, action)
-    case 'reality/stream-dimension-penetration-set':
-      return setStreamDimensionPenetration(state, action)
+    case 'reality/stream-favorite-set':
+      return setStreamFavorite(state, action)
     case 'debug/apples-adjust':
       return adjustDebugApples(state, action)
     case 'debug/item-adjust':

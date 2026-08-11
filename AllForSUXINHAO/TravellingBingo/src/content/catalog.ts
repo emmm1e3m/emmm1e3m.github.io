@@ -20,7 +20,6 @@ export interface ContentCatalog {
   readonly friendById: Readonly<Record<string, FriendItem>>
   readonly videosByBvid: Readonly<Record<string, BilibiliVideoMetadata>>
   readonly recordPlayerVideos: readonly RecordPlayerVideo[]
-  readonly streamVideos: readonly BilibiliVideo[]
 }
 
 export type RecordPlayerVideo = BilibiliVideo & { readonly displayTitle: string }
@@ -147,7 +146,6 @@ export function mergeContentCatalogs(
     friendById: Object.freeze(mutableFriendIndex),
     videosByBvid: Object.freeze({ ...videoCatalog.videos }),
     recordPlayerVideos: Object.freeze(recordPlayerVideos),
-    streamVideos: Object.freeze([...videoCatalog.streamPlaylist.items]),
   })
 }
 

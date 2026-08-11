@@ -9,6 +9,7 @@ import {
   assertVideoCatalog,
   buildPublicVideoCatalog,
 } from '../research/bilibili-video-catalog-core.mjs'
+import { FAVOURITE_SOURCES, validateFavouriteFiles } from '../research/sync-bilibili-favourites.mjs'
 import { collectFontGlyphs } from './build-fonts.mjs'
 import {
   findMissingCodePoints,
@@ -49,6 +50,7 @@ const videoCatalogSourcePath = resolve(
   'research/travelling-bingo/data/bilibili-video-catalog.source.json',
 )
 const videoCatalogPublicPath = resolve(publicRoot, 'data/video-catalog.json')
+const favouritesRoot = resolve(workspaceRoot, 'AllForSUXINHAO/TravellingBingo/favourites')
 const postcardSourcePath = resolve(
   workspaceRoot,
   'research/travelling-bingo/data/postcards.source.json',
@@ -593,6 +595,13 @@ await verifyExactDirectory(
 const videoCatalogSource = JSON.parse(await readFile(videoCatalogSourcePath, 'utf8'))
 assertVideoCatalog(videoCatalogSource)
 const videoCatalog = JSON.parse(await readFile(videoCatalogPublicPath, 'utf8'))
+ensure(
+  !Object.hasOwn(videoCatalogSource.folders, 'streaming') &&
+    !Object.hasOwn(videoCatalogSource, 'streamPlaylist') &&
+    !Object.hasOwn(videoCatalog.folders, 'streaming') &&
+    !Object.hasOwn(videoCatalog, 'streamPlaylist'),
+  '视频目录仍含旧刷播收藏夹字段',
+)
 ensureJsonEqual(
   videoCatalog,
   buildPublicVideoCatalog(videoCatalogSource),
@@ -676,27 +685,15 @@ ensureJsonEqual(
   '唱片机必须精确使用全部 8 个全站第一（chronology 第 1–8 项）',
 )
 
-const expectedStreamBvids = ['BV1At3j6EE6w', 'BV1mkuN6HEFC', 'BV1UZ3D6REhZ']
-const streamFolder = videoCatalog.folders?.streaming
-const streamItems = videoCatalog.streamPlaylist?.items
-ensure(streamFolder?.favoriteId === 3963921644, '刷播目录不是指定收藏夹 3963921644')
+await verifyExactDirectory(
+  favouritesRoot,
+  FAVOURITE_SOURCES.map(({ id }) => `${id}.txt`),
+  '刷播收藏夹快照目录',
+)
+const favouriteSnapshots = await validateFavouriteFiles()
 ensure(
-  videoCatalog.streamPlaylist?.sourceFavoriteId === streamFolder.favoriteId,
-  '刷播目录来源与收藏夹快照不一致',
-)
-ensure(
-  Array.isArray(streamItems) && streamItems.length === streamFolder.visibleItemCount,
-  '刷播目录没有包含收藏夹全部可见视频',
-)
-ensureJsonEqual(
-  streamItems.map((video) => video.bvid),
-  expectedStreamBvids,
-  '刷播目录 BV 号或顺序不一致',
-)
-ensureJsonEqual(
-  streamFolder.latestPage.items,
-  streamItems.slice(0, streamFolder.latestPage.pageSize),
-  '刷播目录与收藏夹首页前缀不一致',
+  favouriteSnapshots.every(({ bvids }) => bvids.length > 0),
+  '刷播收藏夹快照不得为空',
 )
 
 const postcardSource = JSON.parse(await readFile(postcardSourcePath, 'utf8'))
@@ -1412,5 +1409,5 @@ ensure(
 await verifyExactDirectory(publicFontAssetRoot, expectedFontFileNames, '公开字体素材目录')
 
 console.log(
-  `素材校验通过：${publicCatalog.itemCount} 张百万直拍、${siteFirstPublicCatalog.itemCount} 项全站第一、${streamItems.length} 条刷播视频、${postcardSource.itemCount} 条明信片候选、${postcardPublicCatalog.itemCount} 张真实明信片（${expectedPostcardDerivativeCount} 个 WebP）、${friendCatalog.itemCount} 位好友、${Object.keys(videoCatalog.videos).length} 条视频、${expectedGameFileNames.size} 个 Demo 视觉文件及 ${fontManifest.fonts.length} 个 2500 常用字 WOFF2 字体一致；本地核验百万直拍原图 ${verifiedMillionOriginals}/${source.items.length}、明信片原图 ${verifiedPostcardOriginals}/${postcardPublicCatalog.itemCount}、字体母版 ${verifiedFontSources}/${expectedFonts.size}`,
+  `素材校验通过：${publicCatalog.itemCount} 张百万直拍、${siteFirstPublicCatalog.itemCount} 项全站第一、${favouriteSnapshots.map(({ bvids }) => bvids.length).join(' + ')} 条双收藏夹刷播快照、${postcardSource.itemCount} 条明信片候选、${postcardPublicCatalog.itemCount} 张真实明信片（${expectedPostcardDerivativeCount} 个 WebP）、${friendCatalog.itemCount} 位好友、${Object.keys(videoCatalog.videos).length} 条视频、${expectedGameFileNames.size} 个 Demo 视觉文件及 ${fontManifest.fonts.length} 个 2500 常用字 WOFF2 字体一致；本地核验百万直拍原图 ${verifiedMillionOriginals}/${source.items.length}、明信片原图 ${verifiedPostcardOriginals}/${postcardPublicCatalog.itemCount}、字体母版 ${verifiedFontSources}/${expectedFonts.size}`,
 )

@@ -29,7 +29,7 @@ async function exportAndExit(page: import('@playwright/test').Page) {
   return download
 }
 
-test('用户名、V9 收藏、魔法与现实字段可以下载并恢复', async ({ page }, testInfo) => {
+test('用户名、V10 收藏、魔法与现实字段可以下载并恢复', async ({ page }, testInfo) => {
   test.skip(testInfo.project.name !== 'chromium', '完整存档往返只在桌面项目验证')
   await startGame(page, { debug: true, seed: 'e2e-4', displayName: TEST_PLAYER_NAME })
   await setDebugDuration(page, '10 秒')
@@ -101,9 +101,9 @@ test('用户名、V9 收藏、魔法与现实字段可以下载并恢复', async
   expect(envelope).toMatchObject({
     format: 'travelling-bingo-save',
     schemaVersion: 1,
-    gameVersion: '0.9.0-demo.1',
+    gameVersion: '0.10.0-demo.1',
     payload: {
-      schemaVersion: 9,
+      schemaVersion: 10,
       profile: { debug: true, displayName: TEST_PLAYER_NAME, companionDays: 1 },
       economy: { apples: savedAppleCount },
       inventory: {

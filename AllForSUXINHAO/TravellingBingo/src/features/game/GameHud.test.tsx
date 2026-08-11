@@ -43,7 +43,6 @@ describe('GameHud', () => {
         onExit={vi.fn()}
         onCenter={vi.fn()}
         onRealityTimer={vi.fn()}
-        onVisitorStream={vi.fn()}
         onPetStatus={vi.fn()}
         onFridge={vi.fn()}
         onAlbum={vi.fn()}
@@ -87,7 +86,6 @@ describe('GameHud', () => {
       onExit: vi.fn(),
       onCenter: vi.fn(),
       onRealityTimer: vi.fn(),
-      onVisitorStream: vi.fn(),
       onPetStatus: vi.fn(),
       onFridge: vi.fn(),
       onAlbum: vi.fn(),
@@ -142,9 +140,6 @@ describe('GameHud', () => {
       )
     }
     expect(gameV4Styles).toMatch(
-      /\.game-hud--v4 \.reality-stay-timer,\s*\.game-hud--v4 \.visitor-stream-timer\s*\{[^}]*background:\s*#e5eff2;/su,
-    )
-    expect(gameV4Styles).toMatch(
       /\.game-hud--v4 \.exit-button--text,[^}]*\.game-page--v4 \.pet-status-bar,[^}]*\{[^}]*border-radius:\s*14px !important;/su,
     )
   })
@@ -191,7 +186,6 @@ describe('GameHud', () => {
       onExit: vi.fn(),
       onCenter: vi.fn(),
       onRealityTimer: vi.fn(),
-      onVisitorStream: vi.fn(),
       onPetStatus: vi.fn(),
       onFridge: vi.fn(),
       onAlbum: vi.fn(),
@@ -211,39 +205,6 @@ describe('GameHud', () => {
     ).toBeInTheDocument()
     rerender(<GameHud {...props} game={base} now={3_662_000} />)
     expect(screen.queryByText(/现实 \d+ 分钟/u)).not.toBeInTheDocument()
-  })
-
-  it('游客刷播显示当前轮次与下一轮倒计时，点击后打开刷播页', () => {
-    const game = createInitialGameState({ now: 1_000, seed: 'v4-visitor-timer' })
-    const onVisitorStream = vi.fn()
-
-    render(
-      <GameHud
-        game={game}
-        now={10_000}
-        activity={null}
-        timing={deriveActivityTiming(null, 10_000)}
-        dirty={false}
-        statusLabel={null}
-        vitalityDays={0}
-        visitorStream={{ round: 3, nextRoundRemainingSeconds: 65 }}
-        onExit={vi.fn()}
-        onCenter={vi.fn()}
-        onRealityTimer={vi.fn()}
-        onVisitorStream={onVisitorStream}
-        onPetStatus={vi.fn()}
-        onFridge={vi.fn()}
-        onAlbum={vi.fn()}
-        onDebug={vi.fn()}
-      />,
-    )
-
-    const visitorTimer = screen.getByRole('button', {
-      name: '游客刷播第 3 轮，01:05 后开始下一轮',
-    })
-    expect(visitorTimer).toHaveTextContent('游客 · 第 3 轮 · 01:05 后下一轮')
-    fireEvent.click(visitorTimer)
-    expect(onVisitorStream).toHaveBeenCalledOnce()
   })
 
   it('全站默认与可点击区域使用 CSS 内联 SVG 场景指针', () => {

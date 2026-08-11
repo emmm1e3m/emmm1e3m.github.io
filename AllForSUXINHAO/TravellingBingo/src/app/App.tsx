@@ -22,7 +22,7 @@ import { PwaUpdatePrompt, type InstallPwaUpdate } from '@/components/PwaUpdatePr
 import { loadContentCatalog, type ContentCatalog } from '@/content'
 import {
   createInitialGameState,
-  migrateStoredGameStateToV9,
+  migrateStoredGameStateToV10,
   normalizeImportedGameBalance,
   reconcileGameStateWithCatalog,
   suspendRealityLeaseAfterLoad,
@@ -51,7 +51,7 @@ import {
   type BingoSaveSummary,
 } from '@/infrastructure/persistence'
 
-const GAME_VERSION = '0.9.0-demo.1'
+const GAME_VERSION = '0.10.0-demo.1'
 const DEBUG_PASSWORD = 'TravellingBingo'
 const PERIODIC_BACKUP_INTERVAL_MS = 3 * 24 * 60 * 60 * 1_000
 
@@ -151,7 +151,7 @@ function prepareStoredGame(
   catalog: CollectionCatalog,
   now: number,
 ): GameState {
-  const migrated = migrateStoredGameStateToV9(stored, { now, catalog })
+  const migrated = migrateStoredGameStateToV10(stored, { now, catalog })
   const normalized = normalizeImportedGameBalance(migrated)
   const reconciled = reconcileGameStateWithCatalog(normalized, catalog)
   const suspended = suspendRealityLeaseAfterLoad(reconciled)
@@ -593,7 +593,7 @@ export function App({
         } else if (effect.type === 'task-progressed' && effect.completed) {
           setToast(
             <>
-              小事完成，收好 <AppleAmount value={effect.applesAwarded} />。
+              互动完成，收好 <AppleAmount value={effect.applesAwarded} />。
             </>,
           )
         } else if (effect.type === 'debug-applied') {

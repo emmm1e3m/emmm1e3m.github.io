@@ -16,6 +16,7 @@ import { migrateGameStateV5ToV6 } from './migrateGameStateV5'
 import { migrateGameStateV6ToV7 } from './migrateGameStateV6'
 import { migrateGameStateV7ToV8 } from './migrateGameStateV7'
 import { migrateGameStateV8ToV9 } from './migrateGameStateV8'
+import { migrateGameStateV9ToV10 } from './migrateGameStateV9'
 import { reduceGame } from './reducer'
 import type { CollectionCatalog, GameStateV2, GameTransition } from './types'
 import { MAX_DATE_TIMESTAMP_MS } from './time'
@@ -28,7 +29,7 @@ const catalog: CollectionCatalog = {
 }
 
 function migrateGameStateV7ToCurrent(state: Parameters<typeof migrateGameStateV7ToV8>[0]) {
-  return migrateGameStateV8ToV9(migrateGameStateV7ToV8(state))
+  return migrateGameStateV9ToV10(migrateGameStateV8ToV9(migrateGameStateV7ToV8(state)))
 }
 
 function successful(transition: GameTransition): Extract<GameTransition, { ok: true }> {

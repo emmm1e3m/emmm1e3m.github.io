@@ -1,6 +1,6 @@
 import { generateActivityPreferences } from '../pet/preferences'
 import { generateTaskBoard } from '../tasks/taskBoard'
-import { INITIAL_APPLES, INITIAL_INVENTORY } from './constants'
+import { DEFAULT_STREAM_FAVORITE_ID, INITIAL_APPLES, INITIAL_INVENTORY } from './constants'
 import { createDefaultGameBalance } from './gameBalance'
 import { normalizeDisplayName } from './profile'
 import { assertValidTimestamp } from './time'
@@ -28,7 +28,7 @@ export function createInitialGameState(options: InitialGameOptions): GameState {
   })
 
   return {
-    schemaVersion: 9,
+    schemaVersion: 10,
     profile: {
       createdAt: options.now,
       debug: options.debug ?? false,
@@ -80,7 +80,7 @@ export function createInitialGameState(options: InitialGameOptions): GameState {
       },
       streamSettings: {
         selfTestBvid: null,
-        dimensionPenetrationEnabled: false,
+        favoriteId: DEFAULT_STREAM_FAVORITE_ID,
       },
     },
     musicPlayer: {

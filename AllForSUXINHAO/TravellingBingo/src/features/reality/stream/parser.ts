@@ -1,6 +1,6 @@
 import { BILIBILI_BVID_PATTERN } from '@/domain'
 
-export type StreamInputErrorCode = 'invalid-bvid' | 'empty-catalog'
+export type StreamInputErrorCode = 'invalid-bvid'
 
 export interface StreamInputError {
   readonly line: 0 | 1
@@ -59,50 +59,4 @@ export function parseStreamSelfTestInput(input: string): StreamParseResult {
       },
     ],
   }
-}
-
-export function buildStreamQueue(
-  selfTestBvid: string | null,
-  catalogBvids: readonly string[],
-  random: () => number = Math.random,
-) {
-  const queue = [...new Set(catalogBvids)].filter((bvid) => bvid !== selfTestBvid)
-  for (let index = queue.length - 1; index > 0; index -= 1) {
-    const target = Math.floor(random() * (index + 1))
-    ;[queue[index], queue[target]] = [queue[target]!, queue[index]!]
-  }
-  if (selfTestBvid !== null) queue.push(selfTestBvid)
-  return queue
-}
-
-export function emptyStreamCatalogResult(): StreamParseResult {
-  return {
-    ok: false,
-    bvid: null,
-    errors: [
-      {
-        line: 0,
-        input: '',
-        code: 'empty-catalog',
-        message: '静态刷播收藏夹里暂时没有视频。',
-      },
-    ],
-  }
-}
-
-export function buildStreamVideoUrl(bvid: string) {
-  return `https://www.bilibili.com/video/${bvid}/?autoplay=1&t=0`
-}
-
-/** 官方跨站播放器仅作为实验性游客刷播载体，父页面不读取其内部状态。 */
-export function buildVisitorStreamUrl(bvid: string) {
-  const query = new URLSearchParams({
-    bvid,
-    p: '1',
-    autoplay: '1',
-    danmaku: '0',
-    t: '0',
-    muted: '1',
-  })
-  return `https://player.bilibili.com/player.html?${query.toString()}`
 }

@@ -7,7 +7,9 @@ const workspaceRoot = resolve(fileURLToPath(new URL('../..', import.meta.url)))
 const outputRoot = resolve(workspaceRoot, '_site')
 const buildRoot = resolve(workspaceRoot, 'dist/travelling-bingo')
 const rootEntry = resolve(workspaceRoot, 'index.html')
-const standalonePlayerEntry = resolve(buildRoot, 'bilibili-multi-player.html')
+const streamPlayerEntry = resolve(buildRoot, 'stream-player.html')
+const favouriteRoot = resolve(buildRoot, 'favourites')
+const expectedFavouriteFiles = ['3682220021.txt', '3986840044.txt']
 const runId = `${process.pid}-${randomUUID()}`
 const stagingRoot = resolve(workspaceRoot, `_site.__staging-${runId}`)
 const backupRoot = resolve(workspaceRoot, `_site.__backup-${runId}`)
@@ -62,7 +64,16 @@ assertOwnedDirectory(backupRoot, /^_site\.__backup-[\w-]+$/u)
 await requireRegularFile(rootEntry, '根首页')
 await requireDirectory(buildRoot, 'TravellingBingo 构建产物')
 await requireRegularFile(resolve(buildRoot, 'index.html'), 'TravellingBingo 构建入口')
-await requireRegularFile(standalonePlayerEntry, 'B站多播放器独立页')
+await requireRegularFile(streamPlayerEntry, '刷播独立页')
+await requireDirectory(favouriteRoot, '刷播收藏夹快照目录')
+const favouriteEntries = await readdir(favouriteRoot, { withFileTypes: true })
+const actualFavouriteFiles = favouriteEntries.map((entry) => entry.name).sort()
+if (
+  favouriteEntries.some((entry) => !entry.isFile()) ||
+  JSON.stringify(actualFavouriteFiles) !== JSON.stringify(expectedFavouriteFiles)
+) {
+  throw new Error(`刷播收藏夹快照目录不精确：${actualFavouriteFiles.join(', ') || '为空'}`)
+}
 await rejectSymbolicLinks(buildRoot)
 
 let outputBackedUp = false

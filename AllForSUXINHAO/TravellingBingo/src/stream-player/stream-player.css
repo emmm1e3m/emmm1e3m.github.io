@@ -1,0 +1,368 @@
+html {
+  background:
+    radial-gradient(circle at 12% 8%, rgb(255 255 255 / 78%) 0 11%, transparent 32%),
+    linear-gradient(150deg, #f4dfcf, #fff7ee 56%, #f6d9da);
+}
+
+body {
+  background: transparent;
+}
+
+#stream-player-root {
+  min-height: 100dvh;
+}
+
+.stream-page {
+  width: min(100%, 470px);
+  min-height: 100dvh;
+  margin: 0 auto;
+  padding: clamp(18px, 5vw, 30px) clamp(14px, 4vw, 24px) 34px;
+}
+
+.stream-hero {
+  padding: 8px 4px 18px;
+}
+
+.stream-hero h1 {
+  margin: 14px 0 8px;
+  font-family: var(--display-font);
+  font-size: clamp(2rem, 9vw, 3rem);
+  line-height: 1.02;
+  letter-spacing: 0.02em;
+}
+
+.stream-hero p {
+  margin: 0;
+  color: var(--muted);
+  font-size: 0.95rem;
+  line-height: 1.65;
+}
+
+.stream-card {
+  margin-bottom: 14px;
+  padding: clamp(16px, 4.5vw, 22px);
+  border: 2px solid #d7b693;
+  border-radius: 24px 18px 25px 20px;
+  background: rgb(255 250 245 / 94%);
+  box-shadow: var(--soft-shadow);
+}
+
+.stream-card h2,
+.stream-card p {
+  margin-top: 0;
+}
+
+.stream-card h2 {
+  margin-bottom: 0;
+  font-family: var(--display-font);
+  font-size: 1.32rem;
+  line-height: 1.25;
+}
+
+.stream-card__heading {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.stream-eyebrow {
+  margin-bottom: 4px;
+  color: var(--apple);
+  font-size: 0.72rem;
+  font-weight: 900;
+  letter-spacing: 0.12em;
+}
+
+.stream-status {
+  display: inline-flex;
+  flex: 0 1 auto;
+  align-items: center;
+  min-height: 34px;
+  padding: 7px 10px;
+  border: 1.5px solid #d7b693;
+  border-radius: 999px;
+  color: #684c46;
+  background: #fff1df;
+  font-size: 0.74rem;
+  font-weight: 800;
+  line-height: 1.25;
+  text-align: center;
+}
+
+.stream-status--opening,
+.stream-status--loading {
+  color: #7c4b1b;
+  background: #ffe7b1;
+}
+
+.stream-status--waiting {
+  color: #315d4b;
+  border-color: #a7c5af;
+  background: #e3f0e5;
+}
+
+.stream-status--completed {
+  color: #fff;
+  border-color: var(--apple-dark);
+  background: var(--apple);
+}
+
+.stream-status--error,
+.stream-status--stopped {
+  color: #765752;
+  background: #eee5df;
+}
+
+.stream-facts {
+  display: grid;
+  gap: 8px;
+  margin: 18px 0 0;
+}
+
+.stream-config {
+  display: grid;
+  gap: 8px;
+  padding: 14px;
+  margin: 18px 0 0;
+  border: 1.5px solid #d7b693;
+  border-radius: 16px;
+  background: #fff4e8;
+}
+
+.stream-config:disabled {
+  opacity: 0.72;
+}
+
+.stream-config legend,
+.stream-config label,
+.stream-config__label {
+  font-size: 0.78rem;
+  font-weight: 800;
+}
+
+.stream-config legend {
+  padding: 0 6px;
+  color: var(--apple-dark);
+}
+
+.stream-config input[type='text'],
+.stream-config input[type='number'],
+.stream-config select {
+  width: 100%;
+  min-height: 44px;
+  padding: 8px 11px;
+  border: 1.5px solid #c99d7f;
+  border-radius: 12px;
+  color: var(--ink);
+  background: #fff;
+}
+
+.stream-radio-group {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 8px;
+}
+
+.stream-radio-group label {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 7px;
+  min-height: 44px;
+  padding: 8px 10px;
+  border: 1.5px solid #c99d7f;
+  border-radius: 12px;
+  background: #fff;
+}
+
+.stream-radio-group input {
+  width: 18px;
+  height: 18px;
+  accent-color: var(--apple);
+}
+
+.stream-facts div {
+  display: grid;
+  grid-template-columns: minmax(92px, 0.7fr) minmax(0, 1.3fr);
+  gap: 12px;
+  padding: 9px 0;
+  border-bottom: 1px dashed #d7b693;
+}
+
+.stream-facts dt {
+  color: var(--muted);
+  font-size: 0.82rem;
+}
+
+.stream-facts dd {
+  min-width: 0;
+  margin: 0;
+  overflow-wrap: anywhere;
+  font-weight: 800;
+  text-align: right;
+}
+
+.stream-message {
+  margin: 14px 0 0;
+  color: var(--muted);
+  font-size: 0.86rem;
+  line-height: 1.55;
+}
+
+.stream-message--error {
+  color: var(--apple-dark);
+}
+
+.stream-actions {
+  display: flex;
+  gap: 10px;
+  margin-top: 18px;
+}
+
+.stream-actions .paper-button {
+  flex: 1;
+}
+
+.stream-debug-unlock form,
+.stream-debug {
+  display: grid;
+  gap: 12px;
+}
+
+.stream-debug-unlock label,
+.stream-debug > label:not(.stream-check) {
+  font-size: 0.82rem;
+  font-weight: 800;
+}
+
+.stream-debug-unlock input,
+.stream-debug input[type='number'] {
+  width: 100%;
+  min-height: 46px;
+  padding: 9px 12px;
+  border: 2px solid #c99d7f;
+  border-radius: 14px;
+  color: var(--ink);
+  background: #fff;
+}
+
+.stream-check {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  min-height: 46px;
+  padding: 10px 12px;
+  border: 1.5px solid #d7b693;
+  border-radius: 14px;
+  background: #fff4e8;
+  font-weight: 800;
+}
+
+.stream-check input {
+  width: 20px;
+  height: 20px;
+  accent-color: var(--apple);
+}
+
+.stream-debug__row {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: 8px;
+}
+
+.stream-history {
+  display: grid;
+  gap: 8px;
+  padding: 0;
+  margin: 16px 0 0;
+  list-style: none;
+}
+
+.stream-history li {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto auto;
+  align-items: center;
+  gap: 10px;
+  padding: 10px 12px;
+  border-radius: 13px;
+  background: #fff2e4;
+  font-size: 0.78rem;
+}
+
+.stream-history strong {
+  color: var(--apple-dark);
+}
+
+.stream-frames--hidden {
+  position: fixed;
+  top: 0;
+  left: -10000px;
+  z-index: -1;
+  width: 640px;
+  height: 360px;
+  overflow: hidden;
+  opacity: 0.001;
+  pointer-events: none;
+}
+
+.stream-frames--visible {
+  width: min(100%, 920px);
+  margin: 0 auto 24px;
+  padding: 18px;
+  border: 2px solid var(--debug);
+  border-radius: 20px;
+  background: #fffaf5;
+  box-shadow: var(--soft-shadow);
+}
+
+.stream-frames--visible h2 {
+  margin: 0 0 14px;
+  font-family: var(--display-font);
+}
+
+.stream-frame-grid {
+  display: grid;
+  gap: 12px;
+}
+
+.stream-frames--visible .stream-frame {
+  overflow: hidden;
+  border: 1.5px solid #c99d7f;
+  border-radius: 14px;
+  background: #2b211f;
+}
+
+.stream-frame p {
+  margin: 0;
+  padding: 7px 10px;
+  color: #fff7ed;
+  font-size: 0.76rem;
+}
+
+.stream-frame iframe {
+  display: block;
+  width: 640px;
+  height: 360px;
+  border: 0;
+}
+
+.stream-frames--visible .stream-frame iframe {
+  width: 100%;
+  aspect-ratio: 16 / 9;
+  height: auto;
+}
+
+@media (max-width: 420px) {
+  .stream-card__heading {
+    display: grid;
+  }
+
+  .stream-status {
+    width: fit-content;
+  }
+
+  .stream-debug__row {
+    grid-template-columns: 1fr;
+  }
+}

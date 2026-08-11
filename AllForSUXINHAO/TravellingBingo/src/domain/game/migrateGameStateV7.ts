@@ -7,11 +7,11 @@ import {
   type StoredGameStateThroughV7,
 } from './migrateGameStateV6'
 import type { MigrateGameStateV3Options } from './migrateGameStateV3'
-import type { GameStateV7, GameStateV8, StreamSettings } from './types'
+import type { GameStateV7, GameStateV8, StreamSettingsV8 } from './types'
 
 const bvid = z.string().regex(BILIBILI_BVID_PATTERN)
 
-const streamSettingsSchema: z.ZodType<StreamSettings> = z.strictObject({
+const streamSettingsSchema: z.ZodType<StreamSettingsV8> = z.strictObject({
   selfTestBvid: bvid.nullable(),
   dimensionPenetrationEnabled: z.boolean(),
 })

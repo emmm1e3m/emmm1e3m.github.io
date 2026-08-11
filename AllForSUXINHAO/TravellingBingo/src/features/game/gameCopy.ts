@@ -5,7 +5,7 @@ export const ITEM_COPY: Record<ItemId, { emoji: string; name: string; note: stri
   'travel-apple': {
     emoji: '🍎',
     name: '苹果旅行便当',
-    note: '常规遇友概率增加 100%',
+    note: '让这次旅行遇见朋友的机会翻倍',
   },
   'signal-headphones': { emoji: '🎧', name: '信号耳机', note: '陪饼狗认真刷播一次' },
   'trend-toolbox': {
@@ -13,7 +13,7 @@ export const ITEM_COPY: Record<ItemId, { emoji: string; name: string; note: stri
     name: '热度工具箱',
     note: '陪饼狗向全站第一冲刺',
   },
-  'lucky-apple': { emoji: '🍀', name: '幸运苹果', note: '常规收藏概率增加 100%' },
+  'lucky-apple': { emoji: '🍀', name: '幸运苹果', note: '让这次留下收藏的机会翻倍' },
   'bottled-speed-magic': {
     emoji: '⚡',
     name: '瓶装速度魔法',
