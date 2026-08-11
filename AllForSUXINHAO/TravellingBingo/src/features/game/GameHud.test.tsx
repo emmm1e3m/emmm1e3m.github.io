@@ -8,6 +8,15 @@ import gameV4Styles from './game-v4.css?raw'
 import { GameHud } from './GameHud'
 
 describe('GameHud', () => {
+  it('整条顶栏及其文字控件统一使用乐融融', () => {
+    expect(gameV4Styles).toMatch(
+      /\.game-page--v4 \.game-hud--v4\s*\{[^}]*font-family:\s*var\(--font-display\);/su,
+    )
+    expect(gameV4Styles).toMatch(
+      /\.game-page--v4 \.game-hud--v4 :where\(button, strong, small, span, time, output\)\s*\{[^}]*font-family:\s*var\(--font-display\);/su,
+    )
+  })
+
   it('移动端苹果、收藏墙和调试入口保留至少 44px 的真实触控面', () => {
     expect(gameV4Styles).toContain(
       '.game-page--v4 .game-hud--v4 .hud-icon--album {\n  width: 44px;\n  min-width: 44px;\n  height: 44px;\n  flex: 0 0 44px;',

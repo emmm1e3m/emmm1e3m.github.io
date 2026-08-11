@@ -35,14 +35,21 @@ function createProps(actions = createActions()): WorkPanelProps {
     },
     unlockedBackgrounds: [
       {
+        kind: 'postcard',
+        ref: { kind: 'postcard', id: 'postcard-1' },
         id: 'postcard-1',
         title: '海边明信片',
         thumbnailUrl: '/postcard-1.webp',
         aspectRatio: 2 / 3,
       },
-      { id: 'postcard-2', title: '晚霞明信片' },
+      {
+        kind: 'postcard',
+        ref: { kind: 'postcard', id: 'postcard-2' },
+        id: 'postcard-2',
+        title: '晚霞明信片',
+      },
     ],
-    selectedBackgroundId: 'postcard-1',
+    selectedBackground: { kind: 'postcard', id: 'postcard-1' },
     todos: [
       { id: 'todo-1', title: '整理旅行照片', completed: false, dueLabel: '今天' },
       { id: 'todo-2', title: '写一封信', completed: true },
@@ -60,7 +67,7 @@ describe('WorkPanel', () => {
       within(container)
         .getAllByRole('heading', { level: 3 })
         .map((heading) => heading.textContent),
-    ).toEqual(['设置苹果钟与提醒', '待办清单', '陪伴明信片'])
+    ).toEqual(['设置苹果钟与提醒', '待办清单', '陪伴背景'])
     const settings = screen.getByRole('region', { name: '设置苹果钟与提醒' })
     expect(settings).toContainElement(screen.getByRole('button', { name: '开始苹果钟' }))
     expect(screen.queryByText('准备开始')).not.toBeInTheDocument()
@@ -74,18 +81,23 @@ describe('WorkPanel', () => {
     const { container } = render(<WorkPanel {...props} />)
 
     expect(
-      screen.getByText('选一张喜欢的明信片，让饼狗陪你专注一会儿，再把今天的小事一件件完成。'),
+      screen.getByText(
+        '选一张喜欢的明信片或奇迹合拍，让饼狗陪你专注一会儿，再把今天的小事一件件完成。',
+      ),
     ).toBeVisible()
     const selectedDuration = screen.getByRole('button', { name: /25 分钟/u })
     expect(selectedDuration).toHaveAttribute('aria-pressed', 'true')
     fireEvent.click(screen.getByRole('button', { name: /50 分钟/u }))
     expect(actions.onDurationChange).toHaveBeenCalledWith(50 * 60 * 1_000)
 
-    fireEvent.click(screen.getByRole('button', { name: '选择陪伴明信片' }))
+    fireEvent.click(screen.getByRole('button', { name: '选择陪伴背景' }))
     fireEvent.click(screen.getByRole('radio', { name: /晚霞明信片/u }))
-    expect(actions.onBackgroundChange).toHaveBeenCalledWith('postcard-2')
+    expect(actions.onBackgroundChange).toHaveBeenCalledWith({
+      kind: 'postcard',
+      id: 'postcard-2',
+    })
 
-    fireEvent.click(screen.getByRole('button', { name: '选择陪伴明信片' }))
+    fireEvent.click(screen.getByRole('button', { name: '选择陪伴背景' }))
     fireEvent.click(screen.getByRole('radio', { name: /默认纸张/u }))
     expect(actions.onBackgroundChange).toHaveBeenCalledWith(null)
 
@@ -121,13 +133,13 @@ describe('WorkPanel', () => {
 
   it('在入口卡片预览当前明信片，并在默认纸张与图片背景间切换', () => {
     const props = createProps()
-    const { container, rerender } = render(<WorkPanel {...props} selectedBackgroundId={null} />)
+    const { container, rerender } = render(<WorkPanel {...props} selectedBackground={null} />)
     const preview = container.querySelector('.reality-postcard-picker__preview')
 
     expect(preview).toHaveAttribute('data-background-id', 'plain')
     expect(screen.getAllByText('默认纸张').length).toBeGreaterThan(0)
 
-    rerender(<WorkPanel {...props} selectedBackgroundId="postcard-1" />)
+    rerender(<WorkPanel {...props} selectedBackground={{ kind: 'postcard', id: 'postcard-1' }} />)
 
     const background = container.querySelector<HTMLImageElement>(
       '.reality-postcard-picker__preview img',
@@ -135,7 +147,7 @@ describe('WorkPanel', () => {
     expect(preview).toHaveAttribute('data-background-id', 'postcard-1')
     expect(background).toHaveAttribute('src', '/postcard-1.webp')
     expect(preview).toHaveStyle({ '--postcard-preview-width': '112px' })
-    expect(screen.getByText('明信片 · 海边明信片')).toBeVisible()
+    expect(screen.getByText('背景 · 海边明信片')).toBeVisible()
   })
 
   it('计时中锁定设置与明信片，二次确认后才取消且明确不计下一天', async () => {
@@ -159,7 +171,7 @@ describe('WorkPanel', () => {
 
     expect(screen.getByRole('status')).toHaveTextContent('专注中')
     expect(screen.getByRole('button', { name: '开始苹果钟' })).toBeDisabled()
-    expect(screen.getByRole('button', { name: '选择陪伴明信片' })).toBeDisabled()
+    expect(screen.getByRole('button', { name: '选择陪伴背景' })).toBeDisabled()
 
     const cancelTimer = screen.getByRole('button', { name: '取消本次计时' })
     expect(cancelTimer).toHaveClass('reality-danger-button')

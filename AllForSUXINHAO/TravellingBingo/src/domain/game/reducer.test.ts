@@ -22,7 +22,7 @@ import {
   LUCKY_APPLE_COLLECTION_BASE_BONUS_RATE,
   TRAVEL_FRIEND_GIFT_APPLES_BY_ID,
 } from './gameBalance'
-import { gameStateV11Schema } from './migrateGameStateV10'
+import { gameStateV12Schema } from './migrateGameStateV11'
 import { reduceGame } from './reducer'
 import { MAX_DATE_TIMESTAMP_MS } from './time'
 import type {
@@ -108,11 +108,11 @@ function seedWhoseRewardRollIsBetween(minimum: number, maximum: number, rollInde
   throw new Error(`没有找到位于 [${minimum}, ${maximum}) 的第 ${rollIndex + 1} 次奖励随机值`)
 }
 
-describe('旅行饼狗 v10 领域状态', () => {
-  it('新游戏使用 schema v10、用户名、零天陪伴、10 秒活动与独立随机序列', () => {
+describe('旅行饼狗 V12 领域状态', () => {
+  it('新游戏使用 schema V12、用户名、零天陪伴、10 秒活动与独立随机序列', () => {
     const state = createInitialGameState({ now: 1_000, seed: 'save-seed' })
 
-    expect(state.schemaVersion).toBe(11)
+    expect(state.schemaVersion).toBe(12)
     expect(state.reality.streamHistory).toEqual({ completedRounds: 0, recentSessions: [] })
     expect(state.reality.streamSettings).toEqual({
       selfTestBvid: null,
@@ -184,7 +184,7 @@ describe('旅行饼狗 v10 领域状态', () => {
       selfTestBvid: null,
       favoriteId: STREAM_FAVORITE_IDS[1],
     })
-    expect(gameStateV11Schema.safeParse(cleared).success).toBe(true)
+    expect(gameStateV12Schema.safeParse(cleared).success).toBe(true)
   })
 
   it('拒绝非法自测 BV，且不改写原状态', () => {
@@ -1001,7 +1001,7 @@ describe('旅行饼狗 v10 领域状态', () => {
         giftApples: 2,
       },
     })
-    expect(gameStateV11Schema.safeParse(claimed.state).success).toBe(true)
+    expect(gameStateV12Schema.safeParse(claimed.state).success).toBe(true)
   })
 
   it('电子琴只召来已认识朋友，领取后赠苹果并累计好友赠礼', () => {
@@ -1258,7 +1258,7 @@ describe('旅行饼狗 v10 领域状态', () => {
     expect(restClaimed.statistics.started.rest).toBe(Number.MAX_SAFE_INTEGER)
     expect(restClaimed.statistics.claimed.rest).toBe(Number.MAX_SAFE_INTEGER)
     expect(restClaimed.statistics.applesEarned).toBe(Number.MAX_SAFE_INTEGER)
-    expect(gameStateV11Schema.safeParse(restClaimed).success).toBe(true)
+    expect(gameStateV12Schema.safeParse(restClaimed).success).toBe(true)
   })
 
   it('活动统计达到上限后饱和，仍可生成可导出的活动状态', () => {
@@ -1276,7 +1276,7 @@ describe('旅行饼狗 v10 领域状态', () => {
     ).state
     expect(started.statistics.started.travel).toBe(Number.MAX_SAFE_INTEGER)
     expect(started.random.sequences.reward).toBe(1)
-    expect(gameStateV11Schema.safeParse(started).success).toBe(true)
+    expect(gameStateV12Schema.safeParse(started).success).toBe(true)
   })
 
   it('结束时间超出 Date 上限时在扣补给与推进随机序列前拒绝开始', () => {

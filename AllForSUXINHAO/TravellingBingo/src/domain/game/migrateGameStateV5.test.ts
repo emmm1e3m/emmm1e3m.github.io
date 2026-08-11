@@ -7,13 +7,38 @@ import {
   migrateGameStateV5ToV6,
   migrateStoredGameStateToV6,
 } from './migrateGameStateV5'
-import type { CollectionCatalog, GameStateV5, GameStateV6 } from './types'
+import type {
+  CollectionCatalog,
+  GameStateV5,
+  GameStateV6,
+  PomodoroState,
+  PomodoroStateV12,
+} from './types'
 
 const catalog: CollectionCatalog = {
   postcard: ['postcard-1'],
   'million-shot': ['million-1'],
   'site-first': ['site-first-1'],
   siteFirstChronology: ['site-first-1'],
+}
+
+function projectPomodoroV12ToLegacy(pomodoro: PomodoroStateV12): PomodoroState {
+  const session =
+    pomodoro.session === null
+      ? null
+      : (() => {
+          const { background, ...legacySession } = pomodoro.session
+          return {
+            ...legacySession,
+            postcardId: background?.kind === 'postcard' ? background.id : null,
+          }
+        })()
+  return {
+    nextSessionSequence: pomodoro.nextSessionSequence,
+    selectedPostcardId:
+      pomodoro.selectedBackground?.kind === 'postcard' ? pomodoro.selectedBackground.id : null,
+    session,
+  }
 }
 
 function v5Fixture(): GameStateV5 {
@@ -23,7 +48,7 @@ function v5Fixture(): GameStateV5 {
     activeStay: current.reality.activeStay,
     pendingSettlement: current.reality.pendingSettlement,
     todos: current.reality.todos,
-    pomodoro: current.reality.pomodoro,
+    pomodoro: projectPomodoroV12ToLegacy(current.reality.pomodoro),
   }
   const { wardrobe: _wardrobe, ...withoutWardrobe } = current
   void _wardrobe

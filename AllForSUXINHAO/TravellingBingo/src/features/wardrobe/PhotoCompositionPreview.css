@@ -5,7 +5,39 @@
   overflow: hidden;
   overflow: clip;
   isolation: isolate;
+  container-type: size;
   background: #fffaf2;
+}
+
+.photo-composition--contain,
+.photo-composition--cover {
+  height: 100%;
+  aspect-ratio: auto;
+}
+
+.photo-composition__canvas {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+}
+
+.photo-composition--cover .photo-composition__canvas {
+  inset: auto;
+  left: 50%;
+  top: 50%;
+  width: max(100cqw, calc(100cqh * var(--photo-aspect-ratio)));
+  height: max(100cqh, calc(100cqw / var(--photo-aspect-ratio)));
+  transform: translate(-50%, -50%);
+}
+
+.photo-composition--contain .photo-composition__canvas {
+  inset: auto;
+  left: 50%;
+  top: 50%;
+  width: min(100cqw, calc(100cqh * var(--photo-aspect-ratio)));
+  height: min(100cqh, calc(100cqw / var(--photo-aspect-ratio)));
+  transform: translate(-50%, -50%);
 }
 
 .photo-composition__postcard,
@@ -31,12 +63,12 @@
 .photo-composition__participant {
   position: absolute;
   display: block;
-  aspect-ratio: 1;
   transform-origin: center;
 }
 
 .photo-composition__character,
-.photo-composition__element {
+.photo-composition__element,
+.photo-composition__decoration {
   position: absolute;
   display: block;
   max-width: none;
@@ -51,8 +83,8 @@
   object-fit: contain;
 }
 
-.photo-composition__element {
-  aspect-ratio: 1;
+.photo-composition__element,
+.photo-composition__decoration {
   height: auto;
   transform-origin: center;
   object-fit: contain;

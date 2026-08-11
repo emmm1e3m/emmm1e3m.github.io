@@ -51,20 +51,25 @@ export function reconcileGameStateWithCatalog(
     catalog[plannedCollection.category].includes(plannedCollection.id) &&
     state.collections[plannedCollection.id] !== undefined
 
-  const selectedPostcardId = state.reality.pomodoro.selectedPostcardId
-  const sessionPostcardId = state.reality.pomodoro.session?.postcardId ?? null
+  const selectedBackground = state.reality.pomodoro.selectedBackground
+  const sessionBackground = state.reality.pomodoro.session?.background ?? null
   const isUsablePostcard = (id: string | null): boolean =>
     id === null || (catalog.postcard.includes(id) && state.collections[id] !== undefined)
-  const clearsSelectedPostcard = !isUsablePostcard(selectedPostcardId)
-  const clearsSessionPostcard = !isUsablePostcard(sessionPostcardId)
+  const isUsablePomodoroBackground = (background: typeof selectedBackground): boolean =>
+    background === null ||
+    (background.kind === 'postcard'
+      ? isUsablePostcard(background.id)
+      : state.wardrobe.photos[background.id] !== undefined)
+  const clearsSelectedBackground = !isUsablePomodoroBackground(selectedBackground)
+  const clearsSessionBackground = !isUsablePomodoroBackground(sessionBackground)
   const clearsPhotoBackgrounds = Object.values(state.wardrobe.photos).some(
     (photo) => !isUsablePostcard(photo.postcardId),
   )
   if (
     !repairsTaskBoard &&
     !clearsPlannedCollection &&
-    !clearsSelectedPostcard &&
-    !clearsSessionPostcard &&
+    !clearsSelectedBackground &&
+    !clearsSessionBackground &&
     !clearsPhotoBackgrounds
   ) {
     return state
@@ -89,14 +94,14 @@ export function reconcileGameStateWithCatalog(
         }
       : state.activeActivity,
     reality:
-      clearsSelectedPostcard || clearsSessionPostcard
+      clearsSelectedBackground || clearsSessionBackground
         ? {
             ...state.reality,
             pomodoro: {
               ...state.reality.pomodoro,
-              selectedPostcardId: clearsSelectedPostcard ? null : selectedPostcardId,
-              session: clearsSessionPostcard
-                ? { ...state.reality.pomodoro.session!, postcardId: null }
+              selectedBackground: clearsSelectedBackground ? null : selectedBackground,
+              session: clearsSessionBackground
+                ? { ...state.reality.pomodoro.session!, background: null }
                 : state.reality.pomodoro.session,
             },
           }

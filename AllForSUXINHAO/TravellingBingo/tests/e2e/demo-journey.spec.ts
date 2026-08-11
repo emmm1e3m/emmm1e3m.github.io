@@ -29,7 +29,7 @@ async function exportAndExit(page: import('@playwright/test').Page) {
   return download
 }
 
-test('用户名、V11 收藏、魔法与现实字段可以下载并恢复', async ({ page }, testInfo) => {
+test('用户名、V12 收藏、魔法与现实字段可以下载并恢复', async ({ page }, testInfo) => {
   test.skip(testInfo.project.name !== 'chromium', '完整存档往返只在桌面项目验证')
   await startGame(page, { debug: true, seed: 'e2e-4', displayName: TEST_PLAYER_NAME })
   await setDebugDuration(page, '10 秒')
@@ -81,8 +81,14 @@ test('用户名、V11 收藏、魔法与现实字段可以下载并恢复', asyn
         activeStay: unknown
         pendingSettlement: unknown
         todos: Record<string, unknown>
-        pomodoro: { selectedPostcardId: unknown; session: unknown }
+        pomodoro: { selectedBackground: unknown; session: unknown }
         streamHistory: { completedRounds: number; recentSessions: unknown[] }
+        streamDailyReward: { lastRewardDateKey: string | null }
+      }
+      wardrobe: {
+        layoutVersion: number
+        looks: Record<string, unknown>
+        photos: Record<string, { decorations: unknown[] }>
       }
       musicPlayer: {
         currentBvid: unknown
@@ -101,9 +107,9 @@ test('用户名、V11 收藏、魔法与现实字段可以下载并恢复', asyn
   expect(envelope).toMatchObject({
     format: 'travelling-bingo-save',
     schemaVersion: 1,
-    gameVersion: '0.10.0',
+    gameVersion: '0.10.1',
     payload: {
-      schemaVersion: 11,
+      schemaVersion: 12,
       profile: { debug: true, displayName: TEST_PLAYER_NAME, companionDays: 1 },
       economy: { apples: savedAppleCount },
       inventory: {
@@ -119,9 +125,11 @@ test('用户名、V11 收藏、魔法与现实字段可以下载并恢复', asyn
         activeStay: null,
         pendingSettlement: null,
         todos: {},
-        pomodoro: { selectedPostcardId: null, session: null },
+        pomodoro: { selectedBackground: null, session: null },
         streamHistory: { completedRounds: 0, recentSessions: [] },
+        streamDailyReward: { lastRewardDateKey: null },
       },
+      wardrobe: { layoutVersion: 2, looks: {}, photos: {} },
       musicPlayer: {
         currentBvid: null,
         currentIndex: 0,

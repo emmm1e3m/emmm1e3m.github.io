@@ -285,12 +285,28 @@ test('DEBUG 全收集包含好友，Survivors 自动播放，并可清空收集'
 
   await album.getByRole('tab', { name: '百万直拍' }).click()
   await page.route('https://player.bilibili.com/**', async (route) => route.abort())
-  await album.getByRole('button', { name: /Survivors，百万直拍，打开详情/u }).click()
+  const survivorsCard = album.getByRole('button', {
+    name: /Survivors，百万直拍，打开详情/u,
+  })
+  const forYouCard = album.getByRole('button', {
+    name: /For you，百万直拍，打开详情/u,
+  })
+  const [survivorsBox, forYouBox] = await Promise.all([
+    survivorsCard.boundingBox(),
+    forYouCard.boundingBox(),
+  ])
+  expect(survivorsBox && forYouBox).toBeTruthy()
+  expect(forYouBox!.y).toBeGreaterThanOrEqual(survivorsBox!.y + survivorsBox!.height)
+
+  const albumGrid = album.locator('.album-grid')
+  await albumGrid.evaluate((element) => {
+    element.scrollTop = element.scrollHeight
+  })
+  await expect.poll(() => albumGrid.evaluate((element) => element.scrollTop)).toBeGreaterThan(0)
+  await survivorsCard.click()
   const detail = page.locator('.collectible-detail--v3')
   await expect(detail).toBeVisible()
-  const detailBox = await detail.boundingBox()
-  expect(detailBox).not.toBeNull()
-  expect(detailBox!.width / detailBox!.height).toBeCloseTo(16 / 9, 1)
+  const detailMedia = detail.locator('.collectible-detail__media')
   const detailImage = detail.locator('.collectible-detail__image img')
   await expect(detailImage).toHaveJSProperty('complete', true)
   await expect(detailImage).toHaveCSS('object-fit', 'contain')
@@ -305,6 +321,21 @@ test('DEBUG 全收集包含好友，Survivors 自动播放，并可清空收集'
       .some((path) => imageMetrics.currentSrc.endsWith(path)),
   ).toBe(true)
   expect(imageMetrics.naturalWidth / imageMetrics.naturalHeight).toBeCloseTo(2 / 3, 4)
+  const [mediaBox, imageBox, copyBox] = await Promise.all([
+    detailMedia.boundingBox(),
+    detailImage.boundingBox(),
+    detail.locator('.collectible-detail__copy').boundingBox(),
+  ])
+  expect(mediaBox && imageBox && copyBox).toBeTruthy()
+  expect(mediaBox!.width / mediaBox!.height).toBeCloseTo(
+    imageMetrics.naturalWidth / imageMetrics.naturalHeight,
+    2,
+  )
+  expect(Math.abs(imageBox!.x - mediaBox!.x)).toBeLessThanOrEqual(1)
+  expect(Math.abs(imageBox!.y - mediaBox!.y)).toBeLessThanOrEqual(1)
+  expect(Math.abs(imageBox!.width - mediaBox!.width)).toBeLessThanOrEqual(1)
+  expect(Math.abs(imageBox!.height - mediaBox!.height)).toBeLessThanOrEqual(1)
+  expect(copyBox!.x).toBeGreaterThanOrEqual(mediaBox!.x + mediaBox!.width - 1)
 
   const video = survivors.metadata.video!
   await expect(detail).toContainText(video.title)

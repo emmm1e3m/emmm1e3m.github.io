@@ -216,7 +216,7 @@ describe('存档目录与任务可达性协调', () => {
 
   it('清理不再拥有的苹果钟明信片背景，同时保留计时绝对时间', () => {
     const state = stateWithPlannedPostcard('postcard-new')
-    state.reality.pomodoro.selectedPostcardId = 'postcard-new'
+    state.reality.pomodoro.selectedBackground = { kind: 'postcard', id: 'postcard-new' }
     state.reality.pomodoro.session = {
       sessionId: 'pomodoro-1',
       status: 'focus',
@@ -229,18 +229,53 @@ describe('存档目录与任务可达性协调', () => {
       focusNotificationIssuedAt: null,
       completionNotificationIssuedAt: null,
       todoId: null,
-      postcardId: 'postcard-new',
+      background: { kind: 'postcard', id: 'postcard-new' },
     }
 
     const reconciled = reconcileGameStateWithCatalog(state, catalog)
 
-    expect(reconciled.reality.pomodoro.selectedPostcardId).toBeNull()
+    expect(reconciled.reality.pomodoro.selectedBackground).toBeNull()
     expect(reconciled.reality.pomodoro.session).toMatchObject({
       startedAt: 10,
       focusEndsAt: 1_010,
       cycleEndsAt: 1_010,
-      postcardId: null,
+      background: null,
     })
-    expect(state.reality.pomodoro.selectedPostcardId).toBe('postcard-new')
+    expect(state.reality.pomodoro.selectedBackground).toEqual({
+      kind: 'postcard',
+      id: 'postcard-new',
+    })
+  })
+
+  it('直接状态中悬空的苹果钟合拍引用会被清理，且计时字段不变', () => {
+    const state = createInitialGameState({ now: 0, seed: 'reconcile-missing-photo' })
+    state.reality.pomodoro.selectedBackground = {
+      kind: 'wardrobe-photo',
+      id: 'photo-0-missing',
+    }
+    state.reality.pomodoro.session = {
+      sessionId: 'pomodoro-1',
+      status: 'focus',
+      startedAt: 10,
+      focusEndsAt: 1_010,
+      cycleEndsAt: 1_010,
+      focusDurationMs: 1_000,
+      breakDurationMs: 0,
+      completedAt: null,
+      focusNotificationIssuedAt: null,
+      completionNotificationIssuedAt: null,
+      todoId: null,
+      background: { kind: 'wardrobe-photo', id: 'photo-0-missing' },
+    }
+
+    const reconciled = reconcileGameStateWithCatalog(state, catalog)
+
+    expect(reconciled.reality.pomodoro.selectedBackground).toBeNull()
+    expect(reconciled.reality.pomodoro.session).toMatchObject({
+      startedAt: 10,
+      focusEndsAt: 1_010,
+      cycleEndsAt: 1_010,
+      background: null,
+    })
   })
 })

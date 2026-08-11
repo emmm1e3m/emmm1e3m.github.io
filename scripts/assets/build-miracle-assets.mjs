@@ -29,6 +29,8 @@ const friendDefinitions = [
   { id: 'bili-bing', name: '饼哩饼哩' },
 ]
 
+const characterDefinitions = [{ id: 'bingo', name: '饼狗' }, ...friendDefinitions]
+
 export const OUTFIT_DEFINITIONS = [
   { id: 'green-sailor-top', name: '绿领结水手装', priceApples: 5 },
   { id: 'red-ruffle-dress', name: '红色荷叶边礼裙', priceApples: 6 },
@@ -43,7 +45,14 @@ export const OUTFIT_DEFINITIONS = [
   category: 'outfit',
   categoryName: '套装',
   starter: item.id === 'cream-apple-cape',
-  defaultTransform: { x: 0.5, y: 0.76, scale: 0.48, rotation: 0, z: 20 },
+  defaultTransform: {
+    x: 0.5,
+    y: 0.76,
+    scaleX: 0.48,
+    scaleY: 0.48,
+    rotation: 0,
+    z: 20,
+  },
 }))
 
 export const ACCESSORY_DEFINITIONS = [
@@ -53,7 +62,7 @@ export const ACCESSORY_DEFINITIONS = [
     category: 'face',
     categoryName: '面饰',
     priceApples: 3,
-    defaultTransform: { x: 0.5, y: 0.48, scale: 0.3, rotation: 0, z: 45 },
+    defaultTransform: { x: 0.5, y: 0.48, scaleX: 0.3, scaleY: 0.3, rotation: 0, z: 45 },
     lensTreatment: 'transparent-blue-with-white-highlight',
   },
   {
@@ -62,7 +71,7 @@ export const ACCESSORY_DEFINITIONS = [
     category: 'face',
     categoryName: '面饰',
     priceApples: 3,
-    defaultTransform: { x: 0.5, y: 0.48, scale: 0.3, rotation: 0, z: 45 },
+    defaultTransform: { x: 0.5, y: 0.48, scaleX: 0.3, scaleY: 0.3, rotation: 0, z: 45 },
     lensTreatment: 'transparent-blue-with-white-highlight',
   },
   {
@@ -71,7 +80,7 @@ export const ACCESSORY_DEFINITIONS = [
     category: 'headwear',
     categoryName: '头饰',
     priceApples: 4,
-    defaultTransform: { x: 0.5, y: 0.18, scale: 0.3, rotation: 0, z: 40 },
+    defaultTransform: { x: 0.5, y: 0.18, scaleX: 0.3, scaleY: 0.3, rotation: 0, z: 40 },
   },
   {
     id: 'black-beret',
@@ -79,7 +88,7 @@ export const ACCESSORY_DEFINITIONS = [
     category: 'headwear',
     categoryName: '头饰',
     priceApples: 4,
-    defaultTransform: { x: 0.5, y: 0.14, scale: 0.31, rotation: -3, z: 40 },
+    defaultTransform: { x: 0.5, y: 0.14, scaleX: 0.31, scaleY: 0.31, rotation: -3, z: 40 },
   },
   {
     id: 'cat-ears',
@@ -87,7 +96,7 @@ export const ACCESSORY_DEFINITIONS = [
     category: 'headwear',
     categoryName: '头饰',
     priceApples: 4,
-    defaultTransform: { x: 0.5, y: 0.15, scale: 0.34, rotation: 0, z: 40 },
+    defaultTransform: { x: 0.5, y: 0.15, scaleX: 0.34, scaleY: 0.34, rotation: 0, z: 40 },
   },
   {
     id: 'microphone',
@@ -95,7 +104,7 @@ export const ACCESSORY_DEFINITIONS = [
     category: 'prop',
     categoryName: '道具',
     priceApples: 6,
-    defaultTransform: { x: 0.72, y: 0.7, scale: 0.22, rotation: -12, z: 30 },
+    defaultTransform: { x: 0.72, y: 0.7, scaleX: 0.22, scaleY: 0.22, rotation: -12, z: 30 },
   },
   {
     id: 'signal-sign',
@@ -103,7 +112,7 @@ export const ACCESSORY_DEFINITIONS = [
     category: 'prop',
     categoryName: '道具',
     priceApples: 6,
-    defaultTransform: { x: 0.72, y: 0.64, scale: 0.21, rotation: 8, z: 30 },
+    defaultTransform: { x: 0.72, y: 0.64, scaleX: 0.21, scaleY: 0.21, rotation: 8, z: 30 },
   },
   {
     id: 'apple-cake',
@@ -111,7 +120,7 @@ export const ACCESSORY_DEFINITIONS = [
     category: 'prop',
     categoryName: '道具',
     priceApples: 6,
-    defaultTransform: { x: 0.5, y: 0.84, scale: 0.3, rotation: 0, z: 35 },
+    defaultTransform: { x: 0.5, y: 0.84, scaleX: 0.3, scaleY: 0.3, rotation: 0, z: 35 },
   },
   {
     id: 'paw-glove',
@@ -119,7 +128,7 @@ export const ACCESSORY_DEFINITIONS = [
     category: 'prop',
     categoryName: '道具',
     priceApples: 4,
-    defaultTransform: { x: 0.25, y: 0.7, scale: 0.18, rotation: -12, z: 30 },
+    defaultTransform: { x: 0.25, y: 0.7, scaleX: 0.18, scaleY: 0.18, rotation: -12, z: 30 },
   },
   {
     id: 'check-sign',
@@ -127,7 +136,7 @@ export const ACCESSORY_DEFINITIONS = [
     category: 'prop',
     categoryName: '道具',
     priceApples: 4,
-    defaultTransform: { x: 0.72, y: 0.64, scale: 0.21, rotation: 8, z: 30 },
+    defaultTransform: { x: 0.72, y: 0.64, scaleX: 0.21, scaleY: 0.21, rotation: 8, z: 30 },
   },
   {
     id: 'cross-sign',
@@ -135,7 +144,7 @@ export const ACCESSORY_DEFINITIONS = [
     category: 'prop',
     categoryName: '道具',
     priceApples: 4,
-    defaultTransform: { x: 0.72, y: 0.64, scale: 0.21, rotation: 8, z: 30 },
+    defaultTransform: { x: 0.72, y: 0.64, scaleX: 0.21, scaleY: 0.21, rotation: 8, z: 30 },
   },
   {
     id: 'dim-sum-basket',
@@ -143,7 +152,7 @@ export const ACCESSORY_DEFINITIONS = [
     category: 'prop',
     categoryName: '道具',
     priceApples: 6,
-    defaultTransform: { x: 0.5, y: 0.84, scale: 0.3, rotation: 0, z: 35 },
+    defaultTransform: { x: 0.5, y: 0.84, scaleX: 0.3, scaleY: 0.3, rotation: 0, z: 35 },
   },
   {
     id: 'apple-cuffs',
@@ -151,7 +160,7 @@ export const ACCESSORY_DEFINITIONS = [
     category: 'accessory',
     categoryName: '配饰',
     priceApples: 4,
-    defaultTransform: { x: 0.5, y: 0.74, scale: 0.34, rotation: 0, z: 28 },
+    defaultTransform: { x: 0.5, y: 0.74, scaleX: 0.34, scaleY: 0.34, rotation: 0, z: 28 },
   },
   {
     id: 'apple-badge',
@@ -159,7 +168,7 @@ export const ACCESSORY_DEFINITIONS = [
     category: 'accessory',
     categoryName: '配饰',
     priceApples: 3,
-    defaultTransform: { x: 0.67, y: 0.7, scale: 0.11, rotation: 0, z: 28 },
+    defaultTransform: { x: 0.67, y: 0.7, scaleX: 0.11, scaleY: 0.11, rotation: 0, z: 28 },
   },
   {
     id: 'black-fedora',
@@ -167,7 +176,7 @@ export const ACCESSORY_DEFINITIONS = [
     category: 'headwear',
     categoryName: '头饰',
     priceApples: 6,
-    defaultTransform: { x: 0.5, y: 0.14, scale: 0.32, rotation: 0, z: 40 },
+    defaultTransform: { x: 0.5, y: 0.14, scaleX: 0.32, scaleY: 0.32, rotation: 0, z: 40 },
   },
   {
     id: 'red-bead-trim',
@@ -175,7 +184,7 @@ export const ACCESSORY_DEFINITIONS = [
     category: 'accessory',
     categoryName: '配饰',
     priceApples: 5,
-    defaultTransform: { x: 0.5, y: 0.62, scale: 0.32, rotation: 0, z: 28 },
+    defaultTransform: { x: 0.5, y: 0.62, scaleX: 0.32, scaleY: 0.32, rotation: 0, z: 28 },
   },
 ].map((item) => ({ ...item, starter: false }))
 
@@ -594,6 +603,102 @@ function publicItem(definition, folder, image) {
   }
 }
 
+async function readSourceMetadata() {
+  const sourceMetadata = {}
+  for (const [id, filename] of Object.entries(sources)) {
+    const bytes = await readFile(resolve(rawRoot, filename))
+    const metadata = await sharp(bytes, { failOn: 'warning' }).metadata()
+    sourceMetadata[id] = {
+      path: `resources/raw/travelling-bingo/generated/miracle/${filename}`,
+      width: metadata.width,
+      height: metadata.height,
+      byteLength: bytes.byteLength,
+      mime: 'image/png',
+    }
+  }
+  return sourceMetadata
+}
+
+async function readExistingPublicImage(folder, id) {
+  const path = resolve(assetRoot, folder, `${id}.webp`)
+  const bytes = await readFile(path)
+  const metadata = await sharp(bytes, { failOn: 'warning' }).metadata()
+  if (metadata.format !== 'webp' || !metadata.width || !metadata.height || !metadata.hasAlpha) {
+    throw new Error(`${folder}/${id}.webp 必须是带透明通道的有效 WebP`)
+  }
+  return {
+    width: metadata.width,
+    height: metadata.height,
+    byteLength: bytes.byteLength,
+    mime: 'image/webp',
+    encoding: 'lossless',
+  }
+}
+
+async function writeMiracleCatalog(characters, outfits, accessories) {
+  const sourceMetadata = await readSourceMetadata()
+  await writeFile(
+    catalogPath,
+    `${JSON.stringify(
+      {
+        schemaVersion: 1,
+        generatedAt: '2026-08-11',
+        rights: 'user-confirmed-authorized',
+        processing: {
+          tool: 'sharp',
+          mode: 'soft-chroma-key-component-grid-cutout',
+          transparentPixelRgb: '000000',
+          outputEncoding: 'lossless-webp',
+        },
+        sources: {
+          ...sourceMetadata,
+          provenance: {
+            bingo: '用户从参考图引导的 ImageGen 结果中选定的海星体饼狗底稿',
+            outfits: '按用户服装参考图生成的 4×2 海星体服装母版；保留其中 7 套已确认服装',
+            blackTieUniform:
+              '以用户服装参考图、已确认服装母版和饼狗比例为参考，单独生成黑色领带制服',
+            accessories: '按用户配饰参考图生成的 4×4 十六件配饰母版',
+          },
+        },
+        characters,
+        outfits,
+        accessories,
+      },
+      null,
+      2,
+    )}\n`,
+    'utf8',
+  )
+}
+
+export async function buildMiracleManifestFromExistingAssets() {
+  const characters = await Promise.all(
+    characterDefinitions.map(async (definition) => ({
+      ...definition,
+      url: `assets/miracle/characters/${definition.id}.webp`,
+      ...(await readExistingPublicImage('characters', definition.id)),
+    })),
+  )
+  const outfits = await Promise.all(
+    OUTFIT_DEFINITIONS.map(async (definition) =>
+      publicItem(definition, 'outfits', await readExistingPublicImage('outfits', definition.id)),
+    ),
+  )
+  const accessories = await Promise.all(
+    ACCESSORY_DEFINITIONS.map(async (definition) =>
+      publicItem(
+        definition,
+        'accessories',
+        await readExistingPublicImage('accessories', definition.id),
+      ),
+    ),
+  )
+  await writeMiracleCatalog(characters, outfits, accessories)
+  console.log(
+    `奇迹饼狗清单已同步：${characters.length} 个角色、${outfits.length} 套服装、${accessories.length} 件配饰（未重建图片）`,
+  )
+}
+
 async function buildMiracleAssets() {
   await Promise.all([
     mkdir(characterRoot, { recursive: true }),
@@ -709,51 +814,7 @@ async function buildMiracleAssets() {
     accessories.push(publicItem(definition, 'accessories', image))
   }
 
-  const sourceMetadata = {}
-  for (const [id, filename] of Object.entries(sources)) {
-    const bytes = await readFile(resolve(rawRoot, filename))
-    const metadata = await sharp(bytes, { failOn: 'warning' }).metadata()
-    sourceMetadata[id] = {
-      path: `resources/raw/travelling-bingo/generated/miracle/${filename}`,
-      width: metadata.width,
-      height: metadata.height,
-      byteLength: bytes.byteLength,
-      mime: 'image/png',
-    }
-  }
-
-  await writeFile(
-    catalogPath,
-    `${JSON.stringify(
-      {
-        schemaVersion: 1,
-        generatedAt: '2026-08-11',
-        rights: 'user-confirmed-authorized',
-        processing: {
-          tool: 'sharp',
-          mode: 'soft-chroma-key-component-grid-cutout',
-          transparentPixelRgb: '000000',
-          outputEncoding: 'lossless-webp',
-        },
-        sources: {
-          ...sourceMetadata,
-          provenance: {
-            bingo: '用户从参考图引导的 ImageGen 结果中选定的海星体饼狗底稿',
-            outfits: '按用户服装参考图生成的 4×2 海星体服装母版；保留其中 7 套已确认服装',
-            blackTieUniform:
-              '以用户服装参考图、已确认服装母版和饼狗比例为参考，单独生成黑色领带制服',
-            accessories: '按用户配饰参考图生成的 4×4 十六件配饰母版',
-          },
-        },
-        characters,
-        outfits,
-        accessories,
-      },
-      null,
-      2,
-    )}\n`,
-    'utf8',
-  )
+  await writeMiracleCatalog(characters, outfits, accessories)
 
   console.log(
     `奇迹饼狗素材已生成：${characters.length} 个角色、${outfits.length} 套服装、${accessories.length} 件配饰`,
@@ -761,4 +822,7 @@ async function buildMiracleAssets() {
 }
 
 const invokedPath = process.argv[1] ? pathToFileURL(resolve(process.argv[1])).href : ''
-if (invokedPath === import.meta.url) await buildMiracleAssets()
+if (invokedPath === import.meta.url) {
+  if (process.argv.includes('--manifest-only')) await buildMiracleManifestFromExistingAssets()
+  else await buildMiracleAssets()
+}

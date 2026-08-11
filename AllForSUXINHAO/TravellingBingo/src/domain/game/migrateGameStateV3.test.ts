@@ -19,10 +19,7 @@ import {
 import { migrateGameStateV4ToV5 } from './migrateGameStateV4'
 import { gameStateV6Schema, migrateGameStateV5ToV6 } from './migrateGameStateV5'
 import { migrateGameStateV6ToV7 } from './migrateGameStateV6'
-import { migrateGameStateV7ToV8 } from './migrateGameStateV7'
-import { migrateGameStateV8ToV9 } from './migrateGameStateV8'
-import { migrateGameStateV9ToV10 } from './migrateGameStateV9'
-import { migrateGameStateV10ToV11 } from './migrateGameStateV10'
+import { migrateStoredGameStateToV12 } from './migrateGameStateV11'
 import type { CollectionCatalog, GameStateV1, GameStateV3 } from './types'
 import { MAX_DATE_TIMESTAMP_MS } from './time'
 import { validateImportedGameState } from './validateImportedGameState'
@@ -36,10 +33,8 @@ const catalog: CollectionCatalog = {
 
 const migrationOptions = { now: 500_000, catalog }
 
-function migrateGameStateV7ToCurrent(state: Parameters<typeof migrateGameStateV7ToV8>[0]) {
-  return migrateGameStateV10ToV11(
-    migrateGameStateV9ToV10(migrateGameStateV8ToV9(migrateGameStateV7ToV8(state))),
-  )
+function migrateGameStateV7ToCurrent(state: Parameters<typeof migrateStoredGameStateToV12>[0]) {
+  return migrateStoredGameStateToV12(state, migrationOptions)
 }
 
 function v3Fixture(options: { active?: boolean; debug?: boolean } = {}): GameStateV3 {

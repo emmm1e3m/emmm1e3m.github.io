@@ -6,7 +6,6 @@ import { type ContentCatalog } from '@/content'
 import {
   deriveActivityTiming,
   getVitalityMagicAvailability,
-  getWardrobePurchaseAvailability,
   getWardrobeShopItems,
   ITEM_PRICES,
   type ActivityKind,
@@ -23,12 +22,13 @@ import {
   DataPanel,
   StreamPanel,
   WorkPanel,
+  buildPomodoroBackgroundOptions,
   buildRealityTodoViews,
-  buildUnlockedPostcardBackgrounds,
   type RealityNotificationPermission,
   type StreamPlaybackController,
 } from '@/features/reality'
 import { TaskBoard } from '@/features/tasks/TaskBoard'
+import { getWardrobeAssetVisual } from '@/features/wardrobe/wardrobeAssets'
 
 import { ActivityLauncher } from './ActivityLauncher'
 import { ACTIVITY_COPY, formatCountdown, ITEM_COPY, STAGE_TEST_URL } from './gameCopy'
@@ -167,7 +167,7 @@ function RealityPanel({
   const displayedDurationMs =
     session && session.status !== 'completed' ? session.focusDurationMs : selectedDurationMs
   const unlockedBackgrounds = useMemo(
-    () => buildUnlockedPostcardBackgrounds(game, catalog),
+    () => buildPomodoroBackgroundOptions(game, catalog),
     [catalog, game],
   )
   const todos = useMemo(() => buildRealityTodoViews(game), [game])
@@ -232,7 +232,7 @@ function RealityPanel({
         canStart: game.world === 'reality' && (!session || session.status === 'completed'),
       }}
       unlockedBackgrounds={unlockedBackgrounds}
-      selectedBackgroundId={game.reality.pomodoro.selectedPostcardId}
+      selectedBackground={game.reality.pomodoro.selectedBackground}
       todos={todos}
       notification={notificationPermission ? { permission: notificationPermission } : undefined}
       cancelRequestToken={pomodoroCancelRequestToken}
@@ -243,8 +243,8 @@ function RealityPanel({
           onAction({ type: 'pomodoro/start', durationMs, now: Date.now() }),
         onPomodoroCancel: (sessionId) =>
           onAction({ type: 'pomodoro/cancel', sessionId, now: Date.now() }),
-        onBackgroundChange: (postcardId) =>
-          onAction({ type: 'pomodoro/background-set', postcardId }),
+        onBackgroundChange: (background) =>
+          onAction({ type: 'pomodoro/background-set', background }),
         onTodoCreate: (title) =>
           onAction({ type: 'todo/create', todoId: createTodoId(), title, now: Date.now() }),
         onTodoUpdate: (todoId, update) =>
@@ -795,17 +795,30 @@ export function ContextPanel({
           {availableShopItems.length > 0 ? (
             <div className="miracle-panel__offers">
               {availableShopItems.map((item) => {
-                const availability = getWardrobePurchaseAvailability(game, item.id)
+                const visual = getWardrobeAssetVisual(item.id)
+                const affordable = game.economy.apples >= item.priceApples
                 return (
-                  <article key={item.id}>
-                    <span>{item.name}</span>
-                    <AppleAmount value={item.priceApples} />
+                  <article className="shop-item miracle-panel__offer" key={item.id}>
+                    <span className="shop-item__emoji miracle-panel__thumbnail" aria-hidden="true">
+                      <img src={visual.url} alt="" draggable={false} />
+                    </span>
+                    <div>
+                      <strong>{item.name}</strong>
+                      <small>{item.category === 'outfit' ? '服装' : '配饰'}</small>
+                    </div>
                     <button
                       type="button"
-                      disabled={!availability.canPurchase}
+                      disabled={!affordable}
+                      aria-label={`购买${item.name}，${item.priceApples}🍎${affordable ? '' : `，还差${item.priceApples - game.economy.apples}🍎`}`}
                       onClick={() => onAction({ type: 'wardrobe/item-purchase', assetId: item.id })}
                     >
-                      {availability.canPurchase ? '买下' : availability.message}
+                      {affordable ? (
+                        <AppleAmount value={item.priceApples} />
+                      ) : (
+                        <>
+                          还差 <AppleAmount value={item.priceApples - game.economy.apples} />
+                        </>
+                      )}
                     </button>
                   </article>
                 )

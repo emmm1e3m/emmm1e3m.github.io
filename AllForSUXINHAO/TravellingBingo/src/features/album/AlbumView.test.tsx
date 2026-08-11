@@ -315,7 +315,8 @@ describe('饼狗的收藏墙', () => {
           sourceLookId: 'look-current',
           x: 0.5,
           y: 0.58,
-          scale: 0.32,
+          scaleX: 0.32,
+          scaleY: 0.32,
           rotation: 0,
           z: 1,
           elements: [
@@ -324,11 +325,24 @@ describe('饼狗的收藏墙', () => {
               assetId: 'round-glasses',
               x: 0.5,
               y: 0.39,
-              scale: 0.48,
+              scaleX: 0.48,
+              scaleY: 0.48,
               rotation: 0,
               z: 2,
             },
           ],
+        },
+      ],
+      decorations: [
+        {
+          placementId: 'saved-signal-sign',
+          assetId: 'signal-sign',
+          x: 0.78,
+          y: 0.24,
+          scaleX: 0.18,
+          scaleY: 0.22,
+          rotation: 8,
+          z: 3,
         },
       ],
     }
@@ -350,7 +364,8 @@ describe('饼狗的收藏墙', () => {
                 assetId: 'red-ruffle-dress',
                 x: 0.5,
                 y: 0.56,
-                scale: 0.92,
+                scaleX: 0.92,
+                scaleY: 0.92,
                 rotation: 0,
                 z: 10,
               },
@@ -374,6 +389,18 @@ describe('饼狗的收藏墙', () => {
     expect(screen.getByText('奇迹合拍')).toBeVisible()
     expect(container.querySelector('img[src$="round-glasses.webp"]')).not.toBeNull()
     expect(container.querySelector('img[src$="red-ruffle-dress.webp"]')).toBeNull()
+    const previewDecoration = photoPreview?.querySelector<HTMLImageElement>(
+      '[data-decoration-id="saved-signal-sign"]',
+    )
+    expect(previewDecoration).toHaveAttribute('src', expect.stringContaining('signal-sign.webp'))
+
+    fireEvent.click(photoPreview?.closest('button') as HTMLButtonElement)
+    const photoDetail = screen.getByRole('dialog', { name: '奇迹合拍' })
+    const detailDecoration = photoDetail.querySelector<HTMLImageElement>(
+      '[data-decoration-id="saved-signal-sign"]',
+    )
+    expect(detailDecoration).toHaveAttribute('src', expect.stringContaining('signal-sign.webp'))
+    fireEvent.click(within(photoDetail).getByRole('button', { name: '关闭合拍' }))
 
     const changedCurrentLook: GameState = {
       ...game,
@@ -392,7 +419,8 @@ describe('饼狗的收藏墙', () => {
                 assetId: 'black-stage-suit',
                 x: 0.5,
                 y: 0.56,
-                scale: 0.92,
+                scaleX: 0.92,
+                scaleY: 0.92,
                 rotation: 0,
                 z: 10,
               },
@@ -421,12 +449,14 @@ describe('饼狗的收藏墙', () => {
           sourceLookId: null,
           x: 0.5,
           y: 0.58,
-          scale: 0.32,
+          scaleX: 0.32,
+          scaleY: 0.32,
           rotation: 0,
           z: 1,
           elements: [],
         },
       ],
+      decorations: [],
     }
     const game: GameState = {
       ...initial,
@@ -482,13 +512,117 @@ describe('饼狗的收藏墙', () => {
     expect(imageButton).toHaveFocus()
   })
 
-  it('详情外框按视口使用横屏 16:9 与手机竖屏 9:16，信息区只在内部滚动', () => {
-    expect(albumStyles).toContain('--collectible-detail-aspect: 16 / 9;')
-    expect(albumStyles).toContain('calc((100dvh - 32px) * 1.7777778)')
-    expect(albumStyles).toContain('aspect-ratio: var(--collectible-detail-aspect);')
+  it('普通明信片详情保留固定窗口，不注入海报原图比例变量', () => {
+    renderAlbum(contentCatalog([oldestPostcard]), gameWithCollections([[oldestPostcard.id, 1_000]]))
+
+    fireEvent.click(screen.getByRole('button', { name: /最早的明信片/u }))
+    const detail = screen
+      .getByRole('dialog', { name: '最早的明信片' })
+      .querySelector<HTMLElement>('.collectible-detail--v4')
+
+    expect(detail).toHaveAttribute('data-category', 'postcard')
+    expect(detail).not.toHaveAttribute('style')
+    expect(detail?.style.getPropertyValue('--collectible-media-width')).toBe('')
+    expect(detail?.style.getPropertyValue('--collectible-media-height')).toBe('')
+    expect(detail?.style.getPropertyValue('--collectible-media-aspect')).toBe('')
+  })
+
+  it('百万直拍与全站第一详情把原图宽高传给自适应海报窗口', () => {
+    const portraitShot = {
+      ...collectible('million-shot-portrait', 'million-shot', '竖向百万直拍'),
+      metadata: { sequence: 1, video: albumVideo },
+    } as CollectibleItem
+    const landscapeFirst = {
+      ...collectible('site-first-landscape', 'site-first', '横向全站第一'),
+      images: [
+        {
+          width: 626,
+          height: 354,
+          path: 'assets/collectibles/site-first-landscape.webp',
+          byteLength: 1,
+          mime: 'image/webp' as const,
+        },
+      ],
+      metadata: {
+        bvid: albumVideo.bvid,
+        chronology: 1,
+        programCategory: '测试',
+        posterKind: 'designed-poster',
+        video: albumVideo,
+      },
+    } as CollectibleItem
+
+    const portraitRender = renderAlbum(
+      contentCatalog([portraitShot]),
+      gameWithCollections([[portraitShot.id, 1_000]]),
+    )
+    fireEvent.click(screen.getByRole('button', { name: /竖向百万直拍/u }))
+    const portraitDetail = screen
+      .getByRole('dialog', { name: '竖向百万直拍' })
+      .querySelector<HTMLElement>('.collectible-detail--v4')
+    expect(portraitDetail).not.toBeNull()
+    expect(portraitDetail).toHaveAttribute('data-category', 'million-shot')
+    expect(portraitDetail).toHaveStyle({
+      '--collectible-media-width': '480',
+      '--collectible-media-height': '640',
+      '--collectible-media-aspect': '480 / 640',
+    })
+    portraitRender.unmount()
+
+    renderAlbum(contentCatalog([landscapeFirst]), gameWithCollections([[landscapeFirst.id, 2_000]]))
+    fireEvent.click(screen.getByRole('button', { name: /横向全站第一/u }))
+    const landscapeDetail = screen
+      .getByRole('dialog', { name: '横向全站第一' })
+      .querySelector<HTMLElement>('.collectible-detail--v4')
+    expect(landscapeDetail).not.toBeNull()
+    expect(landscapeDetail).toHaveAttribute('data-category', 'site-first')
+    expect(landscapeDetail).toHaveStyle({
+      '--collectible-media-width': '626',
+      '--collectible-media-height': '354',
+      '--collectible-media-aspect': '626 / 354',
+    })
+  })
+
+  it('只有百万直拍与全站第一按原图比例缩放，明信片保留固定详情比例', () => {
+    const desktopDetailStart = albumStyles.indexOf('.album-page--v4 .collectible-detail--v4 {')
+    const desktopPosterStart = albumStyles.indexOf(
+      ".collectible-detail--v4:is([data-category='million-shot'], [data-category='site-first'])",
+      desktopDetailStart,
+    )
+    const desktopBaseRules = albumStyles.slice(desktopDetailStart, desktopPosterStart)
+    expect(desktopBaseRules).toContain('--collectible-detail-aspect: 16 / 9;')
+    expect(desktopBaseRules).toContain('calc((100dvh - 32px) * 1.7777778)')
+    expect(desktopBaseRules).toContain('aspect-ratio: var(--collectible-detail-aspect);')
+    expect(desktopBaseRules).not.toContain('--collectible-media-width')
+
+    const desktopPosterRules = albumStyles.slice(
+      desktopPosterStart,
+      albumStyles.indexOf('.album-page--v4 .collectible-detail__media {', desktopPosterStart),
+    )
+    expect(desktopPosterRules).toContain('--collectible-media-height')
+    expect(desktopPosterRules).toContain('--collectible-media-width')
+    expect(desktopPosterRules).toContain('aspect-ratio: auto;')
+    expect(albumStyles).toContain('aspect-ratio: var(--collectible-media-aspect);')
+    expect(albumStyles).toContain(
+      'var(--collectible-media-height) / var(--collectible-media-width)',
+    )
+    expect(albumStyles).toContain(
+      'grid-template-columns: auto var(--collectible-detail-copy-width);',
+    )
     expect(albumStyles).toContain(
       '.album-page--v4 .collectible-detail--v4 .collectible-detail__copy {',
     )
+
+    const pictureRules = albumStyles.slice(
+      albumStyles.indexOf(
+        '.album-page--v4 .collectible-detail__image-button .collectible-picture {',
+      ),
+      albumStyles.indexOf('.album-page--v4 .collectible-detail__expand-hint {'),
+    )
+    expect(pictureRules).toContain('width: 100%;')
+    expect(pictureRules).toContain('height: 100%;')
+    expect(pictureRules).toContain('object-fit: contain;')
+    expect(pictureRules).not.toContain('object-fit: cover;')
 
     const portraitRules = albumStyles.slice(
       albumStyles.indexOf('@media (max-width: 720px) and (orientation: portrait)'),
@@ -496,8 +630,42 @@ describe('饼狗的收藏墙', () => {
     )
     expect(portraitRules).toContain('--collectible-detail-aspect: 9 / 16;')
     expect(portraitRules).toContain('calc((100dvh - 16px) * 0.5625)')
+    expect(portraitRules).toContain('var(--collectible-media-width)')
+    expect(portraitRules).toContain('var(--collectible-media-height)')
+    expect(portraitRules).toContain(
+      'grid-template-rows: var(--collectible-detail-media-height) minmax(0, 1fr);',
+    )
     expect(portraitRules).toContain('overflow-y: auto;')
     expect(portraitRules).toContain('scrollbar-width: none;')
+
+    const landscapeRules = albumStyles.slice(
+      albumStyles.indexOf('@media (max-width: 720px) and (orientation: landscape)'),
+      albumStyles.indexOf('@media (max-width: 440px)'),
+    )
+    expect(landscapeRules).toContain(
+      'grid-template-columns: auto var(--collectible-detail-copy-width);',
+    )
+    expect(landscapeRules).toContain('var(--collectible-media-height)')
+    expect(landscapeRules).toContain('var(--collectible-media-width)')
+  })
+
+  it('相册外页锁定在动态视口，内容网格按卡片高度排布并承担纵向滚动', () => {
+    const pageRules = albumStyles.slice(
+      albumStyles.indexOf('.album-page.album-page--v4 {'),
+      albumStyles.indexOf('.album-page.album-page--v4::-webkit-scrollbar'),
+    )
+    expect(pageRules).toContain('height: 100dvh;')
+    expect(pageRules).toContain('display: grid;')
+    expect(pageRules).toContain('grid-template-rows: auto auto minmax(0, 1fr);')
+    expect(pageRules).toContain('overflow: hidden;')
+
+    const gridRules = albumStyles.slice(
+      albumStyles.indexOf('.album-page--v4 .album-grid {'),
+      albumStyles.indexOf('.album-page--v4 .album-empty {'),
+    )
+    expect(gridRules).toContain('min-height: 0;')
+    expect(gridRules).toContain('grid-auto-rows: max-content;')
+    expect(gridRules).toContain('overflow-y: auto;')
   })
 
   it('同一收藏详情重渲染不重复请求，但关闭后再点会清空暂停进度并从 0 秒播放', () => {

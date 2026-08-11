@@ -43,20 +43,21 @@ function parseDomainCatalog(source) {
   )?.[1]
   assert.ok(details && transforms, '无法从领域层读取衣柜 canonical 目录')
   const transformById = new Map(
-    [
-      ...transforms.matchAll(
-        /(?:'([^']+)'|([a-z][a-z0-9-]*)):\s*\{\s*x:\s*(-?[\d.]+),\s*y:\s*(-?[\d.]+),\s*scale:\s*(-?[\d.]+),\s*rotation:\s*(-?[\d.]+),\s*z:\s*(-?[\d.]+)\s*\}/gu,
-      ),
-    ].map((match) => [
-      match[1] ?? match[2],
-      {
-        x: Number(match[3]),
-        y: Number(match[4]),
-        scale: Number(match[5]),
-        rotation: Number(match[6]),
-        z: Number(match[7]),
-      },
-    ]),
+    [...transforms.matchAll(/(?:'([^']+)'|([a-z][a-z0-9-]*)):\s*\{([\s\S]*?)\}/gu)].map((match) => {
+      const readNumber = (field) =>
+        Number(match[3].match(new RegExp(`${field}:\\s*(-?[\\d.]+)`, 'u'))?.[1])
+      return [
+        match[1] ?? match[2],
+        {
+          x: readNumber('x'),
+          y: readNumber('y'),
+          scaleX: readNumber('scaleX'),
+          scaleY: readNumber('scaleY'),
+          rotation: readNumber('rotation'),
+          z: readNumber('z'),
+        },
+      ]
+    }),
   )
   const matches = [...details.matchAll(/\bid:\s*'([^']+)'/gu)]
   return matches.map((match, index) => {
@@ -146,6 +147,11 @@ test('衣柜目录与领域层 24 项 canonical 定义完全一致', async () =>
     120,
   )
   assert.equal(definitions.filter((item) => item.starter).length, 1)
+  for (const definition of definitions) {
+    assert.equal('scale' in definition.defaultTransform, false)
+    assert.equal(definition.defaultTransform.scaleX, definition.defaultTransform.scaleY)
+    assert.ok(definition.defaultTransform.scaleX > 0)
+  }
 
   const domainSource = await readFile(
     'AllForSUXINHAO/TravellingBingo/src/domain/game/wardrobe.ts',
@@ -166,6 +172,13 @@ test('衣柜目录与领域层 24 项 canonical 定义完全一致', async () =>
     await readFile('AllForSUXINHAO/TravellingBingo/public/data/miracle-wardrobe.json', 'utf8'),
   )
   const manifestItems = [...manifest.outfits, ...manifest.accessories]
+  assert.ok(
+    manifestItems.every(
+      (item) =>
+        !('scale' in item.defaultTransform) &&
+        item.defaultTransform.scaleX === item.defaultTransform.scaleY,
+    ),
+  )
   assert.deepEqual(
     manifestItems.map((item) => {
       const canonicalItem = { ...item }

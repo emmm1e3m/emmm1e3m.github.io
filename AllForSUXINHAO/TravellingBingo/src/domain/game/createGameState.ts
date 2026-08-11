@@ -29,7 +29,7 @@ export function createInitialGameState(options: InitialGameOptions): GameState {
   })
 
   return {
-    schemaVersion: 11,
+    schemaVersion: 12,
     profile: {
       createdAt: options.now,
       debug: options.debug ?? false,
@@ -72,7 +72,7 @@ export function createInitialGameState(options: InitialGameOptions): GameState {
       todos: {},
       pomodoro: {
         nextSessionSequence: 0,
-        selectedPostcardId: null,
+        selectedBackground: null,
         session: null,
       },
       streamHistory: {
@@ -83,6 +83,7 @@ export function createInitialGameState(options: InitialGameOptions): GameState {
         selfTestBvid: null,
         favoriteId: DEFAULT_STREAM_FAVORITE_ID,
       },
+      streamDailyReward: { lastRewardDateKey: null },
     },
     musicPlayer: {
       currentBvid: null,

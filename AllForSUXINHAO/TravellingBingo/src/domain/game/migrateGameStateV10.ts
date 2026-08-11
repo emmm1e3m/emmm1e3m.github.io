@@ -1,6 +1,5 @@
 import { z } from 'zod'
 
-import { FRIEND_EVENT_IDS } from './constants'
 import {
   gameStateV10Schema,
   migrateStoredGameStateToV10,
@@ -11,27 +10,119 @@ import { MAX_DATE_TIMESTAMP_MS } from './time'
 import type {
   GameStateV10,
   GameStateV11,
-  SavedWardrobeLook,
-  WardrobeElement,
-  WardrobePhoto,
-  WardrobePhotoParticipant,
-  WardrobeState,
+  SavedWardrobeLookV11,
+  WardrobeElementV11,
+  WardrobeAssetId,
+  WardrobePhotoV11,
+  WardrobePhotoParticipantV11,
+  WardrobeStateV11,
   WardrobeTargetId,
-  WardrobeTransform,
+  WardrobeTransformV11,
 } from './types'
-import {
-  createInitialWardrobeState,
-  generateWardrobeShop,
-  MAX_WARDROBE_LOOK_ELEMENTS,
-  MAX_WARDROBE_LOOK_NAME_LENGTH,
-  MAX_WARDROBE_LOOKS_PER_TARGET,
-  MAX_WARDROBE_PHOTOS,
-  MAX_WARDROBE_PHOTO_PARTICIPANTS,
-  STARTER_WARDROBE_ASSET_IDS,
-  WARDROBE_ASSET_IDS,
-  WARDROBE_LAYOUT_VERSION,
-  WARDROBE_SHOP_SIZE,
-} from './wardrobe'
+
+/** 已发布 V11 的衣柜目录与边界；不得随当前衣柜目录继续扩展。 */
+const FRIEND_EVENT_IDS = [
+  'class-representative-bing',
+  'san-hao-rabbit',
+  'xin-hao-rabbit',
+  'signal-dog',
+  'bili-bing',
+] as const
+export const WARDROBE_LAYOUT_VERSION_V11 = 1 as const
+const WARDROBE_SHOP_SIZE = 3 as const
+const MAX_WARDROBE_LOOK_ELEMENTS = 12
+const MAX_WARDROBE_LOOKS_PER_TARGET = 8
+const MAX_WARDROBE_LOOK_NAME_LENGTH = 20
+const MAX_WARDROBE_PHOTOS = 40
+const MAX_WARDROBE_PHOTO_PARTICIPANTS = 6
+const WARDROBE_ASSET_IDS = [
+  'green-sailor-top',
+  'red-ruffle-dress',
+  'monochrome-maid-dress',
+  'black-stage-suit',
+  'black-tie-uniform',
+  'blue-street-jacket',
+  'tan-bear-suit',
+  'cream-apple-cape',
+  'round-glasses',
+  'square-glasses',
+  'maid-headband',
+  'black-beret',
+  'cat-ears',
+  'microphone',
+  'signal-sign',
+  'apple-cake',
+  'paw-glove',
+  'check-sign',
+  'cross-sign',
+  'dim-sum-basket',
+  'apple-cuffs',
+  'apple-badge',
+  'black-fedora',
+  'red-bead-trim',
+] as const satisfies readonly WardrobeAssetId[]
+const STARTER_WARDROBE_ASSET_IDS = ['cream-apple-cape'] as const
+const WARDROBE_FOR_SALE_IDS = WARDROBE_ASSET_IDS.filter(
+  (assetId) => assetId !== STARTER_WARDROBE_ASSET_IDS[0],
+)
+
+function hashWardrobeSeedV11(seed: string): number {
+  let hash = 0x811c9dc5
+  for (let index = 0; index < seed.length; index += 1) {
+    hash ^= seed.charCodeAt(index)
+    hash = Math.imul(hash, 0x01000193)
+  }
+  return hash >>> 0
+}
+
+function nextWardrobeRandomV11(state: number): { value: number; state: number } {
+  const nextState = (state + 0x6d2b79f5) >>> 0
+  let value = nextState
+  value = Math.imul(value ^ (value >>> 15), value | 1)
+  value ^= value + Math.imul(value ^ (value >>> 7), value | 61)
+  value = (value ^ (value >>> 14)) >>> 0
+  return { value: value / 4_294_967_296, state: nextState }
+}
+
+function generateWardrobeShop(
+  seed: string,
+  companionDay: number,
+  ownedAssetIds: readonly WardrobeAssetId[],
+): WardrobeAssetId[] {
+  if (seed.trim().length === 0) throw new TypeError('衣柜刷新种子不能为空')
+  if (!Number.isSafeInteger(companionDay) || companionDay < 0) {
+    throw new RangeError('衣柜刷新游戏日必须是非负安全整数')
+  }
+  const owned = new Set(ownedAssetIds)
+  const shuffled = WARDROBE_FOR_SALE_IDS.filter((assetId) => !owned.has(assetId))
+  let cursor = hashWardrobeSeedV11(`${seed}:wardrobe:${companionDay}`)
+  for (let index = shuffled.length - 1; index > 0; index -= 1) {
+    const random = nextWardrobeRandomV11(cursor)
+    cursor = random.state
+    const swapIndex = Math.floor(random.value * (index + 1))
+    ;[shuffled[index], shuffled[swapIndex]] = [shuffled[swapIndex], shuffled[index]]
+  }
+  return shuffled.slice(0, WARDROBE_SHOP_SIZE)
+}
+
+export function createInitialWardrobeStateV11(
+  seed: string,
+  companionDay: number,
+): WardrobeStateV11 {
+  const ownedAssetIds = [...STARTER_WARDROBE_ASSET_IDS]
+  return {
+    layoutVersion: WARDROBE_LAYOUT_VERSION_V11,
+    shop: {
+      companionDay,
+      assetIds: generateWardrobeShop(seed, companionDay, ownedAssetIds),
+    },
+    ownedAssetIds,
+    nextLookSequence: 0,
+    looks: {},
+    nextPhotoSequence: 0,
+    photos: {},
+  }
+}
 
 const timestamp = z.number().int().nonnegative().max(MAX_DATE_TIMESTAMP_MS)
 const safeCounter = z.number().int().nonnegative().max(Number.MAX_SAFE_INTEGER)
@@ -49,16 +140,17 @@ const wardrobeTransformShape = {
   z: z.number().int().min(-100).max(100),
 }
 
-const wardrobeTransformSchema: z.ZodType<WardrobeTransform> = z.strictObject(wardrobeTransformShape)
+const wardrobeTransformSchema: z.ZodType<WardrobeTransformV11> =
+  z.strictObject(wardrobeTransformShape)
 
-const wardrobeElementSchema: z.ZodType<WardrobeElement> = z.strictObject({
+const wardrobeElementSchema: z.ZodType<WardrobeElementV11> = z.strictObject({
   placementId: z.string().regex(/^[a-z0-9][a-z0-9-]{0,47}$/),
   assetId: wardrobeAssetIdSchema,
   ...wardrobeTransformShape,
 })
 
 function addUniqueLayerIssues(
-  elements: readonly WardrobeElement[],
+  elements: readonly WardrobeElementV11[],
   context: z.RefinementCtx,
   pathPrefix: PropertyKey[] = [],
 ) {
@@ -89,7 +181,7 @@ const wardrobeElementsSchema = z
   .max(MAX_WARDROBE_LOOK_ELEMENTS)
   .superRefine((elements, context) => addUniqueLayerIssues(elements, context))
 
-const savedWardrobeLookSchema: z.ZodType<SavedWardrobeLook> = z
+const savedWardrobeLookSchema: z.ZodType<SavedWardrobeLookV11> = z
   .strictObject({
     lookId: lookIdSchema,
     targetId: wardrobeTargetIdSchema,
@@ -112,14 +204,14 @@ const savedWardrobeLookSchema: z.ZodType<SavedWardrobeLook> = z
     }
   })
 
-const wardrobePhotoParticipantSchema: z.ZodType<WardrobePhotoParticipant> = z.strictObject({
+const wardrobePhotoParticipantSchema: z.ZodType<WardrobePhotoParticipantV11> = z.strictObject({
   targetId: wardrobeTargetIdSchema,
   sourceLookId: lookIdSchema.nullable(),
   ...wardrobeTransformShape,
   elements: wardrobeElementsSchema,
 })
 
-const wardrobePhotoSchema: z.ZodType<WardrobePhoto> = z
+const wardrobePhotoSchema: z.ZodType<WardrobePhotoV11> = z
   .strictObject({
     photoId: photoIdSchema,
     postcardId: postcardIdSchema.nullable(),
@@ -152,9 +244,9 @@ const wardrobePhotoSchema: z.ZodType<WardrobePhoto> = z
     })
   })
 
-const wardrobeStateSchema: z.ZodType<WardrobeState> = z
+const wardrobeStateSchema: z.ZodType<WardrobeStateV11> = z
   .strictObject({
-    layoutVersion: z.literal(WARDROBE_LAYOUT_VERSION),
+    layoutVersion: z.literal(WARDROBE_LAYOUT_VERSION_V11),
     shop: z.strictObject({
       companionDay: safeCounter,
       assetIds: z.array(wardrobeAssetIdSchema).max(WARDROBE_SHOP_SIZE),
@@ -402,7 +494,7 @@ export function migrateGameStateV10ToV11(state: GameStateV10): GameStateV11 {
             rewardPlan: { ...cloned.activeActivity.rewardPlan, baseApples: 0 },
           }
         : cloned.activeActivity,
-    wardrobe: createInitialWardrobeState(cloned.random.seed, cloned.profile.companionDays),
+    wardrobe: createInitialWardrobeStateV11(cloned.random.seed, cloned.profile.companionDays),
   }
 }
 

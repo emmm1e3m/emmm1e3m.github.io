@@ -93,16 +93,16 @@
 }
 
 .persistent-bilibili-player--context {
-  --player-dock-right: clamp(8px, 1.25vw, 18px);
   width: min(360px, calc(100vw - 1.5rem));
   max-height: min(54dvh, 440px);
   overflow-y: auto;
-  font-family: var(--font-display);
+  font-family: var(--font-ui);
 }
 
 /* 侧栏播放器与信息栏共享一份场景间距；固定块高让相邻边界可精确对齐。 */
 @media (min-width: 961px) {
   .persistent-bilibili-player--context {
+    --player-dock-right: max(clamp(8px, 1.25vw, 18px), calc((100vw - 1480px) / 2));
     --player-dock-bottom: var(--scene-component-gap);
     box-sizing: border-box;
     height: var(--scene-player-collapsed-block-size);

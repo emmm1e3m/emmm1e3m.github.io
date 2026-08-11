@@ -13,7 +13,7 @@ export {
 } from '@/features/reality/stream/popupProtocol'
 
 export type StreamPlayerEventPayload =
-  | { readonly event: 'started' }
+  | { readonly event: 'started'; readonly dateKey: string }
   | {
       readonly event: 'ended'
       readonly outcome: 'completed' | 'stopped'

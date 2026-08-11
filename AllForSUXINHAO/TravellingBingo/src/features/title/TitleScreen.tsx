@@ -113,7 +113,7 @@ export function TitleScreen({
       <section className="landing-shell" aria-labelledby="game-title">
         <div className="landing-copy">
           <div className="landing-overline">
-            <span>TRAVELLING BINGO · v0.10</span>
+            <span>TRAVELLING BINGO · v0.10.1</span>
             {debugUnlocked && (
               <span className="landing-secret" role="status">
                 门牌已亮
@@ -188,6 +188,10 @@ export function TitleScreen({
                 <div>
                   <dt>出发时间</dt>
                   <dd className="numeric-copy">{formatExportTime(importPreview.exportedAt)}</dd>
+                </div>
+                <div>
+                  <dt>游戏版本</dt>
+                  <dd className="numeric-copy">{importPreview.gameVersion}</dd>
                 </div>
                 <div>
                   <dt>背包里的🍎</dt>

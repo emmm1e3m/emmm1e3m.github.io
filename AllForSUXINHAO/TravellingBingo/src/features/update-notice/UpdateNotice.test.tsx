@@ -3,10 +3,10 @@ import { fireEvent, render, screen } from '@testing-library/react'
 import { CURRENT_UPDATE_NOTICE } from './noticeData'
 import { UpdateNoticeCard, UpdateNoticeDialog } from './UpdateNotice'
 
-describe('v0.10 更新公告', () => {
+describe('v0.10.1 更新公告', () => {
   it('使用一份版本化公告数据描述本轮功能', () => {
     expect(CURRENT_UPDATE_NOTICE).toMatchObject({
-      version: 'v0.10',
+      version: 'v0.10.1',
       highlight: '刷播现在可以正常使用了',
     })
     expect(CURRENT_UPDATE_NOTICE.entries.map((entry) => entry.title)).toEqual([
@@ -15,6 +15,9 @@ describe('v0.10 更新公告', () => {
       '合拍相册开张',
       '在线刷播工具就绪',
     ])
+    expect(CURRENT_UPDATE_NOTICE.entries.map((entry) => entry.detail).join(' ')).toMatch(
+      /衣架已经准备好入口.*保存成不同造型.*保存到相册/u,
+    )
     expect(CURRENT_UPDATE_NOTICE).not.toHaveProperty('warning')
   })
 
@@ -23,8 +26,18 @@ describe('v0.10 更新公告', () => {
     render(<UpdateNoticeCard onOpen={onOpen} />)
 
     const card = screen.getByRole('button', {
-      name: /更新公告 · v0\.10 · 饼屋的新布置/u,
+      name: /更新公告 · 饼屋的新布置/u,
     })
+    const copy = card.querySelector('.update-notice-card__copy')
+    const meta = card.querySelector('.update-notice-card__meta')
+    const version = meta?.querySelector('.update-notice-card__version')
+    const publishedDate = meta?.querySelector('time')
+
+    expect(copy).toHaveTextContent('更新公告 · 饼屋的新布置')
+    expect(copy).not.toHaveTextContent(CURRENT_UPDATE_NOTICE.version)
+    expect(version).toHaveTextContent(CURRENT_UPDATE_NOTICE.version)
+    expect(publishedDate).toHaveTextContent(CURRENT_UPDATE_NOTICE.publishedLabel)
+    expect([...meta!.children]).toEqual([version, publishedDate])
     expect(card).toHaveTextContent('刷播现在可以正常使用了')
     fireEvent.click(card)
     expect(onOpen).toHaveBeenCalledOnce()
@@ -35,10 +48,13 @@ describe('v0.10 更新公告', () => {
     render(<UpdateNoticeDialog open onClose={onClose} />)
 
     const dialog = screen.getByRole('dialog', { name: '饼屋的新布置' })
-    expect(dialog).toHaveTextContent('更新公告 · v0.10')
+    expect(dialog).toHaveTextContent('更新公告 · v0.10.1')
     expect(dialog).toHaveTextContent('奇迹饼狗上线')
+    expect(dialog).toHaveTextContent('衣架已经准备好入口')
     expect(dialog).toHaveTextContent('多套造型随心保存')
+    expect(dialog).toHaveTextContent('保存成不同造型')
     expect(dialog).toHaveTextContent('合拍相册开张')
+    expect(dialog).toHaveTextContent('保存到相册')
     expect(dialog).toHaveTextContent('刷播现在可以正常使用了')
 
     fireEvent.click(screen.getByRole('button', { name: '收好啦' }))

@@ -15,6 +15,7 @@ import {
   MAX_WARDROBE_LOOK_ELEMENTS,
   MAX_WARDROBE_LOOK_NAME_LENGTH,
   MAX_WARDROBE_LOOKS_PER_TARGET,
+  MAX_WARDROBE_PHOTO_DECORATIONS,
   MAX_WARDROBE_PHOTOS,
   WARDROBE_CATALOG,
   getAvailableWardrobeTargets,
@@ -26,6 +27,7 @@ import type {
   WardrobeAssetId,
   WardrobeElement,
   WardrobePhoto,
+  WardrobePhotoDecoration,
   SavedWardrobeLook,
   WardrobeTargetId,
   WardrobeTransform,
@@ -35,6 +37,7 @@ import { buildUnlockedPostcardBackgrounds } from '@/features/reality'
 import './MiracleWardrobePage.css'
 
 import { PhotoCompositionPreview } from './PhotoCompositionPreview'
+import { downloadWardrobeLook } from './renderWardrobeLook'
 import { getWardrobeAssetVisual, getWardrobeTargetVisual } from './wardrobeAssets'
 
 type WardrobeTab = 'dressing' | 'photo' | 'collection'
@@ -49,8 +52,17 @@ interface MiracleWardrobePageProps {
 interface PhotoParticipantDraft extends WardrobeTransform {
   targetId: WardrobeTargetId
   lookId: string | null
-  defaultTransform: Pick<WardrobeTransform, 'x' | 'y' | 'scale' | 'rotation'>
+  defaultTransform: EditableTransform
 }
+
+interface PhotoDecorationDraft extends WardrobePhotoDecoration {
+  defaultTransform: EditableTransform
+}
+
+type EditableTransform = Pick<WardrobeTransform, 'x' | 'y' | 'scaleX' | 'scaleY' | 'rotation'>
+
+type PhotoLayerKind = 'participant' | 'decoration'
+type KeyboardTransformMode = 'move' | 'stretch' | 'uniform'
 
 interface DragState {
   pointerId: number
@@ -67,8 +79,33 @@ interface TransformDragState {
   centerY: number
   initialDistance: number
   initialAngle: number
-  initialScale: number
+  initialScaleX: number
+  initialScaleY: number
   initialRotation: number
+}
+
+interface StretchDragState {
+  pointerId: number
+  id: string
+  centerX: number
+  centerY: number
+  initialLocalX: number
+  initialLocalY: number
+  initialScaleX: number
+  initialScaleY: number
+  rotation: number
+}
+
+interface PhotoDragState extends DragState {
+  kind: PhotoLayerKind
+}
+
+interface PhotoTransformDragState extends TransformDragState {
+  kind: PhotoLayerKind
+}
+
+interface PhotoStretchDragState extends StretchDragState {
+  kind: PhotoLayerKind
 }
 
 const TABS: readonly { id: WardrobeTab; label: string }[] = [
@@ -96,9 +133,12 @@ const CATEGORY_LABELS: Record<WardrobeAssetCategory, string> = {
 const DEFAULT_BINGO_PHOTO_TRANSFORM = {
   x: 0.5,
   y: 0.57,
-  scale: 0.34,
+  scaleX: 0.34,
+  scaleY: 0.34,
   rotation: 0,
 } as const
+
+const DEFAULT_PHOTO_DECORATION_SCALE = 0.3
 
 function clamp(value: number, minimum: number, maximum: number) {
   return Math.min(maximum, Math.max(minimum, value))
@@ -112,11 +152,88 @@ function pointerDistance(centerX: number, centerY: number, clientX: number, clie
   return Math.hypot(clientX - centerX, clientY - centerY)
 }
 
+function localPointerVector(
+  centerX: number,
+  centerY: number,
+  clientX: number,
+  clientY: number,
+  rotation: number,
+) {
+  const radians = (-rotation * Math.PI) / 180
+  const dx = clientX - centerX
+  const dy = clientY - centerY
+  return {
+    x: dx * Math.cos(radians) - dy * Math.sin(radians),
+    y: dx * Math.sin(radians) + dy * Math.cos(radians),
+  }
+}
+
 function normalizeRotation(value: number) {
   let rotation = value
   while (rotation > 180) rotation -= 360
   while (rotation < -180) rotation += 360
   return rotation
+}
+
+function uniformScaleWithinBounds(scaleX: number, scaleY: number, requestedFactor: number) {
+  const factor = clamp(
+    requestedFactor,
+    Math.max(0.05 / scaleX, 0.05 / scaleY),
+    Math.min(5 / scaleX, 5 / scaleY),
+  )
+  return {
+    scaleX: scaleX * factor,
+    scaleY: scaleY * factor,
+  }
+}
+
+function keyboardTransformUpdate(
+  event: KeyboardEvent<HTMLButtonElement>,
+  transform: WardrobeTransform,
+  mode: KeyboardTransformMode,
+): Partial<EditableTransform> | null {
+  const moveStep = event.shiftKey ? 0.08 : 0.02
+  const scaleStep = event.shiftKey ? 0.12 : 0.04
+  const uniformFactor = event.shiftKey ? 1.25 : 1.1
+  const rotationStep = event.shiftKey ? 15 : 5
+
+  if (mode === 'move') {
+    if (event.key === 'ArrowLeft') return { x: clamp(transform.x - moveStep, 0, 1) }
+    if (event.key === 'ArrowRight') return { x: clamp(transform.x + moveStep, 0, 1) }
+    if (event.key === 'ArrowUp') return { y: clamp(transform.y - moveStep, 0, 1) }
+    if (event.key === 'ArrowDown') return { y: clamp(transform.y + moveStep, 0, 1) }
+    return null
+  }
+
+  if (mode === 'stretch') {
+    if (event.key === 'ArrowLeft') {
+      return { scaleX: clamp(transform.scaleX - scaleStep, 0.05, 5) }
+    }
+    if (event.key === 'ArrowRight') {
+      return { scaleX: clamp(transform.scaleX + scaleStep, 0.05, 5) }
+    }
+    if (event.key === 'ArrowUp') {
+      return { scaleY: clamp(transform.scaleY + scaleStep, 0.05, 5) }
+    }
+    if (event.key === 'ArrowDown') {
+      return { scaleY: clamp(transform.scaleY - scaleStep, 0.05, 5) }
+    }
+    return null
+  }
+
+  if (event.key === 'ArrowUp') {
+    return uniformScaleWithinBounds(transform.scaleX, transform.scaleY, uniformFactor)
+  }
+  if (event.key === 'ArrowDown') {
+    return uniformScaleWithinBounds(transform.scaleX, transform.scaleY, 1 / uniformFactor)
+  }
+  if (event.key === 'ArrowRight') {
+    return { rotation: normalizeRotation(transform.rotation + rotationStep) }
+  }
+  if (event.key === 'ArrowLeft') {
+    return { rotation: normalizeRotation(transform.rotation - rotationStep) }
+  }
+  return null
 }
 
 function cloneElements(elements: readonly WardrobeElement[]): WardrobeElement[] {
@@ -129,23 +246,18 @@ function normalizeLayerOrder(elements: readonly WardrobeElement[]): WardrobeElem
     .map((element, index) => ({ ...element, z: index + 1 }))
 }
 
-function elementStyle(element: WardrobeElement): CSSProperties {
+function editableLayerStyle(
+  transform: WardrobeTransform,
+  naturalWidth = 1,
+  naturalHeight = 1,
+): CSSProperties {
   return {
-    left: `${element.x * 100}%`,
-    top: `${element.y * 100}%`,
-    width: `${element.scale * 100}%`,
-    zIndex: 200 + element.z,
-    transform: `translate(-50%, -50%) rotate(${element.rotation}deg)`,
-  }
-}
-
-function participantHitStyle(participant: PhotoParticipantDraft): CSSProperties {
-  return {
-    left: `${participant.x * 100}%`,
-    top: `${participant.y * 100}%`,
-    width: `${participant.scale * 100}%`,
-    zIndex: 200 + participant.z,
-    transform: `translate(-50%, -50%) rotate(${participant.rotation}deg)`,
+    left: `${transform.x * 100}%`,
+    top: `${transform.y * 100}%`,
+    width: `${transform.scaleX * 100}%`,
+    aspectRatio: `${naturalWidth * transform.scaleX} / ${naturalHeight * transform.scaleY}`,
+    zIndex: 200 + transform.z,
+    transform: `translate(-50%, -50%) rotate(${transform.rotation}deg)`,
   }
 }
 
@@ -165,6 +277,10 @@ function LookCanvas({
   onTransformPointerDown,
   onTransformPointerMove,
   onTransformPointerUp,
+  onStretchPointerDown,
+  onStretchPointerMove,
+  onStretchPointerUp,
+  onKeyboardTransform,
 }: {
   targetId: WardrobeTargetId
   elements: readonly WardrobeElement[]
@@ -175,11 +291,22 @@ function LookCanvas({
   onPointerMove: (event: ReactPointerEvent<HTMLButtonElement>) => void
   onPointerUp: (event: ReactPointerEvent<HTMLButtonElement>) => void
   onTransformPointerDown: (
-    event: ReactPointerEvent<HTMLSpanElement>,
+    event: ReactPointerEvent<HTMLButtonElement>,
     element: WardrobeElement,
   ) => void
-  onTransformPointerMove: (event: ReactPointerEvent<HTMLSpanElement>) => void
-  onTransformPointerUp: (event: ReactPointerEvent<HTMLSpanElement>) => void
+  onTransformPointerMove: (event: ReactPointerEvent<HTMLButtonElement>) => void
+  onTransformPointerUp: (event: ReactPointerEvent<HTMLButtonElement>) => void
+  onStretchPointerDown: (
+    event: ReactPointerEvent<HTMLButtonElement>,
+    element: WardrobeElement,
+  ) => void
+  onStretchPointerMove: (event: ReactPointerEvent<HTMLButtonElement>) => void
+  onStretchPointerUp: (event: ReactPointerEvent<HTMLButtonElement>) => void
+  onKeyboardTransform: (
+    event: KeyboardEvent<HTMLButtonElement>,
+    element: WardrobeElement,
+    mode: KeyboardTransformMode,
+  ) => void
 }) {
   const target = getWardrobeTargetVisual(targetId)
   const sorted = [...elements].sort(
@@ -192,36 +319,63 @@ function LookCanvas({
     return values.map((element) => {
       const visual = getWardrobeAssetVisual(element.assetId)
       return (
-        <button
+        <div
           className={`miracle-look-layer ${selectedPlacementId === element.placementId ? 'is-selected' : ''}`}
-          type="button"
           key={element.placementId}
-          style={elementStyle(element)}
-          aria-label={`${visual.name}${selectedPlacementId === element.placementId ? '，已选中' : ''}`}
-          onClick={() => onSelect(element.placementId)}
-          onPointerDown={(event) => onPointerDown(event, element)}
-          onPointerMove={onPointerMove}
-          onPointerUp={onPointerUp}
-          onPointerCancel={onPointerUp}
+          style={editableLayerStyle(element, visual.width, visual.height)}
         >
-          <img
-            src={visual.url}
-            alt=""
-            width={visual.width}
-            height={visual.height}
-            draggable={false}
-          />
-          {selectedPlacementId === element.placementId && (
-            <span
-              className="miracle-transform-handle"
-              aria-hidden="true"
-              onPointerDown={(event) => onTransformPointerDown(event, element)}
-              onPointerMove={onTransformPointerMove}
-              onPointerUp={onTransformPointerUp}
-              onPointerCancel={onTransformPointerUp}
+          <button
+            className="miracle-editable-center"
+            type="button"
+            aria-label={`${visual.name}${selectedPlacementId === element.placementId ? '，已选中' : ''}`}
+            onClick={() => onSelect(element.placementId)}
+            onPointerDown={(event) => onPointerDown(event, element)}
+            onPointerMove={onPointerMove}
+            onPointerUp={onPointerUp}
+            onPointerCancel={onPointerUp}
+            onKeyDown={(event) => onKeyboardTransform(event, element, 'move')}
+            aria-keyshortcuts="ArrowLeft ArrowRight ArrowUp ArrowDown"
+            aria-description="方向键移动"
+          >
+            <img
+              src={visual.url}
+              alt=""
+              width={visual.width}
+              height={visual.height}
+              draggable={false}
             />
+          </button>
+          {selectedPlacementId === element.placementId && (
+            <>
+              <button
+                className="miracle-transform-handle miracle-transform-handle--stretch"
+                type="button"
+                aria-label={`${visual.name}：分别调整宽度和高度`}
+                aria-keyshortcuts="ArrowLeft ArrowRight ArrowUp ArrowDown"
+                aria-description="方向键左右调宽，上下调高"
+                onClick={() => onSelect(element.placementId)}
+                onPointerDown={(event) => onStretchPointerDown(event, element)}
+                onPointerMove={onStretchPointerMove}
+                onPointerUp={onStretchPointerUp}
+                onPointerCancel={onStretchPointerUp}
+                onKeyDown={(event) => onKeyboardTransform(event, element, 'stretch')}
+              />
+              <button
+                className="miracle-transform-handle miracle-transform-handle--uniform"
+                type="button"
+                aria-label={`${visual.name}：等比缩放并旋转`}
+                aria-keyshortcuts="ArrowLeft ArrowRight ArrowUp ArrowDown"
+                aria-description="方向键上下缩放，左右旋转"
+                onClick={() => onSelect(element.placementId)}
+                onPointerDown={(event) => onTransformPointerDown(event, element)}
+                onPointerMove={onTransformPointerMove}
+                onPointerUp={onTransformPointerUp}
+                onPointerCancel={onTransformPointerUp}
+                onKeyDown={(event) => onKeyboardTransform(event, element, 'uniform')}
+              />
+            </>
           )}
-        </button>
+        </div>
       )
     })
   }
@@ -269,6 +423,7 @@ export function MiracleWardrobePage({
     return cloneElements(initialLook?.elements ?? [])
   })
   const [selectedPlacementId, setSelectedPlacementId] = useState<string | null>(null)
+  const [lookDownloadState, setLookDownloadState] = useState<'idle' | 'working' | 'error'>('idle')
   const [selectedPostcardId, setSelectedPostcardId] = useState<string | null>(null)
   const [photoParticipants, setPhotoParticipants] = useState<PhotoParticipantDraft[]>([
     {
@@ -282,15 +437,20 @@ export function MiracleWardrobePage({
   const [selectedPhotoTargetId, setSelectedPhotoTargetId] = useState<WardrobeTargetId | null>(
     'bingo',
   )
+  const [photoDecorations, setPhotoDecorations] = useState<PhotoDecorationDraft[]>([])
+  const [selectedPhotoDecorationId, setSelectedPhotoDecorationId] = useState<string | null>(null)
   const closeRef = useRef<HTMLButtonElement>(null)
   const tabRefs = useRef<Array<HTMLButtonElement | null>>([])
   const lookCanvasRef = useRef<HTMLDivElement>(null)
   const photoCanvasRef = useRef<HTMLDivElement>(null)
   const lookDragRef = useRef<DragState | null>(null)
-  const photoDragRef = useRef<DragState | null>(null)
+  const photoDragRef = useRef<PhotoDragState | null>(null)
   const lookTransformDragRef = useRef<TransformDragState | null>(null)
-  const photoTransformDragRef = useRef<TransformDragState | null>(null)
+  const lookStretchDragRef = useRef<StretchDragState | null>(null)
+  const photoTransformDragRef = useRef<PhotoTransformDragState | null>(null)
+  const photoStretchDragRef = useRef<PhotoStretchDragState | null>(null)
   const placementSequenceRef = useRef(0)
+  const photoDecorationSequenceRef = useRef(0)
   const dialogRef = useModalFocus<HTMLElement>(true, onClose, { initialFocus: closeRef })
   const ownedItems = useMemo(() => getOwnedWardrobeItems(game), [game])
   const savedLooks = useMemo(() => getSavedWardrobeLooks(game, lookTargetId), [game, lookTargetId])
@@ -300,6 +460,9 @@ export function MiracleWardrobePage({
     lookDraft.find((element) => element.placementId === selectedPlacementId) ?? null
   const selectedParticipant =
     photoParticipants.find((participant) => participant.targetId === selectedPhotoTargetId) ?? null
+  const selectedDecoration =
+    photoDecorations.find((decoration) => decoration.placementId === selectedPhotoDecorationId) ??
+    null
   const selectedPostcard = postcards.find((postcard) => postcard.id === effectivePostcardId) ?? null
   const selectedPostcardImage = effectivePostcardId
     ? [...(catalog.byId[effectivePostcardId]?.images ?? [])].sort(
@@ -376,8 +539,10 @@ export function MiracleWardrobePage({
     setLookDraft((current) =>
       current.map((element) => {
         if (element.placementId !== selectedPlacementId) return element
-        const { x, y, scale, rotation } = getWardrobeAssetVisual(element.assetId).defaultTransform
-        return { ...element, x, y, scale, rotation, z: element.z }
+        const { x, y, scaleX, scaleY, rotation } = getWardrobeAssetVisual(
+          element.assetId,
+        ).defaultTransform
+        return { ...element, x, y, scaleX, scaleY, rotation, z: element.z }
       }),
     )
     setMessage('已恢复这个元素的默认位置、大小和角度')
@@ -416,7 +581,10 @@ export function MiracleWardrobePage({
     }
   }
 
-  function startLookTransform(event: ReactPointerEvent<HTMLSpanElement>, element: WardrobeElement) {
+  function startLookTransform(
+    event: ReactPointerEvent<HTMLButtonElement>,
+    element: WardrobeElement,
+  ) {
     const canvas = lookCanvasRef.current
     if (!canvas) return
     event.preventDefault()
@@ -431,38 +599,142 @@ export function MiracleWardrobePage({
       centerY,
       initialDistance: Math.max(1, pointerDistance(centerX, centerY, event.clientX, event.clientY)),
       initialAngle: pointerAngle(centerX, centerY, event.clientX, event.clientY),
-      initialScale: element.scale,
+      initialScaleX: element.scaleX,
+      initialScaleY: element.scaleY,
       initialRotation: element.rotation,
     }
     setSelectedPlacementId(element.placementId)
     event.currentTarget.setPointerCapture(event.pointerId)
   }
 
-  function moveLookTransform(event: ReactPointerEvent<HTMLSpanElement>) {
+  function moveLookTransform(event: ReactPointerEvent<HTMLButtonElement>) {
     const drag = lookTransformDragRef.current
     if (!drag || drag.pointerId !== event.pointerId) return
     event.preventDefault()
     event.stopPropagation()
     const distance = pointerDistance(drag.centerX, drag.centerY, event.clientX, event.clientY)
     const angle = pointerAngle(drag.centerX, drag.centerY, event.clientX, event.clientY)
-    const scale = clamp(drag.initialScale * (distance / drag.initialDistance), 0.05, 5)
+    const scaleRatio = distance / drag.initialDistance
+    const { scaleX, scaleY } = uniformScaleWithinBounds(
+      drag.initialScaleX,
+      drag.initialScaleY,
+      scaleRatio,
+    )
     const rotation = normalizeRotation(
       drag.initialRotation + ((angle - drag.initialAngle) * 180) / Math.PI,
     )
     setLookDraft((current) =>
       current.map((element) =>
-        element.placementId === drag.id ? { ...element, scale, rotation } : element,
+        element.placementId === drag.id ? { ...element, scaleX, scaleY, rotation } : element,
       ),
     )
   }
 
-  function endLookTransform(event: ReactPointerEvent<HTMLSpanElement>) {
+  function endLookTransform(event: ReactPointerEvent<HTMLButtonElement>) {
     if (lookTransformDragRef.current?.pointerId !== event.pointerId) return
     event.preventDefault()
     event.stopPropagation()
     lookTransformDragRef.current = null
     if (event.currentTarget.hasPointerCapture(event.pointerId)) {
       event.currentTarget.releasePointerCapture(event.pointerId)
+    }
+  }
+
+  function startLookStretch(event: ReactPointerEvent<HTMLButtonElement>, element: WardrobeElement) {
+    const canvas = lookCanvasRef.current
+    if (!canvas) return
+    event.preventDefault()
+    event.stopPropagation()
+    const rect = canvas.getBoundingClientRect()
+    const centerX = rect.left + element.x * rect.width
+    const centerY = rect.top + element.y * rect.height
+    const initial = localPointerVector(
+      centerX,
+      centerY,
+      event.clientX,
+      event.clientY,
+      element.rotation,
+    )
+    lookStretchDragRef.current = {
+      pointerId: event.pointerId,
+      id: element.placementId,
+      centerX,
+      centerY,
+      initialLocalX: initial.x,
+      initialLocalY: initial.y,
+      initialScaleX: element.scaleX,
+      initialScaleY: element.scaleY,
+      rotation: element.rotation,
+    }
+    setSelectedPlacementId(element.placementId)
+    event.currentTarget.setPointerCapture(event.pointerId)
+  }
+
+  function moveLookStretch(event: ReactPointerEvent<HTMLButtonElement>) {
+    const drag = lookStretchDragRef.current
+    if (!drag || drag.pointerId !== event.pointerId) return
+    event.preventDefault()
+    event.stopPropagation()
+    const current = localPointerVector(
+      drag.centerX,
+      drag.centerY,
+      event.clientX,
+      event.clientY,
+      drag.rotation,
+    )
+    const scaleX = clamp(
+      drag.initialScaleX * (Math.abs(current.x) / Math.max(1, Math.abs(drag.initialLocalX))),
+      0.05,
+      5,
+    )
+    const scaleY = clamp(
+      drag.initialScaleY * (Math.abs(current.y) / Math.max(1, Math.abs(drag.initialLocalY))),
+      0.05,
+      5,
+    )
+    setLookDraft((elements) =>
+      elements.map((element) =>
+        element.placementId === drag.id ? { ...element, scaleX, scaleY } : element,
+      ),
+    )
+  }
+
+  function endLookStretch(event: ReactPointerEvent<HTMLButtonElement>) {
+    if (lookStretchDragRef.current?.pointerId !== event.pointerId) return
+    event.preventDefault()
+    event.stopPropagation()
+    lookStretchDragRef.current = null
+    if (event.currentTarget.hasPointerCapture(event.pointerId)) {
+      event.currentTarget.releasePointerCapture(event.pointerId)
+    }
+  }
+
+  function keyboardLookTransform(
+    event: KeyboardEvent<HTMLButtonElement>,
+    element: WardrobeElement,
+    mode: KeyboardTransformMode,
+  ) {
+    const update = keyboardTransformUpdate(event, element, mode)
+    if (!update) return
+    event.preventDefault()
+    event.stopPropagation()
+    setSelectedPlacementId(element.placementId)
+    setLookDraft((current) =>
+      current.map((candidate) =>
+        candidate.placementId === element.placementId ? { ...candidate, ...update } : candidate,
+      ),
+    )
+  }
+
+  async function downloadCurrentLook() {
+    setLookDownloadState('working')
+    try {
+      await downloadWardrobeLook(lookTargetId, lookDraft)
+      setLookDownloadState('idle')
+      setMessage(`${targetName(lookTargetId)}的透明 PNG 已经生成`)
+    } catch {
+      setLookDownloadState('error')
+      setMessage('透明 PNG 生成失败，请稍后再试')
     }
   }
 
@@ -541,12 +813,48 @@ export function MiracleWardrobePage({
     )
   }
 
+  function updateDecoration(placementId: string, update: Partial<PhotoDecorationDraft>) {
+    setPhotoDecorations((current) =>
+      current.map((decoration) =>
+        decoration.placementId === placementId ? { ...decoration, ...update } : decoration,
+      ),
+    )
+  }
+
+  function updatePhotoLayer(kind: PhotoLayerKind, id: string, update: Partial<WardrobeTransform>) {
+    if (kind === 'participant') updateParticipant(id as WardrobeTargetId, update)
+    else updateDecoration(id, update)
+  }
+
+  function selectPhotoLayer(kind: PhotoLayerKind, id: string) {
+    if (kind === 'participant') {
+      setSelectedPhotoTargetId(id as WardrobeTargetId)
+      setSelectedPhotoDecorationId(null)
+    } else {
+      setSelectedPhotoDecorationId(id)
+      setSelectedPhotoTargetId(null)
+    }
+  }
+
+  function nextPhotoLayerZ() {
+    return (
+      Math.max(
+        0,
+        ...photoParticipants.map((participant) => participant.z),
+        ...photoDecorations.map((decoration) => decoration.z),
+      ) + 1
+    )
+  }
+
   function togglePhotoTarget(targetId: WardrobeTargetId) {
     if (photoParticipants.some((participant) => participant.targetId === targetId)) {
       const remaining = photoParticipants.filter((participant) => participant.targetId !== targetId)
       setPhotoParticipants(remaining)
       if (selectedPhotoTargetId === targetId) {
         setSelectedPhotoTargetId(remaining[0]?.targetId ?? null)
+        if (remaining.length === 0 && photoDecorations.length > 0) {
+          setSelectedPhotoDecorationId(photoDecorations[0].placementId)
+        }
       }
       return
     }
@@ -555,7 +863,8 @@ export function MiracleWardrobePage({
     const defaultTransform = {
       x: clamp(0.34 + index * 0.16, 0.18, 0.82),
       y: 0.57,
-      scale: 0.3,
+      scaleX: 0.3,
+      scaleY: 0.3,
       rotation: 0,
     }
     setPhotoParticipants((current) => [
@@ -564,28 +873,64 @@ export function MiracleWardrobePage({
         targetId,
         lookId: getSavedWardrobeLooks(game, targetId)[0]?.lookId ?? null,
         ...defaultTransform,
-        defaultTransform,
-        z: Math.max(0, ...current.map((participant) => participant.z)) + 1,
+        defaultTransform: { ...defaultTransform },
+        z: nextPhotoLayerZ(),
       },
     ])
-    setSelectedPhotoTargetId(targetId)
+    selectPhotoLayer('participant', targetId)
+  }
+
+  function addPhotoDecoration(assetId: WardrobeAssetId) {
+    if (photoDecorations.length >= MAX_WARDROBE_PHOTO_DECORATIONS) {
+      setMessage(`一张合拍最多放置 ${MAX_WARDROBE_PHOTO_DECORATIONS} 个独立元素`)
+      return
+    }
+    const visual = getWardrobeAssetVisual(assetId)
+    let placementId: string
+    do {
+      photoDecorationSequenceRef.current += 1
+      placementId = `photo-${assetId}-${photoDecorationSequenceRef.current.toString(36)}`
+    } while (photoDecorations.some((decoration) => decoration.placementId === placementId))
+    const defaultScaleRatio =
+      DEFAULT_PHOTO_DECORATION_SCALE /
+      Math.max(visual.defaultTransform.scaleX, visual.defaultTransform.scaleY)
+    const defaultTransform = {
+      x: 0.5,
+      y: 0.5,
+      scaleX: visual.defaultTransform.scaleX * defaultScaleRatio,
+      scaleY: visual.defaultTransform.scaleY * defaultScaleRatio,
+      rotation: visual.defaultTransform.rotation,
+    }
+    const decoration: PhotoDecorationDraft = {
+      placementId,
+      assetId,
+      ...defaultTransform,
+      defaultTransform: { ...defaultTransform },
+      z: nextPhotoLayerZ(),
+    }
+    setPhotoDecorations((current) => [...current, decoration])
+    selectPhotoLayer('decoration', placementId)
+    setMessage(`已把${visual.name}作为独立元素放进合拍`)
   }
 
   function startPhotoDrag(
     event: ReactPointerEvent<HTMLButtonElement>,
-    participant: PhotoParticipantDraft,
+    kind: PhotoLayerKind,
+    id: string,
+    transform: WardrobeTransform,
   ) {
     const canvas = photoCanvasRef.current
     if (!canvas) return
     const rect = canvas.getBoundingClientRect()
     photoDragRef.current = {
       pointerId: event.pointerId,
-      id: participant.targetId,
+      kind,
+      id,
       rect,
-      offsetX: event.clientX - rect.left - participant.x * rect.width,
-      offsetY: event.clientY - rect.top - participant.y * rect.height,
+      offsetX: event.clientX - rect.left - transform.x * rect.width,
+      offsetY: event.clientY - rect.top - transform.y * rect.height,
     }
-    setSelectedPhotoTargetId(participant.targetId)
+    selectPhotoLayer(kind, id)
     event.currentTarget.setPointerCapture(event.pointerId)
   }
 
@@ -594,7 +939,7 @@ export function MiracleWardrobePage({
     if (!drag || drag.pointerId !== event.pointerId) return
     const x = clamp((event.clientX - drag.rect.left - drag.offsetX) / drag.rect.width, 0, 1)
     const y = clamp((event.clientY - drag.rect.top - drag.offsetY) / drag.rect.height, 0, 1)
-    updateParticipant(drag.id as WardrobeTargetId, { x, y })
+    updatePhotoLayer(drag.kind, drag.id, { x, y })
   }
 
   function endPhotoDrag(event: ReactPointerEvent<HTMLButtonElement>) {
@@ -606,46 +951,52 @@ export function MiracleWardrobePage({
   }
 
   function startPhotoTransform(
-    event: ReactPointerEvent<HTMLSpanElement>,
-    participant: PhotoParticipantDraft,
+    event: ReactPointerEvent<HTMLButtonElement>,
+    kind: PhotoLayerKind,
+    id: string,
+    transform: WardrobeTransform,
   ) {
     const canvas = photoCanvasRef.current
     if (!canvas) return
     event.preventDefault()
     event.stopPropagation()
     const rect = canvas.getBoundingClientRect()
-    const centerX = rect.left + participant.x * rect.width
-    const centerY = rect.top + participant.y * rect.height
+    const centerX = rect.left + transform.x * rect.width
+    const centerY = rect.top + transform.y * rect.height
     photoTransformDragRef.current = {
       pointerId: event.pointerId,
-      id: participant.targetId,
+      kind,
+      id,
       centerX,
       centerY,
       initialDistance: Math.max(1, pointerDistance(centerX, centerY, event.clientX, event.clientY)),
       initialAngle: pointerAngle(centerX, centerY, event.clientX, event.clientY),
-      initialScale: participant.scale,
-      initialRotation: participant.rotation,
+      initialScaleX: transform.scaleX,
+      initialScaleY: transform.scaleY,
+      initialRotation: transform.rotation,
     }
-    setSelectedPhotoTargetId(participant.targetId)
+    selectPhotoLayer(kind, id)
     event.currentTarget.setPointerCapture(event.pointerId)
   }
 
-  function movePhotoTransform(event: ReactPointerEvent<HTMLSpanElement>) {
+  function movePhotoTransform(event: ReactPointerEvent<HTMLButtonElement>) {
     const drag = photoTransformDragRef.current
     if (!drag || drag.pointerId !== event.pointerId) return
     event.preventDefault()
     event.stopPropagation()
     const distance = pointerDistance(drag.centerX, drag.centerY, event.clientX, event.clientY)
     const angle = pointerAngle(drag.centerX, drag.centerY, event.clientX, event.clientY)
-    updateParticipant(drag.id as WardrobeTargetId, {
-      scale: clamp(drag.initialScale * (distance / drag.initialDistance), 0.05, 5),
+    const scaleRatio = distance / drag.initialDistance
+    const scale = uniformScaleWithinBounds(drag.initialScaleX, drag.initialScaleY, scaleRatio)
+    updatePhotoLayer(drag.kind, drag.id, {
+      ...scale,
       rotation: normalizeRotation(
         drag.initialRotation + ((angle - drag.initialAngle) * 180) / Math.PI,
       ),
     })
   }
 
-  function endPhotoTransform(event: ReactPointerEvent<HTMLSpanElement>) {
+  function endPhotoTransform(event: ReactPointerEvent<HTMLButtonElement>) {
     if (photoTransformDragRef.current?.pointerId !== event.pointerId) return
     event.preventDefault()
     event.stopPropagation()
@@ -655,19 +1006,127 @@ export function MiracleWardrobePage({
     }
   }
 
-  function moveSelectedParticipant(direction: -1 | 1) {
-    setPhotoParticipants((current) => {
-      const ordered = [...current].sort(
-        (left, right) => left.z - right.z || left.targetId.localeCompare(right.targetId),
-      )
-      const index = ordered.findIndex(
-        (participant) => participant.targetId === selectedPhotoTargetId,
-      )
-      const targetIndex = clamp(index + direction, 0, ordered.length - 1)
-      if (index < 0 || index === targetIndex) return ordered
-      ;[ordered[index], ordered[targetIndex]] = [ordered[targetIndex], ordered[index]]
-      return ordered.map((participant, layerIndex) => ({ ...participant, z: layerIndex + 1 }))
+  function startPhotoStretch(
+    event: ReactPointerEvent<HTMLButtonElement>,
+    kind: PhotoLayerKind,
+    id: string,
+    transform: WardrobeTransform,
+  ) {
+    const canvas = photoCanvasRef.current
+    if (!canvas) return
+    event.preventDefault()
+    event.stopPropagation()
+    const rect = canvas.getBoundingClientRect()
+    const centerX = rect.left + transform.x * rect.width
+    const centerY = rect.top + transform.y * rect.height
+    const initial = localPointerVector(
+      centerX,
+      centerY,
+      event.clientX,
+      event.clientY,
+      transform.rotation,
+    )
+    photoStretchDragRef.current = {
+      pointerId: event.pointerId,
+      kind,
+      id,
+      centerX,
+      centerY,
+      initialLocalX: initial.x,
+      initialLocalY: initial.y,
+      initialScaleX: transform.scaleX,
+      initialScaleY: transform.scaleY,
+      rotation: transform.rotation,
+    }
+    selectPhotoLayer(kind, id)
+    event.currentTarget.setPointerCapture(event.pointerId)
+  }
+
+  function movePhotoStretch(event: ReactPointerEvent<HTMLButtonElement>) {
+    const drag = photoStretchDragRef.current
+    if (!drag || drag.pointerId !== event.pointerId) return
+    event.preventDefault()
+    event.stopPropagation()
+    const current = localPointerVector(
+      drag.centerX,
+      drag.centerY,
+      event.clientX,
+      event.clientY,
+      drag.rotation,
+    )
+    updatePhotoLayer(drag.kind, drag.id, {
+      scaleX: clamp(
+        drag.initialScaleX * (Math.abs(current.x) / Math.max(1, Math.abs(drag.initialLocalX))),
+        0.05,
+        5,
+      ),
+      scaleY: clamp(
+        drag.initialScaleY * (Math.abs(current.y) / Math.max(1, Math.abs(drag.initialLocalY))),
+        0.05,
+        5,
+      ),
     })
+  }
+
+  function endPhotoStretch(event: ReactPointerEvent<HTMLButtonElement>) {
+    if (photoStretchDragRef.current?.pointerId !== event.pointerId) return
+    event.preventDefault()
+    event.stopPropagation()
+    photoStretchDragRef.current = null
+    if (event.currentTarget.hasPointerCapture(event.pointerId)) {
+      event.currentTarget.releasePointerCapture(event.pointerId)
+    }
+  }
+
+  function keyboardPhotoTransform(
+    event: KeyboardEvent<HTMLButtonElement>,
+    kind: PhotoLayerKind,
+    id: string,
+    transform: WardrobeTransform,
+    mode: KeyboardTransformMode,
+  ) {
+    const update = keyboardTransformUpdate(event, transform, mode)
+    if (!update) return
+    event.preventDefault()
+    event.stopPropagation()
+    selectPhotoLayer(kind, id)
+    updatePhotoLayer(kind, id, update)
+  }
+
+  function moveSelectedPhotoLayer(direction: -1 | 1) {
+    const selectedKey = selectedPhotoDecorationId
+      ? `decoration:${selectedPhotoDecorationId}`
+      : selectedPhotoTargetId
+        ? `participant:${selectedPhotoTargetId}`
+        : null
+    if (!selectedKey) return
+    const ordered = [
+      ...photoParticipants.map((value) => ({
+        key: `participant:${value.targetId}`,
+        z: value.z,
+      })),
+      ...photoDecorations.map((value) => ({
+        key: `decoration:${value.placementId}`,
+        z: value.z,
+      })),
+    ].sort((left, right) => left.z - right.z || left.key.localeCompare(right.key))
+    const index = ordered.findIndex((layer) => layer.key === selectedKey)
+    const targetIndex = clamp(index + direction, 0, ordered.length - 1)
+    if (index < 0 || index === targetIndex) return
+    ;[ordered[index], ordered[targetIndex]] = [ordered[targetIndex], ordered[index]]
+    const zByKey = new Map(ordered.map((layer, layerIndex) => [layer.key, layerIndex + 1]))
+    setPhotoParticipants((current) =>
+      current.map((participant) => ({
+        ...participant,
+        z: zByKey.get(`participant:${participant.targetId}`) ?? participant.z,
+      })),
+    )
+    setPhotoDecorations((current) =>
+      current.map((decoration) => ({
+        ...decoration,
+        z: zByKey.get(`decoration:${decoration.placementId}`) ?? decoration.z,
+      })),
+    )
   }
 
   function resetSelectedParticipantTransform() {
@@ -686,6 +1145,19 @@ export function MiracleWardrobePage({
     setMessage(`已恢复${targetName(selectedPhotoTargetId)}的默认位置、大小和角度`)
   }
 
+  function resetSelectedDecorationTransform() {
+    if (!selectedPhotoDecorationId) return
+    const selected = photoDecorations.find(
+      (decoration) => decoration.placementId === selectedPhotoDecorationId,
+    )
+    if (!selected) return
+    updateDecoration(selectedPhotoDecorationId, {
+      ...selected.defaultTransform,
+      z: selected.z,
+    })
+    setMessage(`已恢复${getWardrobeAssetVisual(selected.assetId).name}的默认位置、大小和角度`)
+  }
+
   const draftPhoto: WardrobePhoto = {
     photoId: 'miracle-draft',
     postcardId: effectivePostcardId,
@@ -694,13 +1166,24 @@ export function MiracleWardrobePage({
       targetId: participant.targetId,
       x: participant.x,
       y: participant.y,
-      scale: participant.scale,
+      scaleX: participant.scaleX,
+      scaleY: participant.scaleY,
       rotation: participant.rotation,
       z: participant.z,
       sourceLookId: participant.lookId,
       elements: cloneElements(
         participant.lookId ? (game.wardrobe.looks[participant.lookId]?.elements ?? []) : [],
       ),
+    })),
+    decorations: photoDecorations.map((decoration) => ({
+      placementId: decoration.placementId,
+      assetId: decoration.assetId,
+      x: decoration.x,
+      y: decoration.y,
+      scaleX: decoration.scaleX,
+      scaleY: decoration.scaleY,
+      rotation: decoration.rotation,
+      z: decoration.z,
     })),
   }
 
@@ -710,7 +1193,7 @@ export function MiracleWardrobePage({
       return
     }
     if (photoParticipants.length === 0) {
-      setMessage('至少选择一位出镜的朋友')
+      setMessage('选择至少一只')
       return
     }
     if (Object.keys(game.wardrobe.photos).length >= MAX_WARDROBE_PHOTOS) {
@@ -725,9 +1208,20 @@ export function MiracleWardrobePage({
         lookId: participant.lookId,
         x: participant.x,
         y: participant.y,
-        scale: participant.scale,
+        scaleX: participant.scaleX,
+        scaleY: participant.scaleY,
         rotation: participant.rotation,
         z: participant.z,
+      })),
+      decorations: photoDecorations.map((decoration) => ({
+        placementId: decoration.placementId,
+        assetId: decoration.assetId,
+        x: decoration.x,
+        y: decoration.y,
+        scaleX: decoration.scaleX,
+        scaleY: decoration.scaleY,
+        rotation: decoration.rotation,
+        z: decoration.z,
       })),
       now: Date.now(),
     })
@@ -825,15 +1319,25 @@ export function MiracleWardrobePage({
                 <p>还没有保存过造型，可以从空白画布开始。</p>
               )}
             </section>
-            <label className="miracle-look-name">
-              造型名称
-              <input
-                type="text"
-                maxLength={MAX_WARDROBE_LOOK_NAME_LENGTH}
-                value={lookName}
-                onChange={(event) => setLookName(event.currentTarget.value)}
-              />
-            </label>
+            <div className="miracle-look-name-row">
+              <label className="miracle-look-name">
+                造型名称
+                <input
+                  type="text"
+                  maxLength={MAX_WARDROBE_LOOK_NAME_LENGTH}
+                  value={lookName}
+                  onChange={(event) => setLookName(event.currentTarget.value)}
+                />
+              </label>
+              <button
+                className="paper-button"
+                type="button"
+                disabled={lookDownloadState === 'working'}
+                onClick={() => void downloadCurrentLook()}
+              >
+                {lookDownloadState === 'working' ? '正在生成…' : '下载透明 PNG'}
+              </button>
+            </div>
             <LookCanvas
               targetId={lookTargetId}
               elements={lookDraft}
@@ -846,6 +1350,10 @@ export function MiracleWardrobePage({
               onTransformPointerDown={startLookTransform}
               onTransformPointerMove={moveLookTransform}
               onTransformPointerUp={endLookTransform}
+              onStretchPointerDown={startLookStretch}
+              onStretchPointerMove={moveLookStretch}
+              onStretchPointerUp={endLookStretch}
+              onKeyboardTransform={keyboardLookTransform}
             />
             <div className="miracle-editor-save-row">
               <button
@@ -908,7 +1416,7 @@ export function MiracleWardrobePage({
               {selectedElement ? (
                 <>
                   <p>
-                    拖动图片中心来移动；拖动右下角圆点可同时缩放和旋转。手柄离开画布时，可从图层列表重新选中并复位。
+                    拖动中心来移动；右下角等比缩放并旋转，左上角可分别调整宽度和高度。手柄离开画布时，可从图层列表重新选中并复位。
                   </p>
                   <div className="miracle-layer-actions">
                     <button type="button" onClick={() => moveSelectedLayer(-1)}>
@@ -987,34 +1495,216 @@ export function MiracleWardrobePage({
                     }
                     label="奇迹饼狗合拍预览"
                   />
-                  <div className="miracle-photo-hit-layer">
-                    {photoParticipants.map((participant) => (
-                      <button
-                        key={participant.targetId}
-                        type="button"
-                        style={participantHitStyle(participant)}
-                        className={
-                          selectedPhotoTargetId === participant.targetId ? 'is-selected' : ''
-                        }
-                        aria-label={`移动${targetName(participant.targetId)}`}
-                        onClick={() => setSelectedPhotoTargetId(participant.targetId)}
-                        onPointerDown={(event) => startPhotoDrag(event, participant)}
-                        onPointerMove={movePhotoDrag}
-                        onPointerUp={endPhotoDrag}
-                        onPointerCancel={endPhotoDrag}
-                      >
-                        {selectedPhotoTargetId === participant.targetId && (
-                          <span
-                            className="miracle-transform-handle"
-                            aria-hidden="true"
-                            onPointerDown={(event) => startPhotoTransform(event, participant)}
-                            onPointerMove={movePhotoTransform}
-                            onPointerUp={endPhotoTransform}
-                            onPointerCancel={endPhotoTransform}
+                  <div className="miracle-photo-hit-layer" aria-label="合拍组件调整层">
+                    {photoParticipants.map((participant) => {
+                      const visual = getWardrobeTargetVisual(participant.targetId)
+                      const selected = selectedPhotoTargetId === participant.targetId
+                      const name = targetName(participant.targetId)
+                      return (
+                        <div
+                          className={`miracle-photo-editable miracle-photo-editable--participant ${selected ? 'is-selected' : ''}`}
+                          key={participant.targetId}
+                          style={editableLayerStyle(participant, visual.width, visual.height)}
+                        >
+                          <button
+                            className="miracle-editable-center"
+                            type="button"
+                            aria-label={`移动${name}`}
+                            aria-description="方向键移动"
+                            aria-keyshortcuts="ArrowLeft ArrowRight ArrowUp ArrowDown"
+                            onClick={() => selectPhotoLayer('participant', participant.targetId)}
+                            onPointerDown={(event) =>
+                              startPhotoDrag(
+                                event,
+                                'participant',
+                                participant.targetId,
+                                participant,
+                              )
+                            }
+                            onPointerMove={movePhotoDrag}
+                            onPointerUp={endPhotoDrag}
+                            onPointerCancel={endPhotoDrag}
+                            onKeyDown={(event) =>
+                              keyboardPhotoTransform(
+                                event,
+                                'participant',
+                                participant.targetId,
+                                participant,
+                                'move',
+                              )
+                            }
                           />
-                        )}
-                      </button>
-                    ))}
+                          {selected && (
+                            <>
+                              <button
+                                className="miracle-transform-handle miracle-transform-handle--stretch"
+                                type="button"
+                                aria-label={`${name}：分别调整宽度和高度`}
+                                aria-description="方向键左右调宽，上下调高"
+                                aria-keyshortcuts="ArrowLeft ArrowRight ArrowUp ArrowDown"
+                                onClick={() =>
+                                  selectPhotoLayer('participant', participant.targetId)
+                                }
+                                onPointerDown={(event) =>
+                                  startPhotoStretch(
+                                    event,
+                                    'participant',
+                                    participant.targetId,
+                                    participant,
+                                  )
+                                }
+                                onPointerMove={movePhotoStretch}
+                                onPointerUp={endPhotoStretch}
+                                onPointerCancel={endPhotoStretch}
+                                onKeyDown={(event) =>
+                                  keyboardPhotoTransform(
+                                    event,
+                                    'participant',
+                                    participant.targetId,
+                                    participant,
+                                    'stretch',
+                                  )
+                                }
+                              />
+                              <button
+                                className="miracle-transform-handle miracle-transform-handle--uniform"
+                                type="button"
+                                aria-label={`${name}：等比缩放并旋转`}
+                                aria-description="方向键上下缩放，左右旋转"
+                                aria-keyshortcuts="ArrowLeft ArrowRight ArrowUp ArrowDown"
+                                onClick={() =>
+                                  selectPhotoLayer('participant', participant.targetId)
+                                }
+                                onPointerDown={(event) =>
+                                  startPhotoTransform(
+                                    event,
+                                    'participant',
+                                    participant.targetId,
+                                    participant,
+                                  )
+                                }
+                                onPointerMove={movePhotoTransform}
+                                onPointerUp={endPhotoTransform}
+                                onPointerCancel={endPhotoTransform}
+                                onKeyDown={(event) =>
+                                  keyboardPhotoTransform(
+                                    event,
+                                    'participant',
+                                    participant.targetId,
+                                    participant,
+                                    'uniform',
+                                  )
+                                }
+                              />
+                            </>
+                          )}
+                        </div>
+                      )
+                    })}
+                    {photoDecorations.map((decoration) => {
+                      const visual = getWardrobeAssetVisual(decoration.assetId)
+                      const selected = selectedPhotoDecorationId === decoration.placementId
+                      return (
+                        <div
+                          className={`miracle-photo-editable miracle-photo-editable--decoration ${selected ? 'is-selected' : ''}`}
+                          key={decoration.placementId}
+                          style={editableLayerStyle(decoration, visual.width, visual.height)}
+                        >
+                          <button
+                            className="miracle-editable-center"
+                            type="button"
+                            aria-label={`移动独立元素${visual.name}`}
+                            aria-description="方向键移动"
+                            aria-keyshortcuts="ArrowLeft ArrowRight ArrowUp ArrowDown"
+                            onClick={() => selectPhotoLayer('decoration', decoration.placementId)}
+                            onPointerDown={(event) =>
+                              startPhotoDrag(
+                                event,
+                                'decoration',
+                                decoration.placementId,
+                                decoration,
+                              )
+                            }
+                            onPointerMove={movePhotoDrag}
+                            onPointerUp={endPhotoDrag}
+                            onPointerCancel={endPhotoDrag}
+                            onKeyDown={(event) =>
+                              keyboardPhotoTransform(
+                                event,
+                                'decoration',
+                                decoration.placementId,
+                                decoration,
+                                'move',
+                              )
+                            }
+                          />
+                          {selected && (
+                            <>
+                              <button
+                                className="miracle-transform-handle miracle-transform-handle--stretch"
+                                type="button"
+                                aria-label={`${visual.name}：分别调整宽度和高度`}
+                                aria-description="方向键左右调宽，上下调高"
+                                aria-keyshortcuts="ArrowLeft ArrowRight ArrowUp ArrowDown"
+                                onClick={() =>
+                                  selectPhotoLayer('decoration', decoration.placementId)
+                                }
+                                onPointerDown={(event) =>
+                                  startPhotoStretch(
+                                    event,
+                                    'decoration',
+                                    decoration.placementId,
+                                    decoration,
+                                  )
+                                }
+                                onPointerMove={movePhotoStretch}
+                                onPointerUp={endPhotoStretch}
+                                onPointerCancel={endPhotoStretch}
+                                onKeyDown={(event) =>
+                                  keyboardPhotoTransform(
+                                    event,
+                                    'decoration',
+                                    decoration.placementId,
+                                    decoration,
+                                    'stretch',
+                                  )
+                                }
+                              />
+                              <button
+                                className="miracle-transform-handle miracle-transform-handle--uniform"
+                                type="button"
+                                aria-label={`${visual.name}：等比缩放并旋转`}
+                                aria-description="方向键上下缩放，左右旋转"
+                                aria-keyshortcuts="ArrowLeft ArrowRight ArrowUp ArrowDown"
+                                onClick={() =>
+                                  selectPhotoLayer('decoration', decoration.placementId)
+                                }
+                                onPointerDown={(event) =>
+                                  startPhotoTransform(
+                                    event,
+                                    'decoration',
+                                    decoration.placementId,
+                                    decoration,
+                                  )
+                                }
+                                onPointerMove={movePhotoTransform}
+                                onPointerUp={endPhotoTransform}
+                                onPointerCancel={endPhotoTransform}
+                                onKeyDown={(event) =>
+                                  keyboardPhotoTransform(
+                                    event,
+                                    'decoration',
+                                    decoration.placementId,
+                                    decoration,
+                                    'uniform',
+                                  )
+                                }
+                              />
+                            </>
+                          )}
+                        </div>
+                      )
+                    })}
                   </div>
                 </div>
                 <button
@@ -1050,6 +1740,7 @@ export function MiracleWardrobePage({
                 </section>
                 <section>
                   <h3>是谁出镜呢</h3>
+                  <p>选择至少一只；饼狗不是必须出镜。</p>
                   <div className="miracle-participant-picker">
                     {availableTargets.map((targetId) => {
                       const included = photoParticipants.some(
@@ -1096,29 +1787,114 @@ export function MiracleWardrobePage({
                     </div>
                   )}
                 </section>
+                <section>
+                  <h3>给照片加独立元素</h3>
+                  <p>已拥有的衣服和配饰也可以不绑定人物，单独放进画面。</p>
+                  <div className="miracle-asset-buttons miracle-photo-asset-buttons">
+                    {ownedItems.map((item) => (
+                      <button
+                        type="button"
+                        key={item.id}
+                        onClick={() => addPhotoDecoration(item.id)}
+                      >
+                        <img src={getWardrobeAssetVisual(item.id).url} alt="" draggable={false} />
+                        <span>{item.name}</span>
+                      </button>
+                    ))}
+                  </div>
+                </section>
                 <section className="miracle-transform-controls">
                   <h3>
-                    {selectedParticipant
-                      ? `调整${targetName(selectedParticipant.targetId)}`
-                      : '选择一个人'}
+                    {selectedDecoration
+                      ? `调整${getWardrobeAssetVisual(selectedDecoration.assetId).name}`
+                      : selectedParticipant
+                        ? `调整${targetName(selectedParticipant.targetId)}`
+                        : '选择一个组件'}
                   </h3>
-                  {selectedParticipant && (
+                  {(selectedParticipant || selectedDecoration) && (
                     <>
                       <p>
-                        拖动人物中心来移动；拖动右下角圆点可同时缩放和旋转。手柄被裁住时，重新点人物即可复位。
+                        拖动中心来移动；右下角等比缩放并旋转，左上角可分别调整宽度和高度。画布外也能从图层列表重新选中。
                       </p>
                       <div className="miracle-layer-actions">
-                        <button type="button" onClick={() => moveSelectedParticipant(-1)}>
+                        <button type="button" onClick={() => moveSelectedPhotoLayer(-1)}>
                           向后一层
                         </button>
-                        <button type="button" onClick={() => moveSelectedParticipant(1)}>
+                        <button type="button" onClick={() => moveSelectedPhotoLayer(1)}>
                           向前一层
                         </button>
-                        <button type="button" onClick={resetSelectedParticipantTransform}>
+                        <button
+                          type="button"
+                          onClick={
+                            selectedDecoration
+                              ? resetSelectedDecorationTransform
+                              : resetSelectedParticipantTransform
+                          }
+                        >
                           恢复默认变换
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => {
+                            if (selectedDecoration) {
+                              setPhotoDecorations((current) =>
+                                current.filter(
+                                  (decoration) =>
+                                    decoration.placementId !== selectedDecoration.placementId,
+                                ),
+                              )
+                              setSelectedPhotoDecorationId(null)
+                            } else if (selectedParticipant) {
+                              togglePhotoTarget(selectedParticipant.targetId)
+                            }
+                          }}
+                        >
+                          {selectedDecoration ? '删除独立元素' : '移除出镜'}
                         </button>
                       </div>
                     </>
+                  )}
+                </section>
+                <section className="miracle-layer-list" aria-label="照片图层">
+                  <h3>照片图层</h3>
+                  {photoParticipants.length + photoDecorations.length > 0 ? (
+                    <div>
+                      {[
+                        ...photoParticipants.map((participant) => ({
+                          kind: 'participant' as const,
+                          id: participant.targetId,
+                          name: targetName(participant.targetId),
+                          z: participant.z,
+                        })),
+                        ...photoDecorations.map((decoration) => ({
+                          kind: 'decoration' as const,
+                          id: decoration.placementId,
+                          name: getWardrobeAssetVisual(decoration.assetId).name,
+                          z: decoration.z,
+                        })),
+                      ]
+                        .sort((left, right) => right.z - left.z || left.id.localeCompare(right.id))
+                        .map((layer) => {
+                          const selected =
+                            layer.kind === 'participant'
+                              ? selectedPhotoTargetId === layer.id
+                              : selectedPhotoDecorationId === layer.id
+                          return (
+                            <button
+                              type="button"
+                              key={`${layer.kind}:${layer.id}`}
+                              className={selected ? 'is-selected' : ''}
+                              onClick={() => selectPhotoLayer(layer.kind, layer.id)}
+                            >
+                              {layer.kind === 'decoration'
+                                ? `${layer.name}（独立元素图层）`
+                                : `${layer.name}（人物图层）`}
+                            </button>
+                          )
+                        })}
+                    </div>
+                  ) : (
+                    <p>还没有放置组件。</p>
                   )}
                 </section>
               </aside>
@@ -1152,20 +1928,25 @@ export function MiracleWardrobePage({
             )
             if (items.length === 0) return null
             return (
-              <section className="miracle-collection-group" key={category}>
+              <section
+                className={`miracle-collection-group miracle-collection-group--${category}`}
+                key={category}
+              >
                 <h4>{`${CATEGORY_LABELS[category]}【${items.length}】`}</h4>
                 <div>
                   {items.map((item) => {
                     const visual = getWardrobeAssetVisual(item.id)
                     return (
                       <article key={item.id}>
-                        <img
-                          src={visual.url}
-                          alt={visual.name}
-                          width={visual.width}
-                          height={visual.height}
-                          draggable={false}
-                        />
+                        <span className="miracle-collection-thumb">
+                          <img
+                            src={visual.url}
+                            alt={visual.name}
+                            width={visual.width}
+                            height={visual.height}
+                            draggable={false}
+                          />
+                        </span>
                         <strong>{item.name}</strong>
                       </article>
                     )

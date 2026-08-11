@@ -96,25 +96,54 @@ export interface WardrobeCatalogItem {
   category: WardrobeAssetCategory
   priceApples: number
   starter: boolean
-  defaultTransform: WardrobeTransform
+  defaultTransform: WardrobeElementTransform
 }
 
+/** 已发布 V11 的等比服饰变换；仅供严格导入与 V11 -> V12 迁移。 */
+export interface WardrobeTransformV11 {
+  x: number
+  y: number
+  scale: number
+  rotation: number
+  z: number
+}
+
+/**
+ * 所有可选画布组件共用的变换。两轴都以所属画布宽度为像素基准；
+ * scaleX === scaleY 时保持素材天然宽高比。
+ */
 export interface WardrobeTransform {
   /** 所属画布中的归一化中心坐标，范围为 0–1。 */
   x: number
   y: number
-  /** 相对服装目录基准宽度的缩放。 */
-  scale: number
+  scaleX: number
+  scaleY: number
   /** 规范化到 -180–180 度。 */
   rotation: number
   /** 数值越大越靠前；同一组合中的 z 必须唯一。 */
   z: number
 }
 
-export interface WardrobeElement extends WardrobeTransform {
+export type WardrobeElementTransform = WardrobeTransform
+
+export interface WardrobeElementV11 extends WardrobeTransformV11 {
+  placementId: string
+  assetId: WardrobeAssetId
+}
+
+export interface WardrobeElement extends WardrobeElementTransform {
   /** 同一形象内稳定且唯一，允许一件已购元素被放置多次。 */
   placementId: string
   assetId: WardrobeAssetId
+}
+
+export interface SavedWardrobeLookV11 {
+  lookId: string
+  targetId: WardrobeTargetId
+  name: string
+  elements: WardrobeElementV11[]
+  createdAt: number
+  updatedAt: number
 }
 
 export interface SavedWardrobeLook {
@@ -126,6 +155,12 @@ export interface SavedWardrobeLook {
   updatedAt: number
 }
 
+export interface WardrobePhotoParticipantV11 extends WardrobeTransformV11 {
+  targetId: WardrobeTargetId
+  sourceLookId: string | null
+  elements: WardrobeElementV11[]
+}
+
 export interface WardrobePhotoParticipant extends WardrobeTransform {
   targetId: WardrobeTargetId
   /** 仅记录创建合拍时选择的来源；造型删除后仍保留快照。 */
@@ -134,15 +169,30 @@ export interface WardrobePhotoParticipant extends WardrobeTransform {
   elements: WardrobeElement[]
 }
 
-export interface WardrobePhoto {
+export interface WardrobePhotoV11 {
   photoId: string
   /** 内容目录变化时可以协调为 null；新合拍仍必须选择已拥有明信片。 */
   postcardId: string | null
-  participants: WardrobePhotoParticipant[]
+  participants: WardrobePhotoParticipantV11[]
   createdAt: number
 }
 
-export interface WardrobeState {
+/** 可独立放置在照片画布上的服装或配饰层。 */
+export interface WardrobePhotoDecoration extends WardrobeElementTransform {
+  placementId: string
+  assetId: WardrobeAssetId
+}
+
+export interface WardrobePhoto extends Omit<WardrobePhotoV11, 'participants'> {
+  participants: WardrobePhotoParticipant[]
+  decorations: WardrobePhotoDecoration[]
+}
+
+export type WardrobePhotoLayer =
+  | { kind: 'participant'; value: WardrobePhotoParticipant }
+  | { kind: 'decoration'; value: WardrobePhotoDecoration }
+
+export interface WardrobeStateV11 {
   /** 海星体锚点、归一化坐标与缩放语义的版本。 */
   layoutVersion: 1
   shop: {
@@ -153,8 +203,17 @@ export interface WardrobeState {
   /** 顺序即获得顺序；ID 唯一。 */
   ownedAssetIds: WardrobeAssetId[]
   nextLookSequence: number
-  looks: Record<string, SavedWardrobeLook>
+  looks: Record<string, SavedWardrobeLookV11>
   nextPhotoSequence: number
+  photos: Record<string, WardrobePhotoV11>
+}
+
+export interface WardrobeState extends Omit<
+  WardrobeStateV11,
+  'layoutVersion' | 'looks' | 'photos'
+> {
+  layoutVersion: 2
+  looks: Record<string, SavedWardrobeLook>
   photos: Record<string, WardrobePhoto>
 }
 
@@ -491,6 +550,21 @@ export interface PomodoroState {
   session: PomodoroSession | null
 }
 
+/** V12 起苹果钟背景既可以引用明信片，也可以引用一张已保存的合拍。 */
+export type PomodoroBackgroundRef =
+  { kind: 'postcard'; id: string } | { kind: 'wardrobe-photo'; id: string }
+
+export interface PomodoroSessionV12 extends Omit<PomodoroSession, 'postcardId'> {
+  /** 开始时锁定的背景引用；后续修改默认背景不会改变本轮。 */
+  background: PomodoroBackgroundRef | null
+}
+
+export interface PomodoroStateV12 {
+  nextSessionSequence: number
+  selectedBackground: PomodoroBackgroundRef | null
+  session: PomodoroSessionV12 | null
+}
+
 export interface RealityState {
   nextStaySequence: number
   activeStay: RealityStayV8 | null
@@ -567,6 +641,16 @@ export interface StreamSettings {
 
 export interface RealityStateV10 extends Omit<RealityStateV9, 'streamSettings'> {
   streamSettings: StreamSettings
+}
+
+export interface StreamDailyRewardState {
+  /** 已结算奖励的最大本地现实日期；只接受严格更晚的下一次领取。 */
+  lastRewardDateKey: string | null
+}
+
+export interface RealityStateV12 extends Omit<RealityStateV10, 'pomodoro'> {
+  pomodoro: PomodoroStateV12
+  streamDailyReward: StreamDailyRewardState
 }
 
 export type MusicLoopMode = 'list' | 'single' | 'shuffle'
@@ -730,10 +814,16 @@ export interface GameStateV10 extends Omit<GameStateV9, 'schemaVersion' | 'reali
 
 export interface GameStateV11 extends Omit<GameStateV10, 'schemaVersion'> {
   schemaVersion: 11
+  wardrobe: WardrobeStateV11
+}
+
+export interface GameStateV12 extends Omit<GameStateV11, 'schemaVersion' | 'reality' | 'wardrobe'> {
+  schemaVersion: 12
+  reality: RealityStateV12
   wardrobe: WardrobeState
 }
 
-export type GameState = GameStateV11
+export type GameState = GameStateV12
 
 export interface ActivityTiming {
   phase: ActivityPhase
@@ -794,6 +884,7 @@ export type GameErrorCode =
   | 'DUPLICATE_ID'
   | 'INVALID_BVID'
   | 'INVALID_STREAM_FAVORITE'
+  | 'INVALID_DATE_KEY'
   | 'WARDROBE_ITEM_NOT_FOR_SALE'
   | 'WARDROBE_ITEM_ALREADY_OWNED'
   | 'WARDROBE_TARGET_LOCKED'
@@ -801,12 +892,15 @@ export type GameErrorCode =
   | 'WARDROBE_LOOK_INVALID'
   | 'WARDROBE_LOOK_NAME_INVALID'
   | 'WARDROBE_LOOK_LIMIT_REACHED'
+  | 'WARDROBE_LOOK_ID_COLLISION'
   | 'WARDROBE_LOOK_NOT_FOUND'
   | 'WARDROBE_LOOK_TARGET_MISMATCH'
   | 'WARDROBE_PHOTO_LIMIT_REACHED'
+  | 'WARDROBE_PHOTO_ID_COLLISION'
   | 'WARDROBE_PHOTO_NOT_FOUND'
   | 'WARDROBE_POSTCARD_NOT_OWNED'
   | 'WARDROBE_PARTICIPANTS_INVALID'
+  | 'WARDROBE_DECORATIONS_INVALID'
   | 'DEBUG_REQUIRED'
 
 export interface GameError {
@@ -838,22 +932,9 @@ export type GameAction =
   | { type: 'reality/session-resume'; stayId: string; now: number }
   | { type: 'reality/session-heartbeat'; stayId: string; now: number }
   | { type: 'reality/session-suspend'; stayId: string; now: number }
-  | {
-      type: 'reality/stream-session-progress'
-      sessionId: string
-      startedAt: number
-      completedAt: number
-    }
-  | {
-      type: 'reality/stream-session-end'
-      sessionId: string
-      startedAt: number
-      endedAt: number
-      roundsCompleted: number
-      outcome: StreamSessionOutcome
-    }
   | { type: 'reality/stream-self-test-set'; bvid: string | null }
   | { type: 'reality/stream-favorite-set'; favoriteId: StreamFavoriteId }
+  | { type: 'stream/daily-reward-claim'; dateKey: string }
   | {
       type: 'reality/settle'
       stayId: string
@@ -870,7 +951,7 @@ export type GameAction =
     }
   | { type: 'todo/completion-set'; todoId: string; completed: boolean; now: number }
   | { type: 'todo/delete'; todoId: string; now: number }
-  | { type: 'pomodoro/background-set'; postcardId: string | null }
+  | { type: 'pomodoro/background-set'; background: PomodoroBackgroundRef | null }
   | { type: 'pomodoro/start'; now: number; durationMs: number; todoId?: string | null }
   | { type: 'pomodoro/cancel'; sessionId: string; now: number }
   | { type: 'clock/tick'; now: number }
@@ -896,6 +977,7 @@ export type GameAction =
       type: 'wardrobe/photo-create'
       postcardId: string
       participants: Array<WardrobeTransform & { targetId: WardrobeTargetId; lookId: string | null }>
+      decorations: WardrobePhotoDecoration[]
       now: number
     }
   | { type: 'wardrobe/photo-delete'; photoId: string }
@@ -968,19 +1050,19 @@ export type GameEffect =
       notificationTitle: string
       notificationBody: string
     }
-  | { type: 'pomodoro-started'; session: PomodoroSession }
+  | { type: 'pomodoro-started'; session: PomodoroSessionV12 }
   | { type: 'pomodoro-cancelled'; sessionId: string; cancelledAt: number }
   | {
       type: 'pomodoro-break-started'
       notificationId: string
-      session: PomodoroSession
+      session: PomodoroSessionV12
       notificationTitle: string
       notificationBody: string
     }
   | {
       type: 'pomodoro-completed'
       notificationId: string
-      session: PomodoroSession
+      session: PomodoroSessionV12
       notificationTitle: string
       notificationBody: string
     }
@@ -995,6 +1077,11 @@ export type GameEffect =
   | { type: 'wardrobe-look-deleted'; lookId: string; targetId: WardrobeTargetId }
   | { type: 'wardrobe-photo-created'; photo: WardrobePhoto }
   | { type: 'wardrobe-photo-deleted'; photoId: string }
+  | {
+      type: 'stream-daily-reward-claimed'
+      dateKey: string
+      applesAwarded: number
+    }
   | {
       type: 'debug-applied'
       action: GameAction['type']

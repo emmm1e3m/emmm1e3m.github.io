@@ -1,5 +1,8 @@
 import type { ReactNode } from 'react'
 
+import type { PomodoroBackgroundRef, WardrobePhoto } from '@/domain'
+import type { PhotoPostcardVisual } from '@/features/wardrobe/PhotoCompositionPreview'
+
 export interface DataPanelProps {
   groupUrl?: string
   onGroupLinkClick?: () => void
@@ -21,6 +24,8 @@ export interface PomodoroView {
 }
 
 export interface PostcardBackgroundOption {
+  kind: 'postcard'
+  ref: Extract<PomodoroBackgroundRef, { kind: 'postcard' }>
   id: string
   title: string
   thumbnailUrl?: string
@@ -29,6 +34,20 @@ export interface PostcardBackgroundOption {
   alt?: string
   description?: string
 }
+
+export interface WardrobePhotoBackgroundOption {
+  kind: 'wardrobe-photo'
+  ref: Extract<PomodoroBackgroundRef, { kind: 'wardrobe-photo' }>
+  id: string
+  title: string
+  description: string
+  aspectRatio: number
+  photo: WardrobePhoto
+  thumbnailPostcard: PhotoPostcardVisual | null
+  fullPostcard: PhotoPostcardVisual | null
+}
+
+export type PomodoroBackgroundOption = PostcardBackgroundOption | WardrobePhotoBackgroundOption
 
 export interface RealityTodoView {
   id: string
@@ -52,7 +71,7 @@ export interface WorkPanelActions {
   onDurationChange: (durationMs: number) => void
   onPomodoroStart: (durationMs: number) => void
   onPomodoroCancel?: (sessionId: string) => void
-  onBackgroundChange: (postcardId: string | null) => void
+  onBackgroundChange: (background: PomodoroBackgroundRef | null) => void
   onTodoCreate: (title: string) => void
   onTodoUpdate: (todoId: string, update: TodoUpdateInput) => void
   onTodoCompletionChange: (todoId: string, completed: boolean) => void
@@ -63,8 +82,8 @@ export interface WorkPanelActions {
 
 export interface WorkPanelProps {
   pomodoro: PomodoroView
-  unlockedBackgrounds: readonly PostcardBackgroundOption[]
-  selectedBackgroundId: string | null
+  unlockedBackgrounds: readonly PomodoroBackgroundOption[]
+  selectedBackground: PomodoroBackgroundRef | null
   todos: readonly RealityTodoView[]
   actions: WorkPanelActions
   notification?: RealityNotificationView
@@ -80,7 +99,7 @@ export interface PomodoroFocusOverlayProps {
     focusDurationMs: number
     breakDurationMs: number
   }
-  background: PostcardBackgroundOption | null
+  background: PomodoroBackgroundOption | null
   todos: readonly RealityTodoView[]
   musicStarter?: ReactNode
   playerExpanded?: boolean

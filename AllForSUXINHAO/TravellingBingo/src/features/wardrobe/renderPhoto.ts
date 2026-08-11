@@ -1,5 +1,6 @@
 import { publicAsset } from '@/app/assets'
 import type { CollectibleItem, ContentCatalog } from '@/content'
+import { getWardrobePhotoLayers } from '@/domain/game/wardrobe'
 import type { WardrobePhoto } from '@/domain/game/types'
 
 import {
@@ -7,6 +8,7 @@ import {
   photoAspectRatio,
   photoCanvasSize,
   rotationRadians,
+  wardrobeElementRect,
 } from './photoGeometry'
 import { getWardrobeAssetVisual, getWardrobeTargetVisual } from './wardrobeAssets'
 
@@ -142,15 +144,35 @@ export async function renderWardrobePhoto(
     context.drawImage(postcard, 0, 0, width, height)
   }
 
-  const participants = [...photo.participants].sort(
-    (left, right) => left.z - right.z || left.targetId.localeCompare(right.targetId),
-  )
-  for (const participant of participants) {
-    const frame = participantRect(participant, { width, height })
-    const centerX = frame.x + frame.width / 2
-    const centerY = frame.y + frame.height / 2
+  const photoFrame = { x: 0, y: 0, width, height }
+  for (const layer of getWardrobePhotoLayers(photo)) {
+    if (layer.kind === 'decoration') {
+      const decoration = layer.value
+      const visual = getWardrobeAssetVisual(decoration.assetId)
+      const image = await loadImage(visual.url)
+      const frame = wardrobeElementRect(decoration, photoFrame, image.width / image.height)
+      context.save()
+      context.translate(frame.x + frame.width / 2, frame.y + frame.height / 2)
+      context.rotate(rotationRadians(decoration.rotation))
+      context.drawImage(image, -frame.width / 2, -frame.height / 2, frame.width, frame.height)
+      context.restore()
+      continue
+    }
+
+    const participant = layer.value
     const targetVisual = getWardrobeTargetVisual(participant.targetId)
     const targetImage = await loadImage(targetVisual.url)
+    const targetAspectRatio = targetImage.width / targetImage.height
+    const frame = participantRect(participant, { width, height }, targetAspectRatio)
+    const centerX = frame.x + frame.width / 2
+    const centerY = frame.y + frame.height / 2
+    const baseHeight = frame.width / targetAspectRatio
+    const baseFrame = {
+      x: -frame.width / 2,
+      y: -baseHeight / 2,
+      width: frame.width,
+      height: baseHeight,
+    }
     const elements = await Promise.all(
       participant.elements.map(async (element, index) => ({
         element,
@@ -165,21 +187,28 @@ export async function renderWardrobePhoto(
     context.save()
     context.translate(centerX, centerY)
     context.rotate(rotationRadians(participant.rotation))
+    context.scale(1, participant.scaleY / participant.scaleX)
 
     const drawElement = ({ element, image }: (typeof sortedElements)[number]) => {
-      const elementWidth = frame.width * element.scale
-      const elementHeight = elementWidth * (image.height / image.width)
-      const x = frame.width * (element.x - 0.5) - elementWidth / 2
-      const y = frame.height * (element.y - 0.5) - elementHeight / 2
+      const elementFrame = wardrobeElementRect(element, baseFrame, image.width / image.height)
       context.save()
-      context.translate(x + elementWidth / 2, y + elementHeight / 2)
+      context.translate(
+        elementFrame.x + elementFrame.width / 2,
+        elementFrame.y + elementFrame.height / 2,
+      )
       context.rotate(rotationRadians(element.rotation))
-      context.drawImage(image, -elementWidth / 2, -elementHeight / 2, elementWidth, elementHeight)
+      context.drawImage(
+        image,
+        -elementFrame.width / 2,
+        -elementFrame.height / 2,
+        elementFrame.width,
+        elementFrame.height,
+      )
       context.restore()
     }
 
     sortedElements.filter(({ element }) => element.z < 0).forEach(drawElement)
-    context.drawImage(targetImage, -frame.width / 2, -frame.height / 2, frame.width, frame.height)
+    context.drawImage(targetImage, -frame.width / 2, -baseHeight / 2, frame.width, baseHeight)
     sortedElements.filter(({ element }) => element.z >= 0).forEach(drawElement)
     context.restore()
   }

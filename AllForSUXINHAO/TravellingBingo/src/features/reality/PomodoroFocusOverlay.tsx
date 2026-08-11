@@ -3,6 +3,7 @@ import { createPortal } from 'react-dom'
 
 import { MascotSprite } from '@/components/MascotSprite'
 import { useModalFocus } from '@/components/useModalFocus'
+import { PhotoCompositionPreview } from '@/features/wardrobe/PhotoCompositionPreview'
 
 import type { PomodoroFocusOverlayProps, RealityTodoView } from './types'
 import './reality.css'
@@ -160,7 +161,12 @@ export function PomodoroFocusOverlay({
     returnFocus: false,
     focusPeers: [PLAYER_FOCUS_PEER],
   })
-  const backgroundUrl = background?.fullUrl ?? background?.thumbnailUrl
+  const backgroundUrl =
+    background?.kind === 'postcard' ? (background.fullUrl ?? background.thumbnailUrl) : undefined
+  const backgroundDataId =
+    background === null
+      ? 'plain'
+      : `${background.kind === 'postcard' ? '' : 'wardrobe-photo:'}${background.id}`
 
   useEffect(() => {
     const mediaQuery = window.matchMedia?.('(prefers-reduced-motion: reduce)')
@@ -244,9 +250,18 @@ export function PomodoroFocusOverlay({
     <div
       className={`pomodoro-focus-backdrop ${className}`.trim()}
       data-modal-backdrop
-      data-background-id={background?.id ?? 'plain'}
+      data-background-id={backgroundDataId}
     >
       {backgroundUrl && <img className="pomodoro-focus__background" src={backgroundUrl} alt="" />}
+      {background?.kind === 'wardrobe-photo' && (
+        <PhotoCompositionPreview
+          photo={background.photo}
+          postcard={background.fullPostcard ?? background.thumbnailPostcard}
+          className="pomodoro-focus__background pomodoro-focus__background--photo"
+          mode="cover"
+          decorative
+        />
+      )}
       <section
         ref={dialogRef}
         className="pomodoro-focus"

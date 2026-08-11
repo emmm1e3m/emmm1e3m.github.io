@@ -20,7 +20,7 @@ describe('完整图片展示', () => {
       /\.reality-postcard-picker__preview > img,[\s\S]*?object-fit:\s*contain;[^}]*object-position:\s*center;/u,
     )
     expect(realityStyles).toMatch(
-      /\.reality-postcard-tile img,[\s\S]*?object-fit:\s*contain;[^}]*object-position:\s*center;/u,
+      /\.reality-postcard-tile > img,[\s\S]*?object-fit:\s*contain;[^}]*object-position:\s*center;/u,
     )
     expect(realityStyles).toMatch(
       /\.pomodoro-focus__background\s*\{[^}]*object-fit:\s*cover;[^}]*object-position:\s*center;/u,

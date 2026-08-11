@@ -4,8 +4,8 @@
   "generatedAt": "2026-08-09",
   "glyphSet": {
     "strategy": "modern-chinese-common-2500-plus-runtime",
-    "codePointCount": 2727,
-    "requiredCustomFontCodePointCount": 2692,
+    "codePointCount": 2726,
+    "requiredCustomFontCodePointCount": 2691,
     "commonCharacters": {
       "standard": "《现代汉语常用字表》常用字部分",
       "authority": "国家语言文字工作委员会、国家教育委员会",
@@ -31,9 +31,9 @@
       },
       "file": {
         "path": "assets/fonts/kehua-lerongrong.woff2",
-        "byteLength": 1084000,
+        "byteLength": 1083588,
         "mime": "font/woff2",
-        "mappedCodePointCount": 2701
+        "mappedCodePointCount": 2700
       }
     },
     {
@@ -50,9 +50,9 @@
       },
       "file": {
         "path": "assets/fonts/kehua-naitang.woff2",
-        "byteLength": 933032,
+        "byteLength": 932648,
         "mime": "font/woff2",
-        "mappedCodePointCount": 2701
+        "mappedCodePointCount": 2700
       }
     }
   ]

@@ -8,6 +8,7 @@ import {
   type CollectionCatalog,
   type GameAction,
   type GameState,
+  type WardrobePhoto,
 } from '@/domain'
 
 import { ACTIVITY_COPY, STAGE_TEST_URL } from './gameCopy'
@@ -149,7 +150,9 @@ function RoomPanelHarness({ game = collectedGame() }: { game?: GameState }) {
   )
 }
 
-function RealityStreamHarness() {
+function RealityStreamHarness({
+  onObservedAction,
+}: { onObservedAction?: (action: GameAction) => void } = {}) {
   const [panel, setPanel] = useState<PanelId | null>('reality-stream')
   const [game, setGame] = useState<GameState>(() => {
     const base = createInitialGameState({ now: 1_000, seed: 'reality-stream-stability' })
@@ -169,6 +172,7 @@ function RealityStreamHarness() {
   })
 
   const onAction = (action: GameAction) => {
+    onObservedAction?.(action)
     setGame((current) => {
       const transition = reduceGame(current, action, domainCatalog)
       return transition.ok ? transition.state : current
@@ -416,7 +420,7 @@ describe('收藏墙模态框', () => {
             focusNotificationIssuedAt: null,
             completionNotificationIssuedAt: null,
             todoId: null,
-            postcardId: null,
+            background: null,
           },
         },
       },
@@ -460,6 +464,111 @@ describe('现实刷播运行时', () => {
     expect(openSpy).toHaveBeenCalledOnce()
     expect(openedWindow.close).not.toHaveBeenCalled()
     openSpy.mockRestore()
+  })
+
+  it('同一独立页按实际开始日领取奖励，跨午夜不误记且同日幂等', () => {
+    vi.useFakeTimers()
+    vi.setSystemTime(new Date(2026, 7, 11, 23, 59, 59))
+    const observedAction = vi.fn()
+    const handle = {
+      closed: false,
+      close: vi.fn(),
+      postMessage: vi.fn(),
+    } as unknown as Window
+    const openSpy = vi.spyOn(window, 'open').mockReturnValue(handle)
+
+    try {
+      render(<RealityStreamHarness onObservedAction={observedAction} />)
+
+      fireEvent.click(screen.getByRole('button', { name: '开始刷播' }))
+      const sessionId = new URL(String(openSpy.mock.calls[0]?.[0])).searchParams.get('sessionId')!
+      expect(observedAction).not.toHaveBeenCalledWith(
+        expect.objectContaining({ type: 'stream/daily-reward-claim' }),
+      )
+
+      const reportStarted = (dateKey: string) => {
+        act(() => {
+          window.dispatchEvent(
+            new MessageEvent('message', {
+              origin: window.location.origin,
+              source: handle,
+              data: {
+                type: 'travelling-bingo:stream-player',
+                version: 1,
+                sessionId,
+                event: 'started',
+                dateKey,
+              },
+            }),
+          )
+        })
+      }
+
+      const finishSession = () => {
+        act(() => {
+          window.dispatchEvent(
+            new MessageEvent('message', {
+              origin: window.location.origin,
+              source: handle,
+              data: {
+                type: 'travelling-bingo:stream-player',
+                version: 1,
+                sessionId,
+                event: 'ended',
+                outcome: 'completed',
+              },
+            }),
+          )
+        })
+      }
+
+      vi.setSystemTime(new Date(2026, 7, 12, 0, 0, 5))
+      reportStarted('2026-08-11')
+      expect(screen.getByRole('button', { name: '38🍎，打开冰箱' })).toBeVisible()
+      expect(observedAction).toHaveBeenCalledWith({
+        type: 'stream/daily-reward-claim',
+        dateKey: '2026-08-11',
+      })
+      finishSession()
+
+      reportStarted('2026-08-11')
+      expect(screen.getByRole('button', { name: '38🍎，打开冰箱' })).toBeVisible()
+      finishSession()
+
+      reportStarted('2026-08-12')
+      expect(screen.getByRole('button', { name: '58🍎，打开冰箱' })).toBeVisible()
+      expect(openSpy).toHaveBeenCalledOnce()
+      expect(handle.close).not.toHaveBeenCalled()
+      expect(
+        observedAction.mock.calls.filter(
+          ([action]) => (action as GameAction).type === 'stream/daily-reward-claim',
+        ),
+      ).toEqual([
+        [{ type: 'stream/daily-reward-claim', dateKey: '2026-08-11' }],
+        [{ type: 'stream/daily-reward-claim', dateKey: '2026-08-11' }],
+        [{ type: 'stream/daily-reward-claim', dateKey: '2026-08-12' }],
+      ])
+    } finally {
+      openSpy.mockRestore()
+      vi.useRealTimers()
+    }
+  })
+
+  it('仅点击开始或弹窗被拦截都不会领取每日奖励', () => {
+    const observedAction = vi.fn()
+    const openSpy = vi.spyOn(window, 'open').mockReturnValue(null)
+
+    try {
+      render(<RealityStreamHarness onObservedAction={observedAction} />)
+      fireEvent.click(screen.getByRole('button', { name: '开始刷播' }))
+
+      expect(observedAction).not.toHaveBeenCalledWith(
+        expect.objectContaining({ type: 'stream/daily-reward-claim' }),
+      )
+      expect(screen.getByRole('button', { name: '18🍎，打开冰箱' })).toBeVisible()
+    } finally {
+      openSpy.mockRestore()
+    }
   })
 })
 
@@ -549,7 +658,7 @@ describe('房间互动', () => {
     fireEvent.click(noticeButton)
 
     const dialog = screen.getByRole('dialog', { name: '饼屋的新布置' })
-    expect(dialog).toHaveTextContent('更新公告 · v0.10')
+    expect(dialog).toHaveTextContent('更新公告 · v0.10.1')
     expect(dialog).toHaveTextContent('奇迹饼狗上线')
     expect(dialog).toHaveTextContent('合拍相册开张')
     expect(dialog).toHaveTextContent('刷播现在可以正常使用了')
@@ -1280,7 +1389,7 @@ describe('V4 壳层接线', () => {
             focusNotificationIssuedAt: null,
             completionNotificationIssuedAt: null,
             todoId: null,
-            postcardId: null,
+            background: null,
           },
         },
       },
@@ -1410,7 +1519,7 @@ describe('V4 壳层接线', () => {
         },
         pomodoro: {
           ...base.reality.pomodoro,
-          selectedPostcardId: null,
+          selectedBackground: null,
           session: {
             sessionId: 'pomodoro-room-request',
             status: 'focus',
@@ -1423,7 +1532,7 @@ describe('V4 壳层接线', () => {
             focusNotificationIssuedAt: null,
             completionNotificationIssuedAt: null,
             todoId: null,
-            postcardId: postcard.id,
+            background: { kind: 'postcard', id: postcard.id },
           },
         },
       },
@@ -1542,6 +1651,87 @@ describe('V4 壳层接线', () => {
       sessionId: 'pomodoro-room-request',
       now: expect.any(Number),
     })
+  })
+
+  it('苹果钟能重建保存的奇迹合拍，删除当前合拍后回到白纸背景', () => {
+    const base = collectedGame()
+    const photo: WardrobePhoto = {
+      photoId: 'photo-pomodoro',
+      postcardId: postcard.id,
+      participants: [],
+      decorations: [],
+      createdAt: 1_000,
+    }
+    const photoGame: GameState = {
+      ...base,
+      world: 'reality',
+      wardrobe: {
+        ...base.wardrobe,
+        photos: { [photo.photoId]: photo },
+      },
+      reality: {
+        ...base.reality,
+        pomodoro: {
+          ...base.reality.pomodoro,
+          selectedBackground: { kind: 'wardrobe-photo', id: photo.photoId },
+          session: {
+            sessionId: 'pomodoro-photo-session',
+            status: 'focus',
+            startedAt: 1_000,
+            focusEndsAt: 1_501_000,
+            cycleEndsAt: 1_801_000,
+            focusDurationMs: 25 * 60_000,
+            breakDurationMs: 5 * 60_000,
+            completedAt: null,
+            focusNotificationIssuedAt: null,
+            completionNotificationIssuedAt: null,
+            todoId: null,
+            background: { kind: 'wardrobe-photo', id: photo.photoId },
+          },
+        },
+      },
+    }
+    const props = {
+      catalog,
+      now: 2_000,
+      panel: null,
+      dirty: false,
+      reward: null,
+      onPanel: vi.fn(),
+      onAction: vi.fn(),
+      onExit: vi.fn(),
+      onBackup: vi.fn(),
+      onDismissReward: vi.fn(),
+    } as const
+    const { rerender } = render(<GameHome {...props} game={photoGame} />)
+
+    const photoBackdrop = screen
+      .getByRole('dialog', { name: '和饼狗一起专注' })
+      .closest('[data-background-id]')
+    expect(photoBackdrop).toHaveAttribute('data-background-id', 'wardrobe-photo:photo-pomodoro')
+    expect(photoBackdrop?.querySelector('[data-photo-id="photo-pomodoro"]')).toHaveAttribute(
+      'inert',
+    )
+
+    const deletedGame: GameState = {
+      ...photoGame,
+      wardrobe: { ...photoGame.wardrobe, photos: {} },
+      reality: {
+        ...photoGame.reality,
+        pomodoro: {
+          ...photoGame.reality.pomodoro,
+          selectedBackground: null,
+          session: { ...photoGame.reality.pomodoro.session!, background: null },
+        },
+      },
+    }
+    rerender(<GameHome {...props} game={deletedGame} />)
+
+    const plainBackdrop = screen
+      .getByRole('dialog', { name: '和饼狗一起专注' })
+      .closest('[data-background-id]')
+    expect(plainBackdrop).toHaveAttribute('data-background-id', 'plain')
+    expect(plainBackdrop?.querySelector('[data-photo-id]')).toBeNull()
   })
 
   it('点击灰态电脑热点立即打开唯一的共享活力确认，确认后只使用魔法', async () => {

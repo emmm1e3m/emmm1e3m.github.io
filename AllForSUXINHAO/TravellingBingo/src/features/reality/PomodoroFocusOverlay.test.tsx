@@ -1,5 +1,7 @@
 import { fireEvent, render, screen, waitFor } from '@testing-library/react'
 
+import type { WardrobePhoto } from '@/domain'
+
 import realityStyles from './reality.css?raw'
 import { PomodoroFocusOverlay } from './PomodoroFocusOverlay'
 import type { PomodoroFocusOverlayProps } from './types'
@@ -17,6 +19,8 @@ function createProps(
       breakDurationMs: 5 * 60_000,
     },
     background: {
+      kind: 'postcard',
+      ref: { kind: 'postcard', id: 'postcard-1' },
       id: 'postcard-1',
       title: '海边明信片',
       thumbnailUrl: '/postcard-thumb.webp',
@@ -63,6 +67,54 @@ describe('PomodoroFocusOverlay', () => {
     ).toBeNull()
     expect(realityStyles).not.toContain('.pomodoro-focus__wash')
     await waitFor(() => expect(dialog.querySelector('.pomodoro-focus__info')).toHaveFocus())
+  })
+
+  it('把保存的合拍按同一几何作为装饰背景，交互层与播放器保持可操作', async () => {
+    const photo: WardrobePhoto = {
+      photoId: 'photo-focus',
+      postcardId: 'postcard-1',
+      participants: [],
+      decorations: [],
+      createdAt: 1_755_000_000_000,
+    }
+    render(
+      <PomodoroFocusOverlay
+        {...createProps({
+          background: {
+            kind: 'wardrobe-photo',
+            ref: { kind: 'wardrobe-photo', id: photo.photoId },
+            id: photo.photoId,
+            title: '奇迹合拍 · 8月11日',
+            description: '保存的合拍',
+            aspectRatio: 16 / 9,
+            photo,
+            thumbnailPostcard: {
+              url: '/postcard-thumb.webp',
+              width: 480,
+              height: 270,
+            },
+            fullPostcard: {
+              url: '/postcard-full.webp',
+              width: 960,
+              height: 540,
+            },
+          },
+        })}
+      />,
+    )
+
+    const backdrop = document.querySelector<HTMLElement>('[data-modal-backdrop]')
+    const composition = backdrop?.querySelector<HTMLElement>('[data-photo-id="photo-focus"]')
+    const playerButton = screen.getByRole('button', { name: '打开唱片机' })
+
+    expect(backdrop).toHaveAttribute('data-background-id', 'wardrobe-photo:photo-focus')
+    expect(composition).toHaveClass('photo-composition--cover')
+    expect(composition).toHaveAttribute('aria-hidden', 'true')
+    expect(composition).toHaveAttribute('inert')
+    expect(composition?.querySelector('.photo-composition__canvas')).not.toBeNull()
+    expect(playerButton.closest('[inert]')).toBeNull()
+    expect(playerButton.closest('[aria-hidden="true"]')).toBeNull()
+    await waitFor(() => expect(screen.getByRole('dialog')).toBeVisible())
   })
 
   it('待办勾选只转交给上层，并在播放器展开时收缩信息卡', () => {

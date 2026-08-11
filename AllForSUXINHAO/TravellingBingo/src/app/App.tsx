@@ -22,7 +22,7 @@ import { PwaUpdatePrompt, type InstallPwaUpdate } from '@/components/PwaUpdatePr
 import { loadContentCatalog, type ContentCatalog } from '@/content'
 import {
   createInitialGameState,
-  migrateStoredGameStateToV11,
+  migrateStoredGameStateToV12,
   normalizeImportedGameBalance,
   reconcileGameStateWithCatalog,
   suspendRealityLeaseAfterLoad,
@@ -51,7 +51,7 @@ import {
   type BingoSaveSummary,
 } from '@/infrastructure/persistence'
 
-const GAME_VERSION = '0.10.0'
+const GAME_VERSION = '0.10.1'
 const DEBUG_PASSWORD = 'TravellingBingo'
 const PERIODIC_BACKUP_INTERVAL_MS = 3 * 24 * 60 * 60 * 1_000
 
@@ -151,7 +151,7 @@ function prepareStoredGame(
   catalog: CollectionCatalog,
   now: number,
 ): GameState {
-  const migrated = migrateStoredGameStateToV11(stored, { now, catalog })
+  const migrated = migrateStoredGameStateToV12(stored, { now, catalog })
   const normalized = normalizeImportedGameBalance(migrated)
   const reconciled = reconcileGameStateWithCatalog(normalized, catalog)
   const suspended = suspendRealityLeaseAfterLoad(reconciled)
@@ -594,6 +594,12 @@ export function App({
           setToast(
             <>
               互动完成，收好 <AppleAmount value={effect.applesAwarded} />。
+            </>,
+          )
+        } else if (effect.type === 'stream-daily-reward-claimed') {
+          setToast(
+            <>
+              今天第一次启动刷播，收到 <AppleAmount value={effect.applesAwarded} />。
             </>,
           )
         } else if (effect.type === 'debug-applied') {

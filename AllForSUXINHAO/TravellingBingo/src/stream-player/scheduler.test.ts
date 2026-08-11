@@ -52,6 +52,17 @@ function createHarness(overrides: Partial<StreamSchedulerOptions> = {}) {
 }
 
 describe('StreamRoundScheduler', () => {
+  it('开始时截止点已到期则不报告 started，也不创建播放器', () => {
+    const onStarted = vi.fn()
+    const harness = createHarness({ stopAt: 1_000, onStarted })
+
+    harness.scheduler.start()
+
+    expect(onStarted).not.toHaveBeenCalled()
+    expect(harness.opened).toEqual([])
+    expect(harness.ended).toEqual([{ outcome: 'completed', endedAt: 1_000, roundsCompleted: 0 }])
+  })
+
   it('首个视频立即创建，后续视频按 5 秒绝对时点打开', () => {
     const harness = createHarness()
     harness.scheduler.start()

@@ -1,15 +1,18 @@
+import { isValidLocalDateKey } from '@/domain'
+
 export const STREAM_PLAYER_MESSAGE_TYPE = 'travelling-bingo:stream-player'
 export const STREAM_PLAYER_MESSAGE_VERSION = 1
 export const STREAM_PLAYER_HISTORY_KEY = 'travelling-bingo:stream-player-history:v1'
 
 export type StreamPlayerOutcome = 'completed' | 'stopped'
+export type StoredStreamSessionOutcome = StreamPlayerOutcome | 'running'
 
 export interface StoredStreamSession {
   readonly sessionId: string
   readonly startedAt: number
   readonly endedAt: number
   readonly roundsCompleted: number
-  readonly outcome: StreamPlayerOutcome
+  readonly outcome: StoredStreamSessionOutcome
 }
 
 interface StreamPlayerMessageBase {
@@ -21,6 +24,7 @@ interface StreamPlayerMessageBase {
 export type StreamPlayerEvent =
   | (StreamPlayerMessageBase & {
       readonly event: 'started'
+      readonly dateKey: string
     })
   | (StreamPlayerMessageBase & {
       readonly event: 'ended'
@@ -58,7 +62,11 @@ function hasValidBase(value: Record<string, unknown>) {
 export function parseStreamPlayerEvent(value: unknown): StreamPlayerEvent | null {
   if (!isRecord(value) || !hasValidBase(value)) return null
 
-  if (value.event === 'started') {
+  if (
+    value.event === 'started' &&
+    typeof value.dateKey === 'string' &&
+    isValidLocalDateKey(value.dateKey)
+  ) {
     return value as unknown as StreamPlayerEvent
   }
 
@@ -93,7 +101,7 @@ export function parseStoredStreamHistory(value: string | null): StoredStreamSess
           isFiniteTimestamp(item.endedAt) &&
           item.endedAt >= item.startedAt &&
           isSafeNonNegativeInteger(item.roundsCompleted) &&
-          (item.outcome === 'completed' || item.outcome === 'stopped')
+          (item.outcome === 'completed' || item.outcome === 'stopped' || item.outcome === 'running')
         )
       })
       .slice(0, 10)
@@ -104,10 +112,30 @@ export function parseStoredStreamHistory(value: string | null): StoredStreamSess
 
 export function storeStreamSession(
   session: StoredStreamSession,
-  storage: Pick<Storage, 'getItem' | 'setItem'> = globalThis.localStorage,
+  storage?: Pick<Storage, 'getItem' | 'setItem'>,
 ) {
-  const existing = parseStoredStreamHistory(storage.getItem(STREAM_PLAYER_HISTORY_KEY)).filter(
-    (item) => item.sessionId !== session.sessionId,
-  )
-  storage.setItem(STREAM_PLAYER_HISTORY_KEY, JSON.stringify([session, ...existing].slice(0, 10)))
+  let target = storage
+  if (target === undefined) {
+    try {
+      target = globalThis.localStorage
+    } catch {
+      return false
+    }
+  }
+
+  let existing: StoredStreamSession[]
+  try {
+    existing = parseStoredStreamHistory(target.getItem(STREAM_PLAYER_HISTORY_KEY)).filter(
+      (item) => item.sessionId !== session.sessionId,
+    )
+  } catch {
+    return false
+  }
+
+  try {
+    target.setItem(STREAM_PLAYER_HISTORY_KEY, JSON.stringify([session, ...existing].slice(0, 10)))
+    return true
+  } catch {
+    return false
+  }
 }

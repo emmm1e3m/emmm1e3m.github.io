@@ -15,7 +15,9 @@ import {
   DEFAULT_GAME_BALANCE,
   DEFAULT_GAME_BALANCE_V3,
   deriveActivityTiming,
+  gameStateV11Schema,
   migrateStoredGameStateToV11,
+  migrateStoredGameStateToV12,
   normalizeImportedGameBalance,
   reconcileGameStateWithCatalog,
   reduceGame,
@@ -27,6 +29,7 @@ import {
   type GameStateV5,
   type GameStateV5LegacyMusic,
   type GameStateV7,
+  type GameStateV11,
   type GameTransition,
   generateWardrobeShop,
 } from '@/domain'
@@ -92,12 +95,29 @@ function asPublishedV3(state: GameState): GameStateV3 {
 }
 
 function asPublishedV5(state: GameState): GameStateV5 {
+  const session = state.reality.pomodoro.session
+  const legacySession: GameStateV5['reality']['pomodoro']['session'] = session
+    ? (() => {
+        const { background, ...withoutBackground } = session
+        return {
+          ...withoutBackground,
+          postcardId: background?.kind === 'postcard' ? background.id : null,
+        }
+      })()
+    : null
   const reality: GameStateV5['reality'] = {
     nextStaySequence: state.reality.nextStaySequence,
     activeStay: state.reality.activeStay,
     pendingSettlement: state.reality.pendingSettlement,
     todos: state.reality.todos,
-    pomodoro: state.reality.pomodoro,
+    pomodoro: {
+      nextSessionSequence: state.reality.pomodoro.nextSessionSequence,
+      selectedPostcardId:
+        state.reality.pomodoro.selectedBackground?.kind === 'postcard'
+          ? state.reality.pomodoro.selectedBackground.id
+          : null,
+      session: legacySession,
+    },
   }
   const { wardrobe: _wardrobe, ...withoutWardrobe } = state
   void _wardrobe
@@ -105,12 +125,29 @@ function asPublishedV5(state: GameState): GameStateV5 {
 }
 
 function asPublishedV7(state: GameState): GameStateV7 {
+  const session = state.reality.pomodoro.session
+  const legacySession: GameStateV7['reality']['pomodoro']['session'] = session
+    ? (() => {
+        const { background, ...withoutBackground } = session
+        return {
+          ...withoutBackground,
+          postcardId: background?.kind === 'postcard' ? background.id : null,
+        }
+      })()
+    : null
   const reality: GameStateV7['reality'] = {
     nextStaySequence: state.reality.nextStaySequence,
     activeStay: state.reality.activeStay,
     pendingSettlement: state.reality.pendingSettlement,
     todos: structuredClone(state.reality.todos),
-    pomodoro: structuredClone(state.reality.pomodoro),
+    pomodoro: {
+      nextSessionSequence: state.reality.pomodoro.nextSessionSequence,
+      selectedPostcardId:
+        state.reality.pomodoro.selectedBackground?.kind === 'postcard'
+          ? state.reality.pomodoro.selectedBackground.id
+          : null,
+      session: legacySession,
+    },
     streamHistory: structuredClone(state.reality.streamHistory),
   }
   const { wardrobe: _wardrobe, ...withoutWardrobe } = structuredClone(state)
@@ -202,46 +239,26 @@ describe('游戏活动存档时长快照', () => {
     expect(readyClaim.state.activeActivity).toBeNull()
   })
 
-  it('刷播任务的累计轮次与单次会话可完整导出并恢复', async () => {
+  it('冻结的刷播历史兼容字段可完整导出并恢复', async () => {
     const initial = createInitialGameState({ now: 50_000, seed: 'stream-history-save' })
-    const firstRound = successful(
-      reduceGame(
-        initial,
-        {
-          type: 'reality/stream-session-progress',
-          sessionId: 'stream-session-save',
-          startedAt: 70_000,
-          completedAt: 80_000,
+    const completed: GameState = {
+      ...initial,
+      reality: {
+        ...initial.reality,
+        streamHistory: {
+          completedRounds: 2,
+          recentSessions: [
+            {
+              sessionId: 'stream-session-save',
+              startedAt: 70_000,
+              endedAt: 82_000,
+              roundsCompleted: 2,
+              outcome: 'completed',
+            },
+          ],
         },
-        catalog,
-      ),
-    ).state
-    const secondRound = successful(
-      reduceGame(
-        firstRound,
-        {
-          type: 'reality/stream-session-progress',
-          sessionId: 'stream-session-save',
-          startedAt: 70_000,
-          completedAt: 81_000,
-        },
-        catalog,
-      ),
-    ).state
-    const completed = successful(
-      reduceGame(
-        secondRound,
-        {
-          type: 'reality/stream-session-end',
-          sessionId: 'stream-session-save',
-          startedAt: 70_000,
-          endedAt: 82_000,
-          roundsCompleted: 2,
-          outcome: 'completed',
-        },
-        catalog,
-      ),
-    ).state
+      },
+    }
 
     expect(gameStateSchema.safeParse(completed).success).toBe(true)
     const exported = await createBingoSave(
@@ -267,7 +284,7 @@ describe('游戏活动存档时长快照', () => {
     })
   })
 
-  it('严格导入 V7 后显式迁移默认刷播设置、现实租约与衣柜，并只以 V11 再次导出', async () => {
+  it('严格导入 V7 后显式迁移默认刷播设置、现实租约、衣柜与每日奖励，并只以 V12 再次导出', async () => {
     const v7 = asPublishedV7(
       createInitialGameState({ now: 50_000, seed: 'stream-settings-v7-save' }),
     )
@@ -282,18 +299,20 @@ describe('游戏活动存档时长快照', () => {
     const imported = await importBingoSave(oldSave.text, importableGameStateSchema, {
       subtle: webcrypto.subtle,
     })
-    const migrated = migrateStoredGameStateToV11(imported.payload, { now: 70_000, catalog })
+    const migrated = migrateStoredGameStateToV12(imported.payload, { now: 70_000, catalog })
 
     expect(migrated).toMatchObject({
-      schemaVersion: 11,
+      schemaVersion: 12,
       reality: {
         streamSettings: { selfTestBvid: null, favoriteId: 3682220021 },
+        streamDailyReward: { lastRewardDateKey: null },
       },
+      wardrobe: { layoutVersion: 2 },
     })
     expect(gameStateSchema.safeParse(migrated).success).toBe(true)
 
     const currentSave = await createBingoSave(
-      { gameVersion: '0.10.0', exportedAt: 80_000, payload: migrated },
+      { gameVersion: '0.10.1', exportedAt: 80_000, payload: migrated },
       gameStateSchema,
       { subtle: webcrypto.subtle },
     )
@@ -304,6 +323,32 @@ describe('游戏活动存档时长快照', () => {
       selfTestBvid: null,
       favoriteId: 3682220021,
     })
+  })
+
+  it('冻结 V11 原始存档可严格导入，并在采用后显式迁移为 V12', async () => {
+    const v7 = asPublishedV7(
+      createInitialGameState({ now: 50_000, seed: 'frozen-v11-save-import' }),
+    )
+    const v11: GameStateV11 = migrateStoredGameStateToV11(v7, { now: 60_000, catalog })
+    expect(gameStateV11Schema.safeParse(v11).success).toBe(true)
+
+    const oldSave = await createBingoSave<GameStateV11>(
+      { gameVersion: '0.10.0', exportedAt: 70_000, payload: v11 },
+      gameStateV11Schema,
+      { subtle: webcrypto.subtle },
+    )
+    const imported = await importBingoSave(oldSave.text, importableGameStateSchema, {
+      subtle: webcrypto.subtle,
+    })
+    expect(imported.payload.schemaVersion).toBe(11)
+
+    const migrated = migrateStoredGameStateToV12(imported.payload, { now: 80_000, catalog })
+    expect(migrated).toMatchObject({
+      schemaVersion: 12,
+      reality: { streamDailyReward: { lastRewardDateKey: null } },
+      wardrobe: { layoutVersion: 2 },
+    })
+    expect(gameStateSchema.safeParse(migrated).success).toBe(true)
   })
 
   it('V4 好友聚合记录完整往返且不写目录快照', async () => {
@@ -391,7 +436,7 @@ describe('游戏活动存档时长快照', () => {
         },
         pomodoro: {
           nextSessionSequence: 1,
-          selectedPostcardId: 'postcard-persistence',
+          selectedBackground: { kind: 'postcard', id: 'postcard-persistence' },
           session: {
             sessionId: 'pomodoro-0',
             status: 'focus',
@@ -404,7 +449,7 @@ describe('游戏活动存档时长快照', () => {
             focusNotificationIssuedAt: null,
             completionNotificationIssuedAt: null,
             todoId: 'todo-study',
-            postcardId: 'postcard-persistence',
+            background: { kind: 'postcard', id: 'postcard-persistence' },
           },
         },
         streamHistory: initial.reality.streamHistory,
@@ -412,6 +457,7 @@ describe('游戏活动存档时长快照', () => {
           selfTestBvid: 'BV1xx411c7mD',
           favoriteId: 3986840044,
         },
+        streamDailyReward: initial.reality.streamDailyReward,
       },
       musicPlayer: {
         currentBvid: 'BV1xx411c7mD',
@@ -509,7 +555,7 @@ describe('游戏活动存档时长快照', () => {
     if (imported.payload.schemaVersion !== 3) throw new Error('测试存档没有保留 V3 payload')
 
     const normalized = normalizeImportedGameBalance(
-      migrateStoredGameStateToV11(imported.payload, { now: startedAt + 1_000, catalog }),
+      migrateStoredGameStateToV12(imported.payload, { now: startedAt + 1_000, catalog }),
       futureDefault,
     )
     expect(normalized.gameBalance).toEqual(futureDefault)
@@ -598,7 +644,7 @@ describe('游戏活动存档时长快照', () => {
       subtle: webcrypto.subtle,
     })
     const normalized = normalizeImportedGameBalance(
-      migrateStoredGameStateToV11(imported.payload, { now: startedAt + 1_000, catalog }),
+      migrateStoredGameStateToV12(imported.payload, { now: startedAt + 1_000, catalog }),
     )
 
     expect(normalized.gameBalance).toEqual(DEFAULT_GAME_BALANCE)
@@ -608,6 +654,83 @@ describe('游戏活动存档时长快照', () => {
 })
 
 describe('冻结的已发布存档兼容性', () => {
+  it('读取发布提交 8097645 生成的真实 V11，迁移后以 V12 完整再导出', async () => {
+    const text = await readPublishedFixture('published-v11-8097645.bingo')
+    const imported = await importBingoSave(text, importableGameStateSchema, {
+      subtle: webcrypto.subtle,
+    })
+
+    expect(imported.summary.gameVersion).toBe('0.10.0')
+    expect(imported.payload.schemaVersion).toBe(11)
+    if (imported.payload.schemaVersion !== 11) throw new Error('固定存档不是 V11')
+    const legacy = imported.payload
+    expect(gameStateV11Schema.safeParse(legacy).success).toBe(true)
+    const before = structuredClone(legacy)
+    const legacyLook = Object.values(legacy.wardrobe.looks)[0]
+    const legacyPhoto = Object.values(legacy.wardrobe.photos)[0]
+    if (legacyLook === undefined || legacyPhoto === undefined) {
+      throw new Error('固定 V11 存档缺少造型或合拍')
+    }
+    expect(legacyLook.elements).not.toHaveLength(0)
+    expect(legacyLook.elements[0]).toHaveProperty('scale')
+    expect(legacyLook.elements[0]).not.toHaveProperty('scaleX')
+    expect(legacyPhoto).not.toHaveProperty('decorations')
+    const fixtureCatalog: CollectionCatalog = {
+      ...catalog,
+      postcard:
+        legacyPhoto.postcardId === null
+          ? catalog.postcard
+          : [...catalog.postcard, legacyPhoto.postcardId],
+    }
+
+    const migrated = migrateStoredGameStateToV12(legacy, { now: 900_000, catalog: fixtureCatalog })
+    expect(legacy).toEqual(before)
+    expect(migrated).toMatchObject({
+      schemaVersion: 12,
+      reality: {
+        streamDailyReward: { lastRewardDateKey: null },
+        pomodoro: {
+          selectedBackground:
+            legacy.reality.pomodoro.selectedPostcardId === null
+              ? null
+              : { kind: 'postcard', id: legacy.reality.pomodoro.selectedPostcardId },
+        },
+      },
+      wardrobe: { layoutVersion: 2 },
+    })
+    const migratedLook = migrated.wardrobe.looks[legacyLook.lookId]
+    const migratedPhoto = migrated.wardrobe.photos[legacyPhoto.photoId]
+    expect(migrated.wardrobe.shop).toEqual(legacy.wardrobe.shop)
+    expect(migrated.wardrobe.ownedAssetIds).toEqual(legacy.wardrobe.ownedAssetIds)
+    expect(migratedLook.elements).toHaveLength(legacyLook.elements.length)
+    migratedLook.elements.forEach((element, index) => {
+      expect(element.scaleX).toBe(legacyLook.elements[index].scale)
+      expect(element.scaleY).toBe(legacyLook.elements[index].scale)
+    })
+    expect(migratedPhoto.decorations).toEqual([])
+    expect(migratedPhoto.participants[0].sourceLookId).toBe(
+      legacyPhoto.participants[0].sourceLookId,
+    )
+    expect(migratedPhoto.participants[0].scaleX).toBe(legacyPhoto.participants[0].scale)
+    expect(migratedPhoto.participants[0].scaleY).toBe(legacyPhoto.participants[0].scale)
+    migratedPhoto.participants[0].elements.forEach((element, index) => {
+      expect(element.scaleX).toBe(legacyPhoto.participants[0].elements[index].scale)
+      expect(element.scaleY).toBe(legacyPhoto.participants[0].elements[index].scale)
+    })
+    expect(validateImportedGameState(migrated, fixtureCatalog)).toEqual({ ok: true })
+    expect(gameStateSchema.safeParse(migrated).success).toBe(true)
+
+    const reexported = await createBingoSave(
+      { gameVersion: '0.10.1', exportedAt: 910_000, payload: migrated },
+      gameStateSchema,
+      { subtle: webcrypto.subtle },
+    )
+    const roundTrip = await importBingoSave(reexported.text, gameStateSchema, {
+      subtle: webcrypto.subtle,
+    })
+    expect(roundTrip.payload).toEqual(migrated)
+  })
+
   it('读取真实固定 v1 并确定性迁移称呼、陪伴天数与空好友图鉴', async () => {
     const text = await readPublishedFixture('published-v1-ordinary.bingo.fixture')
     const imported = await importBingoSave(text, importableGameStateSchema, {
@@ -616,10 +739,10 @@ describe('冻结的已发布存档兼容性', () => {
 
     expect(imported.summary.schemaVersion).toBe(1)
     expect(imported.payload.schemaVersion).toBe(1)
-    const migrated = migrateStoredGameStateToV11(imported.payload, { now: 900_000, catalog })
+    const migrated = migrateStoredGameStateToV12(imported.payload, { now: 900_000, catalog })
 
     expect(migrated).toMatchObject({
-      schemaVersion: 11,
+      schemaVersion: 12,
       profile: { displayName: '你', companionDays: 3 },
       friends: {},
       reality: {
@@ -638,7 +761,7 @@ describe('冻结的已发布存档兼容性', () => {
 
     const migrated = reconcileGameStateWithCatalog(
       normalizeImportedGameBalance(
-        migrateStoredGameStateToV11(imported.payload, { now: 900_000, catalog }),
+        migrateStoredGameStateToV12(imported.payload, { now: 900_000, catalog }),
       ),
       catalog,
     )
@@ -680,7 +803,7 @@ describe('冻结的已发布存档兼容性', () => {
     const imported = await importBingoSave(text, importableGameStateSchema, {
       subtle: webcrypto.subtle,
     })
-    const migrated = migrateStoredGameStateToV11(imported.payload, { now: 900_000, catalog })
+    const migrated = migrateStoredGameStateToV12(imported.payload, { now: 900_000, catalog })
 
     expect(migrated.profile.debug).toBe(true)
     expect(migrated.gameBalance).toEqual({
@@ -731,7 +854,7 @@ describe('冻结的已发布存档兼容性', () => {
     const imported = await importBingoSave(oldSave.text, importableGameStateSchema, {
       subtle: webcrypto.subtle,
     })
-    const migrated = migrateStoredGameStateToV11(imported.payload, { now: 2_000, catalog })
+    const migrated = migrateStoredGameStateToV12(imported.payload, { now: 2_000, catalog })
 
     expect(migrated.musicPlayer).toEqual({
       currentBvid: 'BV1234567890',

@@ -10,7 +10,7 @@ import {
   migrateStoredGameStateToV11,
 } from './migrateGameStateV10'
 import { gameStateV10Schema, isStrictGameStateV10 } from './migrateGameStateV9'
-import type { CollectionCatalog, GameStateV10 } from './types'
+import type { CollectionCatalog, GameStateV10, PomodoroState, PomodoroStateV12 } from './types'
 import {
   generateWardrobeShop,
   MAX_WARDROBE_LOOKS_PER_TARGET,
@@ -25,11 +25,42 @@ const catalog: CollectionCatalog = {
   siteFirstChronology: ['first-v11'],
 }
 
+function projectPomodoroV12ToLegacy(pomodoro: PomodoroStateV12): PomodoroState {
+  const session =
+    pomodoro.session === null
+      ? null
+      : (() => {
+          const { background, ...legacySession } = pomodoro.session
+          return {
+            ...legacySession,
+            postcardId: background?.kind === 'postcard' ? background.id : null,
+          }
+        })()
+  return {
+    nextSessionSequence: pomodoro.nextSessionSequence,
+    selectedPostcardId:
+      pomodoro.selectedBackground?.kind === 'postcard' ? pomodoro.selectedBackground.id : null,
+    session,
+  }
+}
+
 function v10Fixture(): GameStateV10 {
   const current = createInitialGameState({ now: 1_000, seed: 'strict-v10-to-v11' })
   const { wardrobe: _wardrobe, ...v10 } = structuredClone(current)
   void _wardrobe
-  return { ...v10, schemaVersion: 10 }
+  return {
+    ...v10,
+    schemaVersion: 10,
+    reality: {
+      nextStaySequence: current.reality.nextStaySequence,
+      activeStay: structuredClone(current.reality.activeStay),
+      pendingSettlement: structuredClone(current.reality.pendingSettlement),
+      todos: structuredClone(current.reality.todos),
+      pomodoro: projectPomodoroV12ToLegacy(current.reality.pomodoro),
+      streamHistory: structuredClone(current.reality.streamHistory),
+      streamSettings: structuredClone(current.reality.streamSettings),
+    },
+  }
 }
 
 describe('schemaVersion 10 -> 11 显式迁移', () => {

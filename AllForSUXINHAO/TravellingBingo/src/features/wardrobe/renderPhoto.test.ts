@@ -49,7 +49,8 @@ const photo: WardrobePhoto = {
       sourceLookId: null,
       x: 0.5,
       y: 0.58,
-      scale: 0.32,
+      scaleX: 0.32,
+      scaleY: 0.24,
       rotation: 0,
       z: 1,
       elements: [
@@ -58,7 +59,8 @@ const photo: WardrobePhoto = {
           assetId: 'apple-cuffs',
           x: 0.5,
           y: 0.6,
-          scale: 0.7,
+          scaleX: 0.7,
+          scaleY: 0.35,
           rotation: 0,
           z: -1,
         },
@@ -67,11 +69,34 @@ const photo: WardrobePhoto = {
           assetId: 'round-glasses',
           x: 0.5,
           y: 0.4,
-          scale: 0.45,
+          scaleX: 0.45,
+          scaleY: 0.2,
           rotation: 0,
           z: 2,
         },
       ],
+    },
+  ],
+  decorations: [
+    {
+      placementId: 'photo-behind',
+      assetId: 'signal-sign',
+      x: 0.2,
+      y: 0.25,
+      scaleX: 0.2,
+      scaleY: 0.1,
+      rotation: -8,
+      z: 0,
+    },
+    {
+      placementId: 'photo-front',
+      assetId: 'apple-badge',
+      x: 0.8,
+      y: 0.75,
+      scaleX: 0.1,
+      scaleY: 0.2,
+      rotation: 12,
+      z: 2,
     },
   ],
 }
@@ -88,6 +113,7 @@ function canvasHarness() {
     clip: vi.fn(),
     translate: vi.fn(),
     rotate: vi.fn(),
+    scale: vi.fn(),
   }
   const canvas = {
     width: 0,
@@ -103,13 +129,15 @@ function drawable(url: string, width = 1024, height = 1024) {
 }
 
 describe('合拍 PNG 重建', () => {
-  it('优先尝试 960 明信片，失败后回退 480，并按稳定 z 顺序绘制人物快照', async () => {
+  it('优先回退明信片，并按全局 z 交错绘制非等比装饰与人物快照', async () => {
     const harness = canvasHarness()
     const loadedUrls: string[] = []
     const loadImage = vi.fn(async (url: string) => {
       loadedUrls.push(url)
       if (url.endsWith('photo-test-960.webp')) throw new Error('大图暂时不可用')
-      return drawable(url, url.endsWith('photo-test-480.webp') ? 480 : 1024, 640)
+      if (url.endsWith('photo-test-480.webp')) return drawable(url, 480, 640)
+      if (url.endsWith('round-glasses.webp')) return drawable(url, 1_000, 500)
+      return drawable(url, 512, 512)
     })
 
     await renderWardrobePhoto(photo, catalog, {
@@ -125,12 +153,17 @@ describe('合拍 PNG 重建', () => {
     const drawOrder = harness.context.drawImage.mock.calls.map(
       ([image]) => (image as unknown as { url: string }).url,
     )
-    expect(drawOrder).toHaveLength(4)
+    expect(drawOrder).toHaveLength(6)
     expect(drawOrder[0]).toMatch(/photo-test-480\.webp$/u)
     expect(harness.context.drawImage.mock.calls[0].slice(1)).toEqual([0, 0, 1800, 2400])
-    expect(drawOrder[1]).toMatch(/apple-cuffs\.webp$/u)
-    expect(drawOrder[2]).toMatch(/characters\/bingo\.webp$/u)
-    expect(drawOrder[3]).toMatch(/round-glasses\.webp$/u)
+    expect(drawOrder[1]).toMatch(/signal-sign\.webp$/u)
+    expect(harness.context.drawImage.mock.calls[1].slice(1)).toEqual([-180, -90, 360, 180])
+    expect(drawOrder[2]).toMatch(/apple-cuffs\.webp$/u)
+    expect(drawOrder[3]).toMatch(/characters\/bingo\.webp$/u)
+    expect(drawOrder[4]).toMatch(/round-glasses\.webp$/u)
+    expect(drawOrder[5]).toMatch(/apple-badge\.webp$/u)
+    expect(harness.context.drawImage.mock.calls[5].slice(1)).toEqual([-90, -180, 180, 360])
+    expect(harness.context.scale).toHaveBeenCalledWith(1, 0.75)
   })
 
   it('失效明信片保留暖白背景和人物，下载只创建短期 object URL 并及时 revoke', async () => {

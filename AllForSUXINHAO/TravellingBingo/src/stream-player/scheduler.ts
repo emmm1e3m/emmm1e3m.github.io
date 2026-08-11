@@ -90,11 +90,11 @@ export class StreamRoundScheduler {
       totalCount: 0,
       nextActionAt: null,
     }
-    this.callbacks.onStarted?.(startedAt)
     if (this.stopAt !== null && startedAt >= this.stopAt) {
       this.finish('completed')
       return
     }
+    this.callbacks.onStarted?.(startedAt)
     this.beginRound()
   }
 

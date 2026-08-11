@@ -20,13 +20,14 @@ export function UpdateNoticeCard({ onOpen }: UpdateNoticeCardProps) {
       onClick={onOpen}
     >
       <span className="update-notice-card__copy">
-        <strong>
-          更新公告 · {notice.version} · {notice.title}
-        </strong>
+        <strong>更新公告 · {notice.title}</strong>
         <span>{notice.summary}</span>
         <span className="update-notice-card__highlight">{notice.highlight}</span>
       </span>
-      <time dateTime={notice.publishedDate}>{notice.publishedLabel}</time>
+      <span className="update-notice-card__meta">
+        <span className="update-notice-card__version">{notice.version}</span>
+        <time dateTime={notice.publishedDate}>{notice.publishedLabel}</time>
+      </span>
     </button>
   )
 }

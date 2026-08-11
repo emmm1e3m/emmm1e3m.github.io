@@ -5,6 +5,7 @@ import { describe, expect, it } from 'vitest'
 import { gameStateSchema } from '@/app/gameStateSchema'
 import { createBingoSave, MAX_BINGO_SAVE_BYTES } from '@/infrastructure/persistence'
 
+import { MAX_TODO_ID_LENGTH, MAX_TODO_TITLE_LENGTH, MAX_TODOS } from './constants'
 import { createInitialGameState } from './createGameState'
 import { reduceGame } from './reducer'
 import type {
@@ -13,6 +14,7 @@ import type {
   GameTransition,
   WardrobeAssetId,
   WardrobeElement,
+  WardrobePhotoDecoration,
   WardrobePhotoParticipant,
   WardrobeTargetId,
 } from './types'
@@ -21,10 +23,12 @@ import {
   getAvailableWardrobeTargets,
   getSavedWardrobeLooks,
   getWardrobeCatalogItem,
+  getWardrobePhotoLayers,
   getWardrobeShopItems,
   MAX_WARDROBE_LOOK_ELEMENTS,
   MAX_WARDROBE_LOOKS_PER_TARGET,
   MAX_WARDROBE_PHOTOS,
+  MAX_WARDROBE_PHOTO_DECORATIONS,
   reduceWardrobe,
   WARDROBE_ASSET_IDS,
   WARDROBE_CATALOG,
@@ -44,7 +48,7 @@ function successful(transition: GameTransition): Extract<GameTransition, { ok: t
 }
 
 function transform(z = 0) {
-  return { x: 0.5, y: 0.5, scale: 1, rotation: 0, z }
+  return { x: 0.5, y: 0.5, scaleX: 1, scaleY: 1, rotation: 0, z }
 }
 
 function friendEntry(id: 'class-representative-bing') {
@@ -71,7 +75,11 @@ describe('奇迹饼狗衣柜领域', () => {
     ).toBe(5)
     expect(WARDROBE_ASSET_IDS).toContain('black-tie-uniform')
     expect(WARDROBE_ASSET_IDS).not.toContain('black-bone-tee')
-    expect(WARDROBE_CATALOG.every((item) => item.defaultTransform.scale > 0)).toBe(true)
+    expect(
+      WARDROBE_CATALOG.every(
+        (item) => item.defaultTransform.scaleX > 0 && item.defaultTransform.scaleY > 0,
+      ),
+    ).toBe(true)
   })
 
   it('同一种子与游戏日始终生成相同三件不同商品，现实时间不参与刷新', () => {
@@ -321,6 +329,7 @@ describe('奇迹饼狗衣柜领域', () => {
           type: 'wardrobe/photo-create',
           postcardId,
           participants: [participantWithExtraField],
+          decorations: [],
           now: 300,
         },
         catalog,
@@ -357,12 +366,88 @@ describe('奇迹饼狗衣柜领域', () => {
     expect(lookDeleted.state.wardrobe.photos[photoId].participants[0].elements).toEqual(firstLook)
     expect(gameStateSchema.safeParse(lookDeleted.state).success).toBe(true)
 
+    const selectedAsBackground = successful(
+      reduceGame(
+        lookDeleted.state,
+        {
+          type: 'pomodoro/background-set',
+          background: { kind: 'wardrobe-photo', id: photoId },
+        },
+        catalog,
+      ),
+    )
+    const startedPomodoro = successful(
+      reduceGame(
+        selectedAsBackground.state,
+        { type: 'pomodoro/start', now: 500, durationMs: 25 * 60 * 1_000 },
+        catalog,
+      ),
+    )
     const deleted = successful(
-      reduceWardrobe(lookDeleted.state, { type: 'wardrobe/photo-delete', photoId }, catalog),
+      reduceWardrobe(startedPomodoro.state, { type: 'wardrobe/photo-delete', photoId }, catalog),
     )
     expect(deleted.state.wardrobe.photos).toEqual({})
     expect(deleted.state.wardrobe.looks).toEqual({})
     expect(deleted.state.wardrobe.ownedAssetIds).toEqual(initial.wardrobe.ownedAssetIds)
+    expect(deleted.state.reality.pomodoro.selectedBackground).toBeNull()
+    expect(deleted.state.reality.pomodoro.session?.background).toBeNull()
+  })
+
+  it('创建造型或合拍时显式拒绝计数器生成的重复 ID', () => {
+    const initial = createInitialGameState({ now: 0, seed: 'wardrobe-id-collision' })
+    const lookAction = {
+      type: 'wardrobe/look-create' as const,
+      targetId: 'bingo' as const,
+      name: '碰撞检查',
+      elements: [],
+      now: 100,
+    }
+    const firstLook = successful(reduceWardrobe(initial, lookAction, catalog))
+    const lookEffect = firstLook.effects[0]
+    if (lookEffect?.type !== 'wardrobe-look-created') throw new Error('没有生成造型')
+    const lookCollisionState: GameState = {
+      ...initial,
+      wardrobe: {
+        ...initial.wardrobe,
+        looks: { [lookEffect.look.lookId]: lookEffect.look },
+      },
+    }
+    const lookCollision = reduceWardrobe(lookCollisionState, lookAction, catalog)
+    expect(lookCollision).toMatchObject({
+      ok: false,
+      error: { code: 'WARDROBE_LOOK_ID_COLLISION' },
+    })
+    expect(lookCollision.state).toBe(lookCollisionState)
+
+    const withPostcard: GameState = {
+      ...initial,
+      collections: {
+        [postcardId]: { id: postcardId, firstObtainedAt: 1, duplicateCount: 0 },
+      },
+    }
+    const photoAction = {
+      type: 'wardrobe/photo-create' as const,
+      postcardId,
+      participants: [{ targetId: 'bingo' as const, lookId: null, ...transform(0) }],
+      decorations: [],
+      now: 200,
+    }
+    const firstPhoto = successful(reduceWardrobe(withPostcard, photoAction, catalog))
+    const photoEffect = firstPhoto.effects[0]
+    if (photoEffect?.type !== 'wardrobe-photo-created') throw new Error('没有生成合拍')
+    const photoCollisionState: GameState = {
+      ...withPostcard,
+      wardrobe: {
+        ...withPostcard.wardrobe,
+        photos: { [photoEffect.photo.photoId]: photoEffect.photo },
+      },
+    }
+    const photoCollision = reduceWardrobe(photoCollisionState, photoAction, catalog)
+    expect(photoCollision).toMatchObject({
+      ok: false,
+      error: { code: 'WARDROBE_PHOTO_ID_COLLISION' },
+    })
+    expect(photoCollision.state).toBe(photoCollisionState)
   })
 
   it('合拍可以只让已遇见好友出镜，并拒绝选择其他角色的造型', () => {
@@ -401,6 +486,7 @@ describe('奇迹饼狗衣柜领域', () => {
             ...transform(0),
           },
         ],
+        decorations: [],
         now: 20,
       },
       catalog,
@@ -438,6 +524,7 @@ describe('奇迹饼狗衣柜领域', () => {
               ...transform(0),
             },
           ],
+          decorations: [],
           now: 40,
         },
         catalog,
@@ -448,6 +535,88 @@ describe('奇迹饼狗衣柜领域', () => {
     expect(photoEffect.photo.participants.map((participant) => participant.targetId)).toEqual([
       'class-representative-bing',
     ])
+  })
+
+  it('合拍可独立放置已拥有服装，允许重复素材并按全局 z 稳定排序', () => {
+    const initial = createInitialGameState({ now: 0, seed: 'wardrobe-photo-decoration' })
+    const ready: GameState = {
+      ...initial,
+      collections: {
+        [postcardId]: { id: postcardId, firstObtainedAt: 1, duplicateCount: 0 },
+      },
+    }
+    const decorations: WardrobePhotoDecoration[] = [
+      {
+        placementId: 'cape-right',
+        assetId: 'cream-apple-cape',
+        x: 0.75,
+        y: 0.6,
+        scaleX: 1.4,
+        scaleY: 0.7,
+        rotation: 12,
+        z: 3,
+      },
+      {
+        placementId: 'cape-left',
+        assetId: 'cream-apple-cape',
+        x: 0.25,
+        y: 0.4,
+        scaleX: 0.8,
+        scaleY: 1.2,
+        rotation: -12,
+        z: -1,
+      },
+    ]
+    const created = successful(
+      reduceWardrobe(
+        ready,
+        {
+          type: 'wardrobe/photo-create',
+          postcardId,
+          participants: [{ targetId: 'bingo', lookId: null, ...transform(5) }],
+          decorations,
+          now: 10,
+        },
+        catalog,
+      ),
+    )
+    const effect = created.effects[0]
+    if (effect?.type !== 'wardrobe-photo-created') throw new Error('没有生成装饰合拍')
+    expect(effect.photo.decorations.map((decoration) => decoration.placementId)).toEqual([
+      'cape-left',
+      'cape-right',
+    ])
+    expect(getWardrobePhotoLayers(effect.photo).map((layer) => layer.value.z)).toEqual([-1, 3, 5])
+    expect(gameStateSchema.safeParse(created.state).success).toBe(true)
+
+    const unowned = reduceWardrobe(
+      ready,
+      {
+        type: 'wardrobe/photo-create',
+        postcardId,
+        participants: [{ targetId: 'bingo', lookId: null, ...transform(5) }],
+        decorations: [{ placementId: 'glasses', assetId: 'round-glasses', ...transform(0) }],
+        now: 11,
+      },
+      catalog,
+    )
+    expect(unowned).toMatchObject({ ok: false, error: { code: 'WARDROBE_ASSET_NOT_OWNED' } })
+
+    const duplicateGlobalZ = reduceWardrobe(
+      ready,
+      {
+        type: 'wardrobe/photo-create',
+        postcardId,
+        participants: [{ targetId: 'bingo', lookId: null, ...transform(0) }],
+        decorations: [{ placementId: 'cape', assetId: 'cream-apple-cape', ...transform(0) }],
+        now: 12,
+      },
+      catalog,
+    )
+    expect(duplicateGlobalZ).toMatchObject({
+      ok: false,
+      error: { code: 'WARDROBE_DECORATIONS_INVALID' },
+    })
   })
 
   it('合拍至少需要一位角色，但不强制饼狗出镜', () => {
@@ -464,6 +633,7 @@ describe('奇迹饼狗衣柜领域', () => {
         type: 'wardrobe/photo-create',
         postcardId,
         participants: [],
+        decorations: [],
         now: 10,
       },
       catalog,
@@ -479,6 +649,7 @@ describe('奇迹饼狗衣柜领域', () => {
       photoId: 'photo-0-x',
       postcardId,
       participants: [],
+      decorations: [],
       createdAt: 10,
     }
     expect(gameStateSchema.safeParse(imported).success).toBe(false)
@@ -512,6 +683,7 @@ describe('奇迹饼狗衣柜领域', () => {
           type: 'wardrobe/photo-create',
           postcardId,
           participants: [{ targetId: 'bingo', lookId: lookEffect.look.lookId, ...transform(0) }],
+          decorations: [{ placementId: 'debug-decoration', assetId, ...transform(1) }],
           now: 30,
         },
         catalog,
@@ -520,8 +692,19 @@ describe('奇迹饼狗衣柜领域', () => {
     const photoEffect = photoCreated.effects[0]
     if (photoEffect?.type !== 'wardrobe-photo-created') throw new Error('没有创建调试合拍')
 
+    const selectedAsBackground = successful(
+      reduceGame(
+        photoCreated.state,
+        {
+          type: 'pomodoro/background-set',
+          background: { kind: 'wardrobe-photo', id: photoEffect.photo.photoId },
+        },
+        catalog,
+      ),
+    ).state
+
     const cleared = successful(
-      reduceGame(photoCreated.state, { type: 'debug/clear-all', now: 40 }, catalog),
+      reduceGame(selectedAsBackground, { type: 'debug/clear-all', now: 40 }, catalog),
     ).state
     expect(cleared.wardrobe.ownedAssetIds).toEqual(['cream-apple-cape'])
     expect(cleared.wardrobe.shop.assetIds).toHaveLength(3)
@@ -534,6 +717,11 @@ describe('奇迹饼狗衣柜领域', () => {
     expect(cleared.wardrobe.photos[photoEffect.photo.photoId]).toMatchObject({
       postcardId: null,
       participants: [{ sourceLookId: lookEffect.look.lookId, elements: [{ assetId }] }],
+      decorations: [{ placementId: 'debug-decoration', assetId }],
+    })
+    expect(cleared.reality.pomodoro.selectedBackground).toEqual({
+      kind: 'wardrobe-photo',
+      id: photoEffect.photo.photoId,
     })
     expect(gameStateSchema.safeParse(cleared).success).toBe(true)
   })
@@ -604,7 +792,7 @@ describe('奇迹饼狗衣柜领域', () => {
     expect(gameStateSchema.safeParse(cleared).success).toBe(true)
   })
 
-  it('最大相册仍能装入 1 MiB .bingo 存档，且不包含图片数据', async () => {
+  it('200 条最长中文待办与最大衣柜相册仍能完整导出 2 MiB .bingo 存档', async () => {
     const initial = createInitialGameState({ now: 0, seed: 'wardrobe-size', debug: true })
     const allFriends = Object.fromEntries(
       [
@@ -626,25 +814,37 @@ describe('奇迹饼狗衣柜领域', () => {
       'signal-dog',
       'bili-bing',
     ]
+    const largeTransform = (z: number) => ({
+      x: 0.12345678901234568,
+      y: 0.8765432109876543,
+      scaleX: 4.123456789012345,
+      scaleY: 3.9876543210987654,
+      rotation: 179.12345678901235,
+      z,
+    })
+    const longPlacementId = (prefix: string, index: number) =>
+      `${prefix}${index.toString(36)}`.padEnd(48, 'z')
     const elements = Array.from({ length: MAX_WARDROBE_LOOK_ELEMENTS }, (_, index) => ({
-      placementId: `cape-${index}`,
-      assetId: WARDROBE_ASSET_IDS[index % WARDROBE_ASSET_IDS.length] as WardrobeAssetId,
-      ...transform(index),
+      placementId: longPlacementId('element', index),
+      assetId: 'monochrome-maid-dress' as WardrobeAssetId,
+      ...largeTransform(index),
     }))
+    const firstLookSequence = Number.MAX_SAFE_INTEGER - 10_000
     const looks = Object.fromEntries(
       targets.flatMap((targetId, targetIndex) =>
         Array.from({ length: MAX_WARDROBE_LOOKS_PER_TARGET }, (_, lookIndex) => {
-          const sequence = targetIndex * MAX_WARDROBE_LOOKS_PER_TARGET + lookIndex
-          const lookId = `look-${sequence.toString(36)}-x`
+          const sequence =
+            firstLookSequence + targetIndex * MAX_WARDROBE_LOOKS_PER_TARGET + lookIndex
+          const lookId = `look-${sequence.toString(36)}-zzzzzzz`
           return [
             lookId,
             {
               lookId,
               targetId,
-              name: `造型${sequence + 1}`,
+              name: '造'.repeat(20),
               elements,
-              createdAt: 100 + sequence,
-              updatedAt: 100 + sequence,
+              createdAt: 8_000_000_000_000_000,
+              updatedAt: 8_000_000_000_000_000,
             },
           ]
         }),
@@ -652,14 +852,51 @@ describe('奇迹饼狗衣柜领域', () => {
     )
     const participants: WardrobePhotoParticipant[] = targets.map((targetId, index) => ({
       targetId,
-      sourceLookId: `look-${(index * MAX_WARDROBE_LOOKS_PER_TARGET).toString(36)}-x`,
-      ...transform(index),
+      sourceLookId: `look-${(firstLookSequence + index * MAX_WARDROBE_LOOKS_PER_TARGET).toString(
+        36,
+      )}-zzzzzzz`,
+      ...largeTransform(index),
       elements,
     }))
+    const decorations: WardrobePhotoDecoration[] = Array.from(
+      { length: MAX_WARDROBE_PHOTO_DECORATIONS },
+      (_, index) => ({
+        placementId: longPlacementId('decoration', index),
+        assetId: 'monochrome-maid-dress' as WardrobeAssetId,
+        ...largeTransform(targets.length + index),
+      }),
+    )
+    const firstPhotoSequence = Number.MAX_SAFE_INTEGER - 5_000
     const photos = Object.fromEntries(
       Array.from({ length: MAX_WARDROBE_PHOTOS }, (_, index) => {
-        const photoId = `photo-${index.toString(36)}-x`
-        return [photoId, { photoId, postcardId, participants, createdAt: 1_000 + index }]
+        const photoId = `photo-${(firstPhotoSequence + index).toString(36)}-zzzzzzz`
+        return [
+          photoId,
+          {
+            photoId,
+            postcardId,
+            participants,
+            decorations,
+            createdAt: 8_000_000_000_000_000,
+          },
+        ]
+      }),
+    )
+    const todos = Object.fromEntries(
+      Array.from({ length: MAX_TODOS }, (_, index) => {
+        const id = `${index.toString().padStart(3, '0')}${'待'.repeat(MAX_TODO_ID_LENGTH - 3)}`
+        return [
+          id,
+          {
+            id,
+            title: '测'.repeat(MAX_TODO_TITLE_LENGTH),
+            createdAt: 8_000_000_000_000_000,
+            updatedAt: 8_000_000_000_000_000,
+            dueAt: 8_000_000_000_000_000,
+            completedAt: 8_000_000_000_000_000,
+            notificationIssuedAt: 8_000_000_000_000_000,
+          },
+        ]
       }),
     )
     const full: GameState = {
@@ -668,22 +905,24 @@ describe('奇迹饼狗衣柜领域', () => {
         [postcardId]: { id: postcardId, firstObtainedAt: 1, duplicateCount: 0 },
       },
       friends: allFriends,
+      reality: { ...initial.reality, todos },
       wardrobe: {
         ...initial.wardrobe,
         ownedAssetIds: [...WARDROBE_ASSET_IDS],
-        nextLookSequence: targets.length * MAX_WARDROBE_LOOKS_PER_TARGET,
+        nextLookSequence: firstLookSequence + targets.length * MAX_WARDROBE_LOOKS_PER_TARGET,
         looks,
-        nextPhotoSequence: MAX_WARDROBE_PHOTOS,
+        nextPhotoSequence: firstPhotoSequence + MAX_WARDROBE_PHOTOS,
         photos,
       },
     }
     expect(gameStateSchema.safeParse(full).success).toBe(true)
 
     const exported = await createBingoSave(
-      { gameVersion: '0.10.0', payload: full, exportedAt: 2_000 },
+      { gameVersion: '0.10.1', payload: full, exportedAt: 2_000 },
       gameStateSchema,
       { subtle: webcrypto.subtle as SubtleCrypto },
     )
+    expect(exported.byteLength).toBeGreaterThan(1024 * 1024)
     expect(exported.byteLength).toBeLessThan(MAX_BINGO_SAVE_BYTES)
     expect(exported.text).not.toMatch(/data:image|blob:|assets\//u)
   })

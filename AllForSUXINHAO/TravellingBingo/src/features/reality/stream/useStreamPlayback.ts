@@ -26,6 +26,10 @@ export interface StreamPlaybackController {
   readonly stop: () => void
 }
 
+export interface UseStreamPlaybackOptions {
+  readonly onStarted?: (dateKey: string) => void
+}
+
 export const STREAM_MAX_SESSION_DURATION_MS = 24 * 60 * 60 * 1_000
 export const STREAM_POPUP_FEATURES = 'popup=yes,width=430,height=760,resizable=yes,scrollbars=yes'
 export const STREAM_POPUP_NAME = 'travelling-bingo-stream-player'
@@ -33,8 +37,9 @@ export const STREAM_POPUP_NAME = 'travelling-bingo-stream-player'
 interface StreamRuntime {
   state: StreamPlaybackState
   handle: Window | null
-  sessionId: string | null
+  channelSessionId: string | null
   closeOnEnded: boolean
+  startedNotified: boolean
 }
 
 function createState(): StreamPlaybackState {
@@ -89,14 +94,22 @@ export function buildStreamPlayerUrl({
  * 主游戏只负责同步打开单一刷播页，并接收这个窗口回传的同源状态。
  * 收藏夹读取、视频调度和播放器生命周期全部由独立页负责。
  */
-export function useStreamPlayback(): StreamPlaybackController {
+export function useStreamPlayback({
+  onStarted,
+}: UseStreamPlaybackOptions = {}): StreamPlaybackController {
+  const onStartedRef = useRef(onStarted)
   const runtimeRef = useRef<StreamRuntime>({
     state: createState(),
     handle: null,
-    sessionId: null,
+    channelSessionId: null,
     closeOnEnded: false,
+    startedNotified: false,
   })
   const [state, setState] = useState<StreamPlaybackState>(() => createState())
+
+  useEffect(() => {
+    onStartedRef.current = onStarted
+  }, [onStarted])
 
   const publish = useCallback((nextState: StreamPlaybackState) => {
     runtimeRef.current.state = nextState
@@ -130,8 +143,9 @@ export function useStreamPlayback(): StreamPlaybackController {
       const handle = window.open(url, STREAM_POPUP_NAME, STREAM_POPUP_FEATURES)
       if (!handle) {
         runtimeRef.current.handle = null
-        runtimeRef.current.sessionId = null
+        runtimeRef.current.channelSessionId = null
         runtimeRef.current.closeOnEnded = false
+        runtimeRef.current.startedNotified = false
         publish({
           ...createState(),
           stopAfterMs,
@@ -142,8 +156,9 @@ export function useStreamPlayback(): StreamPlaybackController {
       }
 
       runtimeRef.current.handle = handle
-      runtimeRef.current.sessionId = sessionId
+      runtimeRef.current.channelSessionId = sessionId
       runtimeRef.current.closeOnEnded = false
+      runtimeRef.current.startedNotified = false
       publish({
         ...createState(),
         status: 'opening',
@@ -158,16 +173,17 @@ export function useStreamPlayback(): StreamPlaybackController {
   const stop = useCallback(() => {
     const current = runtimeRef.current.state
     const handle = runtimeRef.current.handle
-    const sessionId = runtimeRef.current.sessionId
-    if (handle && !handle.closed && sessionId !== null) {
+    const channelSessionId = runtimeRef.current.channelSessionId
+    if (handle && !handle.closed && channelSessionId !== null) {
       runtimeRef.current.closeOnEnded = true
-      handle.postMessage(createStreamPlayerStopCommand(sessionId), window.location.origin)
+      handle.postMessage(createStreamPlayerStopCommand(channelSessionId), window.location.origin)
       publish({ ...current, message: '正在停止刷播' })
       return
     }
     runtimeRef.current.handle = null
-    runtimeRef.current.sessionId = null
+    runtimeRef.current.channelSessionId = null
     runtimeRef.current.closeOnEnded = false
+    runtimeRef.current.startedNotified = false
     publish({ ...current, status: 'stopped', message: '刷播已停止' })
   }, [publish])
 
@@ -179,9 +195,13 @@ export function useStreamPlayback(): StreamPlaybackController {
         return
 
       const message = parseStreamPlayerEvent(event.data)
-      if (message === null || message.sessionId !== runtimeRef.current.sessionId) return
+      if (message === null || message.sessionId !== runtimeRef.current.channelSessionId) return
 
       if (message.event === 'started') {
+        if (!runtimeRef.current.startedNotified) {
+          runtimeRef.current.startedNotified = true
+          onStartedRef.current?.(message.dateKey)
+        }
         publish({
           ...current,
           status: 'waiting',
@@ -190,10 +210,14 @@ export function useStreamPlayback(): StreamPlaybackController {
         return
       }
 
-      if (runtimeRef.current.closeOnEnded && !handle.closed) handle.close()
-      runtimeRef.current.handle = null
-      runtimeRef.current.sessionId = null
+      const closeWindow = runtimeRef.current.closeOnEnded
+      if (closeWindow && !handle.closed) handle.close()
+      if (closeWindow || handle.closed) {
+        runtimeRef.current.handle = null
+        runtimeRef.current.channelSessionId = null
+      }
       runtimeRef.current.closeOnEnded = false
+      runtimeRef.current.startedNotified = false
       publish({
         ...current,
         status: message.outcome === 'completed' ? 'completed' : 'stopped',

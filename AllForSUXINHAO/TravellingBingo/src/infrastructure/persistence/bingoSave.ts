@@ -4,7 +4,7 @@ export const BINGO_SAVE_FORMAT = 'travelling-bingo-save' as const
 export const BINGO_SAVE_SCHEMA_VERSION = 1 as const
 export const BINGO_SAVE_EXTENSION = '.bingo' as const
 export const BINGO_SAVE_MIME_TYPE = 'application/octet-stream' as const
-export const MAX_BINGO_SAVE_BYTES = 1024 * 1024
+export const MAX_BINGO_SAVE_BYTES = 2 * 1024 * 1024
 
 const MAX_JAVASCRIPT_TIMESTAMP = 8_640_000_000_000_000
 const SHA_256_BASE64URL_PATTERN = /^[A-Za-z0-9_-]{43}$/
@@ -233,7 +233,7 @@ function assertFileSize(size: number): void {
   if (size > MAX_BINGO_SAVE_BYTES) {
     throw new BingoSaveError(
       'FILE_TOO_LARGE',
-      `存档文件不能超过 1 MiB（当前为 ${size.toLocaleString('zh-CN')} 字节）。`,
+      `存档文件不能超过 2 MiB（当前为 ${size.toLocaleString('zh-CN')} 字节）。`,
     )
   }
 }

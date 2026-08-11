@@ -21,12 +21,27 @@ describe('V4 界面字号契约', () => {
     )
   })
 
-  it('房间信息栏正文与表单控件统一使用乐融融字体', () => {
+  it('信息栏正文、表单和列表使用奶糖体，标题与主按钮使用乐融融', () => {
     expect(gameV4Styles).toMatch(
-      /\.game-page--v4 \.context-panel,\s*\.game-page--v4 \.context-panel :where\(button, input, textarea, select, option\)\s*\{[^}]*font-family:\s*var\(--font-display\);/su,
+      /\.game-page--v4 \.context-panel\s*\{[^}]*font-family:\s*var\(--font-ui\);/su,
+    )
+    expect(gameV4Styles).toMatch(
+      /\.context-panel\s*:where\(p, small, label, input, textarea, select, option, \.panel-intro\),[^}]*:where\(ol, ul\) :where\(li, button, strong, span, small\)\s*\{[^}]*font-family:\s*var\(--font-ui\);/su,
+    )
+    expect(gameV4Styles).toMatch(
+      /\.context-panel\s*:where\(h2, h3, h4, \.paper-tag, \.paper-button--primary, strong\)\s*\{[^}]*font-family:\s*var\(--font-display\);/su,
+    )
+    expect(gameV4Styles).toMatch(
+      /\.context-panel :where\(ol, ul\) strong,[^}]*\.context-panel \.apple-amount__number\s*\{[^}]*font-family:\s*var\(--font-display\);/su,
     )
     expect(gameV4Styles).toMatch(
       /\.game-page--v4 \.context-panel :where\(\.numeric-copy, input\[type='number'\]\)\s*\{[^}]*font-variant-numeric:\s*tabular-nums;/su,
+    )
+  })
+
+  it('衣架购买按钮保持 44px 触控高度', () => {
+    expect(gameV4Styles).toMatch(
+      /\.game-page--v4 \.miracle-panel__offer button\s*\{[^}]*min-height:\s*44px;/su,
     )
   })
 })

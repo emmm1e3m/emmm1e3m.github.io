@@ -171,7 +171,7 @@ describe('.bingo 存档持久化', () => {
     ).rejects.toEqual(expectBingoError('INVALID_FORMAT'))
   })
 
-  it('拒绝无效 UTF-8、无效 JSON 和超过 1 MiB 的文件', async () => {
+  it('拒绝无效 UTF-8、无效 JSON 和超过 2 MiB 的文件', async () => {
     await expect(
       importBingoSave(new Uint8Array([0xc3, 0x28]), payloadSchema, cryptoDependencies),
     ).rejects.toEqual(expectBingoError('INVALID_UTF8'))
@@ -179,7 +179,7 @@ describe('.bingo 存档持久化', () => {
       expectBingoError('INVALID_JSON'),
     )
     await expect(
-      importBingoSave('好'.repeat(MAX_BINGO_SAVE_BYTES), payloadSchema, cryptoDependencies),
+      importBingoSave('a'.repeat(MAX_BINGO_SAVE_BYTES + 1), payloadSchema, cryptoDependencies),
     ).rejects.toEqual(expectBingoError('FILE_TOO_LARGE'))
 
     const oversizedPayloadSchema = z.strictObject({ padding: z.string() })

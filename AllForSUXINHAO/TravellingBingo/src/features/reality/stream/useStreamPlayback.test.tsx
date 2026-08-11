@@ -108,19 +108,21 @@ describe('useStreamPlayback', () => {
     const otherHandle = fakeWindow()
     vi.spyOn(window, 'open').mockReturnValue(handle)
     const open = vi.spyOn(window, 'open').mockReturnValue(handle)
-    const { result } = renderHook(() => useStreamPlayback())
+    const onStarted = vi.fn()
+    const { result } = renderHook(() => useStreamPlayback({ onStarted }))
 
     act(() => {
       result.current.start('', { favoriteId: 3682220021, stopAfterMs: null })
     })
     const sessionId = new URL(String(open.mock.calls[0]?.[0])).searchParams.get('sessionId')!
+    expect(onStarted).not.toHaveBeenCalled()
 
     act(() => {
       window.dispatchEvent(
         new MessageEvent('message', {
           origin: window.location.origin,
           source: otherHandle,
-          data: playerEvent(sessionId, { event: 'started' }),
+          data: playerEvent(sessionId, { event: 'started', dateKey: '2026-08-11' }),
         }),
       )
     })
@@ -150,7 +152,7 @@ describe('useStreamPlayback', () => {
         new MessageEvent('message', {
           origin: window.location.origin,
           source: handle,
-          data: playerEvent(sessionId, { event: 'started' }),
+          data: playerEvent(sessionId, { event: 'started', dateKey: '2026-08-11' }),
         }),
       )
     })
@@ -160,6 +162,18 @@ describe('useStreamPlayback', () => {
       message: '刷播窗口正在运行',
       errors: [],
     })
+    expect(onStarted).toHaveBeenCalledTimes(1)
+
+    act(() => {
+      window.dispatchEvent(
+        new MessageEvent('message', {
+          origin: window.location.origin,
+          source: handle,
+          data: playerEvent(sessionId, { event: 'started', dateKey: '2026-08-11' }),
+        }),
+      )
+    })
+    expect(onStarted).toHaveBeenCalledTimes(1)
 
     act(() => {
       window.dispatchEvent(
@@ -172,7 +186,66 @@ describe('useStreamPlayback', () => {
     })
 
     expect(result.current.state.status).toBe('completed')
+    expect(handle.close).not.toHaveBeenCalled()
     expect(localStorage.getItem('travelling-bingo:stream-player-history:v1')).toBeNull()
+
+    act(() => {
+      window.dispatchEvent(
+        new MessageEvent('message', {
+          origin: window.location.origin,
+          source: handle,
+          data: playerEvent(sessionId, { event: 'started', dateKey: '2026-02-30' }),
+        }),
+      )
+    })
+    expect(result.current.state.status).toBe('completed')
+    expect(onStarted).toHaveBeenCalledTimes(1)
+
+    act(() => {
+      window.dispatchEvent(
+        new MessageEvent('message', {
+          origin: window.location.origin,
+          source: handle,
+          data: playerEvent(sessionId, { event: 'started', dateKey: '2026-08-12' }),
+        }),
+      )
+    })
+    expect(result.current.state.status).toBe('waiting')
+    expect(onStarted).toHaveBeenNthCalledWith(1, '2026-08-11')
+    expect(onStarted).toHaveBeenNthCalledWith(2, '2026-08-12')
+
+    act(() => result.current.stop())
+    expect(handle.postMessage).toHaveBeenCalledWith(
+      expect.objectContaining({ event: 'stop', sessionId }),
+      window.location.origin,
+    )
+    expect(result.current.state.message).toBe('正在停止刷播')
+
+    act(() => {
+      window.dispatchEvent(
+        new MessageEvent('message', {
+          origin: window.location.origin,
+          source: handle,
+          data: playerEvent(sessionId, { event: 'ended', outcome: 'stopped' }),
+        }),
+      )
+    })
+    expect(handle.close).toHaveBeenCalledTimes(1)
+    expect(result.current.state.status).toBe('stopped')
+  })
+
+  it('输入失败与弹窗拦截都不会报告真正开始', () => {
+    const onStarted = vi.fn()
+    vi.spyOn(window, 'open').mockReturnValue(null)
+    const { result } = renderHook(() => useStreamPlayback({ onStarted }))
+
+    act(() => {
+      result.current.start('not-a-video', { favoriteId: 3682220021, stopAfterMs: null })
+      result.current.start('', { favoriteId: 3682220021, stopAfterMs: null })
+    })
+
+    expect(result.current.state.status).toBe('blocked')
+    expect(onStarted).not.toHaveBeenCalled()
   })
 
   it('独立页仍在加载时停止，会等待其落盘并确认结束后再关闭页面', () => {

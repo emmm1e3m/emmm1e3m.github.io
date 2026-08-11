@@ -8,13 +8,32 @@ import {
   migrateGameStateV9ToV10,
   migrateStoredGameStateToV10,
 } from './migrateGameStateV9'
-import type { CollectionCatalog, GameStateV9 } from './types'
+import type { CollectionCatalog, GameStateV9, PomodoroState, PomodoroStateV12 } from './types'
 
 const catalog: CollectionCatalog = {
   postcard: ['postcard-v10'],
   'million-shot': ['million-v10'],
   'site-first': ['first-v10'],
   siteFirstChronology: ['first-v10'],
+}
+
+function projectPomodoroV12ToLegacy(pomodoro: PomodoroStateV12): PomodoroState {
+  const session =
+    pomodoro.session === null
+      ? null
+      : (() => {
+          const { background, ...legacySession } = pomodoro.session
+          return {
+            ...legacySession,
+            postcardId: background?.kind === 'postcard' ? background.id : null,
+          }
+        })()
+  return {
+    nextSessionSequence: pomodoro.nextSessionSequence,
+    selectedPostcardId:
+      pomodoro.selectedBackground?.kind === 'postcard' ? pomodoro.selectedBackground.id : null,
+    session,
+  }
 }
 
 function v9Fixture(): GameStateV9 {
@@ -25,7 +44,12 @@ function v9Fixture(): GameStateV9 {
     ...withoutWardrobe,
     schemaVersion: 9,
     reality: {
-      ...structuredClone(current.reality),
+      nextStaySequence: current.reality.nextStaySequence,
+      activeStay: structuredClone(current.reality.activeStay),
+      pendingSettlement: structuredClone(current.reality.pendingSettlement),
+      todos: structuredClone(current.reality.todos),
+      pomodoro: projectPomodoroV12ToLegacy(current.reality.pomodoro),
+      streamHistory: structuredClone(current.reality.streamHistory),
       streamSettings: {
         selfTestBvid: 'BV1xx411c7mD',
         dimensionPenetrationEnabled: true,

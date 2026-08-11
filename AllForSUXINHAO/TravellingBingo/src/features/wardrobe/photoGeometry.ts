@@ -31,31 +31,33 @@ export function photoCanvasSize(
   return { width: Math.max(1, Math.round(longEdge * aspectRatio)), height: longEdge }
 }
 
-/** participant.scale 直接表示角色局部正方形占整张照片宽度的比例。 */
+/** 人物两轴尺寸都以照片宽度为基准；两轴相等时保持角色素材的天然宽高比。 */
 export function participantRect(
-  transform: Pick<WardrobeTransform, 'x' | 'y' | 'scale'>,
+  transform: Pick<WardrobeTransform, 'x' | 'y' | 'scaleX' | 'scaleY'>,
   photo: GeometrySize,
+  aspectRatio = 1,
 ): GeometryRect {
-  const size = photo.width * transform.scale
+  const width = photo.width * transform.scaleX
+  const height = aspectRatio > 0 ? (photo.width * transform.scaleY) / aspectRatio : width
   return {
-    x: photo.width * transform.x - size / 2,
-    y: photo.height * transform.y - size / 2,
-    width: size,
-    height: size,
+    x: photo.width * transform.x - width / 2,
+    y: photo.height * transform.y - height / 2,
+    width,
+    height,
   }
 }
 
-/** 元素坐标属于角色局部正方形；scale 表示素材宽度与局部画布宽度之比。 */
+/** 元素两轴尺寸都以所属画布宽度为基准，aspectRatio 为素材天然宽高比。 */
 export function wardrobeElementRect(
-  transform: Pick<WardrobeTransform, 'x' | 'y' | 'scale'>,
-  participant: GeometryRect,
+  transform: Pick<WardrobeTransform, 'x' | 'y' | 'scaleX' | 'scaleY'>,
+  parent: GeometryRect,
   aspectRatio = 1,
 ): GeometryRect {
-  const width = participant.width * transform.scale
-  const height = aspectRatio > 0 ? width / aspectRatio : width
+  const width = parent.width * transform.scaleX
+  const height = aspectRatio > 0 ? (parent.width * transform.scaleY) / aspectRatio : width
   return {
-    x: participant.x + participant.width * transform.x - width / 2,
-    y: participant.y + participant.height * transform.y - height / 2,
+    x: parent.x + parent.width * transform.x - width / 2,
+    y: parent.y + parent.height * transform.y - height / 2,
     width,
     height,
   }

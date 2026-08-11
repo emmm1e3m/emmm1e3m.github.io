@@ -270,11 +270,21 @@ export function validateImportedGameState(
     }
   }
 
-  const pomodoroPostcardIds = [
-    state.reality.pomodoro.selectedPostcardId,
-    state.reality.pomodoro.session?.postcardId ?? null,
+  const pomodoroBackgrounds = [
+    state.reality.pomodoro.selectedBackground,
+    state.reality.pomodoro.session?.background ?? null,
   ]
-  for (const postcardId of pomodoroPostcardIds) {
+  for (const background of pomodoroBackgrounds) {
+    if (background?.kind === 'wardrobe-photo') {
+      if (state.wardrobe.photos[background.id] === undefined) {
+        return invalid(
+          'POMODORO_BACKGROUND_INVALID',
+          `苹果钟背景合拍“${background.id}”已经不存在。`,
+        )
+      }
+      continue
+    }
+    const postcardId = background?.id ?? null
     if (
       postcardId !== null &&
       (!catalog.postcard.includes(postcardId) || state.collections[postcardId] === undefined)

@@ -1,4 +1,11 @@
-import { useMemo, useRef, useState, type KeyboardEvent, type RefObject } from 'react'
+import {
+  useMemo,
+  useRef,
+  useState,
+  type CSSProperties,
+  type KeyboardEvent,
+  type RefObject,
+} from 'react'
 
 import { publicAsset } from '@/app/assets'
 import { BilibiliPlayer } from '@/components/BilibiliPlayer'
@@ -44,6 +51,16 @@ function progressLabel(collected: number, total: number) {
 
 function largestImage(item: CollectibleItem) {
   return [...item.images].sort((left, right) => right.width - left.width)[0]
+}
+
+function collectibleDetailStyle(item: CollectibleItem): CSSProperties | undefined {
+  if (item.category !== 'million-shot' && item.category !== 'site-first') return undefined
+  const image = largestImage(item)
+  return {
+    '--collectible-media-width': `${image.width}`,
+    '--collectible-media-height': `${image.height}`,
+    '--collectible-media-aspect': `${image.width} / ${image.height}`,
+  } as CSSProperties
 }
 
 function downloadFileName(item: CollectibleItem) {
@@ -481,7 +498,9 @@ export function AlbumView({
         >
           <article
             className="collectible-detail collectible-detail--v3 collectible-detail--v4"
+            data-category={selected.category}
             data-media-kind={selectedVideo ? 'video' : 'image'}
+            style={collectibleDetailStyle(selected)}
             onMouseDown={(event) => event.stopPropagation()}
           >
             <button

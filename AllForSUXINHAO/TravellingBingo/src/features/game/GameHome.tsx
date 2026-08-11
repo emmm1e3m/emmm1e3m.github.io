@@ -25,8 +25,9 @@ import {
   PomodoroFocusOverlay,
   RealityReturnDialog,
   RealitySettlementResultDialog,
+  buildPomodoroBackgroundOptions,
   buildRealityTodoViews,
-  buildUnlockedPostcardBackgrounds,
+  findPomodoroBackgroundOption,
   type RealityNotificationPermission,
   useStreamPlayback,
 } from '@/features/reality'
@@ -144,10 +145,10 @@ function ActivePomodoroOverlay({
   const session = game.reality.pomodoro.session
   if (!session || session.status === 'completed') return null
 
-  const background =
-    buildUnlockedPostcardBackgrounds(game, catalog).find(
-      (item) => item.id === session.postcardId,
-    ) ?? null
+  const background = findPomodoroBackgroundOption(
+    buildPomodoroBackgroundOptions(game, catalog),
+    session.background,
+  )
   const deadline = session.status === 'focus' ? session.focusEndsAt : session.cycleEndsAt
 
   function createTodoId(actionNow: number) {
@@ -259,7 +260,16 @@ export function GameHome({
     () => catalog.recordPlayerVideos.map(toPlayerTrack),
     [catalog.recordPlayerVideos],
   )
-  const streamPlayback = useStreamPlayback()
+  const claimDailyStreamReward = useCallback(
+    (dateKey: string) => {
+      onAction({
+        type: 'stream/daily-reward-claim',
+        dateKey,
+      })
+    },
+    [onAction],
+  )
+  const streamPlayback = useStreamPlayback({ onStarted: claimDailyStreamReward })
   const handlePetCenterChange = useCallback((point: RoomPixelPoint) => {
     visiblePetCenterRef.current = point
   }, [])

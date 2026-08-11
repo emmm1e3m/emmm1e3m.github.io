@@ -81,7 +81,7 @@ test.describe('375 × 667 移动端可访问性', () => {
     await startGame(page, { debug: true, displayName: '手机测试', seed: 'portal-375' })
   })
 
-  test('冰箱面板可以滚到两种瓶装魔法，且七种道具都有 emoji', async ({ page }) => {
+  test('移动端整页可以滚到两种瓶装魔法，且七种道具都有 emoji', async ({ page }) => {
     test.setTimeout(90_000)
     await page.locator('[data-hotspot="冰箱"]').click()
     const panel = page.locator('.context-panel--fridge')
@@ -93,16 +93,23 @@ test.describe('375 × 667 移动端可访问性', () => {
       clientHeight: element.clientHeight,
       scrollHeight: element.scrollHeight,
       scrollTop: element.scrollTop,
+      overflowY: getComputedStyle(element).overflowY,
     }))
-    expect(before.scrollHeight).toBeGreaterThan(before.clientHeight)
+    // 移动端是“房间在上、信息页在下”的单列文档流，不再把信息页截成内层滚动区。
+    expect(Math.abs(before.scrollHeight - before.clientHeight)).toBeLessThanOrEqual(1)
+    expect(before.scrollTop).toBe(0)
+    expect(before.overflowY).toBe('visible')
+    const pageScrollBefore = await page.evaluate(() => scrollY)
     await lastShopItem.scrollIntoViewIfNeeded()
     const after = await scroller.evaluate((element) => ({
       clientHeight: element.clientHeight,
       scrollHeight: element.scrollHeight,
       scrollTop: element.scrollTop,
     }))
-    expect(after.scrollTop).toBeGreaterThan(0)
-    expect(after.scrollTop).toBeLessThanOrEqual(after.scrollHeight - after.clientHeight)
+    const pageScrollAfter = await page.evaluate(() => scrollY)
+    expect(after.scrollTop).toBe(0)
+    expect(Math.abs(after.scrollHeight - after.clientHeight)).toBeLessThanOrEqual(1)
+    expect(pageScrollAfter).toBeGreaterThan(pageScrollBefore)
     await expect(lastShopItem).toBeInViewport()
     await expect(lastShopItem.getByText('瓶装活力魔法', { exact: true })).toBeVisible()
     await expect(lastShopItem.locator('.shop-item__emoji')).toHaveText('✨')
@@ -190,7 +197,7 @@ test.describe('390 × 844 移动端完整房间', () => {
     await saveScreenshot(page, 'mobile-390x844-computer.png')
   })
 
-  test('收藏详情保持 9:16，详情与完整预览都留白完整显示', async ({ page }, testInfo) => {
+  test('普通明信片保持 9:16，百万直拍按海报比例无留白显示', async ({ page }, testInfo) => {
     test.skip(testInfo.project.name !== 'mobile-chromium', '只在移动 Chromium 项目验证')
     await startGame(page, { debug: true, displayName: '移动收藏', seed: 'mobile-album-v4' })
     await openDebugPanel(page)
@@ -201,6 +208,18 @@ test.describe('390 × 844 移动端完整房间', () => {
       .click()
 
     const album = await openAlbum(page)
+    const postcard = album.getByRole('button', {
+      name: /蓝天下的涂鸦墙，明信片，打开详情/u,
+    })
+    await postcard.scrollIntoViewIfNeeded()
+    await postcard.click()
+    const postcardDialog = page.getByRole('dialog', { name: '蓝天下的涂鸦墙' })
+    const postcardDetail = postcardDialog.locator('.collectible-detail--v4')
+    const postcardDetailBox = await postcardDetail.boundingBox()
+    expect(postcardDetailBox).not.toBeNull()
+    expect(postcardDetailBox!.width / postcardDetailBox!.height).toBeCloseTo(9 / 16, 2)
+    await postcardDialog.getByRole('button', { name: '关闭详情' }).click()
+
     await album.getByRole('tab', { name: '百万直拍' }).click()
     const survivors = album.getByRole('button', {
       name: /Survivors，百万直拍，打开详情/u,
@@ -222,13 +241,34 @@ test.describe('390 × 844 移动端完整房间', () => {
     const detail = detailDialog.locator('.collectible-detail--v4')
     const detailBox = await detail.boundingBox()
     expect(detailBox).not.toBeNull()
-    expect(detailBox!.width / detailBox!.height).toBeCloseTo(9 / 16, 2)
+    await expect(detail).toHaveCSS('aspect-ratio', 'auto')
     await expectElementWithinViewport(detail)
     await expect(detailDialog.getByRole('button', { name: '关闭详情' })).toBeInViewport()
-    await expect(detail.locator('.collectible-detail__image img')).toHaveCSS(
-      'object-fit',
-      'contain',
+    const poster = detail.locator('.collectible-detail__image img')
+    await expect(poster).toHaveCSS('object-fit', 'contain')
+    const posterGeometry = await poster.evaluate((image) => {
+      if (!(image instanceof HTMLImageElement)) {
+        throw new Error('百万直拍海报必须由 img 元素呈现')
+      }
+      const media = image.closest('.collectible-detail__media')!.getBoundingClientRect()
+      const imageBox = image.getBoundingClientRect()
+      return {
+        mediaWidth: media.width,
+        mediaHeight: media.height,
+        imageWidth: imageBox.width,
+        imageHeight: imageBox.height,
+        naturalWidth: image.naturalWidth,
+        naturalHeight: image.naturalHeight,
+      }
+    })
+    expect(posterGeometry.naturalWidth).toBeGreaterThan(0)
+    expect(posterGeometry.naturalHeight).toBeGreaterThan(0)
+    expect(posterGeometry.mediaWidth / posterGeometry.mediaHeight).toBeCloseTo(
+      posterGeometry.naturalWidth / posterGeometry.naturalHeight,
+      2,
     )
+    expect(Math.abs(posterGeometry.imageWidth - posterGeometry.mediaWidth)).toBeLessThan(0.5)
+    expect(Math.abs(posterGeometry.imageHeight - posterGeometry.mediaHeight)).toBeLessThan(0.5)
     await expect(detail.locator('.collectible-detail__copy')).toHaveCSS('scrollbar-width', 'none')
     await expectNoHorizontalOverflow(page)
 

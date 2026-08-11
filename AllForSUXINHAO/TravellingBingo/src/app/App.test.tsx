@@ -14,9 +14,11 @@ import {
   generateWardrobeShop,
   migrateGameStateV1,
   migrateGameStateV2ToV3,
+  migrateStoredGameStateToV11,
   type GameAction,
   type GameState,
   type GameStateV1,
+  type GameStateV11,
   type GameStateV2,
   type GameStateV3,
   type GameStateV5,
@@ -285,6 +287,12 @@ vi.mock('@/features/game/GameHome', () => {
           onClick={() => onAction({ type: 'pet/encourage', interest: 'travel' })}
         >
           鼓励旅行意愿
+        </button>
+        <button
+          type="button"
+          onClick={() => onAction({ type: 'stream/daily-reward-claim', dateKey: '2026-08-11' })}
+        >
+          领取今日刷播奖励
         </button>
         <button
           type="button"
@@ -599,25 +607,59 @@ function asV5(state: GameState): GameStateV5 {
       activeStay: state.reality.activeStay,
       pendingSettlement: state.reality.pendingSettlement,
       todos: state.reality.todos,
-      pomodoro: state.reality.pomodoro,
+      pomodoro: asLegacyPomodoro(state),
     },
+  }
+}
+
+function asLegacyPomodoro(state: GameState): GameStateV5['reality']['pomodoro'] {
+  const pomodoro = state.reality.pomodoro
+  const session = pomodoro.session
+  return {
+    nextSessionSequence: pomodoro.nextSessionSequence,
+    selectedPostcardId:
+      pomodoro.selectedBackground?.kind === 'postcard' ? pomodoro.selectedBackground.id : null,
+    session:
+      session === null
+        ? null
+        : {
+            sessionId: session.sessionId,
+            status: session.status,
+            startedAt: session.startedAt,
+            focusEndsAt: session.focusEndsAt,
+            cycleEndsAt: session.cycleEndsAt,
+            focusDurationMs: session.focusDurationMs,
+            breakDurationMs: session.breakDurationMs,
+            completedAt: session.completedAt,
+            focusNotificationIssuedAt: session.focusNotificationIssuedAt,
+            completionNotificationIssuedAt: session.completionNotificationIssuedAt,
+            todoId: session.todoId,
+            postcardId: session.background?.kind === 'postcard' ? session.background.id : null,
+          },
   }
 }
 
 function asV9(state: GameState): GameStateV9 {
   const { wardrobe: _wardrobe, ...withoutWardrobe } = structuredClone(state)
+  const { streamDailyReward: _streamDailyReward, ...realityWithoutReward } = state.reality
   void _wardrobe
+  void _streamDailyReward
   return {
     ...withoutWardrobe,
     schemaVersion: 9,
     reality: {
-      ...structuredClone(state.reality),
+      ...structuredClone(realityWithoutReward),
+      pomodoro: asLegacyPomodoro(state),
       streamSettings: {
         selfTestBvid: 'BV1xx411c7mD',
         dimensionPenetrationEnabled: true,
       },
     },
   }
+}
+
+function asV11(state: GameState): GameStateV11 {
+  return migrateStoredGameStateToV11(asV9(state), { now: 1_000, catalog: domainCatalog })
 }
 
 function completedTaskBoardGame(completedAt: number): GameState {
@@ -902,7 +944,9 @@ function importResult<TPayload extends ImportableGameState>(
                         ? '0.8.0-demo.1'
                         : payload.schemaVersion === 9
                           ? '0.9.0-demo.1'
-                          : '0.10.0',
+                          : payload.schemaVersion === 12
+                            ? '0.10.1'
+                            : '0.10.0',
       exportedAt: 3_000,
       exportedAtIso: new Date(3_000).toISOString(),
       byteLength: 800,
@@ -1037,14 +1081,14 @@ describe('旅行饼狗应用控制器', () => {
     vi.unstubAllGlobals()
   })
 
-  it('加载目录后用玩家称呼创建 DEBUG V11 新游戏', async () => {
+  it('加载目录后用玩家称呼创建 DEBUG V12 新游戏', async () => {
     render(<App />)
 
     expect(screen.getByRole('heading', { name: '旅行饼狗' })).toBeInTheDocument()
     await screen.findByRole('button', { name: '开始新旅程' })
     await unlockDebugAndStart()
 
-    expect(screen.getByTestId('schema-version')).toHaveTextContent('11')
+    expect(screen.getByTestId('schema-version')).toHaveTextContent('12')
     expect(screen.getByTestId('display-name')).toHaveTextContent('小饼干')
     expect(screen.getByTestId('companion-days')).toHaveTextContent('0')
     expect(screen.getByTestId('apple-count')).toHaveTextContent('18')
@@ -1075,9 +1119,10 @@ describe('旅行饼狗应用控制器', () => {
     expect(downloadBingoSave).not.toHaveBeenCalled()
   })
 
-  it('继续 V11 浏览器缓存前只替换失去先决条件的未完成任务槽位', async () => {
-    const cached = gameWithUnavailableCollectionTask()
+  it('继续冻结 V11 浏览器缓存前先迁至 V12，再替换失去先决条件的未完成任务槽位', async () => {
+    const cached = asV11(gameWithUnavailableCollectionTask())
     const originalSequence = cached.random.sequences.tasks
+    expect(cached.schemaVersion).toBe(11)
     writeBrowserGameCache(
       createBrowserGameCache({
         saveId: 'cached-unavailable-task',
@@ -1100,6 +1145,10 @@ describe('旅行饼狗应用控制器', () => {
     )
     expect(screen.getByTestId('task-progresses')).toHaveTextContent(/^1\/1,1\/2,0\/[12]$/u)
     expect(screen.getByTestId('task-sequence')).toHaveTextContent(String(originalSequence + 1))
+    expect(readBrowserGameCache()).toMatchObject({
+      gameVersion: '0.10.1',
+      payload: { schemaVersion: 12 },
+    })
   })
 
   it('读取 V9 浏览器缓存后严格迁移刷播设置并同步升级缓存', async () => {
@@ -1121,9 +1170,9 @@ describe('旅行饼狗应用控制器', () => {
       payload: GameState
     }
     expect(upgraded).toMatchObject({
-      gameVersion: '0.10.0',
+      gameVersion: '0.10.1',
       payload: {
-        schemaVersion: 11,
+        schemaVersion: 12,
         reality: {
           streamSettings: { selfTestBvid: 'BV1xx411c7mD', favoriteId: 3682220021 },
         },
@@ -1145,7 +1194,7 @@ describe('旅行饼狗应用控制器', () => {
       writeBrowserGameCache(
         createBrowserGameCache({
           saveId: 'completed-yesterday',
-          gameVersion: '0.10.0',
+          gameVersion: '0.10.1',
           now: completedAt,
           payload: cached,
         }),
@@ -1168,7 +1217,7 @@ describe('旅行饼狗应用控制器', () => {
     writeBrowserGameCache(
       createBrowserGameCache({
         saveId: 'cached-before-preview',
-        gameVersion: '0.10.0',
+        gameVersion: '0.10.1',
         now: 3_000,
         payload: importedGame(),
       }),
@@ -1227,7 +1276,7 @@ describe('旅行饼狗应用控制器', () => {
     expect(importableGameStateSchema.safeParse(payload).success).toBe(false)
   })
 
-  it('V3 活动迁移到 V11 时保留当次 startedAt 与 endsAt，不按当前默认重算', async () => {
+  it('V3 活动迁移到 V12 时保留当次 startedAt 与 endsAt，不按当前默认重算', async () => {
     const payload = importedV3Game()
     payload.profile = { ...payload.profile, debug: false }
     payload.pet = { ...payload.pet, location: 'outside' }
@@ -1265,7 +1314,7 @@ describe('旅行饼狗应用控制器', () => {
     })
     fireEvent.click(await screen.findByRole('button', { name: '进入这次旅程' }))
 
-    expect(screen.getByTestId('schema-version')).toHaveTextContent('11')
+    expect(screen.getByTestId('schema-version')).toHaveTextContent('12')
     expect(screen.getByTestId('activity-duration')).toHaveTextContent(
       DEFAULT_GAME_BALANCE.activityDurationMs.toString(),
     )
@@ -1675,7 +1724,41 @@ describe('旅行饼狗应用控制器', () => {
     expect(amount.querySelector('.apple-amount__number')).toHaveTextContent('1')
   })
 
-  it('先预览迁移后的 V11 称呼与陪伴天数，再采用导入进度', async () => {
+  it('每日首次刷播奖励 Toast 使用苹果数字字体并同步到账', async () => {
+    render(<App />)
+    await startNewJourney()
+
+    fireEvent.click(screen.getByRole('button', { name: '领取今日刷播奖励' }))
+
+    expect(screen.getByTestId('apple-count')).toHaveTextContent('38')
+    const amount = screen.getByLabelText('20🍎')
+    expect(amount.closest('.toast')).toHaveTextContent('今天第一次启动刷播，收到 20🍎。')
+    expect(amount.querySelector('.apple-amount__number')).toHaveTextContent('20')
+  })
+
+  it('导入摘要将冻结 V11 标为 0.10.0，将当前 V12 标为 0.10.1', async () => {
+    const frozenV11 = asV11(importedGame())
+    vi.mocked(importBingoSave)
+      .mockResolvedValueOnce(importResult(frozenV11))
+      .mockResolvedValueOnce(importResult(importedGame()))
+
+    render(<App />)
+    await screen.findByRole('button', { name: '开始新旅程' })
+    const fileInput = screen.getByLabelText('读取 .bingo 存档')
+    fireEvent.change(fileInput, {
+      target: { files: [new File(['v11'], 'frozen-v11.bingo')] },
+    })
+    expect(await screen.findByRole('region', { name: '存档摘要' })).toHaveTextContent('0.10.0')
+
+    fireEvent.change(fileInput, {
+      target: { files: [new File(['v12'], 'current-v12.bingo')] },
+    })
+    await waitFor(() =>
+      expect(screen.getByRole('region', { name: '存档摘要' })).toHaveTextContent('0.10.1'),
+    )
+  })
+
+  it('先预览迁移后的 V12 称呼与陪伴天数，再采用导入进度', async () => {
     vi.mocked(importBingoSave).mockResolvedValue(importResult(legacyGame()))
 
     render(<App />)
@@ -1695,14 +1778,14 @@ describe('旅行饼狗应用控制器', () => {
 
     fireEvent.click(screen.getByRole('button', { name: '进入这次旅程' }))
 
-    expect(screen.getByTestId('schema-version')).toHaveTextContent('11')
+    expect(screen.getByTestId('schema-version')).toHaveTextContent('12')
     expect(screen.getByTestId('display-name')).toHaveTextContent('你')
     expect(screen.getByTestId('companion-days')).toHaveTextContent('1')
     expect(screen.getByTestId('apple-count')).toHaveTextContent('9')
     expect(screen.getByTestId('collection-count')).toHaveTextContent('1')
   })
 
-  it('v1 导入后再次导出时只写 V11 载荷与新版游戏版本', async () => {
+  it('v1 导入后再次导出时只写 V12 载荷与新版游戏版本', async () => {
     vi.mocked(importBingoSave).mockResolvedValue(importResult(legacyGame()))
     vi.mocked(createBingoSave).mockResolvedValue({
       fileName: 'migrated.bingo',
@@ -1720,9 +1803,9 @@ describe('旅行饼狗应用控制器', () => {
     await waitFor(() => expect(createBingoSave).toHaveBeenCalledOnce())
     expect(createBingoSave).toHaveBeenCalledWith(
       {
-        gameVersion: '0.10.0',
+        gameVersion: '0.10.1',
         payload: expect.objectContaining({
-          schemaVersion: 11,
+          schemaVersion: 12,
           profile: expect.objectContaining({ displayName: '你', companionDays: 1 }),
           friends: {},
         }),
@@ -1954,9 +2037,9 @@ describe('旅行饼狗应用控制器', () => {
     )
     const persisted = readBrowserGameCache()
     expect(persisted).toMatchObject({
-      gameVersion: '0.10.0',
+      gameVersion: '0.10.1',
       updatedAt: expect.any(Number),
-      payload: expect.objectContaining({ schemaVersion: 11 }),
+      payload: expect.objectContaining({ schemaVersion: 12 }),
     })
     expect(persisted!.updatedAt).toBeGreaterThanOrEqual(current)
     expect(createBingoSave).toHaveBeenCalledOnce()
@@ -1969,7 +2052,7 @@ describe('旅行饼狗应用控制器', () => {
     writeBrowserGameCache(
       createBrowserGameCache({
         saveId: 'reconciled-periodic-save',
-        gameVersion: '0.10.0',
+        gameVersion: '0.10.1',
         now: current - 3 * 24 * 60 * 60 * 1_000,
         payload: cachedGame,
       }),
@@ -2004,7 +2087,7 @@ describe('旅行饼狗应用控制器', () => {
     await waitFor(() => expect(downloadBingoSave).toHaveBeenCalledOnce())
     expect(createBingoSave).toHaveBeenCalledWith(
       {
-        gameVersion: '0.10.0',
+        gameVersion: '0.10.1',
         payload: expect.objectContaining({
           activeActivity: null,
           collections: expect.objectContaining({
@@ -2042,7 +2125,7 @@ describe('旅行饼狗应用控制器', () => {
     await waitFor(() => expect(downloadBingoSave).toHaveBeenCalledOnce())
     expect(createBingoSave).toHaveBeenCalledWith(
       {
-        gameVersion: '0.10.0',
+        gameVersion: '0.10.1',
         payload: expect.objectContaining({
           activeActivity: null,
           collections: {},
@@ -2201,7 +2284,7 @@ describe('旅行饼狗应用控制器', () => {
     expect(persistedKeys).not.toContain('videosByBvid')
     expect(persistedKeys).not.toContain('recordPlayerVideos')
     expect(payload).toMatchObject({
-      schemaVersion: 11,
+      schemaVersion: 12,
       collections: {},
       friends: {},
       world: 'game',
@@ -2210,7 +2293,7 @@ describe('旅行饼狗应用控制器', () => {
         activeStay: null,
         pendingSettlement: null,
         todos: {},
-        pomodoro: { selectedPostcardId: null, session: null },
+        pomodoro: { selectedBackground: null, session: null },
       },
       musicPlayer: { currentBvid: null, currentIndex: 0, loopMode: 'list' },
     })
@@ -2315,7 +2398,7 @@ describe('旅行饼狗应用控制器', () => {
     await waitFor(() => expect(createBingoSave).toHaveBeenCalledOnce())
     expect(createBingoSave).toHaveBeenCalledWith(
       {
-        gameVersion: '0.10.0',
+        gameVersion: '0.10.1',
         payload: expect.objectContaining({
           activeActivity: expect.objectContaining({
             rewardPlan: expect.objectContaining({ collection: null }),
@@ -2326,9 +2409,12 @@ describe('旅行饼狗应用控制器', () => {
     )
   })
 
-  it('导入 V4 时清除已失效的苹果钟背景，再用修复后的状态完成校验', async () => {
+  it('导入当前存档时清除已失效的苹果钟背景，再用修复后的状态完成校验', async () => {
     const payload = importedGame()
-    payload.reality.pomodoro.selectedPostcardId = 'postcard-no-longer-owned'
+    payload.reality.pomodoro.selectedBackground = {
+      kind: 'postcard',
+      id: 'postcard-no-longer-owned',
+    }
     vi.mocked(importBingoSave).mockResolvedValue(importResult(payload))
     vi.mocked(createBingoSave).mockResolvedValue({
       fileName: 'reconciled-pomodoro.bingo',
@@ -2346,10 +2432,10 @@ describe('旅行饼狗应用控制器', () => {
     fireEvent.click(screen.getByRole('button', { name: '备份' }))
     await waitFor(() => expect(createBingoSave).toHaveBeenCalledOnce())
     const exportedInput = vi.mocked(createBingoSave).mock.calls[0][0] as { payload: GameState }
-    expect(exportedInput.payload.reality.pomodoro.selectedPostcardId).toBeNull()
+    expect(exportedInput.payload.reality.pomodoro.selectedBackground).toBeNull()
   })
 
-  it('本地导入 V5 迁至 V11 后在统一准备链中协调不可达任务', async () => {
+  it('本地导入 V5 迁至 V12 后在统一准备链中协调不可达任务', async () => {
     const payload = asV5(gameWithUnavailableCollectionTask())
     const originalSequence = payload.random.sequences.tasks
     vi.mocked(importBingoSave).mockResolvedValue(importResult(payload))
@@ -2361,7 +2447,7 @@ describe('旅行饼狗应用控制器', () => {
     })
     fireEvent.click(await screen.findByRole('button', { name: '进入这次旅程' }))
 
-    expect(screen.getByTestId('schema-version')).toHaveTextContent('11')
+    expect(screen.getByTestId('schema-version')).toHaveTextContent('12')
     expect(screen.getByTestId('task-instance-ids')).toHaveTextContent(
       'keep-completed-backpack,keep-partial-room',
     )

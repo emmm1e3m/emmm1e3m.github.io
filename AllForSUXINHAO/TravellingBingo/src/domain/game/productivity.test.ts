@@ -8,7 +8,7 @@ import {
   REALITY_REWARD_INTERVAL_MS,
 } from './constants'
 import { createInitialGameState } from './createGameState'
-import { gameStateV11Schema } from './migrateGameStateV10'
+import { gameStateV12Schema } from './migrateGameStateV11'
 import {
   deriveRealityActiveDurationMs,
   isProductivityAction,
@@ -185,7 +185,7 @@ describe('现实维度', () => {
     )
     expect(left.state.reality.pendingSettlement?.fullRewardApples).toBe(1)
     expect(left.state.reality.pendingSettlement?.activeDurationMs).toBe(REALITY_REWARD_INTERVAL_MS)
-    expect(gameStateV11Schema.safeParse(left.state).success).toBe(true)
+    expect(gameStateV12Schema.safeParse(left.state).success).toBe(true)
   })
 
   it('不足一个苹果时直接返回游戏维度，不创建确认结算', () => {
@@ -446,7 +446,7 @@ describe('苹果钟与通知', () => {
   it('只允许已收藏的明信片背景，并在开始时锁定背景', () => {
     const unowned = reduce(initialState(), {
       type: 'pomodoro/background-set',
-      postcardId: 'postcard-1',
+      background: { kind: 'postcard', id: 'postcard-1' },
     })
     expect(unowned).toMatchObject({ ok: false, error: { code: 'UNKNOWN_COLLECTION' } })
 
@@ -457,7 +457,10 @@ describe('苹果钟与通知', () => {
       },
     }
     const selected = successful(
-      reduce(owned, { type: 'pomodoro/background-set', postcardId: 'postcard-1' }),
+      reduce(owned, {
+        type: 'pomodoro/background-set',
+        background: { kind: 'postcard', id: 'postcard-1' },
+      }),
     ).state
     const started = successful(
       reduce(selected, {
@@ -468,7 +471,7 @@ describe('苹果钟与通知', () => {
     ).state
     expect(started.reality.pomodoro.session).toMatchObject({
       sessionId: 'pomodoro-1',
-      postcardId: 'postcard-1',
+      background: { kind: 'postcard', id: 'postcard-1' },
       status: 'focus',
       focusEndsAt: 10 + FOCUS_MS,
       cycleEndsAt: 10 + CYCLE_MS,
@@ -477,10 +480,76 @@ describe('苹果钟与通知', () => {
     })
 
     const changed = successful(
-      reduce(started, { type: 'pomodoro/background-set', postcardId: null }),
+      reduce(started, { type: 'pomodoro/background-set', background: null }),
     ).state
-    expect(changed.reality.pomodoro.selectedPostcardId).toBeNull()
-    expect(changed.reality.pomodoro.session?.postcardId).toBe('postcard-1')
+    expect(changed.reality.pomodoro.selectedBackground).toBeNull()
+    expect(changed.reality.pomodoro.session?.background).toEqual({
+      kind: 'postcard',
+      id: 'postcard-1',
+    })
+  })
+
+  it('苹果钟可以选择已保存合拍，拒绝不存在的合拍并在开始时锁定引用', () => {
+    const photoId = 'photo-0-x'
+    const initial = initialState()
+    const withPhoto: GameState = {
+      ...initial,
+      wardrobe: {
+        ...initial.wardrobe,
+        photos: {
+          [photoId]: {
+            photoId,
+            postcardId: null,
+            participants: [
+              {
+                targetId: 'bingo',
+                sourceLookId: null,
+                x: 0.5,
+                y: 0.5,
+                scaleX: 1,
+                scaleY: 1,
+                rotation: 0,
+                z: 0,
+                elements: [],
+              },
+            ],
+            decorations: [],
+            createdAt: 1,
+          },
+        },
+      },
+    }
+    const missing = reduce(withPhoto, {
+      type: 'pomodoro/background-set',
+      background: { kind: 'wardrobe-photo', id: 'photo-1-missing' },
+    })
+    expect(missing).toMatchObject({
+      ok: false,
+      error: { code: 'WARDROBE_PHOTO_NOT_FOUND' },
+    })
+    expect(missing.state).toBe(withPhoto)
+
+    const selected = successful(
+      reduce(withPhoto, {
+        type: 'pomodoro/background-set',
+        background: { kind: 'wardrobe-photo', id: photoId },
+      }),
+    ).state
+    const repeated = successful(
+      reduce(selected, {
+        type: 'pomodoro/background-set',
+        background: { kind: 'wardrobe-photo', id: photoId },
+      }),
+    )
+    expect(repeated.state).toBe(selected)
+
+    const started = successful(
+      reduce(selected, { type: 'pomodoro/start', now: 10, durationMs: FOCUS_MS }),
+    ).state
+    expect(started.reality.pomodoro.session?.background).toEqual({
+      kind: 'wardrobe-photo',
+      id: photoId,
+    })
   })
 
   it.each([5 * 60_000, 24 * 60 * 60_000])('拒绝固定档位以外的时长 %i', (durationMs) => {
@@ -557,7 +626,7 @@ describe('苹果钟与通知', () => {
           focusNotificationIssuedAt: CYCLE_MS,
           completionNotificationIssuedAt: CYCLE_MS,
           todoId: 'todo-1',
-          postcardId: null,
+          background: null,
         },
         notificationTitle: '苹果钟完成啦',
         notificationBody: '“吃苹果”的专注和休息都完成啦',
@@ -718,7 +787,7 @@ describe('苹果钟与通知', () => {
     expect(seventhDay.state.random.sequences.preferences).toBe(
       expectedPreferenceGeneration.nextSequence,
     )
-    expect(gameStateV11Schema.safeParse(seventhDay.state).success).toBe(true)
+    expect(gameStateV12Schema.safeParse(seventhDay.state).success).toBe(true)
     expect(seventhDay.effects).toContainEqual({
       type: 'player-effect-expired',
       effect: 'vitality',

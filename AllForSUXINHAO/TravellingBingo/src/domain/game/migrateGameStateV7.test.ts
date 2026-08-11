@@ -7,13 +7,32 @@ import {
   migrateGameStateV7ToV8,
   migrateStoredGameStateToV8,
 } from './migrateGameStateV7'
-import type { CollectionCatalog, GameStateV7 } from './types'
+import type { CollectionCatalog, GameStateV7, PomodoroState, PomodoroStateV12 } from './types'
 
 const catalog: CollectionCatalog = {
   postcard: ['postcard-v8'],
   'million-shot': ['million-v8'],
   'site-first': ['first-v8'],
   siteFirstChronology: ['first-v8'],
+}
+
+function projectPomodoroV12ToLegacy(pomodoro: PomodoroStateV12): PomodoroState {
+  const session =
+    pomodoro.session === null
+      ? null
+      : (() => {
+          const { background, ...legacySession } = pomodoro.session
+          return {
+            ...legacySession,
+            postcardId: background?.kind === 'postcard' ? background.id : null,
+          }
+        })()
+  return {
+    nextSessionSequence: pomodoro.nextSessionSequence,
+    selectedPostcardId:
+      pomodoro.selectedBackground?.kind === 'postcard' ? pomodoro.selectedBackground.id : null,
+    session,
+  }
 }
 
 function v7Fixture(): GameStateV7 {
@@ -23,7 +42,7 @@ function v7Fixture(): GameStateV7 {
     activeStay: current.reality.activeStay,
     pendingSettlement: current.reality.pendingSettlement,
     todos: structuredClone(current.reality.todos),
-    pomodoro: structuredClone(current.reality.pomodoro),
+    pomodoro: projectPomodoroV12ToLegacy(current.reality.pomodoro),
     streamHistory: structuredClone(current.reality.streamHistory),
   }
   const { wardrobe: _wardrobe, ...withoutWardrobe } = structuredClone(current)

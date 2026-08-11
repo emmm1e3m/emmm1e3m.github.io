@@ -14,6 +14,7 @@ import {
 } from './catalog'
 import { readStreamPlayerHistory, type StreamPlayerHistoryItem } from './history'
 import { storeStreamSession } from '@/features/reality/stream/popupProtocol'
+import { formatLocalDateKey } from '@/features/reality/stream/localDate'
 import { startKeepAliveAudio } from './keepAlive'
 import {
   createStreamPlayerEvent,
@@ -66,8 +67,9 @@ function formatDateTime(timestamp: number) {
   }).format(timestamp)
 }
 
-function formatHistoryOutcome(outcome: StreamPlayerHistoryItem['outcome']) {
-  return outcome === 'completed' ? '已完成' : '已停止'
+function formatHistoryOutcome(item: StreamPlayerHistoryItem) {
+  if (item.outcome === 'running') return `进行中 · 已保存到 ${item.roundsCompleted} 轮`
+  return item.outcome === 'completed' ? '已完成' : '已停止'
 }
 
 function pageStatusText(status: PageStatus, snapshot: StreamSchedulerSnapshot | null) {
@@ -107,11 +109,11 @@ export function StreamPlayerApp() {
   const schedulerRef = useRef<StreamRoundScheduler | null>(null)
   const abortControllerRef = useRef<AbortController | null>(null)
   const startedRef = useRef(false)
-  const completedTaskRef = useRef(false)
   const autostartHandledRef = useRef(false)
   const startedAtRef = useRef<number | null>(null)
   const openerRef = useRef(window.opener ?? null)
-  const sessionIdRef = useRef(query?.sessionId ?? '')
+  const channelSessionIdRef = useRef(query?.sessionId ?? '')
+  const historyRunIdRef = useRef('')
 
   const [status, setStatus] = useState<PageStatus>(query === null ? 'error' : 'idle')
   const [favoriteId, setFavoriteId] = useState<StreamFavoriteId>(query?.favoriteId ?? '3682220021')
@@ -124,6 +126,7 @@ export function StreamPlayerApp() {
   const [frames, setFrames] = useState<readonly PlayerFrame[]>([])
   const [errorMessage, setErrorMessage] = useState(queryResult.ok ? '' : queryResult.message)
   const [history, setHistory] = useState(() => readStreamPlayerHistory())
+  const [historyWarning, setHistoryWarning] = useState('')
   const [secretClicks, setSecretClicks] = useState(0)
   const [showPassword, setShowPassword] = useState(false)
   const [password, setPassword] = useState('')
@@ -138,23 +141,27 @@ export function StreamPlayerApp() {
     (event: StreamPlayerEventPayload) => {
       if (query === null || openerRef.current === null) return
       openerRef.current.postMessage(
-        createStreamPlayerEvent(sessionIdRef.current, event),
+        createStreamPlayerEvent(channelSessionIdRef.current, event),
         window.location.origin,
       )
     },
     [query],
   )
 
-  const finishHistory = useCallback(
+  const saveHistory = useCallback(
     (endedAt: number, roundsCompleted: number, outcome: StreamPlayerHistoryItem['outcome']) => {
-      if (query === null || startedAtRef.current === null) return
-      storeStreamSession({
-        sessionId: sessionIdRef.current,
+      if (query === null || startedAtRef.current === null || historyRunIdRef.current === '') return
+      const stored = storeStreamSession({
+        sessionId: historyRunIdRef.current,
         startedAt: startedAtRef.current,
         endedAt,
         roundsCompleted,
         outcome,
       })
+      if (!stored) {
+        setHistoryWarning('本机未能保存刷播记录，刷播仍会继续。')
+        return
+      }
       setHistory(readStreamPlayerHistory())
     },
     [query],
@@ -171,15 +178,14 @@ export function StreamPlayerApp() {
     abortControllerRef.current?.abort()
     abortControllerRef.current = null
     const endedAt = Date.now()
-    finishHistory(endedAt, 0, 'stopped')
+    saveHistory(endedAt, 0, 'stopped')
     postToMain({ event: 'ended', outcome: 'stopped' })
     startedRef.current = false
-    completedTaskRef.current = true
     setSnapshot(null)
     setFrames([])
     setStatus('stopped')
     setErrorMessage('')
-  }, [finishHistory, postToMain])
+  }, [postToMain, saveHistory])
 
   const start = useCallback(async () => {
     if (query === null || startedRef.current) return
@@ -197,8 +203,7 @@ export function StreamPlayerApp() {
       return
     }
 
-    if (completedTaskRef.current) sessionIdRef.current = crypto.randomUUID()
-    completedTaskRef.current = false
+    historyRunIdRef.current = crypto.randomUUID()
     startedRef.current = true
     startedAtRef.current = Date.now()
     schedulerRef.current?.dispose()
@@ -215,7 +220,9 @@ export function StreamPlayerApp() {
       const catalogBvids = await fetchFavoriteCatalog(nextConfig.favoriteId, controller.signal)
       if (controller.signal.aborted) return
       const stopAt =
-        nextConfig.stopHours === null ? null : Date.now() + nextConfig.stopHours * 60 * 60 * 1_000
+        nextConfig.stopHours === null
+          ? null
+          : Date.now() + Math.floor(nextConfig.stopHours * 60 * 60 * 1_000)
 
       const scheduler = new StreamRoundScheduler({
         catalogBvids,
@@ -224,7 +231,7 @@ export function StreamPlayerApp() {
         roundIntervalMs: roundIntervalMsRef.current,
         onStarted: (startedAt) => {
           startedAtRef.current = startedAt
-          postToMain({ event: 'started' })
+          postToMain({ event: 'started', dateKey: formatLocalDateKey(startedAt) })
         },
         onOpenVideo: (bvid, round, index) => {
           setFrames((current) => [
@@ -239,15 +246,17 @@ export function StreamPlayerApp() {
           ])
         },
         onClearRound: () => setFrames([]),
+        onRoundCompleted: (round, completedAt) => {
+          saveHistory(completedAt, round, 'running')
+        },
         onStatus: (nextSnapshot) => {
           setSnapshot(nextSnapshot)
           setStatus(nextSnapshot.status)
         },
         onEnded: (outcome, endedAt, roundsCompleted) => {
-          finishHistory(endedAt, roundsCompleted, outcome)
+          saveHistory(endedAt, roundsCompleted, outcome)
           postToMain({ event: 'ended', outcome })
           startedRef.current = false
-          completedTaskRef.current = true
         },
       })
       schedulerRef.current = scheduler
@@ -259,7 +268,7 @@ export function StreamPlayerApp() {
       setStatus('error')
       setErrorMessage(error instanceof Error ? error.message : '刷播未能启动。')
     }
-  }, [favoriteId, finishHistory, postToMain, query, selfTestInput, stopHoursInput])
+  }, [favoriteId, postToMain, query, saveHistory, selfTestInput, stopHoursInput])
 
   useEffect(() => {
     return startKeepAliveAudio()
@@ -277,7 +286,7 @@ export function StreamPlayerApp() {
     if (query === null || opener === null) return undefined
     const receiveCommand = (event: MessageEvent<unknown>) => {
       if (event.origin !== window.location.origin || event.source !== opener) return
-      if (!isStreamPlayerStopCommand(event.data, sessionIdRef.current)) return
+      if (!isStreamPlayerStopCommand(event.data, channelSessionIdRef.current)) return
       stopPlayback()
     }
     window.addEventListener('message', receiveCommand)
@@ -293,6 +302,12 @@ export function StreamPlayerApp() {
       window.removeEventListener('pageshow', reconcile)
     }
   }, [])
+
+  useEffect(() => {
+    const stopOnPageHide = () => stopPlayback()
+    window.addEventListener('pagehide', stopOnPageHide)
+    return () => window.removeEventListener('pagehide', stopOnPageHide)
+  }, [stopPlayback])
 
   useEffect(
     () => () => {
@@ -362,6 +377,8 @@ export function StreamPlayerApp() {
         <span className="paper-tag">SUperView</span>
         <h1 onClick={onTitleClick}>在线刷播工具</h1>
         <p>会使用当前浏览器账号，登录时每天不要超过5小时。</p>
+        <p>移动端离开刷播页面可能会导致刷播暂停。</p>
+        <p>请在网页版哔哩哔哩设置‘自动开播’和‘播完暂停’。</p>
         <p>
           在新设备/浏览器上请先检查：若登录，历史记录里出现刷播视频为成功；若未登录，自测视频播放量增加为成功。
         </p>
@@ -555,15 +572,20 @@ export function StreamPlayerApp() {
           <h2 id="stream-history-title">最近记录</h2>
           <span className="paper-tag">最近 10 次</span>
         </div>
+        {historyWarning ? (
+          <p className="stream-message" role="status">
+            {historyWarning}
+          </p>
+        ) : null}
         {history.length === 0 ? (
-          <p className="stream-message">还没有完成的刷播记录。</p>
+          <p className="stream-message">还没有刷播记录。</p>
         ) : (
           <ol className="stream-history">
             {history.map((item) => (
               <li key={item.sessionId}>
                 <span>{formatDateTime(item.startedAt)}</span>
                 <strong>{item.roundsCompleted} 轮</strong>
-                <span>{formatHistoryOutcome(item.outcome)}</span>
+                <span>{formatHistoryOutcome(item)}</span>
               </li>
             ))}
           </ol>

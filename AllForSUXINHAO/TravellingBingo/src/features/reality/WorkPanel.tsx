@@ -5,6 +5,7 @@ import { useModalFocus } from '@/components/useModalFocus'
 import { POMODORO_PRESETS } from '@/domain'
 
 import type { RealityNotificationPermission, RealityTodoView, WorkPanelProps } from './types'
+import { findPomodoroBackgroundOption } from './realityViewModel'
 import { PostcardPicker } from './PostcardPicker'
 import './reality.css'
 
@@ -136,7 +137,7 @@ function PomodoroConfirmDialog({
 export function WorkPanel({
   pomodoro,
   unlockedBackgrounds,
-  selectedBackgroundId,
+  selectedBackground,
   todos,
   actions,
   notification,
@@ -159,8 +160,10 @@ export function WorkPanel({
   const notificationLabel = notification
     ? (notification.statusLabel ?? NOTIFICATION_LABELS[notification.permission])
     : null
-  const selectedBackground =
-    unlockedBackgrounds.find((background) => background.id === selectedBackgroundId) ?? null
+  const selectedBackgroundOption = findPomodoroBackgroundOption(
+    unlockedBackgrounds,
+    selectedBackground,
+  )
   const selectedPreset = POMODORO_PRESETS.find(
     (preset) => preset.focusDurationMs === pomodoro.selectedDurationMs,
   )
@@ -246,7 +249,7 @@ export function WorkPanel({
         <h2 id={headingId}>苹果钟与待办</h2>
       </div>
       <p className="reality-panel__intro">
-        选一张喜欢的明信片，让饼狗陪你专注一会儿，再把今天的小事一件件完成。
+        选一张喜欢的明信片或奇迹合拍，让饼狗陪你专注一会儿，再把今天的小事一件件完成。
       </p>
 
       <section className="reality-work-card" aria-labelledby={`${headingId}-timer`}>
@@ -308,7 +311,7 @@ export function WorkPanel({
             专注 {selectedPreset?.label ?? '未选择'} · 休息{' '}
             {selectedPreset ? `${Math.round(selectedPreset.breakDurationMs / 60_000)} 分钟` : '—'}
           </span>
-          <span>明信片 · {selectedBackground?.title ?? '默认纸张'}</span>
+          <span>背景 · {selectedBackgroundOption?.title ?? '默认纸张'}</span>
         </div>
 
         <div className="reality-action-row reality-action-row--timer">
@@ -457,7 +460,7 @@ export function WorkPanel({
 
       <PostcardPicker
         options={unlockedBackgrounds}
-        selectedId={selectedBackgroundId}
+        selected={selectedBackground}
         onChange={actions.onBackgroundChange}
         disabled={timerRunning}
       />

@@ -1,6 +1,7 @@
 import type { CSSProperties } from 'react'
 
-import type { WardrobeElement, WardrobePhoto } from '@/domain/game/types'
+import { getWardrobePhotoLayers } from '@/domain/game/wardrobe'
+import type { WardrobeElement, WardrobePhoto, WardrobeTransform } from '@/domain/game/types'
 
 import './PhotoCompositionPreview.css'
 
@@ -18,31 +19,26 @@ interface PhotoCompositionPreviewProps {
   postcard?: PhotoPostcardVisual | null
   className?: string
   label?: string
+  mode?: 'natural' | 'contain' | 'cover'
+  decorative?: boolean
 }
 
 function elementKey(element: WardrobeElement, index: number) {
-  const placementId = 'placementId' in element ? String(element.placementId) : ''
-  return placementId || `${element.assetId}-${element.z}-${index}`
+  return element.placementId || `${element.assetId}-${element.z}-${index}`
 }
 
-function participantStyle(participant: WardrobePhoto['participants'][number]): CSSProperties {
+function scaledVisualStyle(transform: WardrobeTransform): CSSProperties {
   return {
-    left: `${participant.x * 100}%`,
-    top: `${participant.y * 100}%`,
-    width: `${participant.scale * 100}%`,
-    zIndex: participant.z,
-    transform: `translate(-50%, -50%) rotate(${participant.rotation}deg)`,
+    left: `${transform.x * 100}%`,
+    top: `${transform.y * 100}%`,
+    width: `${transform.scaleX * 100}%`,
+    zIndex: transform.z,
+    transform: `translate(-50%, -50%) rotate(${transform.rotation}deg) scaleY(${transform.scaleY / transform.scaleX})`,
   }
 }
 
 function elementStyle(element: WardrobeElement): CSSProperties {
-  return {
-    left: `${element.x * 100}%`,
-    top: `${element.y * 100}%`,
-    width: `${element.scale * 100}%`,
-    zIndex: element.z,
-    transform: `translate(-50%, -50%) rotate(${element.rotation}deg)`,
-  }
+  return scaledVisualStyle(element)
 }
 
 export function PhotoCompositionPreview({
@@ -50,36 +46,72 @@ export function PhotoCompositionPreview({
   postcard,
   className = '',
   label = '合拍预览',
+  mode = 'natural',
+  decorative = false,
 }: PhotoCompositionPreviewProps) {
+  const aspectRatio = postcard && postcard.height > 0 ? postcard.width / postcard.height : 4 / 3
   return (
     <div
-      className={`photo-composition ${className}`.trim()}
-      role="img"
-      aria-label={label}
+      className={`photo-composition photo-composition--${mode} ${className}`.trim()}
+      role={decorative ? undefined : 'img'}
+      aria-label={decorative ? undefined : label}
+      aria-hidden={decorative ? true : undefined}
+      inert={decorative ? true : undefined}
       data-photo-id={photo.photoId}
-      style={postcard ? { aspectRatio: `${postcard.width} / ${postcard.height}` } : undefined}
+      style={
+        {
+          '--photo-aspect-ratio': aspectRatio,
+          aspectRatio:
+            mode === 'natural'
+              ? postcard && postcard.height > 0
+                ? `${postcard.width} / ${postcard.height}`
+                : '4 / 3'
+              : undefined,
+        } as CSSProperties
+      }
     >
-      {postcard && (
-        <img
-          className="photo-composition__postcard"
-          src={postcard.url}
-          alt=""
-          width={postcard.width}
-          height={postcard.height}
-          draggable={false}
-        />
-      )}
-      <div className="photo-composition__people" aria-hidden="true">
-        {[...photo.participants]
-          .sort((left, right) => left.z - right.z || left.targetId.localeCompare(right.targetId))
-          .map((participant) => {
+      <div className="photo-composition__canvas">
+        {postcard && (
+          <img
+            className="photo-composition__postcard"
+            src={postcard.url}
+            alt=""
+            width={postcard.width}
+            height={postcard.height}
+            draggable={false}
+          />
+        )}
+        <div className="photo-composition__people" aria-hidden="true">
+          {getWardrobePhotoLayers(photo).map((layer) => {
+            if (layer.kind === 'decoration') {
+              const decoration = layer.value
+              const visual = getWardrobeAssetVisual(decoration.assetId)
+              return (
+                <img
+                  className="photo-composition__decoration"
+                  src={visual.url}
+                  alt=""
+                  width={visual.width}
+                  height={visual.height}
+                  style={scaledVisualStyle(decoration)}
+                  data-decoration-id={decoration.placementId}
+                  draggable={false}
+                  key={`decoration-${decoration.placementId}`}
+                />
+              )
+            }
+
+            const participant = layer.value
             const target = getWardrobeTargetVisual(participant.targetId)
             return (
               <span
                 className="photo-composition__participant"
-                style={participantStyle(participant)}
+                style={{
+                  ...scaledVisualStyle(participant),
+                  aspectRatio: `${target.width} / ${target.height}`,
+                }}
                 data-target-id={participant.targetId}
-                key={participant.targetId}
+                key={`participant-${participant.targetId}`}
               >
                 {[...participant.elements]
                   .map((element, index) => ({ element, index }))
@@ -134,6 +166,7 @@ export function PhotoCompositionPreview({
               </span>
             )
           })}
+        </div>
       </div>
     </div>
   )

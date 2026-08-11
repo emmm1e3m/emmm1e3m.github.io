@@ -14,10 +14,7 @@ import { migrateGameStateV3ToV4 } from './migrateGameStateV3'
 import { migrateGameStateV4ToV5 } from './migrateGameStateV4'
 import { migrateGameStateV5ToV6 } from './migrateGameStateV5'
 import { migrateGameStateV6ToV7 } from './migrateGameStateV6'
-import { migrateGameStateV7ToV8 } from './migrateGameStateV7'
-import { migrateGameStateV8ToV9 } from './migrateGameStateV8'
-import { migrateGameStateV9ToV10 } from './migrateGameStateV9'
-import { migrateGameStateV10ToV11 } from './migrateGameStateV10'
+import { migrateStoredGameStateToV12 } from './migrateGameStateV11'
 import { reduceGame } from './reducer'
 import type { CollectionCatalog, GameStateV2, GameTransition } from './types'
 import { MAX_DATE_TIMESTAMP_MS } from './time'
@@ -29,10 +26,8 @@ const catalog: CollectionCatalog = {
   siteFirstChronology: ['first-new'],
 }
 
-function migrateGameStateV7ToCurrent(state: Parameters<typeof migrateGameStateV7ToV8>[0]) {
-  return migrateGameStateV10ToV11(
-    migrateGameStateV9ToV10(migrateGameStateV8ToV9(migrateGameStateV7ToV8(state))),
-  )
+function migrateGameStateV7ToCurrent(state: Parameters<typeof migrateStoredGameStateToV12>[0]) {
+  return migrateStoredGameStateToV12(state, { now: 20_000, catalog })
 }
 
 function successful(transition: GameTransition): Extract<GameTransition, { ok: true }> {

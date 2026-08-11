@@ -217,23 +217,23 @@ describe('房屋场景定位与返回交互', () => {
     expect(onTaskEvent).toHaveBeenCalledTimes(1)
   })
 
-  it('播放器不再生成信息栏空白遮罩，滚动内容会为实际控制条留出末尾空间', () => {
+  it('桌面信息栏随播放器高度收缩，移动端滚动内容为固定播放器留出末尾空间', () => {
     expect(globalStyles).toContain('--scene-component-gap: clamp(10px, 0.8vw, 14px);')
     expect(gameV3Styles).toContain('--shell-gap: var(--scene-component-gap);')
     expect(gameV4Styles).toMatch(
       /\.game-page--v4 \.game-layout--v3\.has-side-panel\s*\{[^}]*column-gap:\s*var\(--scene-component-gap\);/su,
     )
-    expect(gameV4Styles).not.toMatch(
-      /\.persistent-bilibili-player--context[^}]*\.context-stack\s*\{[^}]*padding-bottom:/su,
+    expect(gameV4Styles).toMatch(
+      /@media \(min-width: 961px\)[\s\S]*?\.persistent-bilibili-player--context\) \.game-page--v4 \.context-stack\s*\{[^}]*padding-bottom:\s*calc\(var\(--scene-player-collapsed-block-size\) \+ var\(--scene-component-gap\)\);/u,
     )
     expect(gameV4Styles).toMatch(
-      /\.persistent-bilibili-player--context\) \.game-page--v4 \.context-content--v4\s*\{[^}]*padding-bottom:\s*calc\(var\(--scene-player-collapsed-block-size\) \+ var\(--scene-component-gap\)\);[^}]*scroll-padding-bottom:/su,
-    )
-    expect(gameV4Styles).toMatch(
-      /\.persistent-bilibili-player--context\.is-expanded\)[^{]*\{[^}]*padding-bottom:\s*calc\(var\(--scene-player-expanded-block-size\) \+ var\(--scene-component-gap\)\);[^}]*scroll-padding-bottom:/su,
+      /@media \(min-width: 961px\)[\s\S]*?\.persistent-bilibili-player--context\.is-expanded\) \.game-page--v4 \.context-stack\s*\{[^}]*padding-bottom:\s*calc\(var\(--scene-player-expanded-block-size\) \+ var\(--scene-component-gap\)\);/u,
     )
     expect(playerStyles).toMatch(
       /\.persistent-bilibili-player--context\s*\{[^}]*--player-dock-bottom:\s*var\(--scene-component-gap\);[^}]*height:\s*var\(--scene-player-collapsed-block-size\);/su,
+    )
+    expect(playerStyles).toMatch(
+      /@media \(min-width: 961px\)[\s\S]*?\.persistent-bilibili-player--context\s*\{[^}]*--player-dock-right:\s*max\([^}]*clamp\(8px, 1\.25vw, 18px\),[^}]*calc\(\(100vw - 1480px\) \/ 2\)[^}]*\);/u,
     )
     expect(playerStyles).toMatch(
       /\.persistent-bilibili-player--context\.is-expanded\s*\{[^}]*height:\s*var\(--scene-player-expanded-block-size\);/su,
@@ -242,10 +242,34 @@ describe('房屋场景定位与返回交互', () => {
       /@media \(max-width: 960px\)[\s\S]*?\.persistent-bilibili-player--context\s*\{[^}]*height:\s*var\(--scene-player-collapsed-block-size\);/u,
     )
     expect(playerStyles).toMatch(
+      /@media \(max-width: 960px\)[\s\S]*?\.persistent-bilibili-player\s*\{[^}]*--player-dock-right:\s*auto;/u,
+    )
+    expect(playerStyles).toMatch(
       /\.persistent-bilibili-player--context \.persistent-bilibili-player__bar\s*\{[^}]*display:\s*flex;/su,
     )
     expect(gameV4Styles).toMatch(
+      /@media \(max-width: 960px\)[\s\S]*?\.persistent-bilibili-player--context\) \.game-page--v4 \.context-content--v4\s*\{[^}]*padding-bottom:\s*calc\([^}]*var\(--scene-player-collapsed-block-size\)[^}]*4\.5rem[^}]*safe-area-inset-bottom[^}]*var\(--scene-component-gap\)/u,
+    )
+    expect(gameV4Styles).toMatch(
       /\.record-panel \.bilibili-playlist-panel__tracks ol\s*\{[^}]*max-height:\s*none;[^}]*overflow-y:\s*visible;/su,
+    )
+  })
+
+  it('移动端按房间在上、信息页在下排列，桌面端保持左右两列', () => {
+    expect(gameV4Styles).toMatch(
+      /@media \(max-width: 960px\)[\s\S]*?\.game-page--v4 \.game-layout--v3\.has-side-panel\s*\{[^}]*grid-template-columns:\s*minmax\(0, 1fr\);[^}]*grid-template-areas:\s*'room'\s*'context';/u,
+    )
+    expect(gameV4Styles).toMatch(
+      /@media \(max-width: 960px\)[\s\S]*?\.game-page--v4 \.context-panel\s*\{[^}]*position:\s*static;[^}]*inset:\s*auto;[^}]*max-height:\s*none;[^}]*overflow:\s*visible;[^}]*transform:\s*none !important;[^}]*visibility:\s*visible;[^}]*pointer-events:\s*auto;[^}]*transition:\s*none;/u,
+    )
+    expect(gameV4Styles).toMatch(
+      /@media \(max-width: 960px\)[\s\S]*?\.game-page--v4 \.context-panel__handle\s*\{[^}]*display:\s*none;/u,
+    )
+    expect(gameV4Styles).toMatch(
+      /@media \(max-width: 960px\)[\s\S]*?\.persistent-bilibili-player--context\) \.game-page--v4 \.context-content--v4\s*\{[^}]*padding-bottom:\s*calc\([^}]*var\(--scene-player-collapsed-block-size\)[^}]*4\.5rem[^}]*safe-area-inset-bottom[^}]*var\(--scene-component-gap\)/u,
+    )
+    expect(gameV4Styles).toMatch(
+      /@media \(min-width: 961px\)[\s\S]*?\.game-page--v4 \.game-layout--v3\.has-side-panel\s*\{[^}]*grid-template-areas:\s*'room context';/u,
     )
   })
 

@@ -2,27 +2,30 @@ import { useId, useRef, useState, type CSSProperties } from 'react'
 import { createPortal } from 'react-dom'
 
 import { useModalFocus } from '@/components/useModalFocus'
+import type { PomodoroBackgroundRef } from '@/domain'
+import { PhotoCompositionPreview } from '@/features/wardrobe/PhotoCompositionPreview'
 
-import type { PostcardBackgroundOption } from './types'
+import { samePomodoroBackgroundRef } from './realityViewModel'
+import type { PomodoroBackgroundOption } from './types'
 
 interface PostcardPickerProps {
-  options: readonly PostcardBackgroundOption[]
-  selectedId: string | null
-  onChange: (postcardId: string | null) => void
+  options: readonly PomodoroBackgroundOption[]
+  selected: PomodoroBackgroundRef | null
+  onChange: (background: PomodoroBackgroundRef | null) => void
   disabled?: boolean
 }
 
 interface PostcardPickerDialogProps {
-  options: readonly PostcardBackgroundOption[]
-  selectedId: string | null
-  onSelect: (postcardId: string | null) => void
+  options: readonly PomodoroBackgroundOption[]
+  selected: PomodoroBackgroundRef | null
+  onSelect: (background: PomodoroBackgroundRef | null) => void
   onCancel: () => void
   returnFocus: () => HTMLElement | null
 }
 
 function PostcardPickerDialog({
   options,
-  selectedId,
+  selected,
   onSelect,
   onCancel,
   returnFocus,
@@ -48,39 +51,50 @@ function PostcardPickerDialog({
       >
         <header className="reality-postcard-dialog__header">
           <div>
-            <span className="reality-eyebrow">陪伴明信片</span>
+            <span className="reality-eyebrow">陪伴背景</span>
             <h2 id={titleId}>选择这一轮的风景</h2>
-            <p id={descriptionId}>选择一张即可确定，专注开始时会在全屏完整显示这张明信片。</p>
+            <p id={descriptionId}>明信片与保存的奇迹合拍都可以成为背景，单击一张即可确定。</p>
           </div>
-          <span className="reality-unlocked-count">已解锁 {options.length}</span>
+          <span className="reality-unlocked-count">可选背景 {options.length}</span>
         </header>
 
-        <div className="reality-postcard-dialog__wall" role="radiogroup" aria-label="苹果钟明信片">
+        <div className="reality-postcard-dialog__wall" role="radiogroup" aria-label="苹果钟背景">
           <label className="reality-postcard-tile reality-postcard-tile--plain">
             <input
               type="radio"
               name={titleId}
-              checked={selectedId === null}
+              checked={selected === null}
               onChange={() => onSelect(null)}
               onClick={() => {
-                if (selectedId === null) onSelect(null)
+                if (selected === null) onSelect(null)
               }}
             />
             <span aria-hidden="true">白纸</span>
             <strong>默认纸张</strong>
           </label>
           {options.map((option) => (
-            <label key={option.id} className="reality-postcard-tile">
+            <label
+              key={`${option.kind}:${option.id}`}
+              className={`reality-postcard-tile reality-postcard-tile--${option.kind}`}
+            >
               <input
                 type="radio"
                 name={titleId}
-                checked={option.id === selectedId}
-                onChange={() => onSelect(option.id)}
+                checked={samePomodoroBackgroundRef(option.ref, selected)}
+                onChange={() => onSelect(option.ref)}
                 onClick={() => {
-                  if (option.id === selectedId) onSelect(option.id)
+                  if (samePomodoroBackgroundRef(option.ref, selected)) onSelect(option.ref)
                 }}
               />
-              {option.thumbnailUrl ? (
+              {option.kind === 'wardrobe-photo' ? (
+                <PhotoCompositionPreview
+                  photo={option.photo}
+                  postcard={option.thumbnailPostcard}
+                  className="reality-postcard-option__photo"
+                  mode="contain"
+                  decorative
+                />
+              ) : option.thumbnailUrl ? (
                 <img
                   src={option.thumbnailUrl}
                   alt={option.alt ?? ''}
@@ -115,14 +129,15 @@ function PostcardPickerDialog({
 
 export function PostcardPicker({
   options,
-  selectedId,
+  selected,
   onChange,
   disabled = false,
 }: PostcardPickerProps) {
   const headingId = useId()
   const triggerRef = useRef<HTMLButtonElement>(null)
   const [open, setOpen] = useState(false)
-  const selected = options.find((option) => option.id === selectedId) ?? null
+  const selectedOption =
+    options.find((option) => samePomodoroBackgroundRef(option.ref, selected)) ?? null
 
   function openPicker() {
     setOpen(true)
@@ -132,8 +147,8 @@ export function PostcardPicker({
     setOpen(false)
   }
 
-  function selectPostcard(postcardId: string | null) {
-    onChange(postcardId)
+  function selectBackground(background: PomodoroBackgroundRef | null) {
+    onChange(background)
     setOpen(false)
   }
 
@@ -142,33 +157,45 @@ export function PostcardPicker({
       <div className="reality-work-card__heading">
         <div>
           <span className="reality-card-index">03</span>
-          <h3 id={headingId}>陪伴明信片</h3>
+          <h3 id={headingId}>陪伴背景</h3>
         </div>
-        <span className="reality-unlocked-count">已解锁 {options.length}</span>
+        <span className="reality-unlocked-count">可选背景 {options.length}</span>
       </div>
 
       <div
         className="reality-postcard-picker__preview"
-        data-background-id={selected?.id ?? 'plain'}
+        data-background-id={
+          selectedOption
+            ? `${selectedOption.kind === 'postcard' ? '' : 'wardrobe-photo:'}${selectedOption.id}`
+            : 'plain'
+        }
         style={
           {
-            '--postcard-preview-width': selected?.aspectRatio
-              ? `${Math.round(168 * selected.aspectRatio)}px`
+            '--postcard-preview-width': selectedOption?.aspectRatio
+              ? `${Math.round(168 * selectedOption.aspectRatio)}px`
               : '42%',
           } as CSSProperties
         }
       >
-        {selected?.thumbnailUrl ? (
+        {selectedOption?.kind === 'wardrobe-photo' ? (
+          <PhotoCompositionPreview
+            photo={selectedOption.photo}
+            postcard={selectedOption.fullPostcard ?? selectedOption.thumbnailPostcard}
+            className="reality-postcard-picker__photo"
+            mode="contain"
+            decorative
+          />
+        ) : selectedOption?.thumbnailUrl ? (
           <img
-            src={selected.fullUrl ?? selected.thumbnailUrl}
-            alt={selected.alt ?? selected.title}
+            src={selectedOption.fullUrl ?? selectedOption.thumbnailUrl}
+            alt={selectedOption.alt ?? selectedOption.title}
           />
         ) : (
           <span aria-hidden="true">白纸</span>
         )}
         <p>
-          <strong>{selected?.title ?? '默认纸张'}</strong>
-          <span>{selected?.description ?? '留一张安静的纸，和饼狗一起开始。'}</span>
+          <strong>{selectedOption?.title ?? '默认纸张'}</strong>
+          <span>{selectedOption?.description ?? '留一张安静的纸，和饼狗一起开始。'}</span>
         </p>
       </div>
 
@@ -179,14 +206,14 @@ export function PostcardPicker({
         disabled={disabled}
         onClick={openPicker}
       >
-        选择陪伴明信片
+        选择陪伴背景
       </button>
 
       {open && (
         <PostcardPickerDialog
           options={options}
-          selectedId={selectedId}
-          onSelect={selectPostcard}
+          selected={selected}
+          onSelect={selectBackground}
           onCancel={closePicker}
           returnFocus={() => triggerRef.current}
         />

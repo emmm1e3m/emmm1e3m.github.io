@@ -15,7 +15,7 @@ export interface UpdateNotice {
 
 /** 标题页摘要与房间公告弹窗共用这一份更新内容。 */
 export const CURRENT_UPDATE_NOTICE: UpdateNotice = {
-  version: 'v0.10',
+  version: 'v0.10.1',
   publishedDate: '2026-08-11',
   publishedLabel: '2026.08.11',
   title: '饼屋的新布置',

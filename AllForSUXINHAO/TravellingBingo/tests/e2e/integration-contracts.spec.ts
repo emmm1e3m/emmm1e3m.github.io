@@ -251,7 +251,7 @@ test.describe('V9 高风险集成契约', () => {
     await enterReality(page)
     await page.locator('[data-hotspot="一楼电脑"]').click()
     const workPanel = page.locator('.context-panel--reality-work')
-    await workPanel.getByRole('button', { name: '选择陪伴明信片' }).click()
+    await workPanel.getByRole('button', { name: '选择陪伴背景' }).click()
     const picker = page.getByRole('dialog', { name: '选择这一轮的风景' })
     const pickerBackdrop = page.locator('.reality-postcard-dialog-backdrop')
     await expect(picker).toBeVisible()
@@ -266,7 +266,7 @@ test.describe('V9 高风险集成契约', () => {
     await expect(picker).not.toBeVisible()
     const selectedPostcardPreview = workPanel.locator('.reality-postcard-picker__preview')
     await expect(selectedPostcardPreview).not.toHaveAttribute('data-background-id', 'plain')
-    await expect(selectedPostcardPreview.locator('img')).toHaveCSS('object-fit', 'cover')
+    await expect(selectedPostcardPreview.locator('img')).toHaveCSS('object-fit', 'contain')
 
     await workPanel
       .getByRole('group', { name: '苹果钟时长' })

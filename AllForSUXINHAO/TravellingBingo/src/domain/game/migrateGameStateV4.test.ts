@@ -23,7 +23,14 @@ function initialV4(): GameStateV4 {
     activeStay: current.reality.activeStay,
     pendingSettlement: current.reality.pendingSettlement,
     todos: current.reality.todos,
-    pomodoro: { ...current.reality.pomodoro, session: null },
+    pomodoro: {
+      nextSessionSequence: current.reality.pomodoro.nextSessionSequence,
+      selectedPostcardId:
+        current.reality.pomodoro.selectedBackground?.kind === 'postcard'
+          ? current.reality.pomodoro.selectedBackground.id
+          : null,
+      session: null,
+    },
   }
   const { wardrobe: _wardrobe, ...withoutWardrobe } = current
   void _wardrobe

@@ -1,9 +1,17 @@
-import { fireEvent, render, screen } from '@testing-library/react'
+import { fireEvent, render, screen, waitFor } from '@testing-library/react'
 
 import type { CollectibleItem, ContentCatalog, FriendItem } from '@/content'
 import { createInitialGameState, type GameAction, type GameState } from '@/domain'
 import { getWardrobeCatalogItem, MAX_WARDROBE_PHOTOS } from '@/domain/game/wardrobe'
 import type { SavedWardrobeLook, WardrobePhoto } from '@/domain/game/types'
+
+const { downloadWardrobeLookMock } = vi.hoisted(() => ({
+  downloadWardrobeLookMock: vi.fn<() => Promise<void>>(),
+}))
+
+vi.mock('./renderWardrobeLook', () => ({
+  downloadWardrobeLook: downloadWardrobeLookMock,
+}))
 
 import wardrobeStyles from './MiracleWardrobePage.css?raw'
 import { MiracleWardrobePage } from './MiracleWardrobePage'
@@ -92,7 +100,8 @@ function savedLook(
         assetId: 'cream-apple-cape',
         x: 0.5,
         y: 0.76,
-        scale: 0.48,
+        scaleX: 0.48,
+        scaleY: 0.48,
         rotation: 0,
         z: 1,
       },
@@ -110,6 +119,11 @@ function renderPage(game = wardrobeGame(), onAction = vi.fn<(action: GameAction)
 }
 
 describe('MiracleWardrobePage', () => {
+  beforeEach(() => {
+    downloadWardrobeLookMock.mockReset()
+    downloadWardrobeLookMock.mockResolvedValue(undefined)
+  })
+
   it('全屏页只保留搭配、合拍与收藏，并使用奇迹标语', () => {
     renderPage()
 
@@ -126,7 +140,7 @@ describe('MiracleWardrobePage', () => {
   })
 
   it('搭配室用中心拖动和角落手柄变换元素，并可在画布外恢复默认变换', () => {
-    const { container, onAction } = renderPage()
+    const { onAction } = renderPage()
 
     expect(screen.getByRole('button', { name: '饼狗' })).toBeInTheDocument()
     expect(screen.getByRole('button', { name: '信号狗' })).toBeInTheDocument()
@@ -157,24 +171,45 @@ describe('MiracleWardrobePage', () => {
     fireEvent.pointerMove(layer, { pointerId: 3, clientX: 240, clientY: 260 })
     fireEvent.pointerUp(layer, { pointerId: 3 })
 
-    const handle = container.querySelector<HTMLElement>('.miracle-transform-handle')
-    expect(handle).not.toBeNull()
-    Object.assign(handle as HTMLElement, {
+    const handle = screen.getByRole('button', {
+      name: `${starterAssetName}：等比缩放并旋转`,
+    })
+    Object.assign(handle, {
       setPointerCapture: vi.fn(),
       hasPointerCapture: vi.fn(() => false),
       releasePointerCapture: vi.fn(),
     })
-    fireEvent.pointerDown(handle as HTMLElement, {
+    fireEvent.pointerDown(handle, {
       pointerId: 4,
       clientX: 336,
       clientY: 356,
     })
-    fireEvent.pointerMove(handle as HTMLElement, {
+    fireEvent.pointerMove(handle, {
       pointerId: 4,
       clientX: 360,
       clientY: 260,
     })
-    fireEvent.pointerUp(handle as HTMLElement, { pointerId: 4 })
+    fireEvent.pointerUp(handle, { pointerId: 4 })
+
+    const stretchHandle = screen.getByRole('button', {
+      name: `${starterAssetName}：分别调整宽度和高度`,
+    })
+    Object.assign(stretchHandle, {
+      setPointerCapture: vi.fn(),
+      hasPointerCapture: vi.fn(() => false),
+      releasePointerCapture: vi.fn(),
+    })
+    fireEvent.pointerDown(stretchHandle, {
+      pointerId: 5,
+      clientX: 180,
+      clientY: 200,
+    })
+    fireEvent.pointerMove(stretchHandle, {
+      pointerId: 5,
+      clientX: 105,
+      clientY: 220,
+    })
+    fireEvent.pointerUp(stretchHandle, { pointerId: 5 })
 
     fireEvent.change(screen.getByRole('textbox', { name: '造型名称' }), {
       target: { value: '苹果旅行装' },
@@ -191,7 +226,8 @@ describe('MiracleWardrobePage', () => {
             placementId: expect.stringMatching(/^layer-cream-apple-cape-/u),
             assetId: 'cream-apple-cape',
             x: expect.any(Number),
-            scale: expect.any(Number),
+            scaleX: expect.any(Number),
+            scaleY: expect.any(Number),
             rotation: expect.any(Number),
           }),
         ],
@@ -201,7 +237,8 @@ describe('MiracleWardrobePage', () => {
     const created = onAction.mock.calls.at(-1)?.[0]
     if (created?.type !== 'wardrobe/look-create') throw new Error('没有创建造型')
     expect(created.elements[0].x).not.toBe(0.5)
-    expect(created.elements[0].scale).not.toBe(0.48)
+    expect(created.elements[0].scaleX).not.toBe(0.48)
+    expect(created.elements[0].scaleY).not.toBe(created.elements[0].scaleX)
     expect(created.elements[0].rotation).not.toBe(0)
 
     fireEvent.click(screen.getByRole('button', { name: '恢复默认变换' }))
@@ -213,10 +250,212 @@ describe('MiracleWardrobePage', () => {
       assetId: created.elements[0].assetId,
       x: 0.5,
       y: 0.76,
-      scale: 0.48,
+      scaleX: 0.48,
+      scaleY: 0.48,
       rotation: 0,
       z: created.elements[0].z,
     })
+  })
+
+  it('键盘可以移动并用双手柄调整搭配元素、合拍人物和独立元素', () => {
+    const { onAction } = renderPage()
+    fireEvent.click(screen.getByRole('button', { name: starterAssetName }))
+
+    const lookCenter = screen.getByRole('button', { name: `${starterAssetName}，已选中` })
+    const lookStretch = screen.getByRole('button', {
+      name: `${starterAssetName}：分别调整宽度和高度`,
+    })
+    const lookUniform = screen.getByRole('button', {
+      name: `${starterAssetName}：等比缩放并旋转`,
+    })
+    expect(lookCenter).toHaveAttribute(
+      'aria-keyshortcuts',
+      'ArrowLeft ArrowRight ArrowUp ArrowDown',
+    )
+    expect(lookUniform).toHaveAttribute('aria-description', '方向键上下缩放，左右旋转')
+    fireEvent.keyDown(lookCenter, { key: 'ArrowRight' })
+    fireEvent.keyDown(lookStretch, { key: 'ArrowRight' })
+    fireEvent.keyDown(lookStretch, { key: 'ArrowDown' })
+    fireEvent.keyDown(lookUniform, { key: 'ArrowUp' })
+    fireEvent.keyDown(lookUniform, { key: 'ArrowRight' })
+    fireEvent.click(screen.getByRole('button', { name: '保存为新造型' }))
+
+    const lookAction = onAction.mock.calls.at(-1)?.[0]
+    if (lookAction?.type !== 'wardrobe/look-create') throw new Error('没有保存键盘调整后的造型')
+    expect(lookAction.elements[0]).toMatchObject({
+      x: 0.52,
+      y: 0.76,
+      rotation: 5,
+    })
+    expect(lookAction.elements[0].scaleX).toBeCloseTo(0.572)
+    expect(lookAction.elements[0].scaleY).toBeCloseTo(0.484)
+    expect(lookAction.elements[0].scaleX / lookAction.elements[0].scaleY).toBeCloseTo(0.52 / 0.44)
+
+    fireEvent.click(screen.getByRole('tab', { name: '合拍' }))
+    const participantCenter = screen.getByRole('button', { name: '移动饼狗' })
+    const participantStretch = screen.getByRole('button', {
+      name: '饼狗：分别调整宽度和高度',
+    })
+    const participantUniform = screen.getByRole('button', {
+      name: '饼狗：等比缩放并旋转',
+    })
+    fireEvent.keyDown(participantCenter, { key: 'ArrowLeft' })
+    fireEvent.keyDown(participantStretch, { key: 'ArrowRight' })
+    fireEvent.keyDown(participantStretch, { key: 'ArrowUp' })
+    fireEvent.keyDown(participantUniform, { key: 'ArrowDown' })
+    fireEvent.keyDown(participantUniform, { key: 'ArrowLeft' })
+
+    fireEvent.click(screen.getByRole('button', { name: starterAssetName }))
+    const decorationCenter = screen.getByRole('button', {
+      name: `移动独立元素${starterAssetName}`,
+    })
+    const decorationStretch = screen.getByRole('button', {
+      name: `${starterAssetName}：分别调整宽度和高度`,
+    })
+    const decorationUniform = screen.getByRole('button', {
+      name: `${starterAssetName}：等比缩放并旋转`,
+    })
+    fireEvent.keyDown(decorationCenter, { key: 'ArrowUp' })
+    fireEvent.keyDown(decorationStretch, { key: 'ArrowRight' })
+    fireEvent.keyDown(decorationStretch, { key: 'ArrowDown' })
+    fireEvent.keyDown(decorationUniform, { key: 'ArrowUp' })
+    fireEvent.keyDown(decorationUniform, { key: 'ArrowRight' })
+    fireEvent.click(screen.getByRole('button', { name: '保存这张合拍' }))
+
+    const photoAction = onAction.mock.calls.at(-1)?.[0]
+    if (photoAction?.type !== 'wardrobe/photo-create') {
+      throw new Error('没有保存键盘调整后的合拍')
+    }
+    expect(photoAction.participants[0]).toMatchObject({
+      x: 0.48,
+      rotation: -5,
+    })
+    expect(photoAction.participants[0].scaleX).toBeCloseTo(0.38 / 1.1)
+    expect(photoAction.participants[0].scaleY).toBeCloseTo(0.38 / 1.1)
+    expect(photoAction.decorations[0]).toMatchObject({
+      y: 0.48,
+      rotation: 5,
+    })
+    expect(photoAction.decorations[0].scaleX).toBeCloseTo(0.34 * 1.1)
+    expect(photoAction.decorations[0].scaleY).toBeCloseTo(0.26 * 1.1)
+    expect(photoAction.decorations[0].scaleX / photoAction.decorations[0].scaleY).toBeCloseTo(
+      0.34 / 0.26,
+    )
+  })
+
+  it('非等比初值用右下手柄触及缩放边界时仍保持两轴比例', () => {
+    const { onAction } = renderPage()
+    fireEvent.click(screen.getByRole('button', { name: starterAssetName }))
+    const lookCanvas = screen.getByTestId('miracle-look-canvas')
+    vi.spyOn(lookCanvas, 'getBoundingClientRect').mockReturnValue({
+      x: 0,
+      y: 0,
+      top: 0,
+      right: 400,
+      bottom: 400,
+      left: 0,
+      width: 400,
+      height: 400,
+      toJSON: () => ({}),
+    })
+    const lookStretch = screen.getByRole('button', {
+      name: `${starterAssetName}：分别调整宽度和高度`,
+    })
+    fireEvent.keyDown(lookStretch, { key: 'ArrowRight' })
+    fireEvent.keyDown(lookStretch, { key: 'ArrowRight' })
+    const lookUniform = screen.getByRole('button', {
+      name: `${starterAssetName}：等比缩放并旋转`,
+    })
+    Object.assign(lookUniform, {
+      setPointerCapture: vi.fn(),
+      hasPointerCapture: vi.fn(() => false),
+      releasePointerCapture: vi.fn(),
+    })
+    fireEvent.pointerDown(lookUniform, { pointerId: 21, clientX: 300, clientY: 304 })
+    fireEvent.pointerMove(lookUniform, { pointerId: 21, clientX: 10_000, clientY: 304 })
+    fireEvent.pointerUp(lookUniform, { pointerId: 21 })
+    fireEvent.click(screen.getByRole('button', { name: '保存为新造型' }))
+    const maximumLook = onAction.mock.calls.at(-1)?.[0]
+    if (maximumLook?.type !== 'wardrobe/look-create') throw new Error('没有保存最大缩放造型')
+    expect(maximumLook.elements[0].scaleX).toBeCloseTo(5)
+    expect(maximumLook.elements[0].scaleX / maximumLook.elements[0].scaleY).toBeCloseTo(0.56 / 0.48)
+
+    fireEvent.pointerDown(lookUniform, { pointerId: 22, clientX: 300, clientY: 304 })
+    fireEvent.pointerMove(lookUniform, { pointerId: 22, clientX: 200, clientY: 304 })
+    fireEvent.pointerUp(lookUniform, { pointerId: 22 })
+    fireEvent.click(screen.getByRole('button', { name: '保存为新造型' }))
+    const minimumLook = onAction.mock.calls.at(-1)?.[0]
+    if (minimumLook?.type !== 'wardrobe/look-create') throw new Error('没有保存最小缩放造型')
+    expect(minimumLook.elements[0].scaleY).toBeCloseTo(0.05)
+    expect(minimumLook.elements[0].scaleX / minimumLook.elements[0].scaleY).toBeCloseTo(0.56 / 0.48)
+
+    fireEvent.click(screen.getByRole('tab', { name: '合拍' }))
+    const photoCanvas = document.querySelector<HTMLElement>('.miracle-photo-canvas')
+    expect(photoCanvas).not.toBeNull()
+    vi.spyOn(photoCanvas as HTMLElement, 'getBoundingClientRect').mockReturnValue({
+      x: 0,
+      y: 0,
+      top: 0,
+      right: 300,
+      bottom: 400,
+      left: 0,
+      width: 300,
+      height: 400,
+      toJSON: () => ({}),
+    })
+    const participantStretch = screen.getByRole('button', {
+      name: '饼狗：分别调整宽度和高度',
+    })
+    fireEvent.keyDown(participantStretch, { key: 'ArrowRight' })
+    fireEvent.keyDown(participantStretch, { key: 'ArrowRight' })
+    const participantUniform = screen.getByRole('button', {
+      name: '饼狗：等比缩放并旋转',
+    })
+    Object.assign(participantUniform, {
+      setPointerCapture: vi.fn(),
+      hasPointerCapture: vi.fn(() => false),
+      releasePointerCapture: vi.fn(),
+    })
+    fireEvent.pointerDown(participantUniform, {
+      pointerId: 23,
+      clientX: 250,
+      clientY: 228,
+    })
+    fireEvent.pointerMove(participantUniform, {
+      pointerId: 23,
+      clientX: 10_000,
+      clientY: 228,
+    })
+    fireEvent.pointerUp(participantUniform, { pointerId: 23 })
+    fireEvent.click(screen.getByRole('button', { name: '保存这张合拍' }))
+    const maximumPhoto = onAction.mock.calls.at(-1)?.[0]
+    if (maximumPhoto?.type !== 'wardrobe/photo-create') throw new Error('没有保存最大缩放合拍')
+    expect(maximumPhoto.participants[0].scaleX).toBeCloseTo(5)
+    expect(maximumPhoto.participants[0].scaleX / maximumPhoto.participants[0].scaleY).toBeCloseTo(
+      0.42 / 0.34,
+    )
+  })
+
+  it('未保存的当前搭配也能下载透明 PNG，并在失败时给出反馈', async () => {
+    renderPage()
+    fireEvent.click(screen.getByRole('button', { name: starterAssetName }))
+    fireEvent.click(screen.getByRole('button', { name: '下载透明 PNG' }))
+
+    expect(downloadWardrobeLookMock).toHaveBeenCalledWith(
+      'bingo',
+      expect.arrayContaining([
+        expect.objectContaining({ assetId: 'cream-apple-cape', scaleX: 0.48, scaleY: 0.48 }),
+      ]),
+    )
+    await waitFor(() =>
+      expect(screen.getByRole('status')).toHaveTextContent('饼狗的透明 PNG 已经生成'),
+    )
+
+    downloadWardrobeLookMock.mockRejectedValueOnce(new Error('canvas failed'))
+    fireEvent.click(screen.getByRole('button', { name: '下载透明 PNG' }))
+    await waitFor(() =>
+      expect(screen.getByRole('status')).toHaveTextContent('透明 PNG 生成失败，请稍后再试'),
+    )
   })
 
   it('同一角色可以载入、更新和删除多套已保存造型', () => {
@@ -298,25 +537,24 @@ describe('MiracleWardrobePage', () => {
       height: 400,
       toJSON: () => ({}),
     })
-    const participant = screen.getByRole('button', { name: '移动信号狗' })
-    const handle = participant.querySelector<HTMLElement>('.miracle-transform-handle')
-    expect(handle).not.toBeNull()
-    Object.assign(handle as HTMLElement, {
+    screen.getByRole('button', { name: '移动信号狗' })
+    const handle = screen.getByRole('button', { name: '信号狗：等比缩放并旋转' })
+    Object.assign(handle, {
       setPointerCapture: vi.fn(),
       hasPointerCapture: vi.fn(() => false),
       releasePointerCapture: vi.fn(),
     })
-    fireEvent.pointerDown(handle as HTMLElement, {
+    fireEvent.pointerDown(handle, {
       pointerId: 8,
       clientX: 147,
       clientY: 273,
     })
-    fireEvent.pointerMove(handle as HTMLElement, {
+    fireEvent.pointerMove(handle, {
       pointerId: 8,
       clientX: 220,
       clientY: 150,
     })
-    fireEvent.pointerUp(handle as HTMLElement, { pointerId: 8 })
+    fireEvent.pointerUp(handle, { pointerId: 8 })
     fireEvent.click(screen.getByRole('button', { name: '恢复默认变换' }))
     fireEvent.click(screen.getByRole('button', { name: '保存这张合拍' }))
 
@@ -330,11 +568,13 @@ describe('MiracleWardrobePage', () => {
             lookId: dogLook.lookId,
             x: 0.34,
             y: 0.57,
-            scale: 0.3,
+            scaleX: 0.3,
+            scaleY: 0.3,
             rotation: 0,
             z: 1,
           },
         ],
+        decorations: [],
         now: expect.any(Number),
       }),
     )
@@ -345,13 +585,134 @@ describe('MiracleWardrobePage', () => {
     expect(wardrobeStyles).not.toContain("input[type='range']")
   })
 
+  it('合拍独立元素支持双手柄、全局图层、复位并进入保存动作', () => {
+    const { onAction } = renderPage()
+    fireEvent.click(screen.getByRole('tab', { name: '合拍' }))
+    fireEvent.click(screen.getByRole('button', { name: starterAssetName }))
+
+    const canvas = document.querySelector<HTMLElement>('.miracle-photo-canvas')
+    expect(canvas).not.toBeNull()
+    vi.spyOn(canvas as HTMLElement, 'getBoundingClientRect').mockReturnValue({
+      x: 0,
+      y: 0,
+      top: 0,
+      right: 300,
+      bottom: 400,
+      left: 0,
+      width: 300,
+      height: 400,
+      toJSON: () => ({}),
+    })
+    expect(screen.getByRole('button', { name: `移动独立元素${starterAssetName}` })).toBeVisible()
+
+    const uniformHandle = screen.getByRole('button', {
+      name: `${starterAssetName}：等比缩放并旋转`,
+    })
+    Object.assign(uniformHandle, {
+      setPointerCapture: vi.fn(),
+      hasPointerCapture: vi.fn(() => false),
+      releasePointerCapture: vi.fn(),
+    })
+    fireEvent.pointerDown(uniformHandle, {
+      pointerId: 10,
+      clientX: 195,
+      clientY: 245,
+    })
+    fireEvent.pointerMove(uniformHandle, {
+      pointerId: 10,
+      clientX: 225,
+      clientY: 230,
+    })
+    fireEvent.pointerUp(uniformHandle, { pointerId: 10 })
+
+    const stretchHandle = screen.getByRole('button', {
+      name: `${starterAssetName}：分别调整宽度和高度`,
+    })
+    Object.assign(stretchHandle, {
+      setPointerCapture: vi.fn(),
+      hasPointerCapture: vi.fn(() => false),
+      releasePointerCapture: vi.fn(),
+    })
+    fireEvent.pointerDown(stretchHandle, {
+      pointerId: 11,
+      clientX: 105,
+      clientY: 155,
+    })
+    fireEvent.pointerMove(stretchHandle, {
+      pointerId: 11,
+      clientX: 65,
+      clientY: 175,
+    })
+    fireEvent.pointerUp(stretchHandle, { pointerId: 11 })
+    fireEvent.click(screen.getByRole('button', { name: '向后一层' }))
+    fireEvent.click(screen.getByRole('button', { name: '保存这张合拍' }))
+
+    const transformed = onAction.mock.calls.at(-1)?.[0]
+    if (transformed?.type !== 'wardrobe/photo-create') throw new Error('没有创建带独立元素的合拍')
+    expect(transformed.participants[0].z).toBe(2)
+    expect(transformed.decorations).toHaveLength(1)
+    expect(transformed.decorations[0]).toMatchObject({
+      placementId: expect.stringMatching(/^photo-cream-apple-cape-/u),
+      assetId: 'cream-apple-cape',
+      z: 1,
+    })
+    expect(transformed.decorations[0].scaleX).not.toBe(transformed.decorations[0].scaleY)
+    expect(transformed.decorations[0].rotation).not.toBe(0)
+    expect(transformed.decorations[0]).not.toHaveProperty('defaultTransform')
+
+    fireEvent.click(screen.getByRole('button', { name: '恢复默认变换' }))
+    fireEvent.click(screen.getByRole('button', { name: '保存这张合拍' }))
+    const reset = onAction.mock.calls.at(-1)?.[0]
+    if (reset?.type !== 'wardrobe/photo-create') throw new Error('没有保存复位后的合拍')
+    expect(reset.decorations[0]).toEqual({
+      placementId: transformed.decorations[0].placementId,
+      assetId: 'cream-apple-cape',
+      x: 0.5,
+      y: 0.5,
+      scaleX: 0.3,
+      scaleY: 0.3,
+      rotation: 0,
+      z: 1,
+    })
+  })
+
+  it('收藏缩略图在紧凑低框中完整显示，桌面整页锁定且移动端改由活动面板滚动', () => {
+    renderPage()
+    fireEvent.click(screen.getByRole('tab', { name: '衣服收藏' }))
+
+    const image = screen.getByRole('img', { name: starterAssetName })
+    expect(image.parentElement).toHaveClass('miracle-collection-thumb')
+    expect(image.closest('section')).toHaveClass('miracle-collection-group--outfit')
+    expect(wardrobeStyles).toContain('grid-template-rows: auto auto auto minmax(0, 1fr)')
+    expect(wardrobeStyles).toContain('height: 100dvh')
+    expect(wardrobeStyles).toContain('overflow: hidden')
+    expect(wardrobeStyles).toContain('overflow-y: auto')
+    expect(wardrobeStyles).toContain('grid-auto-rows: max-content')
+    const thumbnailRules = wardrobeStyles.slice(
+      wardrobeStyles.indexOf('.miracle-collection-thumb {'),
+      wardrobeStyles.indexOf('.miracle-collection-group strong {'),
+    )
+    expect(thumbnailRules).toContain('height: clamp(60px, 4.2vw, 78px)')
+    expect(thumbnailRules).toContain('object-fit: contain')
+    const thumbnailScales = [...thumbnailRules.matchAll(/transform: scale\(([\d.]+)\)/gu)].map(
+      (match) => Number(match[1]),
+    )
+    expect(thumbnailScales).toHaveLength(3)
+    expect(Math.max(...thumbnailScales)).toBeLessThanOrEqual(1.08)
+    expect(thumbnailRules).not.toContain('scale(1.32)')
+    expect(thumbnailRules).not.toContain('scale(1.45)')
+    expect(thumbnailRules).not.toContain('scale(1.72)')
+    expect(wardrobeStyles).toMatch(/\.miracle-look-library button\s*\{[^}]*min-height:\s*44px;/su)
+    expect(wardrobeStyles).toMatch(/\.miracle-layer-list button\s*\{[^}]*min-height:\s*44px;/su)
+  })
+
   it('取消所有人物后明确提示至少一位，且不派发合拍动作', () => {
     const { onAction } = renderPage()
     fireEvent.click(screen.getByRole('tab', { name: '合拍' }))
     fireEvent.click(screen.getByRole('button', { name: '饼狗' }))
     fireEvent.click(screen.getByRole('button', { name: '保存这张合拍' }))
 
-    expect(screen.getByRole('status')).toHaveTextContent('至少选择一位出镜的朋友')
+    expect(screen.getByRole('status')).toHaveTextContent('选择至少一只')
     expect(onAction).not.toHaveBeenCalled()
   })
 
@@ -371,11 +732,13 @@ describe('MiracleWardrobePage', () => {
             elements: [],
             x: 0.5,
             y: 0.57,
-            scale: 0.34,
+            scaleX: 0.34,
+            scaleY: 0.34,
             rotation: 0,
             z: 1,
           },
         ],
+        decorations: [],
       }
     }
     game.wardrobe = { ...game.wardrobe, photos }

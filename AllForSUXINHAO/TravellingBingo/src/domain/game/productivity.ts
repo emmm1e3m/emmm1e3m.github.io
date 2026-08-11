@@ -19,7 +19,8 @@ import type {
   GameError,
   GameState,
   GameTransition,
-  PomodoroSession,
+  PomodoroBackgroundRef,
+  PomodoroSessionV12,
   RealityStay,
   TodoItem,
 } from './types'
@@ -91,6 +92,34 @@ function isOwnedPostcard(
   postcardId: string,
 ): boolean {
   return catalog.postcard.includes(postcardId) && state.collections[postcardId] !== undefined
+}
+
+function isSamePomodoroBackground(
+  left: PomodoroBackgroundRef | null,
+  right: PomodoroBackgroundRef | null,
+): boolean {
+  return (
+    left === right ||
+    (left !== null && right !== null && left.kind === right.kind && left.id === right.id)
+  )
+}
+
+function validatePomodoroBackground(
+  state: GameState,
+  catalog: CollectionCatalog,
+  background: PomodoroBackgroundRef | null,
+): GameTransition | null {
+  if (background === null) return null
+  if (background.kind === 'wardrobe-photo') {
+    return state.wardrobe.photos[background.id] === undefined
+      ? fail(state, 'WARDROBE_PHOTO_NOT_FOUND', '苹果钟背景选择的合拍已经不存在')
+      : null
+  }
+  const catalogFailure = validateCatalog(state, catalog)
+  if (catalogFailure !== null) return catalogFailure
+  return isOwnedPostcard(state, catalog, background.id)
+    ? null
+    : fail(state, 'UNKNOWN_COLLECTION', '苹果钟背景必须是已经收藏的明信片')
 }
 
 function validateCatalog(state: GameState, catalog: CollectionCatalog): GameTransition | null {
@@ -426,19 +455,19 @@ function setPomodoroBackground(
   action: Extract<ProductivityAction, { type: 'pomodoro/background-set' }>,
   catalog: CollectionCatalog,
 ): GameTransition {
-  if (action.postcardId !== null) {
-    const catalogFailure = validateCatalog(state, catalog)
-    if (catalogFailure !== null) return catalogFailure
-    if (!isOwnedPostcard(state, catalog, action.postcardId)) {
-      return fail(state, 'UNKNOWN_COLLECTION', '苹果钟背景必须是已经收藏的明信片')
-    }
+  const validationFailure = validatePomodoroBackground(state, catalog, action.background)
+  if (validationFailure !== null) return validationFailure
+  if (isSamePomodoroBackground(state.reality.pomodoro.selectedBackground, action.background)) {
+    return succeed(state)
   }
-  if (state.reality.pomodoro.selectedPostcardId === action.postcardId) return succeed(state)
   return succeed({
     ...state,
     reality: {
       ...state.reality,
-      pomodoro: { ...state.reality.pomodoro, selectedPostcardId: action.postcardId },
+      pomodoro: {
+        ...state.reality.pomodoro,
+        selectedBackground: action.background === null ? null : { ...action.background },
+      },
     },
   })
 }
@@ -465,14 +494,9 @@ function startPomodoro(
   if (todoId !== null && state.reality.todos[todoId] === undefined) {
     return fail(state, 'TODO_NOT_FOUND', '苹果钟关联的待办不存在')
   }
-  const postcardId = state.reality.pomodoro.selectedPostcardId
-  if (postcardId !== null) {
-    const catalogFailure = validateCatalog(state, catalog)
-    if (catalogFailure !== null) return catalogFailure
-    if (!isOwnedPostcard(state, catalog, postcardId)) {
-      return fail(state, 'UNKNOWN_COLLECTION', '苹果钟背景明信片已经不在收藏中')
-    }
-  }
+  const background = state.reality.pomodoro.selectedBackground
+  const backgroundFailure = validatePomodoroBackground(state, catalog, background)
+  if (backgroundFailure !== null) return backgroundFailure
   const focusEndsAt = action.now + preset.focusDurationMs
   const cycleEndsAt = focusEndsAt + preset.breakDurationMs
   if (!isValidTimestamp(focusEndsAt) || !isValidTimestamp(cycleEndsAt)) {
@@ -483,7 +507,7 @@ function startPomodoro(
   }
   const sequence = state.reality.pomodoro.nextSessionSequence + 1
 
-  const session: PomodoroSession = {
+  const session: PomodoroSessionV12 = {
     sessionId: `pomodoro-${sequence}`,
     status: 'focus',
     startedAt: action.now,
@@ -495,7 +519,7 @@ function startPomodoro(
     focusNotificationIssuedAt: null,
     completionNotificationIssuedAt: null,
     todoId,
-    postcardId,
+    background: background === null ? null : { ...background },
   }
   return succeed(
     {

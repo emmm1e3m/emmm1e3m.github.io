@@ -13,7 +13,8 @@ import {
   gameStateV8Schema as frozenGameStateV8Schema,
   gameStateV9Schema as frozenGameStateV9Schema,
   gameStateV10Schema as frozenGameStateV10Schema,
-  gameStateV11Schema as currentGameStateV11Schema,
+  gameStateV11Schema as frozenGameStateV11Schema,
+  gameStateV12Schema as currentGameStateV12Schema,
   type GameState,
   type GameStateV1,
   type GameStateV2,
@@ -26,6 +27,7 @@ import {
   type GameStateV8,
   type GameStateV9,
   type GameStateV10,
+  type GameStateV11,
   type StoredGameState,
 } from '@/domain'
 
@@ -59,10 +61,13 @@ const gameStateV9ImportSchema: z.ZodType<GameStateV9> = frozenGameStateV9Schema
 /** 已发布 V10 严格载荷；刷播设置改用本地收藏夹 ID。 */
 const gameStateV10ImportSchema: z.ZodType<GameStateV10> = frozenGameStateV10Schema
 
-/** V11 当前严格载荷；新增奇迹饼狗的服装、保存形象与合拍相册。 */
-const gameStateV11ImportSchema: z.ZodType<GameState> = currentGameStateV11Schema
+/** 已发布 V11 严格载荷；新增奇迹饼狗的服装、保存形象与合拍相册。 */
+const gameStateV11ImportSchema: z.ZodType<GameStateV11> = frozenGameStateV11Schema
 
-const gameStateV11ExportSchema = gameStateV11ImportSchema.superRefine((state, context) => {
+/** V12 当前严格载荷；新增双轴画布、合拍装饰、苹果钟合拍背景与每日刷播奖励。 */
+const gameStateV12ImportSchema: z.ZodType<GameState> = currentGameStateV12Schema
+
+const gameStateV12ExportSchema = gameStateV12ImportSchema.superRefine((state, context) => {
   const candidate: unknown = state
   if (typeof candidate !== 'object' || candidate === null || Array.isArray(candidate)) return
   const record = candidate as Record<string, unknown>
@@ -106,11 +111,11 @@ const gameStateV11ExportSchema = gameStateV11ImportSchema.superRefine((state, co
   }
 })
 
-/** 新导出只写 V11；目录元数据、图片与派生倒计时不属于存档。 */
-export const gameStateSchema: z.ZodType<GameState> = gameStateV11ExportSchema
+/** 新导出只写 V12；目录元数据、图片与派生倒计时不属于存档。 */
+export const gameStateSchema: z.ZodType<GameState> = gameStateV12ExportSchema
 
 /**
- * 导入只严格解析原始 v1/v2/v3/v4/v5/v6/v7/v8/v9/v10/v11：importBingoSave 必须先按文件原值验证摘要，
+ * 导入只严格解析原始 v1/v2/v3/v4/v5/v6/v7/v8/v9/v10/v11/v12：importBingoSave 必须先按文件原值验证摘要，
  * App 随后才能显式迁移、规范规则、reconcile 可安全修复的旧引用并完成语义校验。
  */
 export const importableGameStateSchema: z.ZodType<StoredGameState> = z.union([
@@ -126,6 +131,7 @@ export const importableGameStateSchema: z.ZodType<StoredGameState> = z.union([
   gameStateV9ImportSchema,
   gameStateV10ImportSchema,
   gameStateV11ImportSchema,
+  gameStateV12ImportSchema,
 ])
 
 export type ImportableGameState =
@@ -140,4 +146,5 @@ export type ImportableGameState =
   | GameStateV8
   | GameStateV9
   | GameStateV10
+  | GameStateV11
   | GameState

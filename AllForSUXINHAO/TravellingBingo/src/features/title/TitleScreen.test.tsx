@@ -1,4 +1,4 @@
-import { fireEvent, render, screen } from '@testing-library/react'
+import { fireEvent, render, screen, within } from '@testing-library/react'
 
 import { TitleScreen } from './TitleScreen'
 
@@ -49,7 +49,7 @@ describe('TitleScreen 新游戏称呼', () => {
   it('展示当前产品版本', () => {
     render(<TitleScreen {...props()} />)
 
-    expect(screen.getByText('TRAVELLING BINGO · v0.10')).toBeVisible()
+    expect(screen.getByText('TRAVELLING BINGO · v0.10.1')).toBeVisible()
   })
 
   it('拒绝空白称呼并标记输入错误', () => {
@@ -167,19 +167,25 @@ describe('TitleScreen 新游戏称呼', () => {
 
     const socialLinks = screen.getByRole('navigation', { name: '微博主页' })
     const noticeButton = screen.getByRole('button', {
-      name: /更新公告 · v0\.10 · 饼屋的新布置/u,
+      name: /更新公告 · 饼屋的新布置/u,
     })
+    const noticeMeta = noticeButton.querySelector('.update-notice-card__meta')
+    const noticeVersion = noticeMeta?.querySelector('.update-notice-card__version')
+    const noticeDate = noticeMeta?.querySelector('time')
     const cachedSummary = screen.getByRole('region', { name: '缓存存档摘要' })
     expect(socialLinks.compareDocumentPosition(noticeButton)).toBe(Node.DOCUMENT_POSITION_FOLLOWING)
     expect(noticeButton.compareDocumentPosition(cachedSummary)).toBe(
       Node.DOCUMENT_POSITION_FOLLOWING,
     )
+    expect(noticeButton.querySelector('.update-notice-card__copy')).not.toHaveTextContent('v0.10.1')
+    expect(noticeVersion).toHaveTextContent('v0.10.1')
+    expect([...noticeMeta!.children]).toEqual([noticeVersion, noticeDate])
     expect(noticeButton).toHaveTextContent('刷播现在可以正常使用了')
 
     noticeButton.focus()
     fireEvent.click(noticeButton)
     const dialog = screen.getByRole('dialog', { name: '饼屋的新布置' })
-    expect(dialog).toHaveTextContent('更新公告 · v0.10')
+    expect(dialog).toHaveTextContent('更新公告 · v0.10.1')
     expect(dialog).toHaveTextContent('奇迹饼狗上线')
     expect(dialog).toHaveTextContent('多套造型随心保存')
     expect(dialog).toHaveTextContent('合拍相册开张')
@@ -196,5 +202,21 @@ describe('TitleScreen 新游戏称呼', () => {
     expect(screen.getByLabelText('12🍎').querySelector('.apple-amount__number')).toHaveTextContent(
       '12',
     )
+  })
+
+  it('导入摘要明确显示冻结 V11 与当前 V12 的游戏版本', () => {
+    const { rerender } = render(
+      <TitleScreen {...props()} importPreview={{ ...importPreview, gameVersion: '0.10.0' }} />,
+    )
+    let summary = screen.getByRole('region', { name: '存档摘要' })
+    expect(within(summary).getByText('游戏版本')).toBeVisible()
+    expect(within(summary).getByText('0.10.0')).toBeVisible()
+
+    rerender(
+      <TitleScreen {...props()} importPreview={{ ...importPreview, gameVersion: '0.10.1' }} />,
+    )
+    summary = screen.getByRole('region', { name: '存档摘要' })
+    expect(within(summary).getByText('0.10.1')).toBeVisible()
+    expect(screen.getByText('TRAVELLING BINGO · v0.10.1')).toBeVisible()
   })
 })

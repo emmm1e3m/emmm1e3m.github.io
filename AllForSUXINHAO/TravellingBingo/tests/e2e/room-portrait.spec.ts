@@ -1,4 +1,4 @@
-import { expect, test } from '@playwright/test'
+import { expect, test, type Locator } from '@playwright/test'
 
 import { enterReality, saveScreenshot, startActivity, startGame } from './support/game'
 
@@ -182,6 +182,54 @@ test('390px 顶栏保持同一行并可横向查看全部入口', async ({ page 
   expect(scrollMetrics.scrollWidth).toBeGreaterThan(scrollMetrics.clientWidth)
   await hud.evaluate((element) => element.scrollTo({ left: element.scrollWidth }))
   await expect(page.getByRole('button', { name: '打开调试面板' })).toBeInViewport()
+})
+
+test('390px 房间在上，待机与设施信息页依次排在下方', async ({ page }, testInfo) => {
+  test.skip(testInfo.project.name !== 'mobile-chromium', '单列房间几何只在移动 Chromium 验证')
+  await page.setViewportSize({ width: 390, height: 844 })
+  await startGame(page, { seed: 'mobile-room-stack', displayName: '单列测试' })
+  await page.route('https://player.bilibili.com/**', async (route) => route.abort())
+
+  const room = page.getByRole('region', { name: '铲铲饼屋互动场景' })
+
+  async function expectPanelBelowRoom(panel: Locator) {
+    await expect(panel).toHaveCSS('position', 'static')
+    await expect(panel).toHaveCSS('visibility', 'visible')
+    const [roomBox, panelBox] = await Promise.all([room.boundingBox(), panel.boundingBox()])
+    expect(roomBox && panelBox).toBeTruthy()
+    expect(panelBox!.y).toBeGreaterThan(roomBox!.y + roomBox!.height)
+  }
+
+  await expectPanelBelowRoom(page.locator('.context-panel--status'))
+
+  await room.locator('[data-hotspot="冰箱"]').click()
+  const fridgePanel = page.locator('.context-panel--fridge')
+  await expect(fridgePanel).toBeVisible()
+  await expectPanelBelowRoom(fridgePanel)
+  await expect(fridgePanel.locator('.context-content--v4')).toHaveCSS('overflow', 'visible')
+
+  await room.locator('[data-hotspot="唱片机"]').click()
+  const recordPanel = page.locator('.context-panel--record-player')
+  const trackList = recordPanel.getByRole('list', { name: '全站第一曲目' })
+  await trackList.getByRole('listitem').first().getByRole('button').click()
+  const player = page.getByTestId('persistent-bilibili-player')
+  const lastTrack = trackList.getByRole('listitem').last()
+
+  async function expectLastTrackAbovePlayer() {
+    await page.evaluate(() => window.scrollTo(0, document.documentElement.scrollHeight))
+    const [lastTrackBox, playerBox] = await Promise.all([
+      lastTrack.boundingBox(),
+      player.boundingBox(),
+    ])
+    expect(lastTrackBox && playerBox).toBeTruthy()
+    expect(lastTrackBox!.y + lastTrackBox!.height).toBeLessThan(playerBox!.y)
+  }
+
+  await expect(player).toHaveAttribute('data-dock-state', 'expanded')
+  await expectLastTrackAbovePlayer()
+  await player.getByRole('button', { name: '隐藏画面' }).click()
+  await expect(player).toHaveAttribute('data-dock-state', 'collapsed')
+  await expectLastTrackAbovePlayer()
 })
 
 test('房间等比图层、热点与饼狗落点共用同一套母版坐标', async ({ page }, testInfo) => {
@@ -401,7 +449,7 @@ test('1024px 房间中刷播与冲热在悬停放大后仍保持分离', async (
   expect(boxesOverlap(streamBox!, trendBox!)).toBe(false)
 })
 
-test('播放器与信息栏同列，展开和收起时最后一首都能滚到控制区上方', async ({ page }, testInfo) => {
+test('1440 与 1920 下播放器都与信息栏同列并联动调整可用高度', async ({ page }, testInfo) => {
   test.skip(testInfo.project.name !== 'chromium', '桌面三组件几何只在 Chromium 验证')
   await page.setViewportSize({ width: 1440, height: 900 })
   await startGame(page, { seed: 'scene-gap-e2e', displayName: '间距测试' })
@@ -422,7 +470,7 @@ test('播放器与信息栏同列，展开和收起时最后一首都能滚到�
   const panelContent = panel.locator('.context-content--v4')
   const lastTrack = panel.getByRole('list', { name: '全站第一曲目' }).getByRole('listitem').last()
 
-  async function expectAlignedAndUnobscured() {
+  async function expectLinkedGeometry() {
     await panelContent.evaluate((element) => {
       element.scrollTop = element.scrollHeight
     })
@@ -439,21 +487,36 @@ test('播放器与信息栏同列，展开和收起时最后一首都能滚到�
     expectNear(playerBox!.x, panelBox!.x)
     expectNear(playerBox!.width, panelBox!.width)
 
-    const trackToPlayer = playerBox!.y - (lastTrackBox!.y + lastTrackBox!.height)
-    expect(trackToPlayer).toBeGreaterThanOrEqual(roomToPanel - 2)
+    const panelToPlayer = playerBox!.y - (panelBox!.y + panelBox!.height)
+    expectNear(panelToPlayer, roomToPanel)
+    expect(lastTrackBox!.y + lastTrackBox!.height).toBeLessThanOrEqual(
+      panelBox!.y + panelBox!.height,
+    )
+
+    return { panelBox: panelBox!, playerBox: playerBox! }
   }
 
-  await expect(player).toHaveAttribute('data-dock-state', 'expanded')
-  const expandedPlayerBox = await player.boundingBox()
-  expect(expandedPlayerBox).not.toBeNull()
-  await expectAlignedAndUnobscured()
+  for (const [index, viewportWidth] of [1440, 1920].entries()) {
+    await page.setViewportSize({ width: viewportWidth, height: 900 })
+    if (index > 0) await player.getByRole('button', { name: '显示画面' }).click()
 
-  await player.getByRole('button', { name: '隐藏画面' }).click()
-  await expect(player).toHaveAttribute('data-dock-state', 'collapsed')
-  const collapsedPlayerBox = await player.boundingBox()
-  expect(collapsedPlayerBox).not.toBeNull()
-  expect(Math.abs(collapsedPlayerBox!.width - expandedPlayerBox!.width)).toBeLessThan(0.5)
-  await expectAlignedAndUnobscured()
+    await expect(player).toHaveAttribute('data-dock-state', 'expanded')
+    const expanded = await expectLinkedGeometry()
+    const shellInset = Math.min(18, Math.max(8, viewportWidth * 0.0125))
+    const expectedRight = Math.max(shellInset, (viewportWidth - 1480) / 2)
+    expectNear(viewportWidth - (expanded.panelBox.x + expanded.panelBox.width), expectedRight)
+    expectNear(viewportWidth - (expanded.playerBox.x + expanded.playerBox.width), expectedRight)
+
+    await player.getByRole('button', { name: '隐藏画面' }).click()
+    await expect(player).toHaveAttribute('data-dock-state', 'collapsed')
+    const collapsed = await expectLinkedGeometry()
+    expect(collapsed.panelBox.height).toBeGreaterThan(expanded.panelBox.height)
+    expectNear(
+      expanded.panelBox.height + expanded.playerBox.height,
+      collapsed.panelBox.height + collapsed.playerBox.height,
+      2,
+    )
+  }
 })
 
 test('DEBUG 仍会生成拒绝意愿，暗淡按钮询问后显示领域拒绝', async ({ page }, testInfo) => {

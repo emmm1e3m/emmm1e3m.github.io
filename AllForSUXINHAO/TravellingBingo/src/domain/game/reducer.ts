@@ -41,6 +41,7 @@ import { validateCollectionCatalog } from './validateCollectionCatalog'
 import { isMusicPlayerAction, reduceMusicPlayer } from './musicPlayer'
 import { isProductivityAction, reduceProductivity } from './productivity'
 import { isValidTimestamp } from './time'
+import { isStreamDailyRewardAction, reduceStreamDailyReward } from './streamDailyReward'
 import {
   generateWardrobeShop,
   isWardrobeAction,
@@ -779,9 +780,13 @@ function setDebugCollection(
     delete nextCollections[action.collectionId]
   }
   const removedSelectedPostcard =
-    !action.owned && state.reality.pomodoro.selectedPostcardId === action.collectionId
+    !action.owned &&
+    state.reality.pomodoro.selectedBackground?.kind === 'postcard' &&
+    state.reality.pomodoro.selectedBackground.id === action.collectionId
   const removedSessionPostcard =
-    !action.owned && state.reality.pomodoro.session?.postcardId === action.collectionId
+    !action.owned &&
+    state.reality.pomodoro.session?.background?.kind === 'postcard' &&
+    state.reality.pomodoro.session.background.id === action.collectionId
   const clearsPhotoBackground =
     !action.owned && findCollectionCategory(catalog, action.collectionId) === 'postcard'
   const nextPhotos = clearsPhotoBackground
@@ -801,11 +806,11 @@ function setDebugCollection(
             ...state.reality,
             pomodoro: {
               ...state.reality.pomodoro,
-              selectedPostcardId: removedSelectedPostcard
+              selectedBackground: removedSelectedPostcard
                 ? null
-                : state.reality.pomodoro.selectedPostcardId,
+                : state.reality.pomodoro.selectedBackground,
               session: removedSessionPostcard
-                ? { ...state.reality.pomodoro.session!, postcardId: null }
+                ? { ...state.reality.pomodoro.session!, background: null }
                 : state.reality.pomodoro.session,
             },
           }
@@ -899,6 +904,7 @@ function clearAllForDebug(
     state.wardrobe.ownedAssetIds.filter((assetId) => assetId !== STARTER_WARDROBE_ASSET_IDS[0])
       .length + Object.keys(state.wardrobe.looks).length
   const session = state.reality.pomodoro.session
+  const selectedBackground = state.reality.pomodoro.selectedBackground
   const clearedState = {
     ...state,
     collections: {},
@@ -907,8 +913,11 @@ function clearAllForDebug(
       ...state.reality,
       pomodoro: {
         ...state.reality.pomodoro,
-        selectedPostcardId: null,
-        session: session === null ? null : { ...session, postcardId: null },
+        selectedBackground: selectedBackground?.kind === 'postcard' ? null : selectedBackground,
+        session:
+          session === null || session.background?.kind !== 'postcard'
+            ? session
+            : { ...session, background: null },
       },
     },
     wardrobe: {
@@ -1027,95 +1036,6 @@ function resetDebugTuning(state: GameState): GameTransition {
   ])
 }
 
-function isValidStreamSessionId(sessionId: string): boolean {
-  return sessionId.trim().length > 0 && sessionId.length <= 128
-}
-
-function progressStreamSession(
-  state: GameState,
-  action: Extract<GameAction, { type: 'reality/stream-session-progress' }>,
-): GameTransition {
-  if (!isValidStreamSessionId(action.sessionId)) {
-    return fail(state, 'DUPLICATE_ID', '刷播任务编号无效')
-  }
-  if (
-    !isValidTimestamp(action.startedAt) ||
-    !isValidTimestamp(action.completedAt) ||
-    action.startedAt < state.profile.createdAt ||
-    action.completedAt < action.startedAt
-  ) {
-    return fail(state, 'INVALID_TIME', '刷播任务时间无效')
-  }
-
-  const history = state.reality.streamHistory
-  if (history.completedRounds >= Number.MAX_SAFE_INTEGER) {
-    return fail(state, 'INVALID_AMOUNT', '刷播轮次已经达到安全上限')
-  }
-
-  return succeed({
-    ...state,
-    reality: {
-      ...state.reality,
-      streamHistory: {
-        ...history,
-        completedRounds: incrementSafeCounter(history.completedRounds),
-      },
-    },
-  })
-}
-
-function endStreamSession(
-  state: GameState,
-  action: Extract<GameAction, { type: 'reality/stream-session-end' }>,
-): GameTransition {
-  if (!isValidStreamSessionId(action.sessionId)) {
-    return fail(state, 'DUPLICATE_ID', '刷播任务编号无效')
-  }
-  if (
-    !isValidTimestamp(action.startedAt) ||
-    !isValidTimestamp(action.endedAt) ||
-    action.startedAt < state.profile.createdAt ||
-    action.endedAt < action.startedAt
-  ) {
-    return fail(state, 'INVALID_TIME', '刷播任务时间无效')
-  }
-  if (!Number.isSafeInteger(action.roundsCompleted) || action.roundsCompleted < 0) {
-    return fail(state, 'INVALID_AMOUNT', '刷播任务轮次无效')
-  }
-
-  const history = state.reality.streamHistory
-  const existing = history.recentSessions.find((session) => session.sessionId === action.sessionId)
-  if (existing) {
-    const isSameRecord =
-      existing.startedAt === action.startedAt &&
-      existing.endedAt === action.endedAt &&
-      existing.roundsCompleted === action.roundsCompleted &&
-      existing.outcome === action.outcome
-    return isSameRecord ? succeed(state) : fail(state, 'DUPLICATE_ID', '已经结束的刷播任务不能改写')
-  }
-
-  const session = {
-    sessionId: action.sessionId,
-    startedAt: action.startedAt,
-    endedAt: action.endedAt,
-    roundsCompleted: action.roundsCompleted,
-    outcome: action.outcome,
-  }
-  const recentSessions = [session, ...history.recentSessions].slice(0, 10)
-  const recordedRounds = recentSessions.reduce((total, record) => total + record.roundsCompleted, 0)
-  if (recordedRounds > history.completedRounds) {
-    return fail(state, 'INVALID_AMOUNT', '刷播任务记录的轮次超过累计完成轮次')
-  }
-
-  return succeed({
-    ...state,
-    reality: {
-      ...state.reality,
-      streamHistory: { ...history, recentSessions },
-    },
-  })
-}
-
 function setStreamSelfTest(
   state: GameState,
   action: Extract<GameAction, { type: 'reality/stream-self-test-set' }>,
@@ -1162,6 +1082,7 @@ function reducePreparedGame(
 ): GameTransition {
   if (isMusicPlayerAction(action)) return reduceMusicPlayer(state, action)
   if (isProductivityAction(action)) return reduceProductivity(state, action, catalog)
+  if (isStreamDailyRewardAction(action)) return reduceStreamDailyReward(state, action)
   if (isWardrobeAction(action)) return reduceWardrobe(state, action, catalog)
   switch (action.type) {
     case 'activity/start':
@@ -1184,10 +1105,6 @@ function reducePreparedGame(
       return encouragePet(state, action)
     case 'task/event':
       return progressTask(state, action)
-    case 'reality/stream-session-progress':
-      return progressStreamSession(state, action)
-    case 'reality/stream-session-end':
-      return endStreamSession(state, action)
     case 'reality/stream-self-test-set':
       return setStreamSelfTest(state, action)
     case 'reality/stream-favorite-set':

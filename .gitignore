@@ -13,6 +13,7 @@ output/
 *.log
 *.tsbuildinfo
 *.bingo
+!AllForSUXINHAO/TravellingBingo/src/infrastructure/persistence/fixtures/published-v11-8097645.bingo
 
 # 本地环境、编辑器与系统文件不进入仓库。
 .env

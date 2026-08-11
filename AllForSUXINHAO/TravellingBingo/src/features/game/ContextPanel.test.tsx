@@ -12,8 +12,10 @@ import {
 import { getWardrobeCatalogItem } from '@/domain/game/wardrobe'
 import { BilibiliPlayerProvider, PersistentPlayerDock } from '@/features/player'
 import type { StreamPlaybackController } from '@/features/reality'
+import wardrobeStyles from '@/features/wardrobe/MiracleWardrobePage.css?raw'
 
 import { ContextPanel } from './ContextPanel'
+import gameV4Styles from './game-v4.css?raw'
 
 const recordVideos: readonly RecordPlayerVideo[] = [
   {
@@ -185,12 +187,18 @@ function ControlledPlayerHarness({
   )
 }
 
-function WardrobePanelHarness({ onOpenWardrobe }: { onOpenWardrobe: () => void }) {
+function WardrobePanelHarness({
+  onOpenWardrobe,
+  apples = 50,
+}: {
+  onOpenWardrobe: () => void
+  apples?: number
+}) {
   const [game, setGame] = useState<GameState>(() => {
     const initial = createInitialGameState({ now: 1_000, seed: 'wardrobe-panel' })
     return {
       ...initial,
-      economy: { apples: 50 },
+      economy: { apples },
       wardrobe: {
         ...initial.wardrobe,
         shop: {
@@ -226,16 +234,55 @@ describe('ContextPanel 信息栏交互', () => {
     expect(screen.getByRole('heading', { name: '今天仍可购买' })).toBeVisible()
 
     for (const assetId of ['green-sailor-top', 'red-ruffle-dress', 'black-tie-uniform'] as const) {
-      const name = getWardrobeCatalogItem(assetId)?.name ?? assetId
+      const catalogItem = getWardrobeCatalogItem(assetId)!
+      const name = catalogItem.name
       const item = screen.getByText(name).closest('article')
       expect(item).not.toBeNull()
-      fireEvent.click(within(item as HTMLElement).getByRole('button', { name: '买下' }))
+      expect(item).toHaveClass('shop-item', 'miracle-panel__offer')
+      expect(item?.querySelector('img')).toHaveAttribute(
+        'src',
+        expect.stringContaining(`/assets/miracle/outfits/${assetId}.webp`),
+      )
+      const purchase = within(item as HTMLElement).getByRole('button')
+      expect(purchase).toHaveTextContent('🍎')
+      expect(purchase).toHaveAccessibleName(`购买${name}，${catalogItem.priceApples}🍎`)
+      fireEvent.click(purchase)
       expect(screen.queryByText(name)).not.toBeInTheDocument()
     }
     expect(screen.getByText('今天衣架上的新衣服都已经收好啦。')).toBeVisible()
 
     fireEvent.click(screen.getByRole('button', { name: '进入奇迹饼狗' }))
     expect(onOpenWardrobe).toHaveBeenCalledOnce()
+  })
+
+  it('衣架购买按钮复用冰箱的余额不足结构与禁用状态', () => {
+    render(<WardrobePanelHarness onOpenWardrobe={vi.fn()} apples={0} />)
+
+    const catalogItem = getWardrobeCatalogItem('green-sailor-top')!
+    const firstOffer = screen
+      .getByText(catalogItem.name)
+      .closest<HTMLElement>('.miracle-panel__offer')
+    expect(firstOffer).not.toBeNull()
+    const purchase = within(firstOffer as HTMLElement).getByRole('button')
+    expect(purchase).toBeDisabled()
+    expect(purchase).toHaveTextContent('还差')
+    expect(purchase.querySelector('.apple-amount__number')).not.toBeNull()
+    expect(purchase).toHaveAccessibleName(
+      `购买${catalogItem.name}，${catalogItem.priceApples}🍎，还差${catalogItem.priceApples}🍎`,
+    )
+  })
+
+  it('衣架侧栏只补充商品网格与缩略图，不覆盖冰箱 shop-item 的卡片和按钮视觉', () => {
+    expect(wardrobeStyles).toMatch(
+      /\.miracle-panel__offers\s*\{[^}]*display:\s*grid;[^}]*gap:\s*0\.5rem;/su,
+    )
+    expect(wardrobeStyles).not.toMatch(/\.miracle-panel__offers\s+(?:article|button)\s*\{/u)
+    expect(gameV4Styles).toMatch(
+      /\.game-page--v4 \.miracle-panel__offer\s*\{[^}]*grid-template-columns:\s*3rem minmax\(0, 1fr\) auto;/su,
+    )
+    expect(gameV4Styles).toMatch(
+      /\.game-page--v4 \.miracle-panel__thumbnail img\s*\{[^}]*object-fit:\s*contain;/su,
+    )
   })
 
   it('PanelHeader 保持左侧标签，并且不再重复提供收起信息栏按钮', () => {

@@ -117,7 +117,8 @@
       "defaultTransform": {
         "x": 0.5,
         "y": 0.76,
-        "scale": 0.48,
+        "scaleX": 0.48,
+        "scaleY": 0.48,
         "rotation": 0,
         "z": 20
       },
@@ -138,7 +139,8 @@
       "defaultTransform": {
         "x": 0.5,
         "y": 0.76,
-        "scale": 0.48,
+        "scaleX": 0.48,
+        "scaleY": 0.48,
         "rotation": 0,
         "z": 20
       },
@@ -159,7 +161,8 @@
       "defaultTransform": {
         "x": 0.5,
         "y": 0.76,
-        "scale": 0.48,
+        "scaleX": 0.48,
+        "scaleY": 0.48,
         "rotation": 0,
         "z": 20
       },
@@ -180,7 +183,8 @@
       "defaultTransform": {
         "x": 0.5,
         "y": 0.76,
-        "scale": 0.48,
+        "scaleX": 0.48,
+        "scaleY": 0.48,
         "rotation": 0,
         "z": 20
       },
@@ -201,7 +205,8 @@
       "defaultTransform": {
         "x": 0.5,
         "y": 0.76,
-        "scale": 0.48,
+        "scaleX": 0.48,
+        "scaleY": 0.48,
         "rotation": 0,
         "z": 20
       },
@@ -222,7 +227,8 @@
       "defaultTransform": {
         "x": 0.5,
         "y": 0.76,
-        "scale": 0.48,
+        "scaleX": 0.48,
+        "scaleY": 0.48,
         "rotation": 0,
         "z": 20
       },
@@ -243,7 +249,8 @@
       "defaultTransform": {
         "x": 0.5,
         "y": 0.76,
-        "scale": 0.48,
+        "scaleX": 0.48,
+        "scaleY": 0.48,
         "rotation": 0,
         "z": 20
       },
@@ -264,7 +271,8 @@
       "defaultTransform": {
         "x": 0.5,
         "y": 0.76,
-        "scale": 0.48,
+        "scaleX": 0.48,
+        "scaleY": 0.48,
         "rotation": 0,
         "z": 20
       },
@@ -286,7 +294,8 @@
       "defaultTransform": {
         "x": 0.5,
         "y": 0.48,
-        "scale": 0.3,
+        "scaleX": 0.3,
+        "scaleY": 0.3,
         "rotation": 0,
         "z": 45
       },
@@ -308,7 +317,8 @@
       "defaultTransform": {
         "x": 0.5,
         "y": 0.48,
-        "scale": 0.3,
+        "scaleX": 0.3,
+        "scaleY": 0.3,
         "rotation": 0,
         "z": 45
       },
@@ -330,7 +340,8 @@
       "defaultTransform": {
         "x": 0.5,
         "y": 0.18,
-        "scale": 0.3,
+        "scaleX": 0.3,
+        "scaleY": 0.3,
         "rotation": 0,
         "z": 40
       },
@@ -351,7 +362,8 @@
       "defaultTransform": {
         "x": 0.5,
         "y": 0.14,
-        "scale": 0.31,
+        "scaleX": 0.31,
+        "scaleY": 0.31,
         "rotation": -3,
         "z": 40
       },
@@ -372,7 +384,8 @@
       "defaultTransform": {
         "x": 0.5,
         "y": 0.15,
-        "scale": 0.34,
+        "scaleX": 0.34,
+        "scaleY": 0.34,
         "rotation": 0,
         "z": 40
       },
@@ -393,7 +406,8 @@
       "defaultTransform": {
         "x": 0.72,
         "y": 0.7,
-        "scale": 0.22,
+        "scaleX": 0.22,
+        "scaleY": 0.22,
         "rotation": -12,
         "z": 30
       },
@@ -414,7 +428,8 @@
       "defaultTransform": {
         "x": 0.72,
         "y": 0.64,
-        "scale": 0.21,
+        "scaleX": 0.21,
+        "scaleY": 0.21,
         "rotation": 8,
         "z": 30
       },
@@ -435,7 +450,8 @@
       "defaultTransform": {
         "x": 0.5,
         "y": 0.84,
-        "scale": 0.3,
+        "scaleX": 0.3,
+        "scaleY": 0.3,
         "rotation": 0,
         "z": 35
       },
@@ -456,7 +472,8 @@
       "defaultTransform": {
         "x": 0.25,
         "y": 0.7,
-        "scale": 0.18,
+        "scaleX": 0.18,
+        "scaleY": 0.18,
         "rotation": -12,
         "z": 30
       },
@@ -477,7 +494,8 @@
       "defaultTransform": {
         "x": 0.72,
         "y": 0.64,
-        "scale": 0.21,
+        "scaleX": 0.21,
+        "scaleY": 0.21,
         "rotation": 8,
         "z": 30
       },
@@ -498,7 +516,8 @@
       "defaultTransform": {
         "x": 0.72,
         "y": 0.64,
-        "scale": 0.21,
+        "scaleX": 0.21,
+        "scaleY": 0.21,
         "rotation": 8,
         "z": 30
       },
@@ -519,7 +538,8 @@
       "defaultTransform": {
         "x": 0.5,
         "y": 0.84,
-        "scale": 0.3,
+        "scaleX": 0.3,
+        "scaleY": 0.3,
         "rotation": 0,
         "z": 35
       },
@@ -540,7 +560,8 @@
       "defaultTransform": {
         "x": 0.5,
         "y": 0.74,
-        "scale": 0.34,
+        "scaleX": 0.34,
+        "scaleY": 0.34,
         "rotation": 0,
         "z": 28
       },
@@ -561,7 +582,8 @@
       "defaultTransform": {
         "x": 0.67,
         "y": 0.7,
-        "scale": 0.11,
+        "scaleX": 0.11,
+        "scaleY": 0.11,
         "rotation": 0,
         "z": 28
       },
@@ -582,7 +604,8 @@
       "defaultTransform": {
         "x": 0.5,
         "y": 0.14,
-        "scale": 0.32,
+        "scaleX": 0.32,
+        "scaleY": 0.32,
         "rotation": 0,
         "z": 40
       },
@@ -603,7 +626,8 @@
       "defaultTransform": {
         "x": 0.5,
         "y": 0.62,
-        "scale": 0.32,
+        "scaleX": 0.32,
+        "scaleY": 0.32,
         "rotation": 0,
         "z": 28
       },

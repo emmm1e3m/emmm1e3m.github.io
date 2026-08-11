@@ -11,20 +11,24 @@ import type {
   WardrobeCatalogItem,
   WardrobeAssetId,
   WardrobeElement,
+  WardrobeElementTransform,
   WardrobePhoto,
+  WardrobePhotoDecoration,
+  WardrobePhotoLayer,
   WardrobePhotoParticipant,
   WardrobeState,
   WardrobeTargetId,
   WardrobeTransform,
 } from './types'
 
-export const WARDROBE_LAYOUT_VERSION = 1 as const
+export const WARDROBE_LAYOUT_VERSION = 2 as const
 export const WARDROBE_SHOP_SIZE = 3 as const
 export const MAX_WARDROBE_LOOK_ELEMENTS = 12
 export const MAX_WARDROBE_LOOKS_PER_TARGET = 8
 export const MAX_WARDROBE_LOOK_NAME_LENGTH = 20
 export const MAX_WARDROBE_PHOTOS = 40
 export const MAX_WARDROBE_PHOTO_PARTICIPANTS = 6
+export const MAX_WARDROBE_PHOTO_DECORATIONS = 12
 
 export const WARDROBE_ASSET_IDS = [
   'green-sailor-top',
@@ -132,31 +136,40 @@ const WARDROBE_CATALOG_DETAILS: readonly Omit<WardrobeCatalogItem, 'defaultTrans
   },
 ] as const
 
-const WARDROBE_DEFAULT_TRANSFORM_BY_ID: Readonly<Record<WardrobeAssetId, WardrobeTransform>> = {
-  'green-sailor-top': { x: 0.5, y: 0.76, scale: 0.48, rotation: 0, z: 20 },
-  'red-ruffle-dress': { x: 0.5, y: 0.76, scale: 0.48, rotation: 0, z: 20 },
-  'monochrome-maid-dress': { x: 0.5, y: 0.76, scale: 0.48, rotation: 0, z: 20 },
-  'black-stage-suit': { x: 0.5, y: 0.76, scale: 0.48, rotation: 0, z: 20 },
-  'black-tie-uniform': { x: 0.5, y: 0.76, scale: 0.48, rotation: 0, z: 20 },
-  'blue-street-jacket': { x: 0.5, y: 0.76, scale: 0.48, rotation: 0, z: 20 },
-  'tan-bear-suit': { x: 0.5, y: 0.76, scale: 0.48, rotation: 0, z: 20 },
-  'cream-apple-cape': { x: 0.5, y: 0.76, scale: 0.48, rotation: 0, z: 20 },
-  'round-glasses': { x: 0.5, y: 0.48, scale: 0.3, rotation: 0, z: 45 },
-  'square-glasses': { x: 0.5, y: 0.48, scale: 0.3, rotation: 0, z: 45 },
-  'maid-headband': { x: 0.5, y: 0.18, scale: 0.3, rotation: 0, z: 40 },
-  'black-beret': { x: 0.5, y: 0.14, scale: 0.31, rotation: -3, z: 40 },
-  'cat-ears': { x: 0.5, y: 0.15, scale: 0.34, rotation: 0, z: 40 },
-  microphone: { x: 0.72, y: 0.7, scale: 0.22, rotation: -12, z: 30 },
-  'signal-sign': { x: 0.72, y: 0.64, scale: 0.21, rotation: 8, z: 30 },
-  'apple-cake': { x: 0.5, y: 0.84, scale: 0.3, rotation: 0, z: 35 },
-  'paw-glove': { x: 0.25, y: 0.7, scale: 0.18, rotation: -12, z: 30 },
-  'check-sign': { x: 0.72, y: 0.64, scale: 0.21, rotation: 8, z: 30 },
-  'cross-sign': { x: 0.72, y: 0.64, scale: 0.21, rotation: 8, z: 30 },
-  'dim-sum-basket': { x: 0.5, y: 0.84, scale: 0.3, rotation: 0, z: 35 },
-  'apple-cuffs': { x: 0.5, y: 0.74, scale: 0.34, rotation: 0, z: 28 },
-  'apple-badge': { x: 0.67, y: 0.7, scale: 0.11, rotation: 0, z: 28 },
-  'black-fedora': { x: 0.5, y: 0.14, scale: 0.32, rotation: 0, z: 40 },
-  'red-bead-trim': { x: 0.5, y: 0.62, scale: 0.32, rotation: 0, z: 28 },
+const WARDROBE_DEFAULT_TRANSFORM_BY_ID: Readonly<
+  Record<WardrobeAssetId, WardrobeElementTransform>
+> = {
+  'green-sailor-top': { x: 0.5, y: 0.76, scaleX: 0.48, scaleY: 0.48, rotation: 0, z: 20 },
+  'red-ruffle-dress': { x: 0.5, y: 0.76, scaleX: 0.48, scaleY: 0.48, rotation: 0, z: 20 },
+  'monochrome-maid-dress': {
+    x: 0.5,
+    y: 0.76,
+    scaleX: 0.48,
+    scaleY: 0.48,
+    rotation: 0,
+    z: 20,
+  },
+  'black-stage-suit': { x: 0.5, y: 0.76, scaleX: 0.48, scaleY: 0.48, rotation: 0, z: 20 },
+  'black-tie-uniform': { x: 0.5, y: 0.76, scaleX: 0.48, scaleY: 0.48, rotation: 0, z: 20 },
+  'blue-street-jacket': { x: 0.5, y: 0.76, scaleX: 0.48, scaleY: 0.48, rotation: 0, z: 20 },
+  'tan-bear-suit': { x: 0.5, y: 0.76, scaleX: 0.48, scaleY: 0.48, rotation: 0, z: 20 },
+  'cream-apple-cape': { x: 0.5, y: 0.76, scaleX: 0.48, scaleY: 0.48, rotation: 0, z: 20 },
+  'round-glasses': { x: 0.5, y: 0.48, scaleX: 0.3, scaleY: 0.3, rotation: 0, z: 45 },
+  'square-glasses': { x: 0.5, y: 0.48, scaleX: 0.3, scaleY: 0.3, rotation: 0, z: 45 },
+  'maid-headband': { x: 0.5, y: 0.18, scaleX: 0.3, scaleY: 0.3, rotation: 0, z: 40 },
+  'black-beret': { x: 0.5, y: 0.14, scaleX: 0.31, scaleY: 0.31, rotation: -3, z: 40 },
+  'cat-ears': { x: 0.5, y: 0.15, scaleX: 0.34, scaleY: 0.34, rotation: 0, z: 40 },
+  microphone: { x: 0.72, y: 0.7, scaleX: 0.22, scaleY: 0.22, rotation: -12, z: 30 },
+  'signal-sign': { x: 0.72, y: 0.64, scaleX: 0.21, scaleY: 0.21, rotation: 8, z: 30 },
+  'apple-cake': { x: 0.5, y: 0.84, scaleX: 0.3, scaleY: 0.3, rotation: 0, z: 35 },
+  'paw-glove': { x: 0.25, y: 0.7, scaleX: 0.18, scaleY: 0.18, rotation: -12, z: 30 },
+  'check-sign': { x: 0.72, y: 0.64, scaleX: 0.21, scaleY: 0.21, rotation: 8, z: 30 },
+  'cross-sign': { x: 0.72, y: 0.64, scaleX: 0.21, scaleY: 0.21, rotation: 8, z: 30 },
+  'dim-sum-basket': { x: 0.5, y: 0.84, scaleX: 0.3, scaleY: 0.3, rotation: 0, z: 35 },
+  'apple-cuffs': { x: 0.5, y: 0.74, scaleX: 0.34, scaleY: 0.34, rotation: 0, z: 28 },
+  'apple-badge': { x: 0.67, y: 0.7, scaleX: 0.11, scaleY: 0.11, rotation: 0, z: 28 },
+  'black-fedora': { x: 0.5, y: 0.14, scaleX: 0.32, scaleY: 0.32, rotation: 0, z: 40 },
+  'red-bead-trim': { x: 0.5, y: 0.62, scaleX: 0.32, scaleY: 0.32, rotation: 0, z: 28 },
 }
 
 export const WARDROBE_CATALOG: readonly WardrobeCatalogItem[] = WARDROBE_CATALOG_DETAILS.map(
@@ -297,6 +310,13 @@ export function getWardrobePhotos(state: Pick<GameState, 'wardrobe'>): WardrobeP
   )
 }
 
+export function getWardrobePhotoLayers(photo: WardrobePhoto): WardrobePhotoLayer[] {
+  return [
+    ...photo.participants.map((value) => ({ kind: 'participant' as const, value })),
+    ...photo.decorations.map((value) => ({ kind: 'decoration' as const, value })),
+  ].sort((left, right) => left.value.z - right.value.z)
+}
+
 export function getWardrobePurchaseAvailability(
   state: Pick<GameState, 'wardrobe' | 'economy'>,
   assetId: string,
@@ -329,9 +349,12 @@ export function isValidWardrobeTransform(transform: WardrobeTransform): boolean 
     Number.isFinite(transform.y) &&
     transform.y >= 0 &&
     transform.y <= 1 &&
-    Number.isFinite(transform.scale) &&
-    transform.scale >= 0.05 &&
-    transform.scale <= 5 &&
+    Number.isFinite(transform.scaleX) &&
+    transform.scaleX >= 0.05 &&
+    transform.scaleX <= 5 &&
+    Number.isFinite(transform.scaleY) &&
+    transform.scaleY >= 0.05 &&
+    transform.scaleY <= 5 &&
     Number.isFinite(transform.rotation) &&
     transform.rotation >= -180 &&
     transform.rotation <= 180 &&
@@ -339,6 +362,10 @@ export function isValidWardrobeTransform(transform: WardrobeTransform): boolean 
     transform.z >= -100 &&
     transform.z <= 100
   )
+}
+
+export function isValidWardrobeElementTransform(transform: WardrobeElementTransform): boolean {
+  return isValidWardrobeTransform(transform)
 }
 
 function hasUniqueValues<T>(values: readonly T[]): boolean {
@@ -358,7 +385,7 @@ function areValidLookElements(
         /^[a-z0-9][a-z0-9-]{0,47}$/.test(element.placementId) &&
         isWardrobeAssetId(element.assetId) &&
         ownedAssetIds.has(element.assetId) &&
-        isValidWardrobeTransform(element),
+        isValidWardrobeElementTransform(element),
     )
   )
 }
@@ -369,9 +396,41 @@ function copyWardrobeElement(element: WardrobeElement): WardrobeElement {
     assetId: element.assetId,
     x: element.x,
     y: element.y,
-    scale: element.scale,
+    scaleX: element.scaleX,
+    scaleY: element.scaleY,
     rotation: element.rotation,
     z: element.z,
+  }
+}
+
+function areValidPhotoDecorations(
+  decorations: readonly WardrobePhotoDecoration[],
+  ownedAssetIds: ReadonlySet<string>,
+): boolean {
+  return (
+    decorations.length <= MAX_WARDROBE_PHOTO_DECORATIONS &&
+    hasUniqueValues(decorations.map((decoration) => decoration.placementId)) &&
+    hasUniqueValues(decorations.map((decoration) => decoration.z)) &&
+    decorations.every(
+      (decoration) =>
+        /^[a-z0-9][a-z0-9-]{0,47}$/.test(decoration.placementId) &&
+        isWardrobeAssetId(decoration.assetId) &&
+        ownedAssetIds.has(decoration.assetId) &&
+        isValidWardrobeTransform(decoration),
+    )
+  )
+}
+
+function copyWardrobePhotoDecoration(decoration: WardrobePhotoDecoration): WardrobePhotoDecoration {
+  return {
+    placementId: decoration.placementId,
+    assetId: decoration.assetId,
+    x: decoration.x,
+    y: decoration.y,
+    scaleX: decoration.scaleX,
+    scaleY: decoration.scaleY,
+    rotation: decoration.rotation,
+    z: decoration.z,
   }
 }
 
@@ -463,11 +522,14 @@ function createWardrobeLook(
   const lookId = `look-${state.wardrobe.nextLookSequence.toString(36)}-${hashSeed(
     `${state.random.seed}:look:${state.wardrobe.nextLookSequence}:${action.targetId}:${action.now}`,
   ).toString(36)}`
+  if (state.wardrobe.looks[lookId] !== undefined) {
+    return fail(state, 'WARDROBE_LOOK_ID_COLLISION', '造型序号与已有造型冲突')
+  }
   const look = {
     lookId,
     targetId: action.targetId,
     name: validation.name,
-    elements: action.elements.map(copyWardrobeElement),
+    elements: action.elements.map(copyWardrobeElement).sort((left, right) => left.z - right.z),
     createdAt: action.now,
     updatedAt: action.now,
   }
@@ -501,7 +563,7 @@ function updateWardrobeLook(
   const look = {
     ...previous,
     name: validation.name,
-    elements: action.elements.map(copyWardrobeElement),
+    elements: action.elements.map(copyWardrobeElement).sort((left, right) => left.z - right.z),
     updatedAt: action.now,
   }
   return succeed(
@@ -563,6 +625,27 @@ function createWardrobePhoto(
       '合拍至少选择一位角色，且每位已认识的朋友只能出现一次',
     )
   }
+  const ownedAssetIds = new Set(state.wardrobe.ownedAssetIds)
+  if (!areValidPhotoDecorations(action.decorations, ownedAssetIds)) {
+    const hasUnownedAsset = action.decorations.some(
+      (decoration) => !ownedAssetIds.has(decoration.assetId),
+    )
+    return fail(
+      state,
+      hasUnownedAsset ? 'WARDROBE_ASSET_NOT_OWNED' : 'WARDROBE_DECORATIONS_INVALID',
+      hasUnownedAsset
+        ? '合拍装饰中包含还没有收藏的服装'
+        : `每张合拍最多放置 ${MAX_WARDROBE_PHOTO_DECORATIONS} 件位置与图层有效的装饰`,
+    )
+  }
+  if (
+    !hasUniqueValues([
+      ...action.participants.map((participant) => participant.z),
+      ...action.decorations.map((decoration) => decoration.z),
+    ])
+  ) {
+    return fail(state, 'WARDROBE_DECORATIONS_INVALID', '合拍角色与独立装饰的图层顺序不能重复')
+  }
   for (const participant of action.participants) {
     if (participant.lookId === null) continue
     const look = state.wardrobe.looks[participant.lookId]
@@ -580,23 +663,33 @@ function createWardrobePhoto(
   const photoId = `photo-${state.wardrobe.nextPhotoSequence.toString(36)}-${hashSeed(
     `${state.random.seed}:photo:${state.wardrobe.nextPhotoSequence}:${action.now}`,
   ).toString(36)}`
-  const participants: WardrobePhotoParticipant[] = action.participants.map((participant) => ({
-    targetId: participant.targetId,
-    x: participant.x,
-    y: participant.y,
-    scale: participant.scale,
-    rotation: participant.rotation,
-    z: participant.z,
-    sourceLookId: participant.lookId,
-    elements:
-      participant.lookId === null
-        ? []
-        : state.wardrobe.looks[participant.lookId].elements.map(copyWardrobeElement),
-  }))
+  if (state.wardrobe.photos[photoId] !== undefined) {
+    return fail(state, 'WARDROBE_PHOTO_ID_COLLISION', '合拍序号与已有合拍冲突')
+  }
+  const participants: WardrobePhotoParticipant[] = action.participants
+    .map((participant) => ({
+      targetId: participant.targetId,
+      x: participant.x,
+      y: participant.y,
+      scaleX: participant.scaleX,
+      scaleY: participant.scaleY,
+      rotation: participant.rotation,
+      z: participant.z,
+      sourceLookId: participant.lookId,
+      elements:
+        participant.lookId === null
+          ? []
+          : state.wardrobe.looks[participant.lookId].elements.map(copyWardrobeElement),
+    }))
+    .sort((left, right) => left.z - right.z)
+  const decorations = action.decorations
+    .map(copyWardrobePhotoDecoration)
+    .sort((left, right) => left.z - right.z)
   const photo: WardrobePhoto = {
     photoId,
     postcardId: action.postcardId,
     participants,
+    decorations,
     createdAt: action.now,
   }
   return succeed(
@@ -621,7 +714,27 @@ function deleteWardrobePhoto(
   }
   const photos = { ...state.wardrobe.photos }
   delete photos[action.photoId]
-  return succeed({ ...state, wardrobe: { ...state.wardrobe, photos } }, [
+  const selectedBackground = state.reality.pomodoro.selectedBackground
+  const clearsSelectedBackground =
+    selectedBackground?.kind === 'wardrobe-photo' && selectedBackground.id === action.photoId
+  const session = state.reality.pomodoro.session
+  const clearsSessionBackground =
+    session?.background?.kind === 'wardrobe-photo' && session.background.id === action.photoId
+  const reality =
+    clearsSelectedBackground || clearsSessionBackground
+      ? {
+          ...state.reality,
+          pomodoro: {
+            ...state.reality.pomodoro,
+            selectedBackground: clearsSelectedBackground ? null : selectedBackground,
+            session:
+              clearsSessionBackground && session !== null
+                ? { ...session, background: null }
+                : session,
+          },
+        }
+      : state.reality
+  return succeed({ ...state, reality, wardrobe: { ...state.wardrobe, photos } }, [
     { type: 'wardrobe-photo-deleted', photoId: action.photoId },
   ])
 }
