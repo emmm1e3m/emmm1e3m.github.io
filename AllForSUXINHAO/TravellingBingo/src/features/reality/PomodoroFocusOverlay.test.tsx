@@ -172,6 +172,9 @@ describe('PomodoroFocusOverlay', () => {
     })
     expect(actor?.parentElement).toHaveClass('pomodoro-focus__scene')
     expect(realityStyles).toContain('width: clamp(96px, 12.2%, 124px);')
+    expect(realityStyles).toMatch(
+      /\.pomodoro-focus__mascot > \.mascot-sprite--stream\s*\{[^}]*clip-path:\s*inset\(2% 0 0\);/u,
+    )
   })
 
   it('系统要求减少动态效果时固定看电脑饼狗并禁用位移过渡', async () => {

@@ -280,32 +280,24 @@ export function ContextPanel({
 }: ContextPanelProps) {
   const [popupBlocked, setPopupBlocked] = useState(false)
   const [cancelRunId, setCancelRunId] = useState<string | null>(null)
-  const [speedMagicRunId, setSpeedMagicRunId] = useState<string | null>(null)
   const [sharedVitalityPrompt, setSharedVitalityPrompt] = useState<{
     token: number
     panel: PanelId
-    mode: 'confirm' | 'refusal'
   } | null>(null)
   const cancelTriggerRef = useRef<HTMLButtonElement>(null)
   const continueActivityRef = useRef<HTMLButtonElement>(null)
   const speedMagicTriggerRef = useRef<HTMLButtonElement>(null)
-  const waitForActivityRef = useRef<HTMLButtonElement>(null)
+  const activityResultRef = useRef<HTMLButtonElement>(null)
   const shouldRestoreCancelFocusRef = useRef(false)
-  const shouldRestoreSpeedMagicFocusRef = useRef(false)
+  const speedMagicFocusRunIdRef = useRef<string | null>(null)
   const handledCancelRequestRef = useRef<number | null>(null)
   const handledVitalityPromptRef = useRef<number | null>(null)
   const sharedVitalityPromptRef = useRef<HTMLElement>(null)
-  const sharedVitalityCancelRef = useRef<HTMLButtonElement>(null)
   const timing = deriveActivityTiming(game.activeActivity, now)
   const activity = game.activeActivity
   const activeRunId = activity?.runId ?? null
   const confirmingCancel =
     panel === 'activity' && activeRunId !== null && cancelRunId === activeRunId
-  const confirmingSpeedMagic =
-    panel === 'activity' &&
-    activeRunId !== null &&
-    timing.phase === 'running' &&
-    speedMagicRunId === activeRunId
   const domainCatalog = useMemo(() => toDomainCatalog(catalog), [catalog])
   const vitalityAvailability = getVitalityMagicAvailability(game)
 
@@ -321,7 +313,7 @@ export function ContextPanel({
     }
 
     handledCancelRequestRef.current = cancelRequestToken
-    setSpeedMagicRunId(null)
+    speedMagicFocusRunIdRef.current = null
     setCancelRunId(activeRunId)
     onCancelRequestHandled?.(cancelRequestToken)
   }, [activeRunId, cancelRequestToken, onCancelRequestHandled, panel])
@@ -347,24 +339,6 @@ export function ContextPanel({
   }, [activeRunId, confirmingCancel, panel])
 
   useEffect(() => {
-    if (confirmingSpeedMagic) {
-      shouldRestoreSpeedMagicFocusRef.current = true
-      waitForActivityRef.current?.focus()
-      return
-    }
-
-    if (panel !== 'activity' || timing.phase !== 'running' || activeRunId === null) {
-      shouldRestoreSpeedMagicFocusRef.current = false
-      return
-    }
-
-    if (shouldRestoreSpeedMagicFocusRef.current) {
-      shouldRestoreSpeedMagicFocusRef.current = false
-      speedMagicTriggerRef.current?.focus()
-    }
-  }, [activeRunId, confirmingSpeedMagic, panel, timing.phase])
-
-  useEffect(() => {
     const request = vitalityPromptRequest
     if (
       request === null ||
@@ -376,24 +350,30 @@ export function ContextPanel({
       return
     }
 
-    handledVitalityPromptRef.current = request.token
-    setSharedVitalityPrompt({
-      token: request.token,
-      panel,
-      mode: vitalityAvailability.canUse ? 'confirm' : 'refusal',
+    const frame = globalThis.requestAnimationFrame(() => {
+      handledVitalityPromptRef.current = request.token
+      if (vitalityAvailability.canUse) {
+        setSharedVitalityPrompt(null)
+        onAction({ type: 'magic/vitality-use', now: Date.now() })
+      } else {
+        setSharedVitalityPrompt({ token: request.token, panel })
+      }
+      onVitalityPromptRequestHandled?.(request.token)
     })
-    onVitalityPromptRequestHandled?.(request.token)
-  }, [onVitalityPromptRequestHandled, panel, vitalityAvailability.canUse, vitalityPromptRequest])
+    return () => globalThis.cancelAnimationFrame(frame)
+  }, [
+    onAction,
+    onVitalityPromptRequestHandled,
+    panel,
+    vitalityAvailability.canUse,
+    vitalityPromptRequest,
+  ])
 
   const activeSharedVitalityPrompt =
     sharedVitalityPrompt?.panel === panel ? sharedVitalityPrompt : null
 
   useEffect(() => {
-    if (activeSharedVitalityPrompt?.mode === 'confirm') {
-      sharedVitalityCancelRef.current?.focus({ preventScroll: true })
-      return
-    }
-    if (activeSharedVitalityPrompt?.mode === 'refusal') {
+    if (activeSharedVitalityPrompt) {
       sharedVitalityPromptRef.current?.focus({ preventScroll: true })
     }
   }, [activeSharedVitalityPrompt])
@@ -417,35 +397,7 @@ export function ContextPanel({
           closeSharedVitalityPrompt()
         }}
       >
-        {prompt?.mode === 'confirm' ? (
-          <div
-            className="activity-confirm activity-confirm--vitality"
-            role="group"
-            aria-label="确认使用活力魔法"
-          >
-            <p>使用一瓶活力魔法后，饼狗会重新有精神。要现在使用吗？</p>
-            <div className="button-row">
-              <button
-                className="paper-button paper-button--primary"
-                type="button"
-                onClick={() => {
-                  setSharedVitalityPrompt(null)
-                  onAction({ type: 'magic/vitality-use', now: Date.now() })
-                }}
-              >
-                使用活力魔法
-              </button>
-              <button
-                ref={sharedVitalityCancelRef}
-                className="paper-button"
-                type="button"
-                onClick={closeSharedVitalityPrompt}
-              >
-                先不使用
-              </button>
-            </div>
-          </div>
-        ) : prompt?.mode === 'refusal' ? (
+        {prompt ? (
           <div className="activity-refusal">
             {(game.pet.tired || vitalityAvailability.reason !== 'missing-item') && (
               <p role="alert">
@@ -621,34 +573,6 @@ export function ContextPanel({
                 </div>
                 {timing.phase !== 'running' ? (
                   <p>活动已经完成，不需要再加速。</p>
-                ) : confirmingSpeedMagic ? (
-                  <div className="speed-magic-confirm" role="group" aria-label="确认使用速度魔法">
-                    <p>会消耗 1 份速度魔法，让这次活动立刻完成。确定使用吗？</p>
-                    <div className="button-row">
-                      <button
-                        className="paper-button paper-button--primary"
-                        type="button"
-                        onClick={() => {
-                          setSpeedMagicRunId(null)
-                          onAction({
-                            type: 'magic/speed-use',
-                            runId: activity.runId,
-                            now: Date.now(),
-                          })
-                        }}
-                      >
-                        确认使用
-                      </button>
-                      <button
-                        ref={waitForActivityRef}
-                        className="paper-button"
-                        type="button"
-                        onClick={() => setSpeedMagicRunId(null)}
-                      >
-                        继续等待
-                      </button>
-                    </div>
-                  </div>
                 ) : (
                   <button
                     ref={speedMagicTriggerRef}
@@ -657,7 +581,19 @@ export function ContextPanel({
                     disabled={game.inventory['bottled-speed-magic'] < 1}
                     onClick={() => {
                       setCancelRunId(null)
-                      setSpeedMagicRunId(activity.runId)
+                      const runId = activity.runId
+                      speedMagicFocusRunIdRef.current = runId
+                      onAction({
+                        type: 'magic/speed-use',
+                        runId,
+                        now: Date.now(),
+                      })
+                      globalThis.requestAnimationFrame(() => {
+                        if (speedMagicFocusRunIdRef.current !== runId) return
+                        speedMagicFocusRunIdRef.current = null
+                        const target = activityResultRef.current ?? speedMagicTriggerRef.current
+                        target?.focus({ preventScroll: true })
+                      })
                     }}
                   >
                     {game.inventory['bottled-speed-magic'] > 0
@@ -669,6 +605,7 @@ export function ContextPanel({
             )}
             {timing.phase === 'ready' ? (
               <button
+                ref={activityResultRef}
                 className="paper-button paper-button--primary"
                 type="button"
                 onClick={() =>
@@ -709,7 +646,7 @@ export function ContextPanel({
                 className="text-action text-action--danger"
                 type="button"
                 onClick={() => {
-                  setSpeedMagicRunId(null)
+                  speedMagicFocusRunIdRef.current = null
                   setCancelRunId(activity.runId)
                 }}
               >

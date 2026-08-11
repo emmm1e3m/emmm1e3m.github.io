@@ -1,7 +1,11 @@
 import type { ContentCatalog } from '@/content'
 import type { WardrobePhoto } from '@/domain/game/types'
 
-import { downloadWardrobePhoto, renderWardrobePhoto } from './renderPhoto'
+import {
+  downloadWardrobePhoto,
+  readPhotoBackgroundDimensions,
+  renderWardrobePhoto,
+} from './renderPhoto'
 
 const postcard = {
   id: 'postcard-photo-test',
@@ -129,6 +133,63 @@ function drawable(url: string, width = 1024, height = 1024) {
 }
 
 describe('合拍 PNG 重建', () => {
+  it('本地背景覆盖明信片并按天然比例导出，载入失败时不会静默生成白底', async () => {
+    const harness = canvasHarness()
+    const localBackground = drawable('blob:local-background', 1600, 900)
+    const loadImage = vi.fn(async (url: string) => {
+      if (url === 'blob:local-background') return localBackground
+      return drawable(url, 512, 512)
+    })
+
+    await renderWardrobePhoto(photo, catalog, {
+      createCanvas: harness.createCanvas,
+      loadImage,
+      backgroundOverride: {
+        url: 'blob:local-background',
+        width: 1600,
+        height: 900,
+      },
+    })
+
+    expect(harness.createCanvas).toHaveBeenCalledWith(2400, 1350)
+    expect(loadImage.mock.calls[0][0]).toBe('blob:local-background')
+    expect(loadImage).not.toHaveBeenCalledWith(expect.stringContaining('photo-test'))
+    expect(harness.context.drawImage.mock.calls[0]).toEqual([localBackground, 0, 0, 2400, 1350])
+    const drawOrder = harness.context.drawImage.mock.calls.map(
+      ([image]) => (image as unknown as { url: string }).url,
+    )
+    expect(drawOrder).toHaveLength(6)
+    expect(drawOrder[0]).toBe('blob:local-background')
+    expect(drawOrder[1]).toMatch(/signal-sign\.webp$/u)
+    expect(drawOrder[2]).toMatch(/apple-cuffs\.webp$/u)
+    expect(drawOrder[3]).toMatch(/characters\/bingo\.webp$/u)
+    expect(drawOrder[4]).toMatch(/round-glasses\.webp$/u)
+    expect(drawOrder[5]).toMatch(/apple-badge\.webp$/u)
+
+    await expect(
+      renderWardrobePhoto(photo, catalog, {
+        createCanvas: harness.createCanvas,
+        loadImage: vi.fn(async () => {
+          throw new Error('blob 已失效')
+        }),
+        backgroundOverride: {
+          url: 'blob:expired-background',
+          width: 1600,
+          height: 900,
+        },
+      }),
+    ).rejects.toThrow('blob 已失效')
+  })
+
+  it('读取本地图片天然尺寸并拒绝无效尺寸', async () => {
+    await expect(
+      readPhotoBackgroundDimensions('blob:portrait', async (url) => drawable(url, 900, 1600)),
+    ).resolves.toEqual({ width: 900, height: 1600 })
+    await expect(
+      readPhotoBackgroundDimensions('blob:invalid', async (url) => drawable(url, 0, 0)),
+    ).rejects.toThrow('图片尺寸无效')
+  })
+
   it('优先回退明信片，并按全局 z 交错绘制非等比装饰与人物快照', async () => {
     const harness = canvasHarness()
     const loadedUrls: string[] = []

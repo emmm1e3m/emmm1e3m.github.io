@@ -5,12 +5,21 @@ import { createInitialGameState, type GameAction, type GameState } from '@/domai
 import { getWardrobeCatalogItem, MAX_WARDROBE_PHOTOS } from '@/domain/game/wardrobe'
 import type { SavedWardrobeLook, WardrobePhoto } from '@/domain/game/types'
 
-const { downloadWardrobeLookMock } = vi.hoisted(() => ({
-  downloadWardrobeLookMock: vi.fn<() => Promise<void>>(),
-}))
+const { downloadWardrobeLookMock, downloadWardrobePhotoMock, readPhotoDimensionsMock } = vi.hoisted(
+  () => ({
+    downloadWardrobeLookMock: vi.fn<() => Promise<void>>(),
+    downloadWardrobePhotoMock: vi.fn<() => Promise<void>>(),
+    readPhotoDimensionsMock: vi.fn<() => Promise<{ width: number; height: number }>>(),
+  }),
+)
 
 vi.mock('./renderWardrobeLook', () => ({
   downloadWardrobeLook: downloadWardrobeLookMock,
+}))
+
+vi.mock('./renderPhoto', () => ({
+  downloadWardrobePhoto: downloadWardrobePhotoMock,
+  readPhotoBackgroundDimensions: readPhotoDimensionsMock,
 }))
 
 import wardrobeStyles from './MiracleWardrobePage.css?raw'
@@ -131,6 +140,14 @@ describe('MiracleWardrobePage', () => {
   beforeEach(() => {
     downloadWardrobeLookMock.mockReset()
     downloadWardrobeLookMock.mockResolvedValue(undefined)
+    downloadWardrobePhotoMock.mockReset()
+    downloadWardrobePhotoMock.mockResolvedValue(undefined)
+    readPhotoDimensionsMock.mockReset()
+    readPhotoDimensionsMock.mockResolvedValue({ width: 1600, height: 900 })
+  })
+
+  afterEach(() => {
+    vi.restoreAllMocks()
   })
 
   it('全屏页只保留搭配、合拍与收藏，并使用奇迹标语', () => {
@@ -164,6 +181,7 @@ describe('MiracleWardrobePage', () => {
     expect(screen.queryByRole('button', { name: '课代饼' })).not.toBeInTheDocument()
 
     fireEvent.click(screen.getByRole('button', { name: starterAssetName }))
+    expect(screen.queryByText(/拖动中心/u)).not.toBeInTheDocument()
     expect(screen.queryAllByRole('slider')).toHaveLength(0)
     const actions = within(screen.getByRole('region', { name: '选中元素调整' })).getAllByRole(
       'button',
@@ -179,7 +197,7 @@ describe('MiracleWardrobePage', () => {
     const canvas = screen.getByTestId('miracle-look-canvas')
     const character = screen.getByRole('img', { name: '饼狗海星体模板' })
     expect(canvas).toHaveClass('miracle-look-composition')
-    expect(canvas).toHaveStyle({ '--miracle-look-composition-scale': '0.38' })
+    expect(canvas).toHaveStyle({ '--miracle-look-composition-scale': '0.5' })
     expect(character.parentElement).toBe(canvas)
     expect(
       screen.getByRole('button', { name: `${starterAssetName}，已选中` }).parentElement
@@ -368,6 +386,128 @@ describe('MiracleWardrobePage', () => {
     await waitFor(() =>
       expect(screen.getByRole('button', { name: '选择合拍明信片' })).toHaveFocus(),
     )
+  })
+
+  it('本地图片按天然比例预览并直接导出当前草稿，不会写入合拍相册', async () => {
+    const createObjectURL = vi
+      .spyOn(URL, 'createObjectURL')
+      .mockReturnValueOnce('blob:local-preview')
+      .mockReturnValueOnce('blob:local-export')
+    const revokeObjectURL = vi.spyOn(URL, 'revokeObjectURL').mockImplementation(() => undefined)
+    const { container, onAction } = renderPage()
+    fireEvent.click(screen.getByRole('tab', { name: '合拍' }))
+
+    fireEvent.change(screen.getByLabelText('上传本地图片'), {
+      target: {
+        files: [new File(['photo'], '我的横图.webp', { type: 'image/webp' })],
+      },
+    })
+
+    await waitFor(() =>
+      expect(screen.getByRole('button', { name: '下载当前合拍' })).toBeInTheDocument(),
+    )
+    const canvas = container.querySelector<HTMLElement>('.miracle-photo-canvas')
+    expect(canvas?.style.getPropertyValue('--miracle-photo-aspect')).toBe(String(1600 / 900))
+    expect(
+      container.querySelector<HTMLImageElement>('.photo-composition__postcard'),
+    ).toHaveAttribute('src', 'blob:local-preview')
+    expect(screen.queryByRole('button', { name: '保存这张合拍' })).not.toBeInTheDocument()
+    expect(screen.getByText(/不会保存到收藏墙或存档/u)).toBeInTheDocument()
+
+    fireEvent.click(screen.getByRole('button', { name: starterAssetName }))
+    fireEvent.click(screen.getByRole('button', { name: '下载当前合拍' }))
+    await waitFor(() => expect(downloadWardrobePhotoMock).toHaveBeenCalledOnce())
+
+    expect(downloadWardrobePhotoMock).toHaveBeenCalledWith(
+      expect.objectContaining({
+        postcardId: null,
+        participants: [expect.objectContaining({ targetId: 'bingo' })],
+        decorations: [expect.objectContaining({ assetId: 'cream-apple-cape' })],
+      }),
+      catalog,
+      expect.objectContaining({
+        backgroundOverride: {
+          url: 'blob:local-export',
+          width: 1600,
+          height: 900,
+        },
+        fileName: '奇迹饼狗-本地合拍.png',
+      }),
+    )
+    expect(onAction).not.toHaveBeenCalled()
+    expect(createObjectURL).toHaveBeenCalledTimes(2)
+    expect(revokeObjectURL).toHaveBeenCalledWith('blob:local-export')
+
+    fireEvent.click(screen.getByRole('button', { name: '清空画布' }))
+    expect(screen.getByRole('button', { name: '下载当前合拍' })).toBeInTheDocument()
+    expect(
+      container.querySelector<HTMLImageElement>('.photo-composition__postcard'),
+    ).toHaveAttribute('src', 'blob:local-preview')
+    expect(revokeObjectURL).not.toHaveBeenCalledWith('blob:local-preview')
+  })
+
+  it('替换、切回明信片与卸载都会释放本地预览 URL，错误文件不会进入画布', async () => {
+    const createObjectURL = vi
+      .spyOn(URL, 'createObjectURL')
+      .mockReturnValueOnce('blob:first')
+      .mockReturnValueOnce('blob:second')
+      .mockReturnValueOnce('blob:broken')
+      .mockReturnValueOnce('blob:last')
+    const revokeObjectURL = vi.spyOn(URL, 'revokeObjectURL').mockImplementation(() => undefined)
+    const { unmount } = renderPage()
+    fireEvent.click(screen.getByRole('tab', { name: '合拍' }))
+    const input = screen.getByLabelText('上传本地图片')
+
+    fireEvent.change(input, {
+      target: { files: [new File(['first'], 'first.png', { type: 'image/png' })] },
+    })
+    await screen.findByText('first.png')
+    fireEvent.change(input, {
+      target: { files: [new File(['second'], 'second.jpg', { type: 'image/jpeg' })] },
+    })
+    await screen.findByText('second.jpg')
+    expect(revokeObjectURL).toHaveBeenCalledWith('blob:first')
+
+    fireEvent.click(screen.getByRole('button', { name: '改回明信片' }))
+    expect(revokeObjectURL).toHaveBeenCalledWith('blob:second')
+
+    fireEvent.change(input, {
+      target: { files: [new File(['text'], 'not-image.txt', { type: 'text/plain' })] },
+    })
+    expect(screen.getByRole('status')).toHaveTextContent('请选择 PNG、JPG、WebP 或 AVIF 图片')
+    expect(createObjectURL).toHaveBeenCalledTimes(2)
+
+    readPhotoDimensionsMock.mockRejectedValueOnce(new Error('decode failed'))
+    fireEvent.change(input, {
+      target: { files: [new File(['broken'], 'broken.webp', { type: 'image/webp' })] },
+    })
+    await waitFor(() =>
+      expect(screen.getByRole('status')).toHaveTextContent('这张图片暂时无法读取'),
+    )
+    expect(revokeObjectURL).toHaveBeenCalledWith('blob:broken')
+
+    fireEvent.change(input, {
+      target: { files: [new File(['last'], 'last.avif', { type: 'image/avif' })] },
+    })
+    await screen.findByText('last.avif')
+    unmount()
+    expect(revokeObjectURL).toHaveBeenCalledWith('blob:last')
+  })
+
+  it('没有收藏明信片时仍可上传本地图片进行构图', async () => {
+    vi.spyOn(URL, 'createObjectURL').mockReturnValue('blob:no-postcard')
+    vi.spyOn(URL, 'revokeObjectURL').mockImplementation(() => undefined)
+    const game = wardrobeGame()
+    game.collections = {}
+    renderPage(game)
+    fireEvent.click(screen.getByRole('tab', { name: '合拍' }))
+
+    expect(screen.queryByRole('button', { name: '选择合拍明信片' })).not.toBeInTheDocument()
+    expect(screen.getByText('还没有收藏明信片，也可以先用本地图片合拍。')).toBeInTheDocument()
+    fireEvent.change(screen.getByLabelText('上传本地图片'), {
+      target: { files: [new File(['photo'], 'only-local.png', { type: 'image/png' })] },
+    })
+    expect(await screen.findByRole('button', { name: '下载当前合拍' })).toBeInTheDocument()
   })
 
   it('键盘可以移动并用双手柄调整搭配元素、合拍人物和独立元素', () => {
@@ -794,7 +934,7 @@ describe('MiracleWardrobePage', () => {
     })
   })
 
-  it('收藏缩略图在紧凑低框中完整显示，桌面整页锁定且移动端改由活动面板滚动', () => {
+  it('收藏缩略图在方形自适应框中完整居中，桌面整页锁定且移动端改由活动面板滚动', () => {
     renderPage()
     fireEvent.click(screen.getByRole('tab', { name: '衣服收藏' }))
 
@@ -810,9 +950,15 @@ describe('MiracleWardrobePage', () => {
       wardrobeStyles.indexOf('.miracle-collection-thumb {'),
       wardrobeStyles.indexOf('.miracle-collection-group strong {'),
     )
-    expect(thumbnailRules).toContain('height: clamp(78px, 5vw, 92px)')
-    expect(thumbnailRules).toContain('width: calc(100% - 12px)')
+    expect(thumbnailRules).toContain('height: auto')
+    expect(thumbnailRules).toContain('aspect-ratio: 1')
+    expect(thumbnailRules).toContain('padding: clamp(4px, 0.5vw, 8px)')
+    expect(thumbnailRules).toContain('overflow: clip')
+    expect(thumbnailRules).toContain('width: 100%')
+    expect(thumbnailRules).toContain('height: 100%')
+    expect(thumbnailRules).toContain('place-self: center')
     expect(thumbnailRules).toContain('object-fit: contain')
+    expect(thumbnailRules).toContain('object-position: center')
     expect(wardrobeStyles).toContain('container-type: size')
     expect(wardrobeStyles).toContain(
       'width: min(100cqw, calc(100cqh * var(--miracle-photo-aspect, 1.3333)))',
@@ -826,22 +972,52 @@ describe('MiracleWardrobePage', () => {
     const thumbnailScales = [...thumbnailRules.matchAll(/transform: scale\(([\d.]+)\)/gu)].map(
       (match) => Number(match[1]),
     )
-    expect(thumbnailScales).toHaveLength(3)
-    expect(Math.max(...thumbnailScales)).toBeLessThanOrEqual(1.08)
-    expect(thumbnailRules).not.toContain('scale(1.32)')
-    expect(thumbnailRules).not.toContain('scale(1.45)')
-    expect(thumbnailRules).not.toContain('scale(1.72)')
+    expect(thumbnailScales).toEqual([1, 1, 1])
+    expect(wardrobeStyles).toMatch(
+      /\.miracle-transform-handle\s*\{[^}]*width:\s*44px;[^}]*height:\s*44px;/su,
+    )
+    expect(wardrobeStyles).toMatch(
+      /\.miracle-transform-handle::before\s*\{[^}]*width:\s*14px;[^}]*height:\s*14px;/su,
+    )
     expect(wardrobeStyles).toMatch(/\.miracle-look-library button\s*\{[^}]*min-height:\s*44px;/su)
     expect(wardrobeStyles).toMatch(/\.miracle-layer-list button\s*\{[^}]*min-height:\s*44px;/su)
   })
 
-  it('取消所有人物后明确提示至少一位，且不派发合拍动作', () => {
-    const { onAction } = renderPage()
+  it('清空合拍只移除人物和独立元素，保留明信片并阻止空画布保存', () => {
+    const { container, onAction } = renderPage()
     fireEvent.click(screen.getByRole('tab', { name: '合拍' }))
-    fireEvent.click(screen.getByRole('button', { name: '饼狗' }))
+    const photoAssetButtons = container.querySelector('.miracle-photo-asset-buttons')
+    expect(photoAssetButtons).not.toBeNull()
+    fireEvent.click(
+      within(photoAssetButtons as HTMLElement).getByRole('button', { name: starterAssetName }),
+    )
+
+    const photoLayers = screen.getByRole('region', { name: '照片图层' })
+    expect(
+      within(photoLayers).getByRole('button', { name: '选择照片图层：饼狗' }),
+    ).toBeInTheDocument()
+    expect(
+      within(photoLayers).getByRole('button', { name: `选择照片图层：${starterAssetName}` }),
+    ).toBeInTheDocument()
+    expect(within(photoLayers).queryByText(/[（）]|人物图层|独立元素图层/u)).not.toBeInTheDocument()
+    expect(screen.queryByText(/至少选择一只|拖动中心|已拥有的衣服/u)).not.toBeInTheDocument()
+
+    fireEvent.click(screen.getByRole('button', { name: '清空画布' }))
+
+    expect(screen.getByRole('status')).toHaveTextContent('合拍画布已经清空')
+    expect(within(photoLayers).getByText('还没有放置组件。')).toBeInTheDocument()
+    expect(screen.queryByRole('button', { name: '移动饼狗' })).not.toBeInTheDocument()
+    expect(
+      screen.queryByRole('button', { name: `移动独立元素${starterAssetName}` }),
+    ).not.toBeInTheDocument()
+    expect(
+      container.querySelector('[data-background-id="postcard-2025-01-0001"]'),
+    ).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: '清空画布' })).toBeDisabled()
+
     fireEvent.click(screen.getByRole('button', { name: '保存这张合拍' }))
 
-    expect(screen.getByRole('status')).toHaveTextContent('选择至少一只')
+    expect(screen.getByRole('status')).toHaveTextContent('请先选择出镜角色')
     expect(onAction).not.toHaveBeenCalled()
   })
 

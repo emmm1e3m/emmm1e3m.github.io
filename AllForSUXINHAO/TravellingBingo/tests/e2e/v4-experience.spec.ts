@@ -69,7 +69,7 @@ test.describe('V9 房间契约', () => {
     await expect(page.getByRole('button', { name: '切换到现实生活维度' })).toHaveText('🔃')
   })
 
-  test('速度魔法经二次确认消耗一瓶并立刻完成当前读条', async ({ page }) => {
+  test('速度魔法点击后消耗一瓶并立刻完成当前读条', async ({ page }) => {
     await startGame(page, { debug: true, displayName: '速度测试', seed: 'e2e-4' })
     await buySupply(page, '瓶装速度魔法')
     expect(await readSupplyCount(page, '瓶装速度魔法')).toBe(1)
@@ -81,10 +81,9 @@ test.describe('V9 房间契约', () => {
     await expect(activePanel.locator('.context-panel__close')).toHaveCount(0)
 
     await activePanel.getByRole('button', { name: '使用速度魔法' }).click()
-    const confirmation = activePanel.getByRole('group', { name: '确认使用速度魔法' })
-    await expect(confirmation.getByRole('button', { name: '继续等待' })).toBeFocused()
-    await confirmation.getByRole('button', { name: '确认使用' }).click()
+    await expect(activePanel.getByRole('group', { name: '确认使用速度魔法' })).toHaveCount(0)
     await expect(activePanel.getByRole('button', { name: '看看这次的结果' })).toBeEnabled()
+    await expect(activePanel.getByRole('button', { name: '看看这次的结果' })).toBeFocused()
     await expect(activePanel).not.toContainText('现有 0 份')
     await expect(activePanel.getByRole('button', { name: '使用速度魔法' })).toHaveCount(0)
 
@@ -98,16 +97,43 @@ test.describe('V9 房间契约', () => {
     await expectNoOverlap(helpButton, dimensionButton, ['玩法说明按钮', '维度切换按钮'])
   })
 
-  test('拒绝态点击可询问使用活力魔法，使用后七天内三类兴趣都恢复', async ({ page }) => {
+  test('拒绝态活动卡直接使用活力魔法，使用后七天内三类兴趣都恢复', async ({ page }) => {
     await startGame(page, { debug: true, displayName: '活力测试', seed: 'e2e-0' })
     await buySupply(page, '瓶装活力魔法')
     expect(await readSupplyCount(page, '瓶装活力魔法')).toBe(1)
 
-    await page.locator('[data-hotspot="房门"]').click()
     const card = page.locator('.activity-card').filter({ hasText: '出去旅行' })
-    const confirmation = card.getByRole('group', { name: '确认使用活力魔法' })
-    await expect(confirmation.getByRole('button', { name: '先不使用' })).toBeFocused()
-    await confirmation.getByRole('button', { name: '使用活力魔法' }).click()
+    await page.evaluate(() => {
+      const originalRequestAnimationFrame = window.requestAnimationFrame.bind(window)
+      const originalCancelAnimationFrame = window.cancelAnimationFrame.bind(window)
+      const pendingFrames = new Set<number>()
+      let nextFrame = 1_000_000
+      window.requestAnimationFrame = () => {
+        nextFrame += 1
+        pendingFrames.add(nextFrame)
+        return nextFrame
+      }
+      window.cancelAnimationFrame = (frame) => pendingFrames.delete(frame)
+      window.addEventListener(
+        'travelling-bingo:test:restore-animation-frame',
+        () => {
+          window.requestAnimationFrame = originalRequestAnimationFrame
+          window.cancelAnimationFrame = originalCancelAnimationFrame
+        },
+        { once: true },
+      )
+    })
+    try {
+      await page.locator('[data-hotspot="房门"]').click()
+      const useVitalityMagic = card.getByRole('button', { name: '使用活力魔法' })
+      await expect(useVitalityMagic).toBeVisible()
+      await expect(card.getByRole('group', { name: '确认使用活力魔法' })).toHaveCount(0)
+      await useVitalityMagic.click()
+    } finally {
+      await page.evaluate(() =>
+        window.dispatchEvent(new Event('travelling-bingo:test:restore-animation-frame')),
+      )
+    }
 
     const petStatus = page.getByRole('button', { name: /饼狗活力状态/u })
     await expect(petStatus.locator('.pet-status-bar__label')).toHaveText('活力满满')

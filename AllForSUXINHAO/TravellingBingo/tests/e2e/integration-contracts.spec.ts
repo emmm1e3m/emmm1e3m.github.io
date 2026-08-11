@@ -253,6 +253,11 @@ test.describe('V9 高风险集成契约', () => {
     await enterReality(page)
     await page.locator('[data-hotspot="一楼电脑"]').click()
     const workPanel = page.locator('.context-panel--reality-work')
+    await expect(workPanel.getByRole('heading', { level: 3 })).toHaveText([
+      '陪伴背景',
+      '设置苹果钟与提醒',
+      '待办清单',
+    ])
     await workPanel.getByRole('button', { name: '选择陪伴背景' }).click()
     const picker = page.getByRole('dialog', { name: '选择这一轮的风景' })
     const pickerBackdrop = page.locator('.reality-postcard-dialog-backdrop')
@@ -275,10 +280,10 @@ test.describe('V9 高风险集成契约', () => {
       .getByRole('button', { name: /^25 分钟/u })
       .click()
     await workPanel.getByRole('button', { name: '开始苹果钟' }).click()
-    await page
-      .getByRole('alertdialog', { name: '确认开始苹果钟？' })
-      .getByRole('button', { name: '确认开始' })
-      .click()
+    const startDialog = page.getByRole('alertdialog', { name: '确认开始苹果钟？' })
+    await expect(startDialog).toBeVisible()
+    await page.clock.install()
+    await startDialog.getByRole('button', { name: '确认开始' }).click()
 
     const focus = page.getByRole('dialog', { name: '和饼狗一起专注' })
     const focusBackdrop = page.locator('.pomodoro-focus-backdrop')
@@ -295,12 +300,18 @@ test.describe('V9 高风险集成契约', () => {
     )
     await expect(computerSprite).toHaveClass(/mascot-sprite--stream/u)
     await expect(computerSprite).not.toHaveClass(/mascot-sprite--sleep/u)
+    const computerClipPath = await computerSprite.evaluate(
+      (element) => getComputedStyle(element).clipPath,
+    )
+    expect(computerClipPath).not.toBe('none')
+    expect(computerClipPath).toMatch(/^inset\(2% 0px 0px(?: 0px)?\)$/u)
     const mascotWidth = (await mascot.boundingBox())?.width ?? 0
     expect(mascotWidth).toBeGreaterThanOrEqual(90)
     expect(mascotWidth).toBeLessThanOrEqual(130)
     const initialPosition = await mascot.evaluate((element) => ({
       x: element.style.getPropertyValue('--pomodoro-mascot-x'),
       y: element.style.getPropertyValue('--pomodoro-mascot-y'),
+      duration: element.style.getPropertyValue('--pomodoro-mascot-duration'),
     }))
 
     await focus.getByLabel('新待办').fill('计时中也能新增')
@@ -319,16 +330,22 @@ test.describe('V9 高风险集成契约', () => {
       .click()
     await expect(focus.getByText('计时中也能修改', { exact: true })).toHaveCount(0)
 
-    await expect
-      .poll(
-        () =>
-          mascot.evaluate((element) => ({
-            x: element.style.getPropertyValue('--pomodoro-mascot-x'),
-            y: element.style.getPropertyValue('--pomodoro-mascot-y'),
-          })),
-        { timeout: 20_000 },
-      )
-      .not.toEqual(initialPosition)
+    const forcedRandom = initialPosition.x === '30%' && initialPosition.y === '24%' ? 0.75 : 0
+    const expectedPosition =
+      forcedRandom === 0
+        ? { x: '30%', y: '24%', duration: '8000ms' }
+        : { x: '60%', y: '63%', duration: '11000ms' }
+    await page.evaluate((value) => {
+      Math.random = () => value
+    }, forcedRandom)
+    await page.clock.fastForward(17_001)
+    const movedPosition = await mascot.evaluate((element) => ({
+      x: element.style.getPropertyValue('--pomodoro-mascot-x'),
+      y: element.style.getPropertyValue('--pomodoro-mascot-y'),
+      duration: element.style.getPropertyValue('--pomodoro-mascot-duration'),
+    }))
+    expect(movedPosition).toEqual(expectedPosition)
+    expect(movedPosition).not.toEqual(initialPosition)
     await saveScreenshot(page, 'pomodoro-fullscreen-live-todos.png', false)
   })
 

@@ -1,7 +1,15 @@
 import { fireEvent, render, screen } from '@testing-library/react'
+import { existsSync } from 'node:fs'
+import { resolve } from 'node:path'
+import sharp from 'sharp'
 
 import mascotStyles from './MascotSprite.css?raw'
 import { MascotSprite, type MascotPose } from './MascotSprite'
+
+const appRoot = existsSync(resolve(process.cwd(), 'public/assets/game'))
+  ? process.cwd()
+  : resolve(process.cwd(), 'AllForSUXINHAO/TravellingBingo')
+const MASCOT_ATLAS = resolve(appRoot, 'public/assets/game/bingo-sprites-v2.webp')
 
 const POSE_ATLASES: Readonly<Record<MascotPose, string>> = {
   idle: 'bingo-sprites-v2.webp',
@@ -25,6 +33,45 @@ describe('饼狗图集演员', () => {
     expect(mascotStyles).toMatch(
       /\.mascot-sprite--walk,[\s\S]*?\.mascot-sprite--sleep\s*\{[^}]*background-size:\s*400% 100%;/u,
     )
+  })
+
+  it('通用看电脑帧保持房间原始定位，不施加全局裁切', () => {
+    const streamRule = mascotStyles.match(/\.mascot-sprite--stream\s*\{[^}]*\}/u)?.[0]
+
+    expect(streamRule).toContain('background-position: 0 100%;')
+    expect(streamRule).not.toContain('clip-path')
+  })
+
+  it('苹果钟的 2% 局部裁切能覆盖 stream 帧顶端独立杂边且不触及主体', async () => {
+    const metadata = await sharp(MASCOT_ATLAS).metadata()
+    expect(metadata.width).toBe(metadata.height)
+    expect(metadata.width! % 2).toBe(0)
+    const frameSize = metadata.width! / 2
+    const { data, info } = await sharp(MASCOT_ATLAS)
+      .extract({ left: 0, top: frameSize, width: frameSize, height: frameSize })
+      .ensureAlpha()
+      .raw()
+      .toBuffer({ resolveWithObject: true })
+    const visibleRows: number[] = []
+
+    for (let y = 0; y < info.height; y += 1) {
+      for (let x = 0; x < info.width; x += 1) {
+        if (data[(y * info.width + x) * info.channels + 3]! > 5) {
+          visibleRows.push(y)
+          break
+        }
+      }
+    }
+
+    const firstSubjectIndex = visibleRows.findIndex(
+      (row, index) => index > 0 && row - visibleRows[index - 1]! > 1,
+    )
+    expect(firstSubjectIndex).toBeGreaterThan(0)
+    const topArtifactEnd = visibleRows[firstSubjectIndex - 1]!
+    const firstSubjectRow = visibleRows[firstSubjectIndex]!
+
+    expect((topArtifactEnd + 1) / frameSize).toBeLessThanOrEqual(0.02)
+    expect(firstSubjectRow / frameSize).toBeGreaterThan(0.02)
   })
 
   it.each(Object.entries(POSE_ATLASES) as Array<[MascotPose, string]>)(

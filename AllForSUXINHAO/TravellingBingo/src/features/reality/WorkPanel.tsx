@@ -252,10 +252,17 @@ export function WorkPanel({
         选一张喜欢的明信片或奇迹合拍，让饼狗陪你专注一会儿，再把今天的小事一件件完成。
       </p>
 
+      <PostcardPicker
+        options={unlockedBackgrounds}
+        selected={selectedBackground}
+        onChange={actions.onBackgroundChange}
+        disabled={timerRunning}
+      />
+
       <section className="reality-work-card" aria-labelledby={`${headingId}-timer`}>
         <div className="reality-work-card__heading">
           <div>
-            <span className="reality-card-index">01</span>
+            <span className="reality-card-index">02</span>
             <h3 id={`${headingId}-timer`}>设置苹果钟与提醒</h3>
           </div>
           {pomodoro.session && (
@@ -346,7 +353,7 @@ export function WorkPanel({
       <section className="reality-work-card" aria-labelledby={`${headingId}-todos`}>
         <div className="reality-work-card__heading">
           <div>
-            <span className="reality-card-index">02</span>
+            <span className="reality-card-index">03</span>
             <h3 id={`${headingId}-todos`}>待办清单</h3>
           </div>
           <span className="reality-unlocked-count">{todos.length} 项</span>
@@ -457,13 +464,6 @@ export function WorkPanel({
           </p>
         )}
       </section>
-
-      <PostcardPicker
-        options={unlockedBackgrounds}
-        selected={selectedBackground}
-        onChange={actions.onBackgroundChange}
-        disabled={timerRunning}
-      />
 
       {pendingDeleteTodo && (
         <TodoDeleteDialog

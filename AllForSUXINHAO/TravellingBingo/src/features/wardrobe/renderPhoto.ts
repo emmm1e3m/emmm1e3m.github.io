@@ -16,9 +16,16 @@ export const PHOTO_BACKGROUND_COLOR = '#fffaf2'
 
 type DrawableImage = CanvasImageSource & { width: number; height: number }
 
+export interface PhotoBackgroundOverride {
+  url: string
+  width: number
+  height: number
+}
+
 export interface RenderPhotoDependencies {
   createCanvas?: (width: number, height: number) => HTMLCanvasElement
   loadImage?: (url: string) => Promise<DrawableImage>
+  backgroundOverride?: PhotoBackgroundOverride
 }
 
 export interface DownloadPhotoDependencies extends RenderPhotoDependencies {
@@ -26,6 +33,7 @@ export interface DownloadPhotoDependencies extends RenderPhotoDependencies {
   revokeObjectURL?: (url: string) => void
   createDownloadLink?: () => HTMLAnchorElement
   scheduleRevoke?: (callback: () => void) => void
+  fileName?: string
 }
 
 function defaultCreateCanvas(width: number, height: number) {
@@ -43,6 +51,19 @@ function defaultLoadImage(url: string): Promise<DrawableImage> {
     image.onerror = () => reject(new Error(`无法载入合拍素材：${url}`))
     image.src = url
   })
+}
+
+export async function readPhotoBackgroundDimensions(
+  url: string,
+  loadImage: (url: string) => Promise<DrawableImage> = defaultLoadImage,
+) {
+  const image = await loadImage(url)
+  const width = Number(image.width)
+  const height = Number(image.height)
+  if (!Number.isFinite(width) || !Number.isFinite(height) || width <= 0 || height <= 0) {
+    throw new Error('图片尺寸无效')
+  }
+  return { width, height }
 }
 
 function postcardCandidates(item: CollectibleItem | undefined): string[] {
@@ -108,8 +129,9 @@ export async function renderWardrobePhoto(
   options: RenderPhotoDependencies & { width?: number; height?: number } = {},
 ): Promise<HTMLCanvasElement> {
   const postcardSource = resolvePhotoPostcard(catalog, photo.postcardId)?.image ?? null
-  const aspectRatio = photoAspectRatio(postcardSource)
-  const defaultSize = photoCanvasSize(postcardSource)
+  const sizeSource = options.backgroundOverride ?? postcardSource
+  const aspectRatio = photoAspectRatio(sizeSource)
+  const defaultSize = photoCanvasSize(sizeSource)
   const width =
     options.width ??
     (options.height === undefined
@@ -135,13 +157,18 @@ export async function renderWardrobePhoto(
   context.rect(0, 0, width, height)
   context.clip()
 
-  const postcardItem = photo.postcardId ? catalog.byId[photo.postcardId] : undefined
-  const postcard = await loadFirstAvailable(
-    postcardCandidates(postcardItem).map(publicAsset),
-    loadImage,
-  )
-  if (postcard) {
-    context.drawImage(postcard, 0, 0, width, height)
+  if (options.backgroundOverride) {
+    const background = await loadImage(options.backgroundOverride.url)
+    context.drawImage(background, 0, 0, width, height)
+  } else {
+    const postcardItem = photo.postcardId ? catalog.byId[photo.postcardId] : undefined
+    const postcard = await loadFirstAvailable(
+      postcardCandidates(postcardItem).map(publicAsset),
+      loadImage,
+    )
+    if (postcard) {
+      context.drawImage(postcard, 0, 0, width, height)
+    }
   }
 
   const photoFrame = { x: 0, y: 0, width, height }
@@ -231,7 +258,7 @@ export async function downloadWardrobePhoto(
   const url = createObjectURL(blob)
   try {
     link.href = url
-    link.download = photoFileName(photo)
+    link.download = options.fileName ?? photoFileName(photo)
     link.click()
   } finally {
     const scheduleRevoke =

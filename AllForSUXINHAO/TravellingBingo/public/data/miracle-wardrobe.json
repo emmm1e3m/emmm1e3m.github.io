@@ -37,11 +37,19 @@
       "byteLength": 1616062,
       "mime": "image/png"
     },
+    "signalSign": {
+      "path": "resources/raw/travelling-bingo/generated/miracle/signal-sign-red-v1.png",
+      "width": 1254,
+      "height": 1254,
+      "byteLength": 888399,
+      "mime": "image/png"
+    },
     "provenance": {
       "bingo": "用户从参考图引导的 ImageGen 结果中选定的海星体饼狗底稿",
       "outfits": "按用户服装参考图生成的 4×2 海星体服装母版；保留其中 7 套已确认服装",
       "blackTieUniform": "以用户服装参考图、已确认服装母版和饼狗比例为参考，单独生成黑色领带制服",
-      "accessories": "按用户配饰参考图生成的 4×4 十六件配饰母版"
+      "accessories": "按用户配饰参考图生成的 4×4 十六件配饰母版",
+      "signalSign": "保留原有手牌造型与白色信号图标，将圆形牌面改为红色的 ImageGen 透明结果"
     }
   },
   "characters": [
@@ -437,7 +445,7 @@
       "url": "assets/miracle/accessories/signal-sign.webp",
       "width": 512,
       "height": 512,
-      "byteLength": 118486,
+      "byteLength": 120830,
       "mime": "image/webp",
       "encoding": "lossless"
     },

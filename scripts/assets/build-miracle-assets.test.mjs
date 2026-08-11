@@ -205,12 +205,16 @@ test('最终眼镜没有蓝色镜片，黑色领带制服没有可见绿幕边�
     const { data } = await sharp(path).ensureAlpha().raw().toBuffer({ resolveWithObject: true })
     let bluePixels = 0
     let greenPixels = 0
+    let opaqueGreenPixels = 0
+    let redPixels = 0
     for (let offset = 0; offset < data.length; offset += 4) {
       const [r, g, b, a] = data.subarray(offset, offset + 4)
       if (a >= 8 && b >= 90 && b - r >= 30 && b - g >= 16) bluePixels += 1
       if (a >= 8 && g - r >= 20 && g - b >= 20) greenPixels += 1
+      if (a >= 128 && g - r >= 20 && g - b >= 20) opaqueGreenPixels += 1
+      if (a >= 128 && r >= 130 && r - g >= 35 && r - b >= 25) redPixels += 1
     }
-    return { bluePixels, greenPixels }
+    return { bluePixels, greenPixels, opaqueGreenPixels, redPixels }
   }
   for (const id of ['round-glasses', 'square-glasses']) {
     const result = await inspect(
@@ -222,4 +226,11 @@ test('最终眼镜没有蓝色镜片，黑色领带制服没有可见绿幕边�
     'AllForSUXINHAO/TravellingBingo/public/assets/miracle/outfits/black-tie-uniform.webp',
   )
   assert.equal(uniform.greenPixels, 0, '黑色领带制服仍有可见绿幕边缘')
+  const signalSign = await inspect(
+    'AllForSUXINHAO/TravellingBingo/public/assets/miracle/accessories/signal-sign.webp',
+  )
+  assert.ok(signalSign.redPixels > 50_000, '信号手牌牌面应为明显的红色')
+  assert.equal(signalSign.bluePixels, 0, '信号手牌不应保留蓝幕边缘')
+  assert.equal(signalSign.opaqueGreenPixels, 0, '信号手牌不应保留绿色牌面')
+  assert.ok(signalSign.greenPixels < 64, '信号手牌边缘不应有可见绿色污染')
 })

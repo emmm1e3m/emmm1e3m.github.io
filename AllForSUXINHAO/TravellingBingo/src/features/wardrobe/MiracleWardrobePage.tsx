@@ -1,7 +1,9 @@
 import {
+  useEffect,
   useMemo,
   useRef,
   useState,
+  type ChangeEvent,
   type CSSProperties,
   type KeyboardEvent,
   type PointerEvent as ReactPointerEvent,
@@ -37,6 +39,7 @@ import { buildUnlockedPostcardBackgrounds, PostcardPicker } from '@/features/rea
 import './MiracleWardrobePage.css'
 
 import { PhotoCompositionPreview } from './PhotoCompositionPreview'
+import { downloadWardrobePhoto, readPhotoBackgroundDimensions } from './renderPhoto'
 import { downloadWardrobeLook } from './renderWardrobeLook'
 import { getWardrobeAssetVisual, getWardrobeTargetVisual } from './wardrobeAssets'
 
@@ -57,6 +60,14 @@ interface PhotoParticipantDraft extends WardrobeTransform {
 
 interface PhotoDecorationDraft extends WardrobePhotoDecoration {
   defaultTransform: EditableTransform
+}
+
+interface LocalPhotoBackground {
+  file: File
+  previewUrl: string
+  width: number
+  height: number
+  name: string
 }
 
 type EditableTransform = Pick<WardrobeTransform, 'x' | 'y' | 'scaleX' | 'scaleY' | 'rotation'>
@@ -139,10 +150,25 @@ const DEFAULT_BINGO_PHOTO_TRANSFORM = {
 } as const
 
 const DEFAULT_PHOTO_DECORATION_SCALE = 0.3
-const LOOK_COMPOSITION_SCALE = 0.38
+const LOCAL_PHOTO_TYPES = new Set(['image/png', 'image/jpeg', 'image/webp', 'image/avif'])
+const LOOK_COMPOSITION_SCALE = 0.5
 
 function clamp(value: number, minimum: number, maximum: number) {
   return Math.min(maximum, Math.max(minimum, value))
+}
+
+function distinguishDuplicateNames<T extends { name: string }>(items: readonly T[]) {
+  const totals = new Map<string, number>()
+  const seen = new Map<string, number>()
+  for (const item of items) totals.set(item.name, (totals.get(item.name) ?? 0) + 1)
+  return items.map((item) => {
+    const occurrence = (seen.get(item.name) ?? 0) + 1
+    seen.set(item.name, occurrence)
+    return {
+      ...item,
+      displayName: (totals.get(item.name) ?? 0) > 1 ? `${item.name} ${occurrence}` : item.name,
+    }
+  })
 }
 
 function pointerAngle(centerX: number, centerY: number, clientX: number, clientY: number) {
@@ -497,6 +523,11 @@ export function MiracleWardrobePage({
   const [lookAssetCategory, setLookAssetCategory] = useState<WardrobeAssetCategory>('outfit')
   const [lookDownloadState, setLookDownloadState] = useState<'idle' | 'working' | 'error'>('idle')
   const [selectedPostcardId, setSelectedPostcardId] = useState<string | null>(null)
+  const [localPhotoBackground, setLocalPhotoBackground] = useState<LocalPhotoBackground | null>(
+    null,
+  )
+  const [localPhotoLoadState, setLocalPhotoLoadState] = useState<'idle' | 'working'>('idle')
+  const [localPhotoDownloadState, setLocalPhotoDownloadState] = useState<'idle' | 'working'>('idle')
   const [photoParticipants, setPhotoParticipants] = useState<PhotoParticipantDraft[]>([
     {
       targetId: 'bingo',
@@ -522,9 +553,23 @@ export function MiracleWardrobePage({
   const lookStretchDragRef = useRef<StretchDragState | null>(null)
   const photoTransformDragRef = useRef<PhotoTransformDragState | null>(null)
   const photoStretchDragRef = useRef<PhotoStretchDragState | null>(null)
+  const localPhotoInputRef = useRef<HTMLInputElement>(null)
+  const localPhotoRequestRef = useRef(0)
+  const liveLocalPhotoUrlsRef = useRef(new Set<string>())
+  const mountedRef = useRef(true)
   const placementSequenceRef = useRef(0)
   const photoDecorationSequenceRef = useRef(0)
   const dialogRef = useModalFocus<HTMLElement>(true, onClose, { initialFocus: closeRef })
+  useEffect(() => {
+    const liveUrls = liveLocalPhotoUrlsRef.current
+    mountedRef.current = true
+    return () => {
+      mountedRef.current = false
+      localPhotoRequestRef.current += 1
+      for (const url of liveUrls) URL.revokeObjectURL(url)
+      liveUrls.clear()
+    }
+  }, [])
   const ownedItems = useMemo(() => getOwnedWardrobeItems(game), [game])
   const ownedCategories = CATEGORY_ORDER.filter((category) =>
     ownedItems.some((item) => item.category === category),
@@ -557,8 +602,40 @@ export function MiracleWardrobePage({
         (left, right) => right.width - left.width,
       )[0]
     : undefined
-  const selectedPostcardAspectRatio =
-    (selectedPostcardImage?.width ?? 4) / (selectedPostcardImage?.height ?? 3)
+  const activePhotoBackground = localPhotoBackground
+    ? {
+        url: localPhotoBackground.previewUrl,
+        width: localPhotoBackground.width,
+        height: localPhotoBackground.height,
+        alt: localPhotoBackground.name,
+      }
+    : selectedPostcard?.fullUrl
+      ? {
+          url: selectedPostcard.fullUrl,
+          width: selectedPostcardImage?.width ?? 4,
+          height: selectedPostcardImage?.height ?? 3,
+          alt: selectedPostcard.alt,
+        }
+      : null
+  const selectedPhotoAspectRatio = activePhotoBackground
+    ? activePhotoBackground.width / activePhotoBackground.height
+    : 4 / 3
+  const photoLayers = distinguishDuplicateNames(
+    [
+      ...photoParticipants.map((participant) => ({
+        kind: 'participant' as const,
+        id: participant.targetId,
+        name: targetName(participant.targetId),
+        z: participant.z,
+      })),
+      ...photoDecorations.map((decoration) => ({
+        kind: 'decoration' as const,
+        id: decoration.placementId,
+        name: getWardrobeAssetVisual(decoration.assetId).name,
+        z: decoration.z,
+      })),
+    ].sort((left, right) => right.z - left.z || left.id.localeCompare(right.id)),
+  )
 
   function handleTabKey(event: KeyboardEvent<HTMLButtonElement>, index: number) {
     const direction = event.key === 'ArrowRight' ? 1 : event.key === 'ArrowLeft' ? -1 : 0
@@ -1248,9 +1325,61 @@ export function MiracleWardrobePage({
     setMessage(`已恢复${getWardrobeAssetVisual(selected.assetId).name}的默认位置、大小和角度`)
   }
 
+  function createTrackedLocalPhotoUrl(file: File) {
+    const url = URL.createObjectURL(file)
+    liveLocalPhotoUrlsRef.current.add(url)
+    return url
+  }
+
+  function releaseLocalPhotoUrl(url: string) {
+    if (!liveLocalPhotoUrlsRef.current.delete(url)) return
+    URL.revokeObjectURL(url)
+  }
+
+  function clearLocalPhotoBackground() {
+    localPhotoRequestRef.current += 1
+    if (localPhotoBackground) releaseLocalPhotoUrl(localPhotoBackground.previewUrl)
+    setLocalPhotoBackground(null)
+    setLocalPhotoLoadState('idle')
+    if (localPhotoInputRef.current) localPhotoInputRef.current.value = ''
+  }
+
+  async function handleLocalPhotoChange(event: ChangeEvent<HTMLInputElement>) {
+    const file = event.currentTarget.files?.[0]
+    event.currentTarget.value = ''
+    if (!file) return
+    if (!LOCAL_PHOTO_TYPES.has(file.type)) {
+      setMessage('请选择 PNG、JPG、WebP 或 AVIF 图片')
+      return
+    }
+
+    const requestId = localPhotoRequestRef.current + 1
+    localPhotoRequestRef.current = requestId
+    setLocalPhotoLoadState('working')
+    let previewUrl = ''
+    try {
+      previewUrl = createTrackedLocalPhotoUrl(file)
+      const { width, height } = await readPhotoBackgroundDimensions(previewUrl)
+      if (localPhotoRequestRef.current !== requestId || !mountedRef.current) {
+        releaseLocalPhotoUrl(previewUrl)
+        return
+      }
+      if (localPhotoBackground) releaseLocalPhotoUrl(localPhotoBackground.previewUrl)
+      setLocalPhotoBackground({ file, previewUrl, width, height, name: file.name })
+      setLocalPhotoLoadState('idle')
+      setMessage('本地图片已经放到合拍画布，只会保留在当前页面')
+    } catch {
+      if (previewUrl) releaseLocalPhotoUrl(previewUrl)
+      if (localPhotoRequestRef.current === requestId && mountedRef.current) {
+        setLocalPhotoLoadState('idle')
+        setMessage('这张图片暂时无法读取，请换一张常见格式的图片')
+      }
+    }
+  }
+
   const draftPhoto: WardrobePhoto = {
     photoId: 'miracle-draft',
-    postcardId: effectivePostcardId,
+    postcardId: localPhotoBackground ? null : effectivePostcardId,
     createdAt: 0,
     participants: photoParticipants.map((participant) => ({
       targetId: participant.targetId,
@@ -1277,13 +1406,25 @@ export function MiracleWardrobePage({
     })),
   }
 
+  function clearPhotoCanvas() {
+    setPhotoParticipants([])
+    setPhotoDecorations([])
+    setSelectedPhotoTargetId(null)
+    setSelectedPhotoDecorationId(null)
+    setMessage('合拍画布已经清空')
+  }
+
   function savePhoto() {
+    if (localPhotoBackground) {
+      setMessage('本地图片合拍不会保存到收藏墙，请直接下载 PNG')
+      return
+    }
     if (!effectivePostcardId) {
       setMessage('先选择一张已经收藏的明信片')
       return
     }
     if (photoParticipants.length === 0) {
-      setMessage('选择至少一只')
+      setMessage('请先选择出镜角色')
       return
     }
     if (Object.keys(game.wardrobe.photos).length >= MAX_WARDROBE_PHOTOS) {
@@ -1316,6 +1457,39 @@ export function MiracleWardrobePage({
       now: Date.now(),
     })
     setMessage('合拍已经保存到收藏墙的合拍相册')
+  }
+
+  async function downloadLocalPhoto() {
+    if (!localPhotoBackground || localPhotoDownloadState === 'working') return
+    setLocalPhotoDownloadState('working')
+    let exportUrl = ''
+    try {
+      exportUrl = createTrackedLocalPhotoUrl(localPhotoBackground.file)
+      const now = Date.now()
+      await downloadWardrobePhoto(
+        {
+          ...draftPhoto,
+          photoId: `local-${now.toString(36)}`,
+          postcardId: null,
+          createdAt: now,
+        },
+        catalog,
+        {
+          backgroundOverride: {
+            url: exportUrl,
+            width: localPhotoBackground.width,
+            height: localPhotoBackground.height,
+          },
+          fileName: '奇迹饼狗-本地合拍.png',
+        },
+      )
+      if (mountedRef.current) setMessage('本地图片合拍 PNG 已经生成')
+    } catch {
+      if (mountedRef.current) setMessage('合拍 PNG 生成失败，请再试一次')
+    } finally {
+      if (exportUrl) releaseLocalPhotoUrl(exportUrl)
+      if (mountedRef.current) setLocalPhotoDownloadState('idle')
+    }
   }
 
   return (
@@ -1517,23 +1691,18 @@ export function MiracleWardrobePage({
                   : '选择一个元素'}
               </h3>
               {selectedElement ? (
-                <>
-                  <p>
-                    拖动中心来移动；右下角等比缩放并旋转，左上角可分别调整宽度和高度。手柄离开画布时，可从图层列表重新选中并复位。
-                  </p>
-                  <LayerActions
-                    onForward={() => moveSelectedLayer(1)}
-                    onBackward={() => moveSelectedLayer(-1)}
-                    onReset={resetSelectedElementTransform}
-                    removeLabel="移除元素"
-                    onRemove={() => {
-                      setLookDraft((current) =>
-                        current.filter((element) => element.placementId !== selectedPlacementId),
-                      )
-                      setSelectedPlacementId(null)
-                    }}
-                  />
-                </>
+                <LayerActions
+                  onForward={() => moveSelectedLayer(1)}
+                  onBackward={() => moveSelectedLayer(-1)}
+                  onReset={resetSelectedElementTransform}
+                  removeLabel="移除元素"
+                  onRemove={() => {
+                    setLookDraft((current) =>
+                      current.filter((element) => element.placementId !== selectedPlacementId),
+                    )
+                    setSelectedPlacementId(null)
+                  }}
+                />
               ) : (
                 <p>点画布上的衣服或配饰，再拖动、缩放、旋转和调整遮挡关系。</p>
               )}
@@ -1566,436 +1735,471 @@ export function MiracleWardrobePage({
           role="tabpanel"
           aria-labelledby="miracle-tab-photo"
         >
-          {postcards.length > 0 ? (
-            <>
-              <aside className="miracle-photo-setup">
-                <PostcardPicker
-                  options={postcards}
-                  selected={selectedPostcard?.ref ?? null}
-                  onChange={(background) => {
-                    if (background?.kind === 'postcard') setSelectedPostcardId(background.id)
-                  }}
-                  variant="compact"
-                  heading="明信片背景"
-                  triggerLabel="选择合拍明信片"
-                  dialogEyebrow="合拍背景"
-                  dialogTitle="选择合拍的风景"
-                  dialogDescription="从已经收藏的明信片中选一张，单击即可确定。"
-                  groupLabel="合拍明信片背景"
-                  includePlain={false}
-                />
-                <section className="miracle-photo-participants">
-                  <h3>是谁出镜呢</h3>
-                  <p>选择至少一只</p>
-                  <div className="miracle-participant-picker">
-                    {availableTargets.map((targetId) => {
-                      const included = photoParticipants.some(
-                        (participant) => participant.targetId === targetId,
+          <>
+            <aside className="miracle-photo-setup">
+              <section className="miracle-photo-background-controls">
+                {postcards.length > 0 ? (
+                  <PostcardPicker
+                    options={postcards}
+                    selected={selectedPostcard?.ref ?? null}
+                    onChange={(background) => {
+                      if (background?.kind !== 'postcard') return
+                      clearLocalPhotoBackground()
+                      setSelectedPostcardId(background.id)
+                      setMessage('已经改用收藏的明信片背景')
+                    }}
+                    variant="compact"
+                    heading="明信片背景"
+                    triggerLabel="选择合拍明信片"
+                    dialogEyebrow="合拍背景"
+                    dialogTitle="选择合拍的风景"
+                    dialogDescription="从已经收藏的明信片中选一张，单击即可确定。"
+                    groupLabel="合拍明信片背景"
+                    includePlain={false}
+                  />
+                ) : (
+                  <div className="miracle-photo-background-empty">
+                    <h3>明信片背景</h3>
+                    <p>还没有收藏明信片，也可以先用本地图片合拍。</p>
+                  </div>
+                )}
+                <section className="miracle-local-photo" aria-label="本地图片背景">
+                  <div>
+                    <h3>本地图片背景</h3>
+                    <p title={localPhotoBackground?.name}>
+                      {localPhotoBackground?.name ?? '只在当前页面使用，不会写入存档。'}
+                    </p>
+                  </div>
+                  <div className="miracle-local-photo__actions">
+                    <label className="paper-button miracle-local-photo__upload">
+                      <input
+                        ref={localPhotoInputRef}
+                        className="miracle-visually-hidden"
+                        type="file"
+                        accept="image/png,image/jpeg,image/webp,image/avif"
+                        aria-label="上传本地图片"
+                        onChange={handleLocalPhotoChange}
+                      />
+                      <span>
+                        {localPhotoLoadState === 'working'
+                          ? '正在读取…'
+                          : localPhotoBackground
+                            ? '更换本地图片'
+                            : '上传本地图片'}
+                      </span>
+                    </label>
+                    {localPhotoBackground && (
+                      <button
+                        className="paper-button"
+                        type="button"
+                        onClick={() => {
+                          clearLocalPhotoBackground()
+                          setMessage(
+                            postcards.length > 0
+                              ? '已经改回收藏的明信片背景'
+                              : '本地图片背景已经移除',
+                          )
+                        }}
+                      >
+                        {postcards.length > 0 ? '改回明信片' : '移除本地图片'}
+                      </button>
+                    )}
+                  </div>
+                </section>
+              </section>
+              <section className="miracle-photo-participants">
+                <h3>是谁出镜呢</h3>
+                <div className="miracle-participant-picker">
+                  {availableTargets.map((targetId) => {
+                    const included = photoParticipants.some(
+                      (participant) => participant.targetId === targetId,
+                    )
+                    return (
+                      <button
+                        type="button"
+                        key={targetId}
+                        aria-pressed={included}
+                        className={included ? 'is-selected' : ''}
+                        onClick={() => togglePhotoTarget(targetId)}
+                      >
+                        {targetName(targetId)}
+                      </button>
+                    )
+                  })}
+                </div>
+                {photoParticipants.length > 0 && (
+                  <div className="miracle-participant-looks">
+                    {photoParticipants.map((participant) => {
+                      const looks = getSavedWardrobeLooks(game, participant.targetId)
+                      return (
+                        <label key={participant.targetId}>
+                          <span>{targetName(participant.targetId)}的造型</span>
+                          <select
+                            value={participant.lookId ?? ''}
+                            onChange={(event) =>
+                              updateParticipant(participant.targetId, {
+                                lookId: event.currentTarget.value || null,
+                              })
+                            }
+                          >
+                            <option value="">基础形象</option>
+                            {looks.map((look) => (
+                              <option value={look.lookId} key={look.lookId}>
+                                {look.name}
+                              </option>
+                            ))}
+                          </select>
+                        </label>
                       )
+                    })}
+                  </div>
+                )}
+              </section>
+            </aside>
+
+            <div className="miracle-photo-stage">
+              <div className="miracle-photo-canvas-slot">
+                <div
+                  className="miracle-photo-canvas"
+                  ref={photoCanvasRef}
+                  style={
+                    {
+                      '--miracle-photo-aspect': selectedPhotoAspectRatio,
+                      aspectRatio: selectedPhotoAspectRatio,
+                    } as CSSProperties
+                  }
+                >
+                  <PhotoCompositionPreview
+                    photo={draftPhoto}
+                    postcard={activePhotoBackground}
+                    label="奇迹饼狗合拍预览"
+                  />
+                  <div className="miracle-photo-hit-layer" aria-label="合拍组件调整层">
+                    {photoParticipants.map((participant) => {
+                      const visual = getWardrobeTargetVisual(participant.targetId)
+                      const selected = selectedPhotoTargetId === participant.targetId
+                      const name = targetName(participant.targetId)
+                      return (
+                        <div
+                          className={`miracle-photo-editable miracle-photo-editable--participant ${selected ? 'is-selected' : ''}`}
+                          key={participant.targetId}
+                          style={editableLayerStyle(participant, visual.width, visual.height)}
+                        >
+                          <button
+                            className="miracle-editable-center"
+                            type="button"
+                            aria-label={`移动${name}`}
+                            aria-description="方向键移动"
+                            aria-keyshortcuts="ArrowLeft ArrowRight ArrowUp ArrowDown"
+                            onClick={() => selectPhotoLayer('participant', participant.targetId)}
+                            onPointerDown={(event) =>
+                              startPhotoDrag(
+                                event,
+                                'participant',
+                                participant.targetId,
+                                participant,
+                              )
+                            }
+                            onPointerMove={movePhotoDrag}
+                            onPointerUp={endPhotoDrag}
+                            onPointerCancel={endPhotoDrag}
+                            onKeyDown={(event) =>
+                              keyboardPhotoTransform(
+                                event,
+                                'participant',
+                                participant.targetId,
+                                participant,
+                                'move',
+                              )
+                            }
+                          />
+                          {selected && (
+                            <>
+                              <button
+                                className="miracle-transform-handle miracle-transform-handle--stretch"
+                                type="button"
+                                aria-label={`${name}：分别调整宽度和高度`}
+                                aria-description="方向键左右调宽，上下调高"
+                                aria-keyshortcuts="ArrowLeft ArrowRight ArrowUp ArrowDown"
+                                onClick={() =>
+                                  selectPhotoLayer('participant', participant.targetId)
+                                }
+                                onPointerDown={(event) =>
+                                  startPhotoStretch(
+                                    event,
+                                    'participant',
+                                    participant.targetId,
+                                    participant,
+                                  )
+                                }
+                                onPointerMove={movePhotoStretch}
+                                onPointerUp={endPhotoStretch}
+                                onPointerCancel={endPhotoStretch}
+                                onKeyDown={(event) =>
+                                  keyboardPhotoTransform(
+                                    event,
+                                    'participant',
+                                    participant.targetId,
+                                    participant,
+                                    'stretch',
+                                  )
+                                }
+                              />
+                              <button
+                                className="miracle-transform-handle miracle-transform-handle--uniform"
+                                type="button"
+                                aria-label={`${name}：等比缩放并旋转`}
+                                aria-description="方向键上下缩放，左右旋转"
+                                aria-keyshortcuts="ArrowLeft ArrowRight ArrowUp ArrowDown"
+                                onClick={() =>
+                                  selectPhotoLayer('participant', participant.targetId)
+                                }
+                                onPointerDown={(event) =>
+                                  startPhotoTransform(
+                                    event,
+                                    'participant',
+                                    participant.targetId,
+                                    participant,
+                                  )
+                                }
+                                onPointerMove={movePhotoTransform}
+                                onPointerUp={endPhotoTransform}
+                                onPointerCancel={endPhotoTransform}
+                                onKeyDown={(event) =>
+                                  keyboardPhotoTransform(
+                                    event,
+                                    'participant',
+                                    participant.targetId,
+                                    participant,
+                                    'uniform',
+                                  )
+                                }
+                              />
+                            </>
+                          )}
+                        </div>
+                      )
+                    })}
+                    {photoDecorations.map((decoration) => {
+                      const visual = getWardrobeAssetVisual(decoration.assetId)
+                      const selected = selectedPhotoDecorationId === decoration.placementId
+                      return (
+                        <div
+                          className={`miracle-photo-editable miracle-photo-editable--decoration ${selected ? 'is-selected' : ''}`}
+                          key={decoration.placementId}
+                          style={editableLayerStyle(decoration, visual.width, visual.height)}
+                        >
+                          <button
+                            className="miracle-editable-center"
+                            type="button"
+                            aria-label={`移动独立元素${visual.name}`}
+                            aria-description="方向键移动"
+                            aria-keyshortcuts="ArrowLeft ArrowRight ArrowUp ArrowDown"
+                            onClick={() => selectPhotoLayer('decoration', decoration.placementId)}
+                            onPointerDown={(event) =>
+                              startPhotoDrag(
+                                event,
+                                'decoration',
+                                decoration.placementId,
+                                decoration,
+                              )
+                            }
+                            onPointerMove={movePhotoDrag}
+                            onPointerUp={endPhotoDrag}
+                            onPointerCancel={endPhotoDrag}
+                            onKeyDown={(event) =>
+                              keyboardPhotoTransform(
+                                event,
+                                'decoration',
+                                decoration.placementId,
+                                decoration,
+                                'move',
+                              )
+                            }
+                          />
+                          {selected && (
+                            <>
+                              <button
+                                className="miracle-transform-handle miracle-transform-handle--stretch"
+                                type="button"
+                                aria-label={`${visual.name}：分别调整宽度和高度`}
+                                aria-description="方向键左右调宽，上下调高"
+                                aria-keyshortcuts="ArrowLeft ArrowRight ArrowUp ArrowDown"
+                                onClick={() =>
+                                  selectPhotoLayer('decoration', decoration.placementId)
+                                }
+                                onPointerDown={(event) =>
+                                  startPhotoStretch(
+                                    event,
+                                    'decoration',
+                                    decoration.placementId,
+                                    decoration,
+                                  )
+                                }
+                                onPointerMove={movePhotoStretch}
+                                onPointerUp={endPhotoStretch}
+                                onPointerCancel={endPhotoStretch}
+                                onKeyDown={(event) =>
+                                  keyboardPhotoTransform(
+                                    event,
+                                    'decoration',
+                                    decoration.placementId,
+                                    decoration,
+                                    'stretch',
+                                  )
+                                }
+                              />
+                              <button
+                                className="miracle-transform-handle miracle-transform-handle--uniform"
+                                type="button"
+                                aria-label={`${visual.name}：等比缩放并旋转`}
+                                aria-description="方向键上下缩放，左右旋转"
+                                aria-keyshortcuts="ArrowLeft ArrowRight ArrowUp ArrowDown"
+                                onClick={() =>
+                                  selectPhotoLayer('decoration', decoration.placementId)
+                                }
+                                onPointerDown={(event) =>
+                                  startPhotoTransform(
+                                    event,
+                                    'decoration',
+                                    decoration.placementId,
+                                    decoration,
+                                  )
+                                }
+                                onPointerMove={movePhotoTransform}
+                                onPointerUp={endPhotoTransform}
+                                onPointerCancel={endPhotoTransform}
+                                onKeyDown={(event) =>
+                                  keyboardPhotoTransform(
+                                    event,
+                                    'decoration',
+                                    decoration.placementId,
+                                    decoration,
+                                    'uniform',
+                                  )
+                                }
+                              />
+                            </>
+                          )}
+                        </div>
+                      )
+                    })}
+                  </div>
+                </div>
+              </div>
+              <div className="miracle-photo-output">
+                <div className="miracle-photo-save-row">
+                  {localPhotoBackground ? (
+                    <button
+                      className="paper-button paper-button--primary"
+                      type="button"
+                      disabled={localPhotoDownloadState === 'working'}
+                      onClick={() => void downloadLocalPhoto()}
+                    >
+                      {localPhotoDownloadState === 'working' ? '正在生成…' : '下载当前合拍'}
+                    </button>
+                  ) : (
+                    <button
+                      className="paper-button paper-button--primary"
+                      type="button"
+                      onClick={savePhoto}
+                    >
+                      保存这张合拍
+                    </button>
+                  )}
+                  <button
+                    className="paper-button"
+                    type="button"
+                    disabled={photoParticipants.length === 0 && photoDecorations.length === 0}
+                    onClick={clearPhotoCanvas}
+                  >
+                    清空画布
+                  </button>
+                </div>
+                {localPhotoBackground && <p>本地图片合拍只能当场下载，不会保存到收藏墙或存档。</p>}
+              </div>
+            </div>
+
+            <aside className="miracle-photo-tools">
+              <section className="miracle-layer-list" aria-label="照片图层">
+                <h3>照片图层</h3>
+                {photoLayers.length > 0 ? (
+                  <div>
+                    {photoLayers.map((layer) => {
+                      const selected =
+                        layer.kind === 'participant'
+                          ? selectedPhotoTargetId === layer.id
+                          : selectedPhotoDecorationId === layer.id
                       return (
                         <button
                           type="button"
-                          key={targetId}
-                          aria-pressed={included}
-                          className={included ? 'is-selected' : ''}
-                          onClick={() => togglePhotoTarget(targetId)}
+                          key={`${layer.kind}:${layer.id}`}
+                          aria-label={`选择照片图层：${layer.displayName}`}
+                          className={selected ? 'is-selected' : ''}
+                          onClick={() => selectPhotoLayer(layer.kind, layer.id)}
                         >
-                          {targetName(targetId)}
+                          {layer.displayName}
                         </button>
                       )
                     })}
                   </div>
-                  {photoParticipants.length > 0 && (
-                    <div className="miracle-participant-looks">
-                      {photoParticipants.map((participant) => {
-                        const looks = getSavedWardrobeLooks(game, participant.targetId)
-                        return (
-                          <label key={participant.targetId}>
-                            <span>{targetName(participant.targetId)}的造型</span>
-                            <select
-                              value={participant.lookId ?? ''}
-                              onChange={(event) =>
-                                updateParticipant(participant.targetId, {
-                                  lookId: event.currentTarget.value || null,
-                                })
-                              }
-                            >
-                              <option value="">基础形象</option>
-                              {looks.map((look) => (
-                                <option value={look.lookId} key={look.lookId}>
-                                  {look.name}
-                                </option>
-                              ))}
-                            </select>
-                          </label>
-                        )
-                      })}
-                    </div>
-                  )}
-                </section>
-              </aside>
-
-              <div className="miracle-photo-stage">
-                <div className="miracle-photo-canvas-slot">
-                  <div
-                    className="miracle-photo-canvas"
-                    ref={photoCanvasRef}
-                    style={
-                      {
-                        '--miracle-photo-aspect': selectedPostcardAspectRatio,
-                        aspectRatio: selectedPostcardAspectRatio,
-                      } as CSSProperties
+                ) : (
+                  <p>还没有放置组件。</p>
+                )}
+              </section>
+              <section className="miracle-transform-controls">
+                <h3>
+                  {selectedDecoration
+                    ? `调整${getWardrobeAssetVisual(selectedDecoration.assetId).name}`
+                    : selectedParticipant
+                      ? `调整${targetName(selectedParticipant.targetId)}`
+                      : '选择一个组件'}
+                </h3>
+                {(selectedParticipant || selectedDecoration) && (
+                  <LayerActions
+                    onForward={() => moveSelectedPhotoLayer(1)}
+                    onBackward={() => moveSelectedPhotoLayer(-1)}
+                    onReset={
+                      selectedDecoration
+                        ? resetSelectedDecorationTransform
+                        : resetSelectedParticipantTransform
                     }
-                  >
-                    <PhotoCompositionPreview
-                      photo={draftPhoto}
-                      postcard={
-                        selectedPostcard?.fullUrl
-                          ? {
-                              url: selectedPostcard.fullUrl,
-                              width: selectedPostcardImage?.width ?? 4,
-                              height: selectedPostcardImage?.height ?? 3,
-                              alt: selectedPostcard.alt,
-                            }
-                          : null
+                    removeLabel={selectedDecoration ? '删除独立元素' : '移除出镜'}
+                    onRemove={() => {
+                      if (selectedDecoration) {
+                        setPhotoDecorations((current) =>
+                          current.filter(
+                            (decoration) =>
+                              decoration.placementId !== selectedDecoration.placementId,
+                          ),
+                        )
+                        setSelectedPhotoDecorationId(null)
+                      } else if (selectedParticipant) {
+                        togglePhotoTarget(selectedParticipant.targetId)
                       }
-                      label="奇迹饼狗合拍预览"
-                    />
-                    <div className="miracle-photo-hit-layer" aria-label="合拍组件调整层">
-                      {photoParticipants.map((participant) => {
-                        const visual = getWardrobeTargetVisual(participant.targetId)
-                        const selected = selectedPhotoTargetId === participant.targetId
-                        const name = targetName(participant.targetId)
-                        return (
-                          <div
-                            className={`miracle-photo-editable miracle-photo-editable--participant ${selected ? 'is-selected' : ''}`}
-                            key={participant.targetId}
-                            style={editableLayerStyle(participant, visual.width, visual.height)}
-                          >
-                            <button
-                              className="miracle-editable-center"
-                              type="button"
-                              aria-label={`移动${name}`}
-                              aria-description="方向键移动"
-                              aria-keyshortcuts="ArrowLeft ArrowRight ArrowUp ArrowDown"
-                              onClick={() => selectPhotoLayer('participant', participant.targetId)}
-                              onPointerDown={(event) =>
-                                startPhotoDrag(
-                                  event,
-                                  'participant',
-                                  participant.targetId,
-                                  participant,
-                                )
-                              }
-                              onPointerMove={movePhotoDrag}
-                              onPointerUp={endPhotoDrag}
-                              onPointerCancel={endPhotoDrag}
-                              onKeyDown={(event) =>
-                                keyboardPhotoTransform(
-                                  event,
-                                  'participant',
-                                  participant.targetId,
-                                  participant,
-                                  'move',
-                                )
-                              }
-                            />
-                            {selected && (
-                              <>
-                                <button
-                                  className="miracle-transform-handle miracle-transform-handle--stretch"
-                                  type="button"
-                                  aria-label={`${name}：分别调整宽度和高度`}
-                                  aria-description="方向键左右调宽，上下调高"
-                                  aria-keyshortcuts="ArrowLeft ArrowRight ArrowUp ArrowDown"
-                                  onClick={() =>
-                                    selectPhotoLayer('participant', participant.targetId)
-                                  }
-                                  onPointerDown={(event) =>
-                                    startPhotoStretch(
-                                      event,
-                                      'participant',
-                                      participant.targetId,
-                                      participant,
-                                    )
-                                  }
-                                  onPointerMove={movePhotoStretch}
-                                  onPointerUp={endPhotoStretch}
-                                  onPointerCancel={endPhotoStretch}
-                                  onKeyDown={(event) =>
-                                    keyboardPhotoTransform(
-                                      event,
-                                      'participant',
-                                      participant.targetId,
-                                      participant,
-                                      'stretch',
-                                    )
-                                  }
-                                />
-                                <button
-                                  className="miracle-transform-handle miracle-transform-handle--uniform"
-                                  type="button"
-                                  aria-label={`${name}：等比缩放并旋转`}
-                                  aria-description="方向键上下缩放，左右旋转"
-                                  aria-keyshortcuts="ArrowLeft ArrowRight ArrowUp ArrowDown"
-                                  onClick={() =>
-                                    selectPhotoLayer('participant', participant.targetId)
-                                  }
-                                  onPointerDown={(event) =>
-                                    startPhotoTransform(
-                                      event,
-                                      'participant',
-                                      participant.targetId,
-                                      participant,
-                                    )
-                                  }
-                                  onPointerMove={movePhotoTransform}
-                                  onPointerUp={endPhotoTransform}
-                                  onPointerCancel={endPhotoTransform}
-                                  onKeyDown={(event) =>
-                                    keyboardPhotoTransform(
-                                      event,
-                                      'participant',
-                                      participant.targetId,
-                                      participant,
-                                      'uniform',
-                                    )
-                                  }
-                                />
-                              </>
-                            )}
-                          </div>
-                        )
-                      })}
-                      {photoDecorations.map((decoration) => {
-                        const visual = getWardrobeAssetVisual(decoration.assetId)
-                        const selected = selectedPhotoDecorationId === decoration.placementId
-                        return (
-                          <div
-                            className={`miracle-photo-editable miracle-photo-editable--decoration ${selected ? 'is-selected' : ''}`}
-                            key={decoration.placementId}
-                            style={editableLayerStyle(decoration, visual.width, visual.height)}
-                          >
-                            <button
-                              className="miracle-editable-center"
-                              type="button"
-                              aria-label={`移动独立元素${visual.name}`}
-                              aria-description="方向键移动"
-                              aria-keyshortcuts="ArrowLeft ArrowRight ArrowUp ArrowDown"
-                              onClick={() => selectPhotoLayer('decoration', decoration.placementId)}
-                              onPointerDown={(event) =>
-                                startPhotoDrag(
-                                  event,
-                                  'decoration',
-                                  decoration.placementId,
-                                  decoration,
-                                )
-                              }
-                              onPointerMove={movePhotoDrag}
-                              onPointerUp={endPhotoDrag}
-                              onPointerCancel={endPhotoDrag}
-                              onKeyDown={(event) =>
-                                keyboardPhotoTransform(
-                                  event,
-                                  'decoration',
-                                  decoration.placementId,
-                                  decoration,
-                                  'move',
-                                )
-                              }
-                            />
-                            {selected && (
-                              <>
-                                <button
-                                  className="miracle-transform-handle miracle-transform-handle--stretch"
-                                  type="button"
-                                  aria-label={`${visual.name}：分别调整宽度和高度`}
-                                  aria-description="方向键左右调宽，上下调高"
-                                  aria-keyshortcuts="ArrowLeft ArrowRight ArrowUp ArrowDown"
-                                  onClick={() =>
-                                    selectPhotoLayer('decoration', decoration.placementId)
-                                  }
-                                  onPointerDown={(event) =>
-                                    startPhotoStretch(
-                                      event,
-                                      'decoration',
-                                      decoration.placementId,
-                                      decoration,
-                                    )
-                                  }
-                                  onPointerMove={movePhotoStretch}
-                                  onPointerUp={endPhotoStretch}
-                                  onPointerCancel={endPhotoStretch}
-                                  onKeyDown={(event) =>
-                                    keyboardPhotoTransform(
-                                      event,
-                                      'decoration',
-                                      decoration.placementId,
-                                      decoration,
-                                      'stretch',
-                                    )
-                                  }
-                                />
-                                <button
-                                  className="miracle-transform-handle miracle-transform-handle--uniform"
-                                  type="button"
-                                  aria-label={`${visual.name}：等比缩放并旋转`}
-                                  aria-description="方向键上下缩放，左右旋转"
-                                  aria-keyshortcuts="ArrowLeft ArrowRight ArrowUp ArrowDown"
-                                  onClick={() =>
-                                    selectPhotoLayer('decoration', decoration.placementId)
-                                  }
-                                  onPointerDown={(event) =>
-                                    startPhotoTransform(
-                                      event,
-                                      'decoration',
-                                      decoration.placementId,
-                                      decoration,
-                                    )
-                                  }
-                                  onPointerMove={movePhotoTransform}
-                                  onPointerUp={endPhotoTransform}
-                                  onPointerCancel={endPhotoTransform}
-                                  onKeyDown={(event) =>
-                                    keyboardPhotoTransform(
-                                      event,
-                                      'decoration',
-                                      decoration.placementId,
-                                      decoration,
-                                      'uniform',
-                                    )
-                                  }
-                                />
-                              </>
-                            )}
-                          </div>
-                        )
-                      })}
-                    </div>
-                  </div>
-                </div>
-                <button
-                  className="paper-button paper-button--primary"
-                  type="button"
-                  onClick={savePhoto}
-                >
-                  保存这张合拍
-                </button>
-              </div>
-
-              <aside className="miracle-photo-tools">
-                <section className="miracle-layer-list" aria-label="照片图层">
-                  <h3>照片图层</h3>
-                  {photoParticipants.length + photoDecorations.length > 0 ? (
-                    <div>
-                      {[
-                        ...photoParticipants.map((participant) => ({
-                          kind: 'participant' as const,
-                          id: participant.targetId,
-                          name: targetName(participant.targetId),
-                          z: participant.z,
-                        })),
-                        ...photoDecorations.map((decoration) => ({
-                          kind: 'decoration' as const,
-                          id: decoration.placementId,
-                          name: getWardrobeAssetVisual(decoration.assetId).name,
-                          z: decoration.z,
-                        })),
-                      ]
-                        .sort((left, right) => right.z - left.z || left.id.localeCompare(right.id))
-                        .map((layer) => {
-                          const selected =
-                            layer.kind === 'participant'
-                              ? selectedPhotoTargetId === layer.id
-                              : selectedPhotoDecorationId === layer.id
-                          return (
-                            <button
-                              type="button"
-                              key={`${layer.kind}:${layer.id}`}
-                              className={selected ? 'is-selected' : ''}
-                              onClick={() => selectPhotoLayer(layer.kind, layer.id)}
-                            >
-                              {layer.kind === 'decoration'
-                                ? `${layer.name}（独立元素图层）`
-                                : `${layer.name}（人物图层）`}
-                            </button>
-                          )
-                        })}
-                    </div>
-                  ) : (
-                    <p>还没有放置组件。</p>
-                  )}
-                </section>
-                <section className="miracle-transform-controls">
-                  <h3>
-                    {selectedDecoration
-                      ? `调整${getWardrobeAssetVisual(selectedDecoration.assetId).name}`
-                      : selectedParticipant
-                        ? `调整${targetName(selectedParticipant.targetId)}`
-                        : '选择一个组件'}
-                  </h3>
-                  {(selectedParticipant || selectedDecoration) && (
-                    <>
-                      <p>
-                        拖动中心来移动；右下角等比缩放并旋转，左上角可分别调整宽度和高度。画布外也能从图层列表重新选中。
-                      </p>
-                      <LayerActions
-                        onForward={() => moveSelectedPhotoLayer(1)}
-                        onBackward={() => moveSelectedPhotoLayer(-1)}
-                        onReset={
-                          selectedDecoration
-                            ? resetSelectedDecorationTransform
-                            : resetSelectedParticipantTransform
-                        }
-                        removeLabel={selectedDecoration ? '删除独立元素' : '移除出镜'}
-                        onRemove={() => {
-                          if (selectedDecoration) {
-                            setPhotoDecorations((current) =>
-                              current.filter(
-                                (decoration) =>
-                                  decoration.placementId !== selectedDecoration.placementId,
-                              ),
-                            )
-                            setSelectedPhotoDecorationId(null)
-                          } else if (selectedParticipant) {
-                            togglePhotoTarget(selectedParticipant.targetId)
-                          }
-                        }}
-                      />
-                    </>
-                  )}
-                </section>
-                <section className="miracle-asset-section">
-                  <h3>给照片加独立元素</h3>
-                  <p>已拥有的衣服和配饰也可以不绑定人物，单独放进画面。</p>
-                  <AssetCategoryFilter
-                    label="合拍独立元素分类"
-                    items={ownedItems}
-                    selected={effectivePhotoAssetCategory}
-                    onSelect={setPhotoAssetCategory}
+                    }}
                   />
-                  <div className="miracle-asset-buttons miracle-photo-asset-buttons">
-                    {visiblePhotoAssets.map((item) => (
-                      <button
-                        type="button"
-                        key={item.id}
-                        onClick={() => addPhotoDecoration(item.id)}
-                      >
-                        <img src={getWardrobeAssetVisual(item.id).url} alt="" draggable={false} />
-                        <span>{item.name}</span>
-                      </button>
-                    ))}
-                  </div>
-                </section>
-              </aside>
-            </>
-          ) : (
-            <div className="miracle-empty-state">
-              <span aria-hidden="true">📮</span>
-              <h3>还没有可以合拍的明信片</h3>
-              <p>旅行收藏到明信片以后，再来一起选风景吧。</p>
-            </div>
-          )}
+                )}
+              </section>
+              <section className="miracle-asset-section">
+                <h3>给照片加独立元素</h3>
+                <AssetCategoryFilter
+                  label="合拍独立元素分类"
+                  items={ownedItems}
+                  selected={effectivePhotoAssetCategory}
+                  onSelect={setPhotoAssetCategory}
+                />
+                <div className="miracle-asset-buttons miracle-photo-asset-buttons">
+                  {visiblePhotoAssets.map((item) => (
+                    <button type="button" key={item.id} onClick={() => addPhotoDecoration(item.id)}>
+                      <img src={getWardrobeAssetVisual(item.id).url} alt="" draggable={false} />
+                      <span>{item.name}</span>
+                    </button>
+                  ))}
+                </div>
+              </section>
+            </aside>
+          </>
         </section>
       )}
 

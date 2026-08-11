@@ -1798,7 +1798,7 @@ describe('V4 壳层接线', () => {
     expect(plainBackdrop?.querySelector('[data-photo-id]')).toBeNull()
   })
 
-  it('点击灰态电脑热点立即打开唯一的共享活力确认，确认后只使用魔法', async () => {
+  it('点击灰态电脑热点立即使用一次共享活力魔法，不替用户启动活动', async () => {
     const base = collectedGame()
     const game: GameState = {
       ...base,
@@ -1838,12 +1838,14 @@ describe('V4 壳层接线', () => {
     render(<ReluctantComputerHarness />)
     fireEvent.click(screen.getByRole('button', { name: '去电脑前' }))
 
-    expect(await screen.findAllByRole('group', { name: '确认使用活力魔法' })).toHaveLength(1)
+    await waitFor(() =>
+      expect(onAction).toHaveBeenCalledWith({
+        type: 'magic/vitality-use',
+        now: expect.any(Number),
+      }),
+    )
+    expect(screen.queryByRole('group', { name: '确认使用活力魔法' })).not.toBeInTheDocument()
     expect(screen.queryByText('认真刷播和全力冲热共享同一份“电脑”意愿。')).not.toBeInTheDocument()
-    expect(onAction).not.toHaveBeenCalledWith(expect.objectContaining({ type: 'activity/start' }))
-
-    fireEvent.click(screen.getByRole('button', { name: '使用活力魔法' }))
-    expect(onAction).toHaveBeenCalledWith({ type: 'magic/vitality-use', now: expect.any(Number) })
     expect(onAction).not.toHaveBeenCalledWith(expect.objectContaining({ type: 'activity/start' }))
   })
 })

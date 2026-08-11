@@ -100,6 +100,8 @@
 }
 
 .wardrobe-photo-card__preview {
+  height: auto;
+  aspect-ratio: 4 / 3;
   border-bottom: 1px solid #e5cbb5;
 }
 
@@ -135,11 +137,30 @@
 }
 
 .wardrobe-photo-detail {
+  --wardrobe-photo-width: 4;
+  --wardrobe-photo-height: 3;
+  --wardrobe-photo-copy-width: clamp(270px, 28vw, 360px);
+  --wardrobe-photo-viewport-width: min(1180px, calc(100vw - 24px));
+  --wardrobe-photo-media-height: min(
+    calc(100dvh - 24px),
+    calc(
+      (var(--wardrobe-photo-viewport-width) - var(--wardrobe-photo-copy-width)) *
+        var(--wardrobe-photo-height) / var(--wardrobe-photo-width)
+    )
+  );
+
   position: relative;
-  width: min(1180px, 100%);
-  max-height: 100%;
+  width: fit-content;
+  max-width: calc(100vw - 24px);
+  height: var(--wardrobe-photo-media-height);
+  max-height: calc(100dvh - 24px);
   display: grid;
-  grid-template-columns: minmax(0, 3fr) minmax(270px, 2fr);
+  grid-template-columns:
+    calc(
+      var(--wardrobe-photo-media-height) * var(--wardrobe-photo-width) /
+        var(--wardrobe-photo-height)
+    )
+    var(--wardrobe-photo-copy-width);
   overflow: hidden;
   border: 1px solid #d6ad8c;
   border-radius: 24px;
@@ -155,14 +176,20 @@
 }
 
 .wardrobe-photo-detail__preview {
+  width: 100%;
+  height: 100%;
   align-self: center;
   border-right: 1px solid #e2c6ae;
 }
 
 .wardrobe-photo-detail__copy {
   min-width: 0;
+  min-height: 0;
+  height: 100%;
   align-self: center;
+  overflow-y: auto;
   padding: 4rem 1.5rem 1.5rem;
+  overscroll-behavior: contain;
 }
 
 .wardrobe-photo-detail__copy h3 {
@@ -482,9 +509,31 @@
   }
 
   .wardrobe-photo-detail {
+    --wardrobe-photo-copy-height: min(270px, 36dvh);
+    --wardrobe-photo-viewport-width: min(480px, calc(100vw - 16px));
+    --wardrobe-photo-media-width: min(
+      var(--wardrobe-photo-viewport-width),
+      calc(
+        (100dvh - 16px - var(--wardrobe-photo-copy-height)) * var(--wardrobe-photo-width) /
+          var(--wardrobe-photo-height)
+      )
+    );
+
+    width: var(--wardrobe-photo-media-width);
+    max-width: calc(100vw - 16px);
+    height: calc(
+      var(--wardrobe-photo-media-width) * var(--wardrobe-photo-height) /
+        var(--wardrobe-photo-width) + var(--wardrobe-photo-copy-height)
+    );
+    max-height: calc(100dvh - 16px);
     grid-template-columns: 1fr;
-    grid-template-rows: auto minmax(0, 1fr);
-    overflow-y: auto;
+    grid-template-rows:
+      calc(
+        var(--wardrobe-photo-media-width) * var(--wardrobe-photo-height) /
+          var(--wardrobe-photo-width)
+      )
+      minmax(0, 1fr);
+    overflow: hidden;
   }
 
   .wardrobe-photo-detail__preview {
@@ -493,6 +542,9 @@
   }
 
   .wardrobe-photo-detail__copy {
+    min-height: 0;
+    height: 100%;
+    overflow-y: auto;
     padding: 1.2rem;
   }
 }

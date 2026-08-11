@@ -44,7 +44,7 @@ interface RefusalNotice {
 
 type ActivityStartAction = Extract<GameAction, { type: 'activity/start' }>
 type ActivitySupplyId = NonNullable<ActivityStartAction['supplyId']>
-type ConfirmationKind = 'activity' | 'vitality'
+type ConfirmationKind = 'activity'
 
 export function ActivityLauncher({
   kind,
@@ -125,7 +125,7 @@ export function ActivityLauncher({
       handledVitalityPromptRef.current = token
       if (!wanted && interest !== null) {
         if (canOfferVitality) {
-          setConfirmation('vitality')
+          onAction({ type: 'magic/vitality-use', now: Date.now() })
         } else {
           setConfirmation(null)
           setRefusalNotice((notice) => ({
@@ -144,6 +144,7 @@ export function ActivityLauncher({
     game,
     interest,
     kind,
+    onAction,
     onVitalityPromptRequestHandled,
     vitalityPromptRequestToken,
     wanted,
@@ -178,7 +179,7 @@ export function ActivityLauncher({
     }
 
     if (canOfferVitality) {
-      setConfirmation('vitality')
+      applyVitalityMagic()
       return
     }
 
@@ -191,13 +192,9 @@ export function ActivityLauncher({
     }))
   }
 
-  function useVitalityMagic() {
-    if (!canOfferVitality) {
-      closeConfirmation()
-      return
-    }
+  function applyVitalityMagic() {
+    if (!canOfferVitality) return
     onAction({ type: 'magic/vitality-use', now: Date.now() })
-    closeConfirmation()
   }
 
   function startActivity() {
@@ -282,7 +279,7 @@ export function ActivityLauncher({
           <strong>{pet.tired ? '饼狗有点累了' : copy.refuse}</strong>
           <span>
             {canOfferVitality
-              ? '冰箱里有活力魔法，可以先问问要不要使用。'
+              ? '冰箱里有活力魔法，可以直接使用。'
               : '可以先陪它休息，醒来后再问问。'}
           </span>
           {refusalNotice?.game === game && refusalNotice.kind === kind && !canOfferVitality && (
@@ -300,32 +297,6 @@ export function ActivityLauncher({
         <button className="paper-button" type="button" onClick={onNeedSupplies}>
           补充{ITEM_COPY[supply].name}
         </button>
-      ) : confirmation === 'vitality' ? (
-        <div
-          className="activity-confirm activity-confirm--vitality"
-          role="group"
-          aria-label="确认使用活力魔法"
-          onKeyDown={handleConfirmationKeyDown}
-        >
-          <p>使用一瓶活力魔法后，饼狗会重新有精神。要现在使用吗？</p>
-          <div className="button-row">
-            <button
-              className="paper-button paper-button--primary"
-              type="button"
-              onClick={useVitalityMagic}
-            >
-              使用活力魔法
-            </button>
-            <button
-              ref={cancelButtonRef}
-              className="paper-button"
-              type="button"
-              onClick={closeConfirmation}
-            >
-              先不使用
-            </button>
-          </div>
-        </div>
       ) : confirmation === 'activity' ? (
         <div
           className="activity-confirm"
@@ -368,7 +339,9 @@ export function ActivityLauncher({
             ? '现在有一件事正在进行'
             : wanted
               ? `准备${copy.name}`
-              : `问问饼狗要不要${copy.name}`}
+              : canOfferVitality
+                ? '使用活力魔法'
+                : `问问饼狗要不要${copy.name}`}
         </button>
       )}
     </article>

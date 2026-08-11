@@ -63,6 +63,17 @@ function collectibleDetailStyle(item: CollectibleItem): CSSProperties | undefine
   } as CSSProperties
 }
 
+function wardrobePhotoDetailStyle(
+  postcard: { width: number; height: number } | null,
+): CSSProperties {
+  const width = postcard?.width ?? 4
+  const height = postcard?.height ?? 3
+  return {
+    '--wardrobe-photo-width': `${width}`,
+    '--wardrobe-photo-height': `${height}`,
+  } as CSSProperties
+}
+
 function downloadFileName(item: CollectibleItem) {
   const image = largestImage(item)
   const extension = image.path.match(/\.[a-z0-9]+$/iu)?.[0] ?? '.webp'
@@ -346,6 +357,7 @@ export function AlbumView({
                       postcard={postcardVisual(photo)}
                       className="wardrobe-photo-card__preview"
                       label={`${numericDate(photo.createdAt)}的合拍预览`}
+                      mode="cover"
                     />
                     <span className="wardrobe-photo-card__copy">
                       <strong>奇迹合拍</strong>
@@ -430,6 +442,7 @@ export function AlbumView({
         >
           <article
             className="wardrobe-photo-detail"
+            style={wardrobePhotoDetailStyle(postcardVisual(selectedPhoto))}
             onMouseDown={(event) => event.stopPropagation()}
           >
             <button
@@ -445,6 +458,7 @@ export function AlbumView({
               postcard={postcardVisual(selectedPhoto)}
               className="wardrobe-photo-detail__preview"
               label={`${numericDate(selectedPhoto.createdAt)}的合拍`}
+              mode="natural"
             />
             <div className="wardrobe-photo-detail__copy">
               <span className="paper-tag">奇迹饼狗</span>

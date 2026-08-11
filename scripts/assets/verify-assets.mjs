@@ -1149,6 +1149,7 @@ const expectedMiracleSources = {
   outfits: 'exec-48447d79-4359-4ac8-a211-ce93b1f9cff4.png',
   blackTieUniform: 'exec-91d985b4-1158-4a4b-8e81-94d9e8b541e0.png',
   accessories: 'exec-a348e66e-5aca-4fa3-872e-8e16f29e68cf.png',
+  signalSign: 'signal-sign-red-v1.png',
 }
 for (const [sourceId, filename] of Object.entries(expectedMiracleSources)) {
   const sourceEntry = miracleCatalog.sources?.[sourceId]

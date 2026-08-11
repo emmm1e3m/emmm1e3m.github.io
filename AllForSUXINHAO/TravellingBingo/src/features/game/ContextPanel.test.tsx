@@ -346,7 +346,7 @@ describe('ContextPanel 信息栏交互', () => {
     expect(onCancelRequestHandled).toHaveBeenCalledWith(7)
   })
 
-  it('电脑灰态热点只打开一份共享活力确认，不替用户猜选刷播或冲热', async () => {
+  it('电脑灰态热点直接使用一次活力魔法，不替用户猜选刷播或冲热', async () => {
     const onAction = vi.fn()
     const onHandled = vi.fn()
     const request = {
@@ -366,39 +366,21 @@ describe('ContextPanel 信息栏交互', () => {
     const { rerender } = render(<ContextPanel {...props} />)
 
     expect(screen.queryByText('认真刷播和全力冲热共享同一份“电脑”意愿。')).not.toBeInTheDocument()
-    expect(await screen.findAllByRole('group', { name: '确认使用活力魔法' })).toHaveLength(1)
-    await waitFor(() => expect(screen.getByRole('button', { name: '先不使用' })).toHaveFocus())
+    await waitFor(() => expect(onAction).toHaveBeenCalledOnce())
     expect(onHandled).toHaveBeenCalledOnce()
     expect(onHandled).toHaveBeenCalledWith(17)
-    expect(onAction).not.toHaveBeenCalled()
+    expect(onAction).toHaveBeenCalledWith({ type: 'magic/vitality-use', now: expect.any(Number) })
+    expect(screen.queryByRole('group', { name: '确认使用活力魔法' })).not.toBeInTheDocument()
 
-    fireEvent.keyDown(screen.getByLabelText('使用活力魔法'), { key: 'Escape' })
-    await waitFor(() => expect(screen.getByLabelText('使用活力魔法')).toHaveFocus())
     rerender(<ContextPanel {...props} />)
     expect(screen.queryByRole('group', { name: '确认使用活力魔法' })).not.toBeInTheDocument()
     expect(onHandled).toHaveBeenCalledOnce()
-    expect(onAction).not.toHaveBeenCalled()
+    expect(onAction).toHaveBeenCalledOnce()
   })
 
-  it('共享活力确认只派发魔法动作，没有魔法时不显示库存说明', async () => {
+  it('共享活力请求没有魔法时保留拒绝说明与焦点，不派发任何动作', async () => {
     const onAction = vi.fn()
-    const { rerender } = render(
-      <ContextPanel
-        {...commonProps}
-        panel="computer"
-        game={gameWithReluctantComputer()}
-        onAction={onAction}
-        vitalityPromptRequest={{ token: 18, panel: 'computer', kind: null, interest: 'computer' }}
-      />,
-    )
-
-    fireEvent.click(await screen.findByRole('button', { name: '使用活力魔法' }))
-    expect(onAction).toHaveBeenCalledOnce()
-    expect(onAction).toHaveBeenCalledWith({ type: 'magic/vitality-use', now: expect.any(Number) })
-    expect(onAction).not.toHaveBeenCalledWith(expect.objectContaining({ type: 'activity/start' }))
-
-    onAction.mockClear()
-    rerender(
+    render(
       <ContextPanel
         {...commonProps}
         panel="computer"
@@ -407,30 +389,48 @@ describe('ContextPanel 信息栏交互', () => {
         vitalityPromptRequest={{ token: 19, panel: 'computer', kind: null, interest: 'computer' }}
       />,
     )
+
     const sharedPrompt = await screen.findByLabelText('使用活力魔法')
+    await waitFor(() => expect(sharedPrompt).toHaveFocus())
     expect(within(sharedPrompt).getByRole('button', { name: '去床铺休息' })).toBeInTheDocument()
     expect(screen.queryByText(/冰箱里还没有瓶装活力魔法/u)).not.toBeInTheDocument()
     expect(within(sharedPrompt).queryByRole('alert')).not.toBeInTheDocument()
     expect(onAction).not.toHaveBeenCalled()
   })
 
-  it('速度魔法必须二次确认后才派发当前 run 的使用动作', async () => {
+  it('速度魔法点击后立即派发当前 run 的使用动作并保留焦点', async () => {
     const onAction = vi.fn()
-    render(
-      <ContextPanel
-        {...commonProps}
-        panel="activity"
-        game={gameWithSpeedMagic()}
-        onAction={onAction}
-      />,
-    )
 
-    fireEvent.click(screen.getByRole('button', { name: '使用速度魔法' }))
-    expect(onAction).not.toHaveBeenCalled()
+    function SpeedMagicHarness() {
+      const [game, setGame] = useState(gameWithSpeedMagic())
+      const [viewNow, setViewNow] = useState(2_000)
+      return (
+        <ContextPanel
+          {...commonProps}
+          panel="activity"
+          game={game}
+          now={viewNow}
+          onAction={(action) => {
+            onAction(action)
+            const transition = reduceGame(game, action, emptyCollectionCatalog)
+            if (!transition.ok) return
+            setGame(transition.state)
+            if ('now' in action && typeof action.now === 'number') setViewNow(action.now)
+          }}
+        />
+      )
+    }
 
-    const safeButton = screen.getByRole('button', { name: '继续等待' })
-    await waitFor(() => expect(safeButton).toHaveFocus())
-    fireEvent.click(screen.getByRole('button', { name: '确认使用' }))
+    render(<SpeedMagicHarness />)
+
+    const useMagicButton = screen.getByRole('button', { name: '使用速度魔法' })
+    useMagicButton.focus()
+    const dateNow = vi.spyOn(Date, 'now').mockReturnValue(2_000)
+    try {
+      fireEvent.click(useMagicButton)
+    } finally {
+      dateNow.mockRestore()
+    }
 
     expect(onAction).toHaveBeenCalledOnce()
     expect(onAction).toHaveBeenCalledWith({
@@ -438,6 +438,10 @@ describe('ContextPanel 信息栏交互', () => {
       runId: 'active-travel',
       now: expect.any(Number),
     })
+    expect(screen.queryByRole('group', { name: '确认使用速度魔法' })).not.toBeInTheDocument()
+    await waitFor(() =>
+      expect(screen.getByRole('button', { name: '看看这次的结果' })).toHaveFocus(),
+    )
   })
 
   it('活动中没有速度魔法时不展示零库存魔法卡', () => {

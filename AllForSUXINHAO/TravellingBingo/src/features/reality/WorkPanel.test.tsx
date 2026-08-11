@@ -60,14 +60,17 @@ function createProps(actions = createActions()): WorkPanelProps {
 }
 
 describe('WorkPanel', () => {
-  it('依次展示设置提醒、待办和明信片入口，开始按钮直接位于设置区', () => {
+  it('依次展示陪伴背景、设置提醒和待办，开始按钮直接位于设置区', () => {
     const { container } = render(<WorkPanel {...createProps()} />)
 
     expect(
       within(container)
         .getAllByRole('heading', { level: 3 })
         .map((heading) => heading.textContent),
-    ).toEqual(['设置苹果钟与提醒', '待办清单', '陪伴背景'])
+    ).toEqual(['陪伴背景', '设置苹果钟与提醒', '待办清单'])
+    expect(
+      [...container.querySelectorAll('.reality-card-index')].map((index) => index.textContent),
+    ).toEqual(['01', '02', '03'])
     const settings = screen.getByRole('region', { name: '设置苹果钟与提醒' })
     expect(settings).toContainElement(screen.getByRole('button', { name: '开始苹果钟' }))
     expect(screen.queryByText('准备开始')).not.toBeInTheDocument()
@@ -75,7 +78,7 @@ describe('WorkPanel', () => {
     expect(container.querySelector('.reality-panel__mark')).toBeNull()
   })
 
-  it('用按钮选择时长和已解锁背景，所有改变只交给 actions', () => {
+  it('按背景、时长的顺序完成选择，所有改变只交给 actions', () => {
     const actions = createActions()
     const props = createProps(actions)
     const { container } = render(<WorkPanel {...props} />)
@@ -85,11 +88,6 @@ describe('WorkPanel', () => {
         '选一张喜欢的明信片或奇迹合拍，让饼狗陪你专注一会儿，再把今天的小事一件件完成。',
       ),
     ).toBeVisible()
-    const selectedDuration = screen.getByRole('button', { name: /25 分钟/u })
-    expect(selectedDuration).toHaveAttribute('aria-pressed', 'true')
-    fireEvent.click(screen.getByRole('button', { name: /50 分钟/u }))
-    expect(actions.onDurationChange).toHaveBeenCalledWith(50 * 60 * 1_000)
-
     fireEvent.click(screen.getByRole('button', { name: '选择陪伴背景' }))
     fireEvent.click(screen.getByRole('radio', { name: /晚霞明信片/u }))
     expect(actions.onBackgroundChange).toHaveBeenCalledWith({
@@ -101,7 +99,55 @@ describe('WorkPanel', () => {
     fireEvent.click(screen.getByRole('radio', { name: /默认纸张/u }))
     expect(actions.onBackgroundChange).toHaveBeenCalledWith(null)
 
+    const selectedDuration = screen.getByRole('button', { name: /25 分钟/u })
+    expect(selectedDuration).toHaveAttribute('aria-pressed', 'true')
+    fireEvent.click(screen.getByRole('button', { name: /50 分钟/u }))
+    expect(actions.onDurationChange).toHaveBeenCalledWith(50 * 60 * 1_000)
+
     expect(container.querySelector('select')).toBeNull()
+  })
+
+  it('选好陪伴背景后恢复入口焦点，再选时长并确认启动', async () => {
+    const actions = createActions()
+    const props = createProps(actions)
+    const { rerender } = render(<WorkPanel {...props} />)
+    const selectedBackground = { kind: 'postcard' as const, id: 'postcard-2' }
+    const backgroundTrigger = screen.getByRole('button', { name: '选择陪伴背景' })
+    const durationButton = screen.getByRole('button', { name: /50 分钟/u })
+
+    expect(
+      backgroundTrigger.compareDocumentPosition(durationButton) & Node.DOCUMENT_POSITION_FOLLOWING,
+    ).not.toBe(0)
+    backgroundTrigger.focus()
+    fireEvent.click(backgroundTrigger)
+    fireEvent.click(screen.getByRole('radio', { name: /晚霞明信片/u }))
+    await waitFor(() => expect(backgroundTrigger).toHaveFocus())
+    expect(actions.onBackgroundChange).toHaveBeenCalledWith(selectedBackground)
+
+    const withBackground = { ...props, selectedBackground }
+    rerender(<WorkPanel {...withBackground} />)
+    fireEvent.click(screen.getByRole('button', { name: /50 分钟/u }))
+    expect(actions.onDurationChange).toHaveBeenCalledWith(50 * 60 * 1_000)
+
+    rerender(
+      <WorkPanel
+        {...withBackground}
+        pomodoro={{ ...withBackground.pomodoro, selectedDurationMs: 50 * 60 * 1_000 }}
+      />,
+    )
+    expect(screen.getByLabelText('本轮苹果钟设置')).toHaveTextContent('背景 · 晚霞明信片')
+    expect(screen.getByLabelText('本轮苹果钟设置')).toHaveTextContent('专注 50 分钟')
+
+    fireEvent.click(screen.getByRole('button', { name: '开始苹果钟' }))
+    await waitFor(() => expect(screen.getByRole('button', { name: '再想想' })).toHaveFocus())
+    fireEvent.click(screen.getByRole('button', { name: '确认开始' }))
+    expect(actions.onPomodoroStart).toHaveBeenCalledWith(50 * 60 * 1_000)
+    expect(vi.mocked(actions.onBackgroundChange).mock.invocationCallOrder[0]).toBeLessThan(
+      vi.mocked(actions.onDurationChange).mock.invocationCallOrder[0]!,
+    )
+    expect(vi.mocked(actions.onDurationChange).mock.invocationCallOrder[0]).toBeLessThan(
+      vi.mocked(actions.onPomodoroStart).mock.invocationCallOrder[0]!,
+    )
   })
 
   it('开始苹果钟前二次确认，安全按钮先获焦且 Escape 恢复触发按钮', async () => {

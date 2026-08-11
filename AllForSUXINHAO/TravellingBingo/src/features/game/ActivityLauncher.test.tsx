@@ -188,38 +188,27 @@ describe('活动入口反馈', () => {
     expect(onNeedRest).toHaveBeenCalledOnce()
   })
 
-  it('有活力魔法时先询问使用，确认后仍需再次明确启动活动', async () => {
+  it('有活力魔法时点击即使用，使用后仍需再次明确启动活动', () => {
     const game = unwillingGame(true)
     const onAction = vi.fn()
     const onNeedRest = vi.fn()
     const { rerender } = renderLauncher('stream', game, onAction, { onNeedRest })
-    let launchButton = screen.getByRole('button', { name: '问问饼狗要不要认真刷播' })
+    let launchButton = screen.getByRole('button', { name: '使用活力魔法' })
 
     expect(launchButton).not.toHaveAttribute('aria-disabled')
     expect(launchButton).toBeEnabled()
     expect(launchButton).toHaveAccessibleDescription(/冰箱里有活力魔法/u)
+    launchButton.focus()
     fireEvent.click(launchButton)
 
-    const vitalityConfirm = screen.getByRole('group', { name: '确认使用活力魔法' })
-    const cancelVitality = screen.getByRole('button', { name: '先不使用' })
-    expect(onAction).not.toHaveBeenCalled()
-    await waitFor(() => expect(cancelVitality).toHaveFocus())
-
-    fireEvent.keyDown(vitalityConfirm, { key: 'Escape' })
-    launchButton = screen.getByRole('button', { name: '问问饼狗要不要认真刷播' })
-    await waitFor(() => expect(launchButton).toHaveFocus())
-    expect(onAction).not.toHaveBeenCalled()
-
-    fireEvent.click(launchButton)
-    fireEvent.click(screen.getByRole('button', { name: '使用活力魔法' }))
     expect(onAction).toHaveBeenCalledTimes(1)
     expect(onAction).toHaveBeenLastCalledWith({
       type: 'magic/vitality-use',
       now: expect.any(Number),
     })
     expect(onNeedRest).not.toHaveBeenCalled()
-    launchButton = screen.getByRole('button', { name: '问问饼狗要不要认真刷播' })
-    await waitFor(() => expect(launchButton).toHaveFocus())
+    expect(screen.queryByRole('group', { name: '确认使用活力魔法' })).not.toBeInTheDocument()
+    expect(launchButton).toHaveFocus()
 
     const vitalityAction = onAction.mock.calls[0]?.[0] as GameAction
     const vitalityTransition = reduceGame(game, vitalityAction, catalog)
@@ -250,7 +239,7 @@ describe('活动入口反馈', () => {
     )
   })
 
-  it('灰态房间热点的一次性 token 会直接打开活力确认，Escape 后不重复消费', async () => {
+  it('灰态房间热点的一次性 token 会直接使用活力魔法且不重复消费', async () => {
     const game = unwillingGame(true)
     const onAction = vi.fn()
     const onHandled = vi.fn()
@@ -266,20 +255,19 @@ describe('活动入口反馈', () => {
     }
     const { rerender } = render(<ActivityLauncher {...props} />)
 
-    const confirmation = await screen.findByRole('group', { name: '确认使用活力魔法' })
-    await waitFor(() => expect(screen.getByRole('button', { name: '先不使用' })).toHaveFocus())
+    await waitFor(() => expect(onAction).toHaveBeenCalledOnce())
     expect(onHandled).toHaveBeenCalledOnce()
     expect(onHandled).toHaveBeenCalledWith(41)
-    expect(onAction).not.toHaveBeenCalled()
+    expect(onAction).toHaveBeenCalledWith({
+      type: 'magic/vitality-use',
+      now: expect.any(Number),
+    })
+    expect(screen.queryByRole('group', { name: '确认使用活力魔法' })).not.toBeInTheDocument()
 
-    fireEvent.keyDown(confirmation, { key: 'Escape' })
-    await waitFor(() =>
-      expect(screen.getByRole('button', { name: '问问饼狗要不要认真刷播' })).toHaveFocus(),
-    )
     rerender(<ActivityLauncher {...props} />)
     expect(screen.queryByRole('group', { name: '确认使用活力魔法' })).not.toBeInTheDocument()
     expect(onHandled).toHaveBeenCalledOnce()
-    expect(onAction).not.toHaveBeenCalled()
+    expect(onAction).toHaveBeenCalledOnce()
   })
 
   it('灰态房间热点在没有活力魔法时立即播报拒绝，且绝不派发活动动作', async () => {

@@ -215,7 +215,7 @@ export function PostcardPicker({
     >
       <div className="reality-work-card__heading">
         <div>
-          {variant === 'work-card' && <span className="reality-card-index">03</span>}
+          {variant === 'work-card' && <span className="reality-card-index">01</span>}
           <h3 id={headingId}>{heading}</h3>
         </div>
         <span className="reality-unlocked-count">可选背景 {options.length}</span>

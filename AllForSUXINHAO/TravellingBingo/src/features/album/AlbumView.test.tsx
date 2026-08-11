@@ -302,7 +302,7 @@ describe('饼狗的收藏墙', () => {
     expect(screen.getByText('收藏进度【5/5】')).toBeVisible()
   })
 
-  it('合拍相册使用独立计数，旧合拍按元素快照重建且不随当前造型改变', () => {
+  it('合拍相册使用统一裁切缩略框，详情按原比例展示且旧合拍不随当前造型改变', () => {
     const catalog = contentCatalog([oldestPostcard])
     const initial = gameWithCollections([[oldestPostcard.id, 1_000]])
     const savedPhoto: WardrobePhoto = {
@@ -383,7 +383,14 @@ describe('饼狗的收藏墙', () => {
       '[data-photo-id="photo-album-snapshot"]',
     )
     expect(photoPreview).not.toBeNull()
-    expect(photoPreview?.getAttribute('style')).toContain('aspect-ratio: 480 / 640')
+    expect(photoPreview).toHaveClass('photo-composition--cover', 'wardrobe-photo-card__preview')
+    expect(photoPreview?.getAttribute('style')).not.toContain('aspect-ratio: 480 / 640')
+    expect(albumStyles).toMatch(
+      /\.wardrobe-photo-card__preview\s*\{[^}]*height:\s*auto;[^}]*aspect-ratio:\s*4\s*\/\s*3;/u,
+    )
+    expect(photoPreviewStyles).toMatch(
+      /\.photo-composition--cover \.photo-composition__canvas\s*\{[^}]*width:\s*max\([^;]+;[^}]*height:\s*max\([^;]+;/u,
+    )
     expect(photoPreviewStyles).toContain('overflow: clip;')
     expect(photoPreviewStyles).toContain('object-fit: fill;')
     expect(screen.getByText('奇迹合拍')).toBeVisible()
@@ -396,6 +403,15 @@ describe('饼狗的收藏墙', () => {
 
     fireEvent.click(photoPreview?.closest('button') as HTMLButtonElement)
     const photoDetail = screen.getByRole('dialog', { name: '奇迹合拍' })
+    const detailPanel = photoDetail.querySelector<HTMLElement>('.wardrobe-photo-detail')
+    const detailPreview = photoDetail.querySelector<HTMLElement>('.wardrobe-photo-detail__preview')
+    expect(detailPanel?.style.getPropertyValue('--wardrobe-photo-width')).toBe('480')
+    expect(detailPanel?.style.getPropertyValue('--wardrobe-photo-height')).toBe('640')
+    expect(detailPreview).toHaveClass('photo-composition--natural')
+    expect(detailPreview?.getAttribute('style')).toContain('aspect-ratio: 480 / 640')
+    expect(albumStyles).toMatch(
+      /\.wardrobe-photo-detail__preview\s*\{[^}]*width:\s*100%;[^}]*height:\s*100%;/u,
+    )
     const detailDecoration = photoDetail.querySelector<HTMLImageElement>(
       '[data-decoration-id="saved-signal-sign"]',
     )

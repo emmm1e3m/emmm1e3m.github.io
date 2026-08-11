@@ -19,6 +19,7 @@ const sources = {
   outfits: 'exec-48447d79-4359-4ac8-a211-ce93b1f9cff4.png',
   blackTieUniform: 'exec-91d985b4-1158-4a4b-8e81-94d9e8b541e0.png',
   accessories: 'exec-a348e66e-5aca-4fa3-872e-8e16f29e68cf.png',
+  signalSign: 'signal-sign-red-v1.png',
 }
 
 const friendDefinitions = [
@@ -658,6 +659,7 @@ async function writeMiracleCatalog(characters, outfits, accessories) {
             blackTieUniform:
               '以用户服装参考图、已确认服装母版和饼狗比例为参考，单独生成黑色领带制服',
             accessories: '按用户配饰参考图生成的 4×4 十六件配饰母版',
+            signalSign: '保留原有手牌造型与白色信号图标，将圆形牌面改为红色的 ImageGen 透明结果',
           },
         },
         characters,
@@ -791,11 +793,12 @@ async function buildMiracleAssets() {
     4,
     4,
   )
+  const signalSign = await readKeyedImage(resolve(rawRoot, sources.signalSign), 'blue')
   const accessories = []
   for (const definition of ACCESSORY_DEFINITIONS) {
     const sheetIndex = accessorySheetIndexById.get(definition.id)
     if (sheetIndex === undefined) throw new Error(`${definition.id} 没有对应的配饰母版位置`)
-    const sourceCell = accessoryCells[sheetIndex]
+    const sourceCell = definition.id === 'signal-sign' ? signalSign : accessoryCells[sheetIndex]
     const cell = definition.lensTreatment
       ? {
           ...sourceCell,

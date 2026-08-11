@@ -921,6 +921,11 @@
   width: 100%;
 }
 
+/* stream 帧在母版下排顶缘有 10/512 像素的相邻帧残留，只在苹果钟中精确裁掉这一窄条。 */
+.pomodoro-focus__mascot > .mascot-sprite--stream {
+  clip-path: inset(2% 0 0);
+}
+
 .pomodoro-focus__workspace {
   align-self: center;
   display: grid;
