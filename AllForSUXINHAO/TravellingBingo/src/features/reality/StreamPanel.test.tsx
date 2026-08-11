@@ -98,4 +98,20 @@ describe('StreamPanel', () => {
     fireEvent.click(screen.getByRole('button', { name: '停止刷播' }))
     expect(props.onStop).toHaveBeenCalledTimes(1)
   })
+
+  it('停止中保持配置锁定，并禁用重复停止请求', () => {
+    const { props } = renderPanel({
+      playback: playback({
+        status: 'stopping',
+        message: '正在停止刷播',
+      }),
+    })
+
+    const stopButton = screen.getByRole('button', { name: '正在停止刷播' })
+    expect(stopButton).toBeDisabled()
+    expect(screen.getByRole('textbox', { name: '自测视频BV号或链接' })).toBeDisabled()
+    expect(screen.getByRole('spinbutton', { name: '定时停止（小时）' })).toBeDisabled()
+    fireEvent.click(stopButton)
+    expect(props.onStop).not.toHaveBeenCalled()
+  })
 })

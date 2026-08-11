@@ -123,7 +123,11 @@ describe('StreamPlayerApp', () => {
     )
     const opener = { postMessage: vi.fn() } as unknown as Window
     Object.defineProperty(window, 'opener', { configurable: true, value: opener })
-    vi.stubGlobal('fetch', vi.fn().mockRejectedValue(new Error('收藏夹读取失败')))
+    const fetchMock = vi
+      .fn()
+      .mockRejectedValueOnce(new Error('收藏夹读取失败'))
+      .mockResolvedValueOnce({ ok: true, text: async () => FAVORITE_TEXT })
+    vi.stubGlobal('fetch', fetchMock)
 
     render(<StreamPlayerApp />)
 
@@ -132,6 +136,47 @@ describe('StreamPlayerApp', () => {
     expect(opener.postMessage).not.toHaveBeenCalledWith(
       expect.objectContaining({ event: 'started' }),
       expect.any(String),
+    )
+    expect(opener.postMessage).toHaveBeenCalledWith(
+      expect.objectContaining({
+        sessionId: 'failed-session',
+        event: 'failed',
+        message: '收藏夹读取失败',
+      }),
+      window.location.origin,
+    )
+
+    fireEvent.click(screen.getByRole('button', { name: '开始刷播' }))
+    await waitFor(() => expect(screen.getAllByTitle(/刷播视频$/u)).toHaveLength(1))
+    expect(fetchMock).toHaveBeenCalledTimes(2)
+    expect(opener.postMessage).toHaveBeenCalledWith(
+      expect.objectContaining({ sessionId: 'failed-session', event: 'started' }),
+      window.location.origin,
+    )
+  })
+
+  it('收藏夹内容异常时回传失败并留在本页等待修正', async () => {
+    window.history.replaceState(
+      {},
+      '',
+      '/stream-player.html?favoriteId=3682220021&sessionId=invalid-catalog&autostart=1',
+    )
+    const opener = { postMessage: vi.fn() } as unknown as Window
+    Object.defineProperty(window, 'opener', { configurable: true, value: opener })
+    vi.stubGlobal('fetch', vi.fn().mockResolvedValue({ ok: true, text: async () => '不是BV号\n' }))
+
+    render(<StreamPlayerApp />)
+
+    expect(await screen.findByText('刷播未能启动')).toBeVisible()
+    expect(screen.getByText('收藏夹第 1 行不是有效的 BV 号。')).toBeVisible()
+    expect(screen.getByRole('button', { name: '开始刷播' })).toBeVisible()
+    expect(opener.postMessage).toHaveBeenCalledWith(
+      expect.objectContaining({
+        sessionId: 'invalid-catalog',
+        event: 'failed',
+        message: '收藏夹第 1 行不是有效的 BV 号。',
+      }),
+      window.location.origin,
     )
   })
 

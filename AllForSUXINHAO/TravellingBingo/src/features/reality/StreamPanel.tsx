@@ -55,7 +55,8 @@ export function StreamPanel({
   )
 
   const inputResult = parseStreamSelfTestInput(input)
-  const running = playback.status === 'opening' || playback.status === 'waiting'
+  const running =
+    playback.status === 'opening' || playback.status === 'waiting' || playback.status === 'stopping'
   const stopHours = stopAfterHours.trim() === '' ? 0 : Number(stopAfterHours)
   const settingsValid =
     inputResult.ok &&
@@ -163,8 +164,13 @@ export function StreamPanel({
 
       <div className="reality-stream-actions">
         {running ? (
-          <button className="reality-danger-button" type="button" onClick={onStop}>
-            停止刷播
+          <button
+            className="reality-danger-button"
+            type="button"
+            disabled={playback.status === 'stopping'}
+            onClick={onStop}
+          >
+            {playback.status === 'stopping' ? '正在停止刷播' : '停止刷播'}
           </button>
         ) : (
           <button

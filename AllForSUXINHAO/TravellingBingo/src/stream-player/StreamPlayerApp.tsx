@@ -198,8 +198,10 @@ export function StreamPlayerApp() {
         stopHours: parseStopHoursInput(stopHoursInput),
       }
     } catch (error) {
+      const message = error instanceof Error ? error.message : '刷播设置无效。'
       setStatus('error')
-      setErrorMessage(error instanceof Error ? error.message : '刷播设置无效。')
+      setErrorMessage(message)
+      postToMain({ event: 'failed', message })
       return
     }
 
@@ -263,10 +265,17 @@ export function StreamPlayerApp() {
       scheduler.start()
     } catch (error) {
       if (controller.signal.aborted) return
+      const message = error instanceof Error ? error.message : '刷播未能启动。'
+      schedulerRef.current?.dispose()
+      schedulerRef.current = null
+      abortControllerRef.current = null
       startedRef.current = false
+      startedAtRef.current = null
+      historyRunIdRef.current = ''
       setActiveConfig(null)
       setStatus('error')
-      setErrorMessage(error instanceof Error ? error.message : '刷播未能启动。')
+      setErrorMessage(message)
+      postToMain({ event: 'failed', message })
     }
   }, [favoriteId, postToMain, query, saveHistory, selfTestInput, stopHoursInput])
 

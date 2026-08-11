@@ -1,4 +1,4 @@
-import { fireEvent, render, screen, waitFor } from '@testing-library/react'
+import { fireEvent, render, screen, waitFor, within } from '@testing-library/react'
 
 import type { CollectibleItem, ContentCatalog, FriendItem } from '@/content'
 import { createInitialGameState, type GameAction, type GameState } from '@/domain'
@@ -111,9 +111,18 @@ function savedLook(
   }
 }
 
-function renderPage(game = wardrobeGame(), onAction = vi.fn<(action: GameAction) => void>()) {
+function renderPage(
+  game = wardrobeGame(),
+  onAction = vi.fn<(action: GameAction) => void>(),
+  contentCatalog = catalog,
+) {
   const result = render(
-    <MiracleWardrobePage game={game} catalog={catalog} onClose={vi.fn()} onAction={onAction} />,
+    <MiracleWardrobePage
+      game={game}
+      catalog={contentCatalog}
+      onClose={vi.fn()}
+      onAction={onAction}
+    />,
   )
   return { ...result, onAction }
 }
@@ -125,7 +134,7 @@ describe('MiracleWardrobePage', () => {
   })
 
   it('全屏页只保留搭配、合拍与收藏，并使用奇迹标语', () => {
-    renderPage()
+    const { container } = renderPage()
 
     expect(screen.getByRole('dialog', { name: '奇迹饼狗' })).toBeInTheDocument()
     expect(screen.getByText('遇见饼狗是最美的奇迹')).toBeInTheDocument()
@@ -137,6 +146,14 @@ describe('MiracleWardrobePage', () => {
     expect(screen.queryByRole('tab', { name: '今日衣橱' })).not.toBeInTheDocument()
     expect(screen.queryByRole('tab', { name: '舞台测试' })).not.toBeInTheDocument()
     expect(screen.queryByText(/第 \d+ 个游戏日/u)).not.toBeInTheDocument()
+    expect(
+      [...container.querySelectorAll('#miracle-panel-dressing > *')].map(
+        (element) => element.className,
+      ),
+    ).toEqual(['miracle-editor-library', 'miracle-editor-stage', 'miracle-editor-tools'])
+    expect(wardrobeStyles).toContain(
+      'grid-template-columns: minmax(220px, 0.72fr) minmax(360px, 1.24fr) minmax(230px, 0.62fr)',
+    )
   })
 
   it('搭配室用中心拖动和角落手柄变换元素，并可在画布外恢复默认变换', () => {
@@ -148,8 +165,26 @@ describe('MiracleWardrobePage', () => {
 
     fireEvent.click(screen.getByRole('button', { name: starterAssetName }))
     expect(screen.queryAllByRole('slider')).toHaveLength(0)
+    const actions = within(screen.getByRole('region', { name: '选中元素调整' })).getAllByRole(
+      'button',
+    )
+    expect(actions.map((button) => button.textContent)).toEqual(['🔼', '🔽', '🔄️', '❌'])
+    expect(actions.map((button) => button.getAttribute('aria-label'))).toEqual([
+      '向前一层',
+      '向后一层',
+      '恢复默认比例/变换',
+      '移除元素',
+    ])
 
     const canvas = screen.getByTestId('miracle-look-canvas')
+    const character = screen.getByRole('img', { name: '饼狗海星体模板' })
+    expect(canvas).toHaveClass('miracle-look-composition')
+    expect(canvas).toHaveStyle({ '--miracle-look-composition-scale': '0.38' })
+    expect(character.parentElement).toBe(canvas)
+    expect(
+      screen.getByRole('button', { name: `${starterAssetName}，已选中` }).parentElement
+        ?.parentElement,
+    ).toBe(canvas)
     vi.spyOn(canvas, 'getBoundingClientRect').mockReturnValue({
       x: 0,
       y: 0,
@@ -241,7 +276,7 @@ describe('MiracleWardrobePage', () => {
     expect(created.elements[0].scaleY).not.toBe(created.elements[0].scaleX)
     expect(created.elements[0].rotation).not.toBe(0)
 
-    fireEvent.click(screen.getByRole('button', { name: '恢复默认变换' }))
+    fireEvent.click(screen.getByRole('button', { name: '恢复默认比例/变换' }))
     fireEvent.click(screen.getByRole('button', { name: '保存为新造型' }))
     const resetCreated = onAction.mock.calls.at(-1)?.[0]
     if (resetCreated?.type !== 'wardrobe/look-create') throw new Error('没有保存复位后的造型')
@@ -255,6 +290,84 @@ describe('MiracleWardrobePage', () => {
       rotation: 0,
       z: created.elements[0].z,
     })
+  })
+
+  it('搭配和合拍素材各自按分类筛选，图层列表位于素材选择器之前', () => {
+    const game = wardrobeGame()
+    game.wardrobe = {
+      ...game.wardrobe,
+      ownedAssetIds: [...game.wardrobe.ownedAssetIds, 'round-glasses'],
+    }
+    const { container } = renderPage(game)
+    const glassesName = getWardrobeCatalogItem('round-glasses')?.name ?? '红色圆框眼镜'
+
+    expect(screen.getByRole('button', { name: starterAssetName })).toBeInTheDocument()
+    expect(screen.queryByRole('button', { name: glassesName })).not.toBeInTheDocument()
+    fireEvent.click(screen.getByRole('button', { name: '眼镜【1】' }))
+    expect(screen.getByRole('button', { name: glassesName })).toBeInTheDocument()
+    expect(screen.queryByRole('button', { name: starterAssetName })).not.toBeInTheDocument()
+
+    const dressingTools = container.querySelector('.miracle-editor-tools')
+    expect(dressingTools?.firstElementChild).toHaveClass('miracle-layer-list')
+
+    fireEvent.click(screen.getByRole('tab', { name: '合拍' }))
+    expect(
+      [...container.querySelectorAll('#miracle-panel-photo > *')].map(
+        (element) => element.className,
+      ),
+    ).toEqual(['miracle-photo-setup', 'miracle-photo-stage', 'miracle-photo-tools'])
+    expect(screen.getByRole('button', { name: starterAssetName })).toBeInTheDocument()
+    fireEvent.click(screen.getByRole('button', { name: '眼镜【1】' }))
+    expect(screen.getByRole('button', { name: glassesName })).toBeInTheDocument()
+    expect(container.querySelector('.miracle-photo-tools')?.firstElementChild).toHaveClass(
+      'miracle-layer-list',
+    )
+  })
+
+  it('合拍左栏只显示当前明信片摘要，打开共享选择墙后单击即更新并关闭', async () => {
+    const postcards = Array.from({ length: 100 }, (_, index) => {
+      const id = `postcard-test-${String(index + 1).padStart(3, '0')}`
+      return {
+        ...postcard,
+        id,
+        title: `测试风景 ${index + 1}`,
+        images: [
+          {
+            ...postcard.images[0],
+            path: `assets/collectibles/postcards/${id}.webp`,
+          },
+        ],
+      } as unknown as CollectibleItem
+    })
+    const largeCatalog: ContentCatalog = {
+      ...catalog,
+      items: postcards,
+      byId: Object.fromEntries(postcards.map((item) => [item.id, item])),
+      categoryCounts: { postcard: postcards.length, 'million-shot': 0, 'site-first': 0 },
+    }
+    const game = wardrobeGame()
+    game.collections = Object.fromEntries(
+      postcards.map((item) => [
+        item.id,
+        { id: item.id, firstObtainedAt: 1_000, duplicateCount: 0 },
+      ]),
+    )
+    const { container } = renderPage(game, vi.fn(), largeCatalog)
+    fireEvent.click(screen.getByRole('tab', { name: '合拍' }))
+
+    expect(screen.queryAllByRole('radio')).toHaveLength(0)
+    expect(container.querySelectorAll('.reality-postcard-tile')).toHaveLength(0)
+    fireEvent.click(screen.getByRole('button', { name: '选择合拍明信片' }))
+    expect(screen.getByRole('dialog', { name: '选择合拍的风景' })).toBeInTheDocument()
+    expect(screen.getAllByRole('radio')).toHaveLength(100)
+    expect(screen.queryByRole('radio', { name: /默认纸张/u })).not.toBeInTheDocument()
+
+    fireEvent.click(screen.getByRole('radio', { name: /测试风景 100/u }))
+    expect(screen.queryByRole('dialog', { name: '选择合拍的风景' })).not.toBeInTheDocument()
+    expect(container.querySelector('[data-background-id="postcard-test-100"]')).toBeInTheDocument()
+    await waitFor(() =>
+      expect(screen.getByRole('button', { name: '选择合拍明信片' })).toHaveFocus(),
+    )
   })
 
   it('键盘可以移动并用双手柄调整搭配元素、合拍人物和独立元素', () => {
@@ -512,10 +625,10 @@ describe('MiracleWardrobePage', () => {
     expect(screen.getByRole('heading', { name: '是谁出镜呢' })).toBeInTheDocument()
     const preview = screen.getByRole('img', { name: '奇迹饼狗合拍预览' })
     expect(preview.getAttribute('style')).toContain('aspect-ratio: 480 / 640')
-    expect(screen.getByRole('button', { name: '测试明信片' })).toHaveAttribute(
-      'aria-pressed',
-      'true',
-    )
+    expect(
+      container.querySelector('[data-background-id="postcard-2025-01-0001"]'),
+    ).toBeInTheDocument()
+    expect(screen.queryByText('饼狗不是必须出镜')).not.toBeInTheDocument()
 
     fireEvent.click(screen.getByRole('button', { name: '饼狗' }))
     expect(screen.getByRole('button', { name: '饼狗' })).toHaveAttribute('aria-pressed', 'false')
@@ -526,6 +639,11 @@ describe('MiracleWardrobePage', () => {
 
     const photoCanvas = container.querySelector<HTMLElement>('.miracle-photo-canvas')
     expect(photoCanvas).not.toBeNull()
+    expect(photoCanvas?.parentElement).toHaveClass('miracle-photo-canvas-slot')
+    expect(photoCanvas).toHaveStyle({
+      '--miracle-photo-aspect': '0.75',
+      aspectRatio: '0.75',
+    })
     vi.spyOn(photoCanvas as HTMLElement, 'getBoundingClientRect').mockReturnValue({
       x: 0,
       y: 0,
@@ -555,7 +673,7 @@ describe('MiracleWardrobePage', () => {
       clientY: 150,
     })
     fireEvent.pointerUp(handle, { pointerId: 8 })
-    fireEvent.click(screen.getByRole('button', { name: '恢复默认变换' }))
+    fireEvent.click(screen.getByRole('button', { name: '恢复默认比例/变换' }))
     fireEvent.click(screen.getByRole('button', { name: '保存这张合拍' }))
 
     expect(onAction).toHaveBeenCalledWith(
@@ -660,7 +778,7 @@ describe('MiracleWardrobePage', () => {
     expect(transformed.decorations[0].rotation).not.toBe(0)
     expect(transformed.decorations[0]).not.toHaveProperty('defaultTransform')
 
-    fireEvent.click(screen.getByRole('button', { name: '恢复默认变换' }))
+    fireEvent.click(screen.getByRole('button', { name: '恢复默认比例/变换' }))
     fireEvent.click(screen.getByRole('button', { name: '保存这张合拍' }))
     const reset = onAction.mock.calls.at(-1)?.[0]
     if (reset?.type !== 'wardrobe/photo-create') throw new Error('没有保存复位后的合拍')
@@ -692,8 +810,19 @@ describe('MiracleWardrobePage', () => {
       wardrobeStyles.indexOf('.miracle-collection-thumb {'),
       wardrobeStyles.indexOf('.miracle-collection-group strong {'),
     )
-    expect(thumbnailRules).toContain('height: clamp(60px, 4.2vw, 78px)')
+    expect(thumbnailRules).toContain('height: clamp(78px, 5vw, 92px)')
+    expect(thumbnailRules).toContain('width: calc(100% - 12px)')
     expect(thumbnailRules).toContain('object-fit: contain')
+    expect(wardrobeStyles).toContain('container-type: size')
+    expect(wardrobeStyles).toContain(
+      'width: min(100cqw, calc(100cqh * var(--miracle-photo-aspect, 1.3333)))',
+    )
+    expect(wardrobeStyles).toMatch(
+      /@media \(max-width: 960px\)[\s\S]*?\.miracle-photo-canvas-slot\s*\{[\s\S]*?container-type: normal;/u,
+    )
+    expect(wardrobeStyles).toMatch(
+      /@media \(max-width: 960px\)[\s\S]*?\.miracle-asset-buttons[\s\S]*?overflow: visible;/u,
+    )
     const thumbnailScales = [...thumbnailRules.matchAll(/transform: scale\(([\d.]+)\)/gu)].map(
       (match) => Number(match[1]),
     )

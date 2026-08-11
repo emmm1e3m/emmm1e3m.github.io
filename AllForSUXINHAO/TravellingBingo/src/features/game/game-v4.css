@@ -30,6 +30,7 @@
 .game-hud--v4 .pet-status-bar__effect,
 .game-hud--v4 .hud-companion,
 .game-hud--v4 .reality-stay-timer,
+.game-hud--v4 .stream-status-chip,
 .game-hud--v4 .apple-counter strong,
 .game-hud--v4 .hud-icon,
 .game-hud--v4 .debug-chip {
@@ -41,6 +42,7 @@
 .game-hud--v4 .game-hud__center,
 .game-page--v4 .pet-status-bar,
 .game-hud--v4 .reality-stay-timer,
+.game-hud--v4 .stream-status-chip,
 .game-hud--v4 .apple-counter,
 .game-hud--v4 .hud-icon,
 .game-hud--v4 .debug-chip {
@@ -73,6 +75,21 @@
   background: #e5eff2;
   line-height: 1;
   white-space: nowrap;
+}
+
+.game-hud--v4 .stream-status-chip {
+  min-height: 44px;
+  flex: 0 0 auto;
+  display: inline-flex;
+  align-items: center;
+  padding: 0.38rem 0.58rem;
+  background: #e7f0df;
+  line-height: 1;
+  white-space: nowrap;
+}
+
+.game-hud--v4 .stream-status-chip--stopping {
+  background: #f8e2dc;
 }
 
 .game-hud--v4 .apple-counter {

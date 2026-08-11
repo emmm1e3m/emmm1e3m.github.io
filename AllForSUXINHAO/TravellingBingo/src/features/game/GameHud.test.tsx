@@ -216,6 +216,45 @@ describe('GameHud', () => {
     expect(screen.queryByText(/现实 \d+ 分钟/u)).not.toBeInTheDocument()
   })
 
+  it('以短句显示刷播启动、运行和停止状态，点击时请求打开独立工具', () => {
+    const game = createInitialGameState({ now: 1_000, seed: 'v4-stream-status' })
+    const onStreamStatus = vi.fn()
+    const props = {
+      game,
+      now: 1_000,
+      activity: null,
+      timing: deriveActivityTiming(null, 1_000),
+      dirty: false,
+      statusLabel: null,
+      vitalityDays: 0,
+      onExit: vi.fn(),
+      onCenter: vi.fn(),
+      onRealityTimer: vi.fn(),
+      onPetStatus: vi.fn(),
+      onStreamStatus,
+      onFridge: vi.fn(),
+      onAlbum: vi.fn(),
+      onDebug: vi.fn(),
+    } as const
+    const { rerender } = render(<GameHud {...props} streamStatus="starting" />)
+
+    const starting = screen.getByRole('button', {
+      name: '刷播启动中，打开在线刷播工具',
+    })
+    expect(starting).toHaveTextContent('刷播启动中')
+    fireEvent.click(starting)
+    expect(onStreamStatus).toHaveBeenCalledOnce()
+
+    rerender(<GameHud {...props} streamStatus="running" />)
+    expect(screen.getByRole('button', { name: '刷播运行中，打开在线刷播工具' })).toBeVisible()
+
+    rerender(<GameHud {...props} streamStatus="stopping" />)
+    expect(screen.getByRole('button', { name: '刷播停止中，打开在线刷播工具' })).toBeVisible()
+
+    rerender(<GameHud {...props} streamStatus={null} />)
+    expect(screen.queryByText('刷播停止中')).not.toBeInTheDocument()
+  })
+
   it('全站默认与可点击区域使用 CSS 内联 SVG 场景指针', () => {
     expect(globalStyles).toMatch(/--scene-cursor-default:\s*url\("data:image\/svg\+xml,/su)
     expect(globalStyles).toMatch(/--scene-cursor-action:\s*url\("data:image\/svg\+xml,/su)

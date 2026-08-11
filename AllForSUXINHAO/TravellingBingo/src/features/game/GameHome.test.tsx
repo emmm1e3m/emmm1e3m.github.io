@@ -439,6 +439,8 @@ describe('现实刷播运行时', () => {
     const openedWindow = {
       closed: false,
       close: vi.fn(),
+      focus: vi.fn(),
+      postMessage: vi.fn(),
       opener: window,
     } as unknown as Window
     const openSpy = vi.spyOn(window, 'open').mockReturnValue(openedWindow)
@@ -451,7 +453,30 @@ describe('现实刷播运行时', () => {
 
     await waitFor(() => expect(openSpy).toHaveBeenCalledOnce())
     expect(screen.getByRole('button', { name: '停止刷播' })).toBeVisible()
+    const startingStatus = screen.getByRole('button', {
+      name: '刷播启动中，打开在线刷播工具',
+    })
+    fireEvent.click(startingStatus)
+    expect(openedWindow.focus).toHaveBeenCalledOnce()
     expect(screen.queryByText('独立页正在准备')).not.toBeInTheDocument()
+
+    const sessionId = new URL(String(openSpy.mock.calls[0]?.[0])).searchParams.get('sessionId')!
+    act(() => {
+      window.dispatchEvent(
+        new MessageEvent('message', {
+          origin: window.location.origin,
+          source: openedWindow,
+          data: {
+            type: 'travelling-bingo:stream-player',
+            version: 1,
+            sessionId,
+            event: 'started',
+            dateKey: '2026-08-11',
+          },
+        }),
+      )
+    })
+    expect(screen.getByRole('button', { name: '刷播运行中，打开在线刷播工具' })).toBeVisible()
 
     fireEvent.click(screen.getByRole('button', { name: '工作' }))
     expect(screen.getByRole('heading', { name: '苹果钟与待办' })).toBeVisible()
@@ -463,6 +488,8 @@ describe('现实刷播运行时', () => {
     expect(screen.getByRole('textbox', { name: '自测视频BV号或链接' })).toHaveValue('BV1xx411c7mD')
     expect(openSpy).toHaveBeenCalledOnce()
     expect(openedWindow.close).not.toHaveBeenCalled()
+    fireEvent.click(screen.getByRole('button', { name: '停止刷播' }))
+    expect(screen.getByRole('button', { name: '刷播停止中，打开在线刷播工具' })).toBeVisible()
     openSpy.mockRestore()
   })
 
@@ -569,6 +596,43 @@ describe('现实刷播运行时', () => {
     } finally {
       openSpy.mockRestore()
     }
+  })
+
+  it('独立页回传启动失败后清除顶部启动提示且保留窗口供修正', () => {
+    const handle = {
+      closed: false,
+      close: vi.fn(),
+      focus: vi.fn(),
+      postMessage: vi.fn(),
+    } as unknown as Window
+    const openSpy = vi.spyOn(window, 'open').mockReturnValue(handle)
+
+    render(<RealityStreamHarness />)
+    fireEvent.click(screen.getByRole('button', { name: '开始刷播' }))
+    expect(screen.getByRole('button', { name: '刷播启动中，打开在线刷播工具' })).toBeVisible()
+    const sessionId = new URL(String(openSpy.mock.calls[0]?.[0])).searchParams.get('sessionId')!
+
+    act(() => {
+      window.dispatchEvent(
+        new MessageEvent('message', {
+          origin: window.location.origin,
+          source: handle,
+          data: {
+            type: 'travelling-bingo:stream-player',
+            version: 1,
+            sessionId,
+            event: 'failed',
+            message: '收藏夹读取失败',
+          },
+        }),
+      )
+    })
+
+    expect(screen.queryByText('刷播启动中')).not.toBeInTheDocument()
+    expect(screen.queryByText('刷播运行中')).not.toBeInTheDocument()
+    expect(screen.queryByText('刷播停止中')).not.toBeInTheDocument()
+    expect(handle.close).not.toHaveBeenCalled()
+    expect(screen.getByRole('button', { name: '开始刷播' })).toBeVisible()
   })
 })
 

@@ -6,7 +6,7 @@ import { createStreamPlayerStopCommand, parseStreamPlayerEvent } from './popupPr
 import { parseStreamSelfTestInput, type StreamInputError, type StreamParseResult } from './parser'
 
 export type StreamPlaybackStatus =
-  'idle' | 'opening' | 'waiting' | 'blocked' | 'stopped' | 'completed'
+  'idle' | 'opening' | 'waiting' | 'stopping' | 'blocked' | 'stopped' | 'completed'
 
 export interface StreamStartSettings {
   readonly favoriteId: StreamFavoriteId
@@ -24,6 +24,7 @@ export interface StreamPlaybackController {
   readonly state: StreamPlaybackState
   readonly start: (input: string, settings: StreamStartSettings) => StreamParseResult
   readonly stop: () => void
+  readonly focus: () => boolean
 }
 
 export interface UseStreamPlaybackOptions {
@@ -177,7 +178,7 @@ export function useStreamPlayback({
     if (handle && !handle.closed && channelSessionId !== null) {
       runtimeRef.current.closeOnEnded = true
       handle.postMessage(createStreamPlayerStopCommand(channelSessionId), window.location.origin)
-      publish({ ...current, message: '正在停止刷播' })
+      publish({ ...current, status: 'stopping', message: '正在停止刷播' })
       return
     }
     runtimeRef.current.handle = null
@@ -186,6 +187,47 @@ export function useStreamPlayback({
     runtimeRef.current.startedNotified = false
     publish({ ...current, status: 'stopped', message: '刷播已停止' })
   }, [publish])
+
+  const focus = useCallback(() => {
+    const current = runtimeRef.current.state
+    const handle = runtimeRef.current.handle
+    if (!handle || handle.closed) {
+      runtimeRef.current.handle = null
+      runtimeRef.current.channelSessionId = null
+      runtimeRef.current.closeOnEnded = false
+      runtimeRef.current.startedNotified = false
+      publish({ ...current, status: 'stopped', message: '刷播窗口已关闭' })
+      return false
+    }
+
+    try {
+      handle.focus()
+      return true
+    } catch {
+      return false
+    }
+  }, [publish])
+
+  useEffect(() => {
+    const active =
+      state.status === 'opening' || state.status === 'waiting' || state.status === 'stopping'
+    if (!active) return
+
+    const reconcileClosedWindow = () => {
+      const current = runtimeRef.current.state
+      const handle = runtimeRef.current.handle
+      if (handle && !handle.closed) return
+
+      runtimeRef.current.handle = null
+      runtimeRef.current.channelSessionId = null
+      runtimeRef.current.closeOnEnded = false
+      runtimeRef.current.startedNotified = false
+      publish({ ...current, status: 'stopped', message: '刷播窗口已关闭' })
+    }
+
+    const timer = globalThis.setInterval(reconcileClosedWindow, 1_000)
+    return () => globalThis.clearInterval(timer)
+  }, [publish, state.message, state.status])
 
   useEffect(() => {
     const handleMessage = (event: MessageEvent<unknown>) => {
@@ -210,6 +252,17 @@ export function useStreamPlayback({
         return
       }
 
+      if (message.event === 'failed') {
+        runtimeRef.current.closeOnEnded = false
+        runtimeRef.current.startedNotified = false
+        publish({
+          ...current,
+          status: 'stopped',
+          message: `刷播未能启动：${message.message}`,
+        })
+        return
+      }
+
       const closeWindow = runtimeRef.current.closeOnEnded
       if (closeWindow && !handle.closed) handle.close()
       if (closeWindow || handle.closed) {
@@ -229,7 +282,7 @@ export function useStreamPlayback({
     return () => window.removeEventListener('message', handleMessage)
   }, [publish])
 
-  return { state, start, stop }
+  return { state, start, stop, focus }
 }
 
 export { parseStreamSelfTestInput }

@@ -98,15 +98,15 @@ describe('PostcardPicker', () => {
     expect(screen.queryByRole('dialog', { name: '选择这一轮的风景' })).not.toBeInTheDocument()
   })
 
-  it('全页本身滚动，不给明信片网格设置小滚动框', () => {
+  it('把长目录滚动限制在明信片墙内，标题和取消按钮保持可见', () => {
     expect(realityStyles).toMatch(
-      /\.reality-postcard-dialog-backdrop\s*\{[\s\S]*?overflow-y: auto;/u,
+      /\.reality-postcard-dialog-backdrop\s*\{[\s\S]*?grid-template-rows: minmax\(0, 1fr\);[\s\S]*?overflow: hidden;/u,
     )
     expect(realityStyles).toMatch(
-      /\.reality-postcard-dialog__wall\s*\{[\s\S]*?grid-template-columns:/u,
+      /\.reality-postcard-dialog\s*\{[\s\S]*?grid-template-rows: auto minmax\(0, 1fr\) auto;[\s\S]*?overflow: hidden;/u,
     )
-    expect(realityStyles).not.toMatch(
-      /\.reality-postcard-dialog__wall\s*\{[^}]*?(?:max-height|overflow-y):/u,
+    expect(realityStyles).toMatch(
+      /\.reality-postcard-dialog__wall\s*\{[\s\S]*?min-height: 0;[\s\S]*?overflow-y: auto;/u,
     )
   })
 

@@ -790,9 +790,9 @@ export function ContextPanel({
       >
         <h2>奇迹饼狗</h2>
         <p>进入搭配室前，可以先看看今天衣架上还有哪些衣服。</p>
-        <section className="miracle-panel__shop" aria-labelledby="miracle-panel-shop-title">
-          <h3 id="miracle-panel-shop-title">今天仍可购买</h3>
-          {availableShopItems.length > 0 ? (
+        {availableShopItems.length > 0 && (
+          <section className="miracle-panel__shop" aria-labelledby="miracle-panel-shop-title">
+            <h3 id="miracle-panel-shop-title">今天仍可购买</h3>
             <div className="miracle-panel__offers">
               {availableShopItems.map((item) => {
                 const visual = getWardrobeAssetVisual(item.id)
@@ -824,10 +824,8 @@ export function ContextPanel({
                 )
               })}
             </div>
-          ) : (
-            <p>今天衣架上的新衣服都已经收好啦。</p>
-          )}
-        </section>
+          </section>
+        )}
         <button
           className="paper-button paper-button--primary"
           type="button"

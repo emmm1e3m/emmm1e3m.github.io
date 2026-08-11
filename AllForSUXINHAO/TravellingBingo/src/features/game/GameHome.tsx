@@ -270,6 +270,14 @@ export function GameHome({
     [onAction],
   )
   const streamPlayback = useStreamPlayback({ onStarted: claimDailyStreamReward })
+  const streamHudStatus =
+    streamPlayback.state.status === 'stopping'
+      ? 'stopping'
+      : streamPlayback.state.status === 'opening'
+        ? 'starting'
+        : streamPlayback.state.status === 'waiting'
+          ? 'running'
+          : null
   const handlePetCenterChange = useCallback((point: RoomPixelPoint) => {
     visiblePetCenterRef.current = point
   }, [])
@@ -471,11 +479,15 @@ export function GameHome({
           dirty={dirty}
           inert={overlayOpen}
           statusLabel={petStatusLabel}
+          streamStatus={streamHudStatus}
           vitalityDays={vitalityDays}
           onExit={onExit}
           onCenter={() => navigate(activity ? 'activity' : 'status')}
           onRealityTimer={toggleDimension}
           onPetStatus={() => setPetMenuOpenRequest((request) => request + 1)}
+          onStreamStatus={() => {
+            if (!streamPlayback.focus()) navigate('reality-stream')
+          }}
           onFridge={() => navigate('fridge')}
           onAlbum={() => navigate('album')}
           onDebug={() => navigate('debug')}

@@ -8,11 +8,93 @@ import { PhotoCompositionPreview } from '@/features/wardrobe/PhotoCompositionPre
 import { samePomodoroBackgroundRef } from './realityViewModel'
 import type { PomodoroBackgroundOption } from './types'
 
+import './reality.css'
+
 interface PostcardPickerProps {
   options: readonly PomodoroBackgroundOption[]
   selected: PomodoroBackgroundRef | null
   onChange: (background: PomodoroBackgroundRef | null) => void
   disabled?: boolean
+  variant?: 'work-card' | 'compact'
+  heading?: string
+  triggerLabel?: string
+  dialogEyebrow?: string
+  dialogTitle?: string
+  dialogDescription?: string
+  groupLabel?: string
+  includePlain?: boolean
+}
+
+interface PostcardChoiceGridProps {
+  options: readonly PomodoroBackgroundOption[]
+  selected: PomodoroBackgroundRef | null
+  onSelect: (background: PomodoroBackgroundRef | null) => void
+  ariaLabel: string
+  className?: string
+  includePlain?: boolean
+}
+
+function PostcardChoiceGrid({
+  options,
+  selected,
+  onSelect,
+  ariaLabel,
+  className,
+  includePlain = false,
+}: PostcardChoiceGridProps) {
+  const name = useId()
+
+  return (
+    <div className={className} role="radiogroup" aria-label={ariaLabel}>
+      {includePlain && (
+        <label className="reality-postcard-tile reality-postcard-tile--plain">
+          <input
+            type="radio"
+            name={name}
+            checked={selected === null}
+            onChange={() => onSelect(null)}
+            onClick={() => {
+              if (selected === null) onSelect(null)
+            }}
+          />
+          <span aria-hidden="true">白纸</span>
+          <strong>默认纸张</strong>
+        </label>
+      )}
+      {options.map((option) => (
+        <label
+          key={`${option.kind}:${option.id}`}
+          className={`reality-postcard-tile reality-postcard-tile--${option.kind}`}
+        >
+          <input
+            type="radio"
+            name={name}
+            checked={samePomodoroBackgroundRef(option.ref, selected)}
+            onChange={() => onSelect(option.ref)}
+            onClick={() => {
+              if (samePomodoroBackgroundRef(option.ref, selected)) onSelect(option.ref)
+            }}
+          />
+          {option.kind === 'wardrobe-photo' ? (
+            <PhotoCompositionPreview
+              photo={option.photo}
+              postcard={option.thumbnailPostcard}
+              className="reality-postcard-option__photo"
+              mode="contain"
+              decorative
+            />
+          ) : option.thumbnailUrl ? (
+            <img src={option.thumbnailUrl} alt={option.alt ?? ''} loading="lazy" decoding="async" />
+          ) : (
+            <span className="reality-postcard-option__placeholder" aria-hidden="true">
+              明信片
+            </span>
+          )}
+          <strong>{option.title}</strong>
+        </label>
+      ))}
+    </div>
+  )
 }
 
 interface PostcardPickerDialogProps {
@@ -21,6 +103,11 @@ interface PostcardPickerDialogProps {
   onSelect: (background: PomodoroBackgroundRef | null) => void
   onCancel: () => void
   returnFocus: () => HTMLElement | null
+  eyebrow: string
+  title: string
+  description: string
+  groupLabel: string
+  includePlain: boolean
 }
 
 function PostcardPickerDialog({
@@ -29,6 +116,11 @@ function PostcardPickerDialog({
   onSelect,
   onCancel,
   returnFocus,
+  eyebrow,
+  title,
+  description,
+  groupLabel,
+  includePlain,
 }: PostcardPickerDialogProps) {
   const titleId = useId()
   const descriptionId = useId()
@@ -51,65 +143,21 @@ function PostcardPickerDialog({
       >
         <header className="reality-postcard-dialog__header">
           <div>
-            <span className="reality-eyebrow">陪伴背景</span>
-            <h2 id={titleId}>选择这一轮的风景</h2>
-            <p id={descriptionId}>明信片与保存的奇迹合拍都可以成为背景，单击一张即可确定。</p>
+            <span className="reality-eyebrow">{eyebrow}</span>
+            <h2 id={titleId}>{title}</h2>
+            <p id={descriptionId}>{description}</p>
           </div>
           <span className="reality-unlocked-count">可选背景 {options.length}</span>
         </header>
 
-        <div className="reality-postcard-dialog__wall" role="radiogroup" aria-label="苹果钟背景">
-          <label className="reality-postcard-tile reality-postcard-tile--plain">
-            <input
-              type="radio"
-              name={titleId}
-              checked={selected === null}
-              onChange={() => onSelect(null)}
-              onClick={() => {
-                if (selected === null) onSelect(null)
-              }}
-            />
-            <span aria-hidden="true">白纸</span>
-            <strong>默认纸张</strong>
-          </label>
-          {options.map((option) => (
-            <label
-              key={`${option.kind}:${option.id}`}
-              className={`reality-postcard-tile reality-postcard-tile--${option.kind}`}
-            >
-              <input
-                type="radio"
-                name={titleId}
-                checked={samePomodoroBackgroundRef(option.ref, selected)}
-                onChange={() => onSelect(option.ref)}
-                onClick={() => {
-                  if (samePomodoroBackgroundRef(option.ref, selected)) onSelect(option.ref)
-                }}
-              />
-              {option.kind === 'wardrobe-photo' ? (
-                <PhotoCompositionPreview
-                  photo={option.photo}
-                  postcard={option.thumbnailPostcard}
-                  className="reality-postcard-option__photo"
-                  mode="contain"
-                  decorative
-                />
-              ) : option.thumbnailUrl ? (
-                <img
-                  src={option.thumbnailUrl}
-                  alt={option.alt ?? ''}
-                  loading="lazy"
-                  decoding="async"
-                />
-              ) : (
-                <span className="reality-postcard-option__placeholder" aria-hidden="true">
-                  明信片
-                </span>
-              )}
-              <strong>{option.title}</strong>
-            </label>
-          ))}
-        </div>
+        <PostcardChoiceGrid
+          options={options}
+          selected={selected}
+          onSelect={onSelect}
+          ariaLabel={groupLabel}
+          className="reality-postcard-dialog__wall"
+          includePlain={includePlain}
+        />
 
         <div className="reality-postcard-dialog__actions">
           <button
@@ -132,6 +180,14 @@ export function PostcardPicker({
   selected,
   onChange,
   disabled = false,
+  variant = 'work-card',
+  heading = '陪伴背景',
+  triggerLabel = '选择陪伴背景',
+  dialogEyebrow = '陪伴背景',
+  dialogTitle = '选择这一轮的风景',
+  dialogDescription = '明信片与保存的奇迹合拍都可以成为背景，单击一张即可确定。',
+  groupLabel = '苹果钟背景',
+  includePlain = true,
 }: PostcardPickerProps) {
   const headingId = useId()
   const triggerRef = useRef<HTMLButtonElement>(null)
@@ -153,11 +209,14 @@ export function PostcardPicker({
   }
 
   return (
-    <section className="reality-work-card reality-postcard-picker" aria-labelledby={headingId}>
+    <section
+      className={`${variant === 'work-card' ? 'reality-work-card ' : ''}reality-postcard-picker reality-postcard-picker--${variant}`}
+      aria-labelledby={headingId}
+    >
       <div className="reality-work-card__heading">
         <div>
-          <span className="reality-card-index">03</span>
-          <h3 id={headingId}>陪伴背景</h3>
+          {variant === 'work-card' && <span className="reality-card-index">03</span>}
+          <h3 id={headingId}>{heading}</h3>
         </div>
         <span className="reality-unlocked-count">可选背景 {options.length}</span>
       </div>
@@ -206,7 +265,7 @@ export function PostcardPicker({
         disabled={disabled}
         onClick={openPicker}
       >
-        选择陪伴背景
+        {triggerLabel}
       </button>
 
       {open && (
@@ -216,6 +275,11 @@ export function PostcardPicker({
           onSelect={selectBackground}
           onCancel={closePicker}
           returnFocus={() => triggerRef.current}
+          eyebrow={dialogEyebrow}
+          title={dialogTitle}
+          description={dialogDescription}
+          groupLabel={groupLabel}
+          includePlain={includePlain}
         />
       )}
     </section>

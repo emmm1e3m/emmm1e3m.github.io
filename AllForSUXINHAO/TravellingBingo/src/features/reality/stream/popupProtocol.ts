@@ -30,6 +30,10 @@ export type StreamPlayerEvent =
       readonly event: 'ended'
       readonly outcome: StreamPlayerOutcome
     })
+  | (StreamPlayerMessageBase & {
+      readonly event: 'failed'
+      readonly message: string
+    })
 
 export type StreamPlayerCommand = StreamPlayerMessageBase & { readonly event: 'stop' }
 
@@ -71,6 +75,15 @@ export function parseStreamPlayerEvent(value: unknown): StreamPlayerEvent | null
   }
 
   if (value.event === 'ended' && (value.outcome === 'completed' || value.outcome === 'stopped')) {
+    return value as unknown as StreamPlayerEvent
+  }
+
+  if (
+    value.event === 'failed' &&
+    typeof value.message === 'string' &&
+    value.message.trim().length > 0 &&
+    value.message.length <= 500
+  ) {
     return value as unknown as StreamPlayerEvent
   }
 

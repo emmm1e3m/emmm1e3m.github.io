@@ -18,6 +18,7 @@ export type StreamPlayerEventPayload =
       readonly event: 'ended'
       readonly outcome: 'completed' | 'stopped'
     }
+  | { readonly event: 'failed'; readonly message: string }
 
 export function createStreamPlayerEvent(
   sessionId: string,

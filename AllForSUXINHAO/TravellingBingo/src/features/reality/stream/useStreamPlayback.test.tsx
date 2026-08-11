@@ -13,6 +13,7 @@ function fakeWindow() {
     close: vi.fn(() => {
       handle.closed = true
     }),
+    focus: vi.fn(),
     postMessage: vi.fn(),
   }
   return handle as unknown as Window
@@ -81,7 +82,9 @@ describe('useStreamPlayback', () => {
       status: 'opening',
       stopAfterMs: null,
     })
-    expect(Object.keys(result.current).sort()).toEqual(['start', 'state', 'stop'])
+    expect(Object.keys(result.current).sort()).toEqual(['focus', 'start', 'state', 'stop'])
+    expect(result.current.focus()).toBe(true)
+    expect(handle.focus).toHaveBeenCalledOnce()
   })
 
   it('无效输入不会误开页面', () => {
@@ -219,6 +222,7 @@ describe('useStreamPlayback', () => {
       expect.objectContaining({ event: 'stop', sessionId }),
       window.location.origin,
     )
+    expect(result.current.state.status).toBe('stopping')
     expect(result.current.state.message).toBe('正在停止刷播')
 
     act(() => {
@@ -248,6 +252,68 @@ describe('useStreamPlayback', () => {
     expect(onStarted).not.toHaveBeenCalled()
   })
 
+  it('独立页启动失败后退出活跃状态但保留窗口，修正后可在同一通道重新开始', () => {
+    const handle = fakeWindow()
+    const open = vi.spyOn(window, 'open').mockReturnValue(handle)
+    const onStarted = vi.fn()
+    const { result } = renderHook(() => useStreamPlayback({ onStarted }))
+
+    act(() => result.current.start('', { favoriteId: 3682220021, stopAfterMs: null }))
+    const sessionId = new URL(String(open.mock.calls[0]?.[0])).searchParams.get('sessionId')!
+
+    act(() => {
+      window.dispatchEvent(
+        new MessageEvent('message', {
+          origin: window.location.origin,
+          source: handle,
+          data: playerEvent(sessionId, {
+            event: 'failed',
+            message: '收藏夹读取失败',
+          }),
+        }),
+      )
+    })
+
+    expect(result.current.state).toMatchObject({
+      status: 'stopped',
+      message: '刷播未能启动：收藏夹读取失败',
+    })
+    expect(handle.close).not.toHaveBeenCalled()
+    expect(result.current.focus()).toBe(true)
+    expect(onStarted).not.toHaveBeenCalled()
+
+    act(() => {
+      window.dispatchEvent(
+        new MessageEvent('message', {
+          origin: window.location.origin,
+          source: handle,
+          data: playerEvent(sessionId, { event: 'started', dateKey: '2026-08-11' }),
+        }),
+      )
+    })
+    expect(result.current.state.status).toBe('waiting')
+    expect(onStarted).toHaveBeenCalledWith('2026-08-11')
+  })
+
+  it('手动关闭独立页后回收运行状态，聚焦失败时允许主页面回退导航', () => {
+    vi.useFakeTimers()
+    const handle = fakeWindow()
+    vi.spyOn(window, 'open').mockReturnValue(handle)
+    const { result } = renderHook(() => useStreamPlayback())
+
+    act(() => result.current.start('', { favoriteId: 3682220021, stopAfterMs: null }))
+    expect(result.current.state.status).toBe('opening')
+
+    ;(handle as unknown as { closed: boolean }).closed = true
+    act(() => vi.advanceTimersByTime(1_000))
+
+    expect(result.current.state).toMatchObject({
+      status: 'stopped',
+      message: '刷播窗口已关闭',
+    })
+    expect(result.current.focus()).toBe(false)
+  })
+
   it('独立页仍在加载时停止，会等待其落盘并确认结束后再关闭页面', () => {
     const handle = fakeWindow()
     const open = vi.spyOn(window, 'open').mockReturnValue(handle)
@@ -262,6 +328,7 @@ describe('useStreamPlayback', () => {
       window.location.origin,
     )
     expect(handle.close).not.toHaveBeenCalled()
+    expect(result.current.state.status).toBe('stopping')
     expect(result.current.state.message).toBe('正在停止刷播')
 
     act(() => {

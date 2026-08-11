@@ -18,11 +18,13 @@ interface GameHudProps {
   dirty: boolean
   inert?: boolean
   statusLabel: string | null
+  streamStatus?: 'starting' | 'running' | 'stopping' | null
   vitalityDays: number
   onExit: () => void
   onCenter: () => void
   onRealityTimer: () => void
   onPetStatus: () => void
+  onStreamStatus?: () => void
   onFridge: () => void
   onAlbum: () => void
   onDebug: () => void
@@ -36,11 +38,13 @@ export function GameHud({
   dirty,
   inert,
   statusLabel,
+  streamStatus = null,
   vitalityDays,
   onExit,
   onCenter,
   onRealityTimer,
   onPetStatus,
+  onStreamStatus,
   onFridge,
   onAlbum,
   onDebug,
@@ -80,6 +84,26 @@ export function GameHud({
       </button>
 
       <div className="game-hud__actions">
+        {streamStatus && onStreamStatus && (
+          <button
+            className={`stream-status-chip stream-status-chip--${streamStatus}`}
+            type="button"
+            onClick={onStreamStatus}
+            aria-label={`${
+              streamStatus === 'starting'
+                ? '刷播启动中'
+                : streamStatus === 'running'
+                  ? '刷播运行中'
+                  : '刷播停止中'
+            }，打开在线刷播工具`}
+          >
+            {streamStatus === 'starting'
+              ? '刷播启动中'
+              : streamStatus === 'running'
+                ? '刷播运行中'
+                : '刷播停止中'}
+          </button>
+        )}
         {realityStayMinutes !== null && (
           <button
             className="reality-stay-timer numeric-copy"

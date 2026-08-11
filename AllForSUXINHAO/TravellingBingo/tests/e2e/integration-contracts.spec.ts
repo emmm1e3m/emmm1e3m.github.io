@@ -238,7 +238,9 @@ test.describe('V9 高风险集成契约', () => {
     await expect(page.getByRole('button', { name: '切换到现实生活维度' })).toBeVisible()
   })
 
-  test('苹果钟使用全屏明信片墙，开始后仍可增改勾选删除待办且睡觉饼狗缓慢移动', async ({ page }) => {
+  test('苹果钟使用全屏明信片墙，开始后仍可增改勾选删除待办且看电脑饼狗缓慢移动', async ({
+    page,
+  }) => {
     test.setTimeout(90_000)
     await startGame(page, { debug: true, seed: 'pomodoro-live-e2e', displayName: '苹果钟验收' })
     await openDebugPanel(page)
@@ -281,7 +283,7 @@ test.describe('V9 高风险集成契约', () => {
     const focus = page.getByRole('dialog', { name: '和饼狗一起专注' })
     const focusBackdrop = page.locator('.pomodoro-focus-backdrop')
     const mascot = focus.locator('.pomodoro-focus__mascot')
-    const sleepingSprite = focus.getByRole('img', { name: '正在睡觉陪伴你的饼狗' })
+    const computerSprite = focus.getByRole('img', { name: '正在看电脑陪伴你的饼狗' })
     await expect(focus).toBeVisible()
     await expect(focusBackdrop.locator('.pomodoro-focus__background')).toHaveCSS(
       'object-fit',
@@ -291,7 +293,8 @@ test.describe('V9 高风险集成契约', () => {
       'object-position',
       '50% 50%',
     )
-    await expect(sleepingSprite).toHaveClass(/mascot-sprite--sleep/u)
+    await expect(computerSprite).toHaveClass(/mascot-sprite--stream/u)
+    await expect(computerSprite).not.toHaveClass(/mascot-sprite--sleep/u)
     const mascotWidth = (await mascot.boundingBox())?.width ?? 0
     expect(mascotWidth).toBeGreaterThanOrEqual(90)
     expect(mascotWidth).toBeLessThanOrEqual(130)

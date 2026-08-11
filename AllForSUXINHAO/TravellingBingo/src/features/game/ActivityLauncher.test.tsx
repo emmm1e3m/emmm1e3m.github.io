@@ -59,6 +59,7 @@ function idleStreamPlayback(): StreamPlaybackController {
     },
     start: vi.fn(() => ({ ok: true as const, bvid: null, errors: [] as const })),
     stop: vi.fn(),
+    focus: vi.fn(() => false),
   }
 }
 

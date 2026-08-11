@@ -276,9 +276,9 @@ export function PomodoroFocusOverlay({
           data-reduced-motion={reducedMotion ? 'true' : 'false'}
         >
           <MascotSprite
-            pose="sleep"
+            pose="stream"
             className="pomodoro-focus__mascot"
-            label="正在睡觉陪伴你的饼狗"
+            label="正在看电脑陪伴你的饼狗"
             style={mascotStyle}
           />
         </div>

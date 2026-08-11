@@ -23,8 +23,10 @@
 }
 
 .miracle-wardrobe-page::-webkit-scrollbar,
+.miracle-editor-library::-webkit-scrollbar,
 .miracle-editor-stage::-webkit-scrollbar,
 .miracle-editor-tools::-webkit-scrollbar,
+.miracle-photo-setup::-webkit-scrollbar,
 .miracle-photo-stage::-webkit-scrollbar,
 .miracle-photo-tools::-webkit-scrollbar,
 .miracle-postcard-picker::-webkit-scrollbar,
@@ -149,14 +151,18 @@
 }
 
 .miracle-panel-heading h3,
+.miracle-editor-library h3,
 .miracle-editor-tools h3,
+.miracle-photo-setup h3,
 .miracle-photo-tools h3 {
   margin: 0 0 0.2rem;
   font-size: clamp(1.15rem, 1.8vw, 1.6rem);
 }
 
 .miracle-panel-heading p,
+.miracle-editor-library p,
 .miracle-editor-tools p,
+.miracle-photo-setup p,
 .miracle-photo-tools p {
   margin: 0;
   color: #8c6a60;
@@ -221,23 +227,35 @@
   font-size: 1.25rem;
 }
 
-.miracle-editor-layout,
-.miracle-photo-layout {
+.miracle-editor-layout {
   height: 100%;
   min-height: 0;
   display: grid;
-  grid-template-columns: minmax(390px, 0.95fr) minmax(430px, 1.05fr);
+  grid-template-columns: minmax(220px, 0.72fr) minmax(360px, 1.24fr) minmax(230px, 0.62fr);
   gap: 0.65rem;
   align-items: stretch;
   overflow: hidden;
 }
 
+.miracle-photo-layout {
+  height: 100%;
+  min-height: 0;
+  display: grid;
+  grid-template-columns: minmax(250px, 0.76fr) minmax(360px, 1.22fr) minmax(230px, 0.64fr);
+  gap: 0.65rem;
+  align-items: stretch;
+  overflow: hidden;
+}
+
+.miracle-editor-library,
 .miracle-editor-stage,
 .miracle-editor-tools,
+.miracle-photo-setup,
 .miracle-photo-stage,
 .miracle-photo-tools,
 .miracle-stage-test,
 .miracle-empty-state {
+  min-width: 0;
   padding: 0.7rem;
   border: 1.5px solid #d8b18f;
   border-radius: 24px;
@@ -245,7 +263,9 @@
   box-shadow: 0 9px 24px rgb(91 54 40 / 10%);
 }
 
+.miracle-editor-library,
 .miracle-editor-tools,
+.miracle-photo-setup,
 .miracle-photo-tools,
 .miracle-editor-stage,
 .miracle-photo-stage {
@@ -253,13 +273,38 @@
   max-height: 100%;
   display: grid;
   gap: 0.65rem;
-  align-content: start;
-  overflow-y: auto;
+  align-content: stretch;
+  overflow: hidden;
   overscroll-behavior: contain;
   scrollbar-width: none;
 }
 
+.miracle-editor-library {
+  grid-template-rows: auto minmax(0, 1fr) auto auto;
+}
+
+.miracle-editor-tools,
+.miracle-photo-tools {
+  grid-template-rows: minmax(72px, 0.48fr) auto minmax(100px, 1fr);
+}
+
+.miracle-photo-setup {
+  grid-template-rows: auto minmax(0, 1fr);
+}
+
+.miracle-editor-stage {
+  grid-template-rows: minmax(0, 1fr);
+  place-items: center;
+}
+
+.miracle-photo-stage {
+  grid-template-rows: minmax(0, 1fr) auto;
+  overflow: hidden;
+}
+
+.miracle-editor-library > section + section,
 .miracle-editor-tools > section + section,
+.miracle-photo-setup > section + section,
 .miracle-photo-tools > section + section {
   padding-top: 0.6rem;
   border-top: 1px dashed #d7b8a4;
@@ -279,9 +324,12 @@
 }
 
 .miracle-look-library {
+  min-height: 0;
   display: grid;
+  grid-template-rows: auto minmax(0, 1fr);
   gap: 0.45rem;
   margin-bottom: 0.45rem;
+  overflow: hidden;
 }
 
 .miracle-look-library h3,
@@ -290,9 +338,13 @@
 }
 
 .miracle-look-library > div {
+  min-height: 0;
   display: flex;
+  align-content: flex-start;
   flex-wrap: wrap;
   gap: 0.45rem;
+  overflow-y: auto;
+  overscroll-behavior: contain;
 }
 
 .miracle-look-library button {
@@ -343,9 +395,12 @@
 
 .miracle-look-canvas {
   position: relative;
-  width: min(100%, 54dvh, 620px);
+  width: min(100%, 64dvh, 680px);
+  max-height: 100%;
   aspect-ratio: 1;
   margin: 0 auto;
+  display: grid;
+  place-items: center;
   overflow: hidden;
   isolation: isolate;
   border: 1.5px solid #d9b79f;
@@ -353,6 +408,15 @@
   background:
     radial-gradient(circle at 50% 45%, #fff 0 26%, transparent 62%),
     linear-gradient(#faeee2, #f7e3d4);
+  touch-action: none;
+}
+
+.miracle-look-composition {
+  position: relative;
+  width: calc(var(--miracle-look-composition-scale, 0.38) * 100%);
+  aspect-ratio: 1;
+  overflow: visible;
+  isolation: isolate;
   touch-action: none;
 }
 
@@ -463,10 +527,51 @@
   margin-top: 0.45rem;
 }
 
-.miracle-asset-buttons {
+.miracle-asset-category-filter {
   display: grid;
-  grid-template-columns: repeat(6, minmax(0, 1fr));
+  grid-template-columns: repeat(auto-fit, minmax(58px, 1fr));
+  gap: 0.3rem;
+  margin: 0.35rem 0 0.45rem;
+}
+
+.miracle-asset-category-filter button {
+  min-width: 0;
+  min-height: 44px;
+  padding: 0.35rem 0.25rem;
+  border: 1px solid #d7b49e;
+  border-radius: 11px;
+  color: #725047;
+  background: #fff9f1;
+  font-size: 0.72rem;
+  cursor: pointer;
+}
+
+.miracle-asset-category-filter button.is-selected {
+  border-color: #bc394f;
+  color: #a1283e;
+  background: #fff0f1;
+}
+
+.miracle-asset-buttons {
+  min-height: 0;
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(72px, 1fr));
+  align-content: start;
   gap: 0.35rem;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+}
+
+.miracle-asset-section {
+  min-height: 0;
+  display: grid;
+  grid-template-rows: auto auto minmax(0, 1fr);
+  align-content: stretch;
+  overflow: hidden;
+}
+
+.miracle-photo-tools .miracle-asset-section {
+  grid-template-rows: auto auto auto minmax(0, 1fr);
 }
 
 .miracle-asset-buttons button {
@@ -504,25 +609,41 @@
 
 .miracle-layer-actions {
   display: grid;
-  grid-template-columns: repeat(2, minmax(0, 1fr));
-  gap: 0.45rem;
+  grid-template-columns: repeat(4, minmax(44px, 1fr));
+  gap: 0.3rem;
 }
 
 .miracle-layer-actions button {
-  padding: 0.45rem;
-  font-size: 0.78rem;
+  min-width: 44px;
+  padding: 0;
+  font-size: 1.05rem;
 }
 
 .miracle-layer-list > div {
-  display: flex;
-  flex-wrap: wrap;
+  min-height: 0;
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  align-content: start;
   gap: 0.4rem;
+  overflow-x: hidden;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+}
+
+.miracle-layer-list {
+  min-height: 0;
+  display: grid;
+  grid-template-rows: auto minmax(0, 1fr);
+  overflow: hidden;
 }
 
 .miracle-layer-list button {
   min-height: 44px;
+  overflow: hidden;
   padding: 0.35rem 0.55rem;
   font-size: 0.76rem;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 .miracle-layer-list button.is-selected {
@@ -533,20 +654,32 @@
 
 .miracle-photo-stage {
   gap: 0.5rem;
+  place-items: center;
 }
 
 .miracle-photo-canvas {
   position: relative;
   overflow: clip;
-  border: 1.5px solid #d9b79f;
   border-radius: 20px;
   background: #fffaf2;
+  box-shadow: inset 0 0 0 1.5px #d9b79f;
   touch-action: none;
 }
 
-.miracle-photo-stage > .miracle-photo-canvas {
-  width: min(100%, 52dvh);
-  margin: 0 auto;
+.miracle-photo-canvas-slot {
+  width: 100%;
+  height: 100%;
+  min-width: 0;
+  min-height: 0;
+  display: grid;
+  place-items: center;
+  container-type: size;
+}
+
+.miracle-photo-canvas-slot > .miracle-photo-canvas {
+  width: min(100cqw, calc(100cqh * var(--miracle-photo-aspect, 1.3333)));
+  max-width: 100%;
+  max-height: 100%;
 }
 
 .miracle-photo-canvas .photo-composition {
@@ -590,9 +723,21 @@
 }
 
 .miracle-participant-looks {
+  min-height: 0;
   display: grid;
+  align-content: start;
   gap: 0.55rem;
   margin-top: 0.75rem;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+}
+
+.miracle-photo-participants {
+  min-height: 0;
+  display: grid;
+  grid-template-rows: auto auto auto minmax(0, 1fr);
+  align-content: stretch;
+  overflow: hidden;
 }
 
 .miracle-participant-looks label {
@@ -602,52 +747,39 @@
   gap: 0.55rem;
 }
 
-.miracle-postcard-picker {
-  max-height: 190px;
-  display: grid;
-  grid-template-columns: repeat(3, minmax(0, 1fr));
-  gap: 0.45rem;
-  overflow-y: auto;
-  padding: 0.2rem;
-  scrollbar-width: none;
-}
-
-.miracle-postcard-picker button {
+.miracle-photo-setup .reality-postcard-picker--compact {
   min-width: 0;
-  display: grid;
-  gap: 0.3rem;
-  padding: 0.35rem;
-  border: 1px solid #d7b49e;
-  border-radius: 13px;
-  color: #704d43;
-  background: #fffaf3;
-  cursor: pointer;
 }
 
-.miracle-postcard-picker button.is-selected {
-  border: 2px solid #bc394f;
-  background: #fff0ef;
+.miracle-photo-setup .reality-postcard-picker--compact .reality-postcard-picker__preview {
+  min-height: 112px;
+  grid-template-columns: minmax(86px, 42%) minmax(0, 1fr);
+  margin-top: 0.45rem;
 }
 
-.miracle-postcard-picker img,
-.miracle-postcard-picker button > span {
-  width: 100%;
-  aspect-ratio: 4 / 3;
-  object-fit: cover;
-  border-radius: 9px;
+.miracle-photo-setup .reality-postcard-picker--compact .reality-postcard-picker__preview > img,
+.miracle-photo-setup .reality-postcard-picker--compact .reality-postcard-picker__preview > span,
+.miracle-photo-setup
+  .reality-postcard-picker--compact
+  .reality-postcard-picker__preview
+  > .photo-composition {
+  min-height: 112px;
 }
 
-.miracle-postcard-picker button > span {
-  display: grid;
-  place-items: center;
-  background: #f1dfcb;
+.miracle-photo-setup .reality-postcard-picker--compact .reality-postcard-picker__preview p {
+  padding: 0.55rem;
 }
 
-.miracle-postcard-picker strong {
+.miracle-photo-setup .reality-postcard-picker--compact .reality-postcard-picker__preview p span {
+  display: -webkit-box;
   overflow: hidden;
-  font-size: 0.72rem;
-  text-overflow: ellipsis;
-  white-space: nowrap;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 3;
+}
+
+.miracle-photo-setup .reality-postcard-picker--compact .reality-postcard-picker__trigger {
+  min-height: 44px;
+  margin-top: 0.45rem;
 }
 
 .miracle-collection {
@@ -681,36 +813,40 @@
 .miracle-collection-group article {
   min-width: 0;
   display: grid;
+  grid-template-rows: auto minmax(1.15rem, auto);
+  align-items: start;
   gap: 0.2rem;
+  overflow: visible;
   text-align: center;
 }
 
 .miracle-collection-thumb {
   position: relative;
   width: 100%;
-  height: clamp(60px, 4.2vw, 78px);
+  height: clamp(78px, 5vw, 92px);
   display: grid;
   place-items: center;
   overflow: hidden;
+  box-sizing: border-box;
+  padding: 3px;
   border-radius: 14px;
   background: #f7e8da;
 }
 
 .miracle-collection-thumb img {
-  width: 100%;
-  height: 100%;
+  width: calc(100% - 12px);
+  height: calc(100% - 12px);
   max-width: 100%;
   object-fit: contain;
-  transform: scale(1.06);
-  transform-origin: center;
+  transform: scale(1);
 }
 
 .miracle-collection-group--outfit .miracle-collection-thumb img {
-  transform: scale(1.04);
+  transform: scale(1);
 }
 
 .miracle-collection-group--face .miracle-collection-thumb img {
-  transform: scale(1.08);
+  transform: scale(1);
 }
 
 .miracle-collection-group strong {
@@ -743,7 +879,7 @@
   font-size: 3rem;
 }
 
-@media (max-width: 860px) {
+@media (max-width: 960px) {
   .miracle-editor-layout,
   .miracle-photo-layout {
     height: 100%;
@@ -751,14 +887,54 @@
     grid-auto-rows: max-content;
     align-items: start;
     align-content: start;
+    overflow-x: hidden;
     overflow-y: auto;
     overscroll-behavior: contain;
   }
 
+  .miracle-editor-library,
   .miracle-editor-stage,
   .miracle-editor-tools,
+  .miracle-photo-setup,
   .miracle-photo-stage,
   .miracle-photo-tools {
+    max-height: none;
+    overflow: visible;
+  }
+
+  .miracle-editor-library,
+  .miracle-editor-tools,
+  .miracle-photo-setup,
+  .miracle-photo-tools {
+    grid-template-rows: none;
+    align-content: start;
+  }
+
+  .miracle-editor-stage {
+    grid-template-rows: auto;
+  }
+
+  .miracle-photo-stage {
+    grid-template-rows: auto auto;
+  }
+
+  .miracle-photo-canvas-slot {
+    height: auto;
+    container-type: normal;
+  }
+
+  .miracle-photo-canvas-slot > .miracle-photo-canvas {
+    width: min(100%, 52dvh);
+  }
+
+  .miracle-look-library,
+  .miracle-layer-list,
+  .miracle-asset-section,
+  .miracle-photo-participants,
+  .miracle-look-library > div,
+  .miracle-layer-list > div,
+  .miracle-asset-buttons,
+  .miracle-participant-looks {
     max-height: none;
     overflow: visible;
   }
@@ -808,7 +984,9 @@
   }
 
   .miracle-editor-stage,
+  .miracle-editor-library,
   .miracle-editor-tools,
+  .miracle-photo-setup,
   .miracle-photo-stage,
   .miracle-photo-tools {
     padding: 0.7rem;
@@ -821,10 +999,6 @@
 
   .miracle-asset-buttons {
     grid-template-columns: repeat(auto-fill, minmax(74px, 1fr));
-  }
-
-  .miracle-postcard-picker {
-    grid-template-columns: repeat(2, minmax(0, 1fr));
   }
 
   .miracle-collection-group > div {

@@ -157,13 +157,14 @@ describe('PomodoroFocusOverlay', () => {
     await waitFor(() => expect(createInput).toHaveFocus())
   })
 
-  it('睡觉饼狗使用房间同档尺寸，只在独立安全区缓慢移动', () => {
+  it('看电脑饼狗使用房间同档尺寸，只在独立安全区缓慢移动', () => {
     vi.spyOn(Math, 'random').mockReturnValue(0.5)
     render(<PomodoroFocusOverlay {...createProps()} />)
 
-    const mascot = screen.getByRole('img', { name: '正在睡觉陪伴你的饼狗' })
+    const mascot = screen.getByRole('img', { name: '正在看电脑陪伴你的饼狗' })
     const actor = mascot.parentElement
-    expect(mascot).toHaveClass('mascot-sprite--sleep')
+    expect(mascot).toHaveClass('mascot-sprite--stream')
+    expect(mascot).not.toHaveClass('mascot-sprite--sleep')
     expect(actor).toHaveStyle({
       '--pomodoro-mascot-x': '50%',
       '--pomodoro-mascot-y': '50%',
@@ -173,7 +174,7 @@ describe('PomodoroFocusOverlay', () => {
     expect(realityStyles).toContain('width: clamp(96px, 12.2%, 124px);')
   })
 
-  it('系统要求减少动态效果时固定睡觉饼狗并禁用位移过渡', async () => {
+  it('系统要求减少动态效果时固定看电脑饼狗并禁用位移过渡', async () => {
     const listeners = new Set<() => void>()
     vi.stubGlobal('matchMedia', () => ({
       matches: true,
@@ -184,7 +185,9 @@ describe('PomodoroFocusOverlay', () => {
     render(<PomodoroFocusOverlay {...createProps()} />)
 
     const scene = document.querySelector('.pomodoro-focus__scene')
-    const actor = screen.getByRole('img', { name: '正在睡觉陪伴你的饼狗' }).parentElement
+    const actor = screen.getByRole('img', {
+      name: '正在看电脑陪伴你的饼狗',
+    }).parentElement
     await waitFor(() => expect(scene).toHaveAttribute('data-reduced-motion', 'true'))
     expect(actor).toHaveStyle({
       '--pomodoro-mascot-x': '50%',

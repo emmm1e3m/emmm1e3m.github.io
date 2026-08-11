@@ -142,6 +142,7 @@ function idleStreamPlayback(): StreamPlaybackController {
     },
     start: vi.fn(() => ({ ok: true as const, bvid: null, errors: [] as const })),
     stop: vi.fn(),
+    focus: vi.fn(() => false),
   }
 }
 
@@ -249,7 +250,8 @@ describe('ContextPanel 信息栏交互', () => {
       fireEvent.click(purchase)
       expect(screen.queryByText(name)).not.toBeInTheDocument()
     }
-    expect(screen.getByText('今天衣架上的新衣服都已经收好啦。')).toBeVisible()
+    expect(screen.queryByRole('heading', { name: '今天仍可购买' })).not.toBeInTheDocument()
+    expect(screen.queryByText('今天衣架上的新衣服都已经收好啦。')).not.toBeInTheDocument()
 
     fireEvent.click(screen.getByRole('button', { name: '进入奇迹饼狗' }))
     expect(onOpenWardrobe).toHaveBeenCalledOnce()
