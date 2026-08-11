@@ -47,7 +47,7 @@ export const LUCKY_APPLE_COLLECTION_BASE_BONUS_RATE = 1
 /** 苹果旅行便当按常规遇友概率增加 100% 的基础值，不写入存档平衡配置。 */
 export const APPLE_LUNCHBOX_FRIEND_BASE_BONUS_RATE = 1
 
-export const REST_COMPLETION_APPLES = 1
+export const REST_COMPLETION_APPLES = 0
 
 /** 旧活动已经固化的音乐好友赠礼；导入时只用于兼容校验，绝不重算。 */
 export const LEGACY_FRIEND_GIFT_APPLES_BY_ID: Readonly<Record<FriendId, number>> = Object.freeze({

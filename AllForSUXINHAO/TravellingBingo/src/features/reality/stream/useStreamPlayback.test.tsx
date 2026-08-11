@@ -79,9 +79,9 @@ describe('useStreamPlayback', () => {
     )
     expect(result.current.state).toMatchObject({
       status: 'opening',
-      favoriteId: 3682220021,
-      selfTestBvid: 'BV1xx411c7mD',
+      stopAfterMs: null,
     })
+    expect(Object.keys(result.current).sort()).toEqual(['start', 'state', 'stop'])
   })
 
   it('无效输入不会误开页面', () => {
@@ -101,39 +101,30 @@ describe('useStreamPlayback', () => {
     expect(result.current.state.errors).toHaveLength(1)
   })
 
-  it('只接收当前同源窗口的状态，并把整轮与任务各记录一次', () => {
+  it('只接收当前同源窗口的最小生命周期状态，忽略轮次消息且不记录统计', () => {
     vi.useFakeTimers()
     vi.setSystemTime(new Date('2026-08-11T08:00:00Z'))
     const handle = fakeWindow()
     const otherHandle = fakeWindow()
     vi.spyOn(window, 'open').mockReturnValue(handle)
-    const onRoundCompleted = vi.fn()
-    const onSessionEnded = vi.fn()
-    const { result } = renderHook(() => useStreamPlayback({ onRoundCompleted, onSessionEnded }))
+    const open = vi.spyOn(window, 'open').mockReturnValue(handle)
+    const { result } = renderHook(() => useStreamPlayback())
 
     act(() => {
       result.current.start('', { favoriteId: 3682220021, stopAfterMs: null })
     })
-    const sessionId = result.current.state.sessionId!
+    const sessionId = new URL(String(open.mock.calls[0]?.[0])).searchParams.get('sessionId')!
 
     act(() => {
       window.dispatchEvent(
         new MessageEvent('message', {
           origin: window.location.origin,
           source: otherHandle,
-          data: playerEvent(sessionId, {
-            event: 'status',
-            status: 'waiting',
-            round: 99,
-            openedCount: 6,
-            totalCount: 6,
-            nextRoundAt: Date.now() + 310_000,
-            message: '伪造状态',
-          }),
+          data: playerEvent(sessionId, { event: 'started' }),
         }),
       )
     })
-    expect(result.current.state.round).toBe(0)
+    expect(result.current.state.status).toBe('opening')
 
     act(() => {
       window.dispatchEvent(
@@ -152,59 +143,65 @@ describe('useStreamPlayback', () => {
         }),
       )
     })
-    expect(result.current.state).toMatchObject({
-      status: 'waiting',
-      round: 1,
-      openedCount: 6,
-      totalCount: 6,
-    })
+    expect(result.current.state.status).toBe('opening')
 
-    const completedAt = Date.now() + 310_000
     act(() => {
       window.dispatchEvent(
         new MessageEvent('message', {
           origin: window.location.origin,
           source: handle,
-          data: playerEvent(sessionId, { event: 'round-completed', round: 1, completedAt }),
+          data: playerEvent(sessionId, { event: 'started' }),
         }),
       )
+    })
+    expect(result.current.state).toEqual({
+      status: 'waiting',
+      stopAfterMs: null,
+      message: '刷播窗口正在运行',
+      errors: [],
+    })
+
+    act(() => {
       window.dispatchEvent(
         new MessageEvent('message', {
           origin: window.location.origin,
           source: handle,
-          data: playerEvent(sessionId, {
-            event: 'ended',
-            endedAt: completedAt,
-            roundsCompleted: 1,
-            outcome: 'completed',
-          }),
+          data: playerEvent(sessionId, { event: 'ended', outcome: 'completed' }),
         }),
       )
     })
 
-    expect(onRoundCompleted).toHaveBeenCalledTimes(1)
-    expect(onSessionEnded).toHaveBeenCalledTimes(1)
-    expect(onSessionEnded).toHaveBeenCalledWith(
-      expect.objectContaining({ sessionId, roundsCompleted: 1, outcome: 'completed' }),
-    )
     expect(result.current.state.status).toBe('completed')
+    expect(localStorage.getItem('travelling-bingo:stream-player-history:v1')).toBeNull()
   })
 
-  it('停止时向当前窗口发出同源命令并关闭页面', () => {
+  it('独立页仍在加载时停止，会等待其落盘并确认结束后再关闭页面', () => {
     const handle = fakeWindow()
-    vi.spyOn(window, 'open').mockReturnValue(handle)
-    const onSessionEnded = vi.fn()
-    const { result } = renderHook(() => useStreamPlayback({ onSessionEnded }))
+    const open = vi.spyOn(window, 'open').mockReturnValue(handle)
+    const { result } = renderHook(() => useStreamPlayback())
 
     act(() => result.current.start('', { favoriteId: 3986840044, stopAfterMs: null }))
-    const sessionId = result.current.state.sessionId
+    const sessionId = new URL(String(open.mock.calls[0]?.[0])).searchParams.get('sessionId')
     act(() => result.current.stop())
 
     expect(handle.postMessage).toHaveBeenCalledWith(
       expect.objectContaining({ event: 'stop', sessionId }),
       window.location.origin,
     )
+    expect(handle.close).not.toHaveBeenCalled()
+    expect(result.current.state.message).toBe('正在停止刷播')
+
+    act(() => {
+      window.dispatchEvent(
+        new MessageEvent('message', {
+          origin: window.location.origin,
+          source: handle,
+          data: playerEvent(sessionId!, { event: 'ended', outcome: 'stopped' }),
+        }),
+      )
+    })
     expect(handle.close).toHaveBeenCalledTimes(1)
-    expect(onSessionEnded).toHaveBeenCalledWith(expect.objectContaining({ outcome: 'stopped' }))
+    expect(result.current.state.status).toBe('stopped')
+    expect(localStorage.getItem('travelling-bingo:stream-player-history:v1')).toBeNull()
   })
 })

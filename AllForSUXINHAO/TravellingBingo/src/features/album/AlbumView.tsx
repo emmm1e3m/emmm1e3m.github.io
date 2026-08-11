@@ -5,6 +5,9 @@ import { BilibiliPlayer } from '@/components/BilibiliPlayer'
 import { useModalFocus } from '@/components/useModalFocus'
 import type { CollectibleItem, ContentCatalog } from '@/content'
 import type { CollectibleCategory, GameState } from '@/domain'
+import type { GameAction, WardrobePhoto } from '@/domain/game/types'
+import { PhotoCompositionPreview } from '@/features/wardrobe/PhotoCompositionPreview'
+import { downloadWardrobePhoto, resolvePhotoPostcard } from '@/features/wardrobe/renderPhoto'
 
 import './AlbumView.css'
 
@@ -13,7 +16,7 @@ import { CollectiblePicture } from './CollectiblePicture'
 
 const CATEGORY_ORDER: readonly CollectibleCategory[] = ['postcard', 'million-shot', 'site-first']
 const PLAYER_FOCUS_PEER = '[data-modal-focus-peer="persistent-player"]'
-type AlbumTab = CollectibleCategory | 'friends'
+type AlbumTab = CollectibleCategory | 'friends' | 'photos'
 
 interface AlbumViewProps {
   catalog: ContentCatalog
@@ -21,6 +24,7 @@ interface AlbumViewProps {
   onClose: () => void
   onInspect?: (item: CollectibleItem) => void
   onPlayerOpened?: (collectionId: string, bvid: string) => void
+  onAction?: (action: GameAction) => void
 }
 
 function numericDate(timestamp: number) {
@@ -29,7 +33,9 @@ function numericDate(timestamp: number) {
 }
 
 function tabLabel(tab: AlbumTab) {
-  return tab === 'friends' ? '好朋友们' : categoryLabel(tab)
+  if (tab === 'friends') return '好朋友们'
+  if (tab === 'photos') return '合拍相册'
+  return categoryLabel(tab)
 }
 
 function progressLabel(collected: number, total: number) {
@@ -103,7 +109,14 @@ function FullscreenPicture({ item, onClose, returnFocus }: FullscreenPictureProp
   )
 }
 
-export function AlbumView({ catalog, game, onClose, onInspect, onPlayerOpened }: AlbumViewProps) {
+export function AlbumView({
+  catalog,
+  game,
+  onClose,
+  onInspect,
+  onPlayerOpened,
+  onAction,
+}: AlbumViewProps) {
   const ownedItems = useMemo(
     () =>
       catalog.items
@@ -128,13 +141,24 @@ export function AlbumView({ catalog, game, onClose, onInspect, onPlayerOpened }:
         ),
     [catalog.friends, game.friends],
   )
+  const photos = useMemo(
+    () =>
+      Object.values(game.wardrobe.photos).sort(
+        (left, right) =>
+          right.createdAt - left.createdAt || right.photoId.localeCompare(left.photoId),
+      ),
+    [game.wardrobe.photos],
+  )
   const unlockedTabs: AlbumTab[] = [
     ...CATEGORY_ORDER.filter((category) => ownedItems.some((item) => item.category === category)),
     ...(knownFriends.length > 0 ? (['friends'] as const) : []),
+    ...(photos.length > 0 ? (['photos'] as const) : []),
   ]
   const [tab, setTab] = useState<AlbumTab | null>(unlockedTabs[0] ?? null)
   const activeTab = tab && unlockedTabs.includes(tab) ? tab : (unlockedTabs[0] ?? null)
   const [selected, setSelected] = useState<CollectibleItem | null>(null)
+  const [selectedPhoto, setSelectedPhoto] = useState<WardrobePhoto | null>(null)
+  const [downloadState, setDownloadState] = useState<'idle' | 'working' | 'error'>('idle')
   const [imageFullscreen, setImageFullscreen] = useState(false)
   const albumCloseRef = useRef<HTMLButtonElement>(null)
   const detailCloseRef = useRef<HTMLButtonElement>(null)
@@ -151,13 +175,47 @@ export function AlbumView({ catalog, game, onClose, onInspect, onPlayerOpened }:
     initialFocus: detailCloseRef,
     focusPeers: [PLAYER_FOCUS_PEER],
   })
+  const closePhotoDetail = () => {
+    setSelectedPhoto(null)
+    setDownloadState('idle')
+  }
+  const photoDetailCloseRef = useRef<HTMLButtonElement>(null)
+  const photoDetailDialogRef = useModalFocus<HTMLDivElement>(
+    Boolean(selectedPhoto),
+    closePhotoDetail,
+    {
+      initialFocus: photoDetailCloseRef,
+      focusPeers: [PLAYER_FOCUS_PEER],
+    },
+  )
   const tabRefs = useRef<Array<HTMLButtonElement | null>>([])
   const totalCatalogCount = catalog.items.length + catalog.friends.length
   const totalOwnedCount = ownedItems.length + knownFriends.length
   const visibleItems =
-    activeTab && activeTab !== 'friends'
+    activeTab && activeTab !== 'friends' && activeTab !== 'photos'
       ? ownedItems.filter((item) => item.category === activeTab)
       : []
+
+  function postcardVisual(photo: WardrobePhoto) {
+    const resolved = resolvePhotoPostcard(catalog, photo.postcardId)
+    if (!resolved) return null
+    return {
+      url: publicAsset(resolved.image.path),
+      width: resolved.image.width,
+      height: resolved.image.height,
+      alt: resolved.item.alt,
+    }
+  }
+
+  async function downloadPhoto(photo: WardrobePhoto) {
+    setDownloadState('working')
+    try {
+      await downloadWardrobePhoto(photo, catalog)
+      setDownloadState('idle')
+    } catch {
+      setDownloadState('error')
+    }
+  }
 
   function handleTabKey(event: KeyboardEvent<HTMLButtonElement>, index: number) {
     const direction = event.key === 'ArrowRight' ? 1 : event.key === 'ArrowLeft' ? -1 : 0
@@ -210,11 +268,17 @@ export function AlbumView({ catalog, game, onClose, onInspect, onPlayerOpened }:
           <div className="album-tabs" role="tablist" aria-label="已解锁的收藏分类">
             {unlockedTabs.map((value, index) => {
               const collected =
-                value === 'friends'
-                  ? knownFriends.length
-                  : ownedItems.filter((item) => item.category === value).length
+                value === 'photos'
+                  ? photos.length
+                  : value === 'friends'
+                    ? knownFriends.length
+                    : ownedItems.filter((item) => item.category === value).length
               const total =
-                value === 'friends' ? catalog.friends.length : catalog.categoryCounts[value]
+                value === 'photos'
+                  ? photos.length
+                  : value === 'friends'
+                    ? catalog.friends.length
+                    : catalog.categoryCounts[value]
               return (
                 <button
                   key={value}
@@ -233,7 +297,9 @@ export function AlbumView({ catalog, game, onClose, onInspect, onPlayerOpened }:
                 >
                   <span className="album-tab__label">{tabLabel(value)}</span>
                   <span className="album-tab__progress">
-                    {`【${progressLabel(collected, total)}】`}
+                    {value === 'photos'
+                      ? `【${collected}】`
+                      : `【${progressLabel(collected, total)}】`}
                   </span>
                 </button>
               )
@@ -241,63 +307,89 @@ export function AlbumView({ catalog, game, onClose, onInspect, onPlayerOpened }:
           </div>
 
           <div
-            className={`album-grid ${activeTab === 'friends' ? 'album-grid--friends' : ''}`}
+            className={`album-grid ${activeTab === 'friends' ? 'album-grid--friends' : ''} ${activeTab === 'photos' ? 'album-grid--photos' : ''}`}
             id="album-panel"
             role="tabpanel"
             aria-labelledby={`album-tab-${activeTab}`}
           >
-            {activeTab === 'friends'
-              ? knownFriends.map((entry) => {
-                  const friend = catalog.friendById[entry.id]
-                  if (!friend) return null
-                  return (
-                    <article className="friend-card" key={entry.id}>
-                      <img
-                        className="friend-card__portrait"
-                        src={publicAsset(friend.image.path)}
-                        alt={friend.alt}
-                        width={friend.image.width}
-                        height={friend.image.height}
-                        loading="lazy"
-                      />
-                      <div>
-                        <strong>{friend.name}</strong>
-                        <p>{friend.description}</p>
-                        <small className="numeric-copy">见过 {entry.encounterCount} 次</small>
-                      </div>
-                    </article>
-                  )
-                })
-              : visibleItems.map((item) => {
-                  const entry = game.collections[item.id]
-                  return (
-                    <button
-                      key={item.id}
-                      type="button"
-                      className={`collectible-card is-owned ${item.category === 'site-first' ? 'is-rare' : ''}`}
-                      onClick={() => openDetail(item)}
-                      aria-label={`${item.title}，${categoryLabel(item.category)}，打开详情`}
-                    >
-                      <span className="collectible-card__visual">
-                        <CollectiblePicture item={item} />
-                        {item.category === 'site-first' && (
-                          <span className="rare-ribbon">全站第一</span>
-                        )}
-                      </span>
-                      <span className="collectible-card__copy">
-                        <strong>{item.title}</strong>
-                        <time
-                          className="collection-date"
-                          dateTime={new Date(entry.firstObtainedAt).toISOString()}
-                        >
-                          {entry.duplicateCount > 0
-                            ? `又遇见了 ${entry.duplicateCount} 次`
-                            : numericDate(entry.firstObtainedAt)}
-                        </time>
-                      </span>
-                    </button>
-                  )
-                })}
+            {activeTab === 'photos'
+              ? photos.map((photo) => (
+                  <button
+                    className="wardrobe-photo-card"
+                    type="button"
+                    key={photo.photoId}
+                    aria-label={`${numericDate(photo.createdAt)}的合拍，打开详情`}
+                    onClick={() => {
+                      setDownloadState('idle')
+                      setSelectedPhoto(photo)
+                    }}
+                  >
+                    <PhotoCompositionPreview
+                      photo={photo}
+                      postcard={postcardVisual(photo)}
+                      className="wardrobe-photo-card__preview"
+                      label={`${numericDate(photo.createdAt)}的合拍预览`}
+                    />
+                    <span className="wardrobe-photo-card__copy">
+                      <strong>奇迹合拍</strong>
+                      <time dateTime={new Date(photo.createdAt).toISOString()}>
+                        {numericDate(photo.createdAt)}
+                      </time>
+                    </span>
+                  </button>
+                ))
+              : activeTab === 'friends'
+                ? knownFriends.map((entry) => {
+                    const friend = catalog.friendById[entry.id]
+                    if (!friend) return null
+                    return (
+                      <article className="friend-card" key={entry.id}>
+                        <img
+                          className="friend-card__portrait"
+                          src={publicAsset(friend.image.path)}
+                          alt={friend.alt}
+                          width={friend.image.width}
+                          height={friend.image.height}
+                          loading="lazy"
+                        />
+                        <div>
+                          <strong>{friend.name}</strong>
+                          <p>{friend.description}</p>
+                          <small className="numeric-copy">见过 {entry.encounterCount} 次</small>
+                        </div>
+                      </article>
+                    )
+                  })
+                : visibleItems.map((item) => {
+                    const entry = game.collections[item.id]
+                    return (
+                      <button
+                        key={item.id}
+                        type="button"
+                        className={`collectible-card is-owned ${item.category === 'site-first' ? 'is-rare' : ''}`}
+                        onClick={() => openDetail(item)}
+                        aria-label={`${item.title}，${categoryLabel(item.category)}，打开详情`}
+                      >
+                        <span className="collectible-card__visual">
+                          <CollectiblePicture item={item} />
+                          {item.category === 'site-first' && (
+                            <span className="rare-ribbon">全站第一</span>
+                          )}
+                        </span>
+                        <span className="collectible-card__copy">
+                          <strong>{item.title}</strong>
+                          <time
+                            className="collection-date"
+                            dateTime={new Date(entry.firstObtainedAt).toISOString()}
+                          >
+                            {entry.duplicateCount > 0
+                              ? `又遇见了 ${entry.duplicateCount} 次`
+                              : numericDate(entry.firstObtainedAt)}
+                          </time>
+                        </span>
+                      </button>
+                    )
+                  })}
           </div>
         </>
       ) : (
@@ -305,6 +397,74 @@ export function AlbumView({ catalog, game, onClose, onInspect, onPlayerOpened }:
           <span aria-hidden="true">✦</span>
           <h3>收藏墙还空着</h3>
           <p>惊喜会在相遇时悄悄出现。</p>
+        </div>
+      )}
+
+      {selectedPhoto && (
+        <div
+          ref={photoDetailDialogRef}
+          className="modal-backdrop wardrobe-photo-detail-backdrop"
+          data-modal-backdrop
+          role="dialog"
+          aria-modal="true"
+          aria-labelledby="wardrobe-photo-title"
+          tabIndex={-1}
+          onMouseDown={closePhotoDetail}
+        >
+          <article
+            className="wardrobe-photo-detail"
+            onMouseDown={(event) => event.stopPropagation()}
+          >
+            <button
+              ref={photoDetailCloseRef}
+              className="text-close-button wardrobe-photo-detail__close"
+              type="button"
+              onClick={closePhotoDetail}
+            >
+              关闭合拍
+            </button>
+            <PhotoCompositionPreview
+              photo={selectedPhoto}
+              postcard={postcardVisual(selectedPhoto)}
+              className="wardrobe-photo-detail__preview"
+              label={`${numericDate(selectedPhoto.createdAt)}的合拍`}
+            />
+            <div className="wardrobe-photo-detail__copy">
+              <span className="paper-tag">奇迹饼狗</span>
+              <h3 id="wardrobe-photo-title">奇迹合拍</h3>
+              <p>
+                {selectedPhoto.postcardId === null
+                  ? '原来的明信片暂时找不到了，大家还留在这张暖白色的照片里。'
+                  : `${numericDate(selectedPhoto.createdAt)}留下的搭配和站位。`}
+              </p>
+              <div className="wardrobe-photo-detail__actions">
+                <button
+                  className="paper-button paper-button--primary"
+                  type="button"
+                  disabled={downloadState === 'working'}
+                  onClick={() => void downloadPhoto(selectedPhoto)}
+                >
+                  {downloadState === 'working' ? '正在生成照片…' : '下载 PNG'}
+                </button>
+                <button
+                  className="paper-button paper-button--danger"
+                  type="button"
+                  disabled={!onAction}
+                  onClick={() => {
+                    onAction?.({ type: 'wardrobe/photo-delete', photoId: selectedPhoto.photoId })
+                    closePhotoDetail()
+                  }}
+                >
+                  删除这张合拍
+                </button>
+              </div>
+              {downloadState === 'error' && (
+                <p className="wardrobe-photo-detail__error" role="alert">
+                  照片生成失败，请稍后再试。
+                </p>
+              )}
+            </div>
+          </article>
         </div>
       )}
 

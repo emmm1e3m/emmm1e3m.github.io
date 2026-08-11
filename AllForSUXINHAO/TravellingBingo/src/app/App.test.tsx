@@ -11,6 +11,7 @@ import { loadContentCatalog, type CollectibleItem, type ContentCatalog } from '@
 import {
   createInitialGameState,
   DEFAULT_GAME_BALANCE,
+  generateWardrobeShop,
   migrateGameStateV1,
   migrateGameStateV2ToV3,
   type GameAction,
@@ -588,8 +589,10 @@ function gameWithUnavailableCollectionTask(): GameState {
 }
 
 function asV5(state: GameState): GameStateV5 {
+  const { wardrobe: _wardrobe, ...withoutWardrobe } = state
+  void _wardrobe
   return {
-    ...state,
+    ...withoutWardrobe,
     schemaVersion: 5,
     reality: {
       nextStaySequence: state.reality.nextStaySequence,
@@ -602,8 +605,10 @@ function asV5(state: GameState): GameStateV5 {
 }
 
 function asV9(state: GameState): GameStateV9 {
+  const { wardrobe: _wardrobe, ...withoutWardrobe } = structuredClone(state)
+  void _wardrobe
   return {
-    ...structuredClone(state),
+    ...withoutWardrobe,
     schemaVersion: 9,
     reality: {
       ...structuredClone(state.reality),
@@ -731,6 +736,17 @@ function readyActivityGame(kind: 'travel' | 'rest', companionDays = 4): GameStat
   return {
     ...initial,
     profile: { ...initial.profile, companionDays },
+    wardrobe: {
+      ...initial.wardrobe,
+      shop: {
+        companionDay: companionDays,
+        assetIds: generateWardrobeShop(
+          initial.random.seed,
+          companionDays,
+          initial.wardrobe.ownedAssetIds,
+        ),
+      },
+    },
     activeActivity: {
       runId: `ready-${kind}-run`,
       kind,
@@ -738,7 +754,7 @@ function readyActivityGame(kind: 'travel' | 'rest', companionDays = 4): GameStat
       endsAt: 2_000,
       rewardSeed: `ready-${kind}-reward`,
       rewardPlan: {
-        baseApples: kind === 'rest' ? 1 : 0,
+        baseApples: 0,
         modifierApples: 0,
         collection: null,
         friendId: null,
@@ -886,7 +902,7 @@ function importResult<TPayload extends ImportableGameState>(
                         ? '0.8.0-demo.1'
                         : payload.schemaVersion === 9
                           ? '0.9.0-demo.1'
-                          : '0.10.0-demo.1',
+                          : '0.10.0',
       exportedAt: 3_000,
       exportedAtIso: new Date(3_000).toISOString(),
       byteLength: 800,
@@ -1021,14 +1037,14 @@ describe('旅行饼狗应用控制器', () => {
     vi.unstubAllGlobals()
   })
 
-  it('加载目录后用玩家称呼创建 DEBUG V10 新游戏', async () => {
+  it('加载目录后用玩家称呼创建 DEBUG V11 新游戏', async () => {
     render(<App />)
 
     expect(screen.getByRole('heading', { name: '旅行饼狗' })).toBeInTheDocument()
     await screen.findByRole('button', { name: '开始新旅程' })
     await unlockDebugAndStart()
 
-    expect(screen.getByTestId('schema-version')).toHaveTextContent('10')
+    expect(screen.getByTestId('schema-version')).toHaveTextContent('11')
     expect(screen.getByTestId('display-name')).toHaveTextContent('小饼干')
     expect(screen.getByTestId('companion-days')).toHaveTextContent('0')
     expect(screen.getByTestId('apple-count')).toHaveTextContent('18')
@@ -1059,13 +1075,13 @@ describe('旅行饼狗应用控制器', () => {
     expect(downloadBingoSave).not.toHaveBeenCalled()
   })
 
-  it('继续 V10 浏览器缓存前只替换失去先决条件的未完成任务槽位', async () => {
+  it('继续 V11 浏览器缓存前只替换失去先决条件的未完成任务槽位', async () => {
     const cached = gameWithUnavailableCollectionTask()
     const originalSequence = cached.random.sequences.tasks
     writeBrowserGameCache(
       createBrowserGameCache({
         saveId: 'cached-unavailable-task',
-        gameVersion: '0.10.0-demo.1',
+        gameVersion: '0.10.0',
         now: 3_000,
         payload: cached,
       }),
@@ -1105,9 +1121,9 @@ describe('旅行饼狗应用控制器', () => {
       payload: GameState
     }
     expect(upgraded).toMatchObject({
-      gameVersion: '0.10.0-demo.1',
+      gameVersion: '0.10.0',
       payload: {
-        schemaVersion: 10,
+        schemaVersion: 11,
         reality: {
           streamSettings: { selfTestBvid: 'BV1xx411c7mD', favoriteId: 3682220021 },
         },
@@ -1129,7 +1145,7 @@ describe('旅行饼狗应用控制器', () => {
       writeBrowserGameCache(
         createBrowserGameCache({
           saveId: 'completed-yesterday',
-          gameVersion: '0.10.0-demo.1',
+          gameVersion: '0.10.0',
           now: completedAt,
           payload: cached,
         }),
@@ -1152,7 +1168,7 @@ describe('旅行饼狗应用控制器', () => {
     writeBrowserGameCache(
       createBrowserGameCache({
         saveId: 'cached-before-preview',
-        gameVersion: '0.10.0-demo.1',
+        gameVersion: '0.10.0',
         now: 3_000,
         payload: importedGame(),
       }),
@@ -1211,7 +1227,7 @@ describe('旅行饼狗应用控制器', () => {
     expect(importableGameStateSchema.safeParse(payload).success).toBe(false)
   })
 
-  it('V3 活动迁移到 V10 时保留当次 startedAt 与 endsAt，不按当前默认重算', async () => {
+  it('V3 活动迁移到 V11 时保留当次 startedAt 与 endsAt，不按当前默认重算', async () => {
     const payload = importedV3Game()
     payload.profile = { ...payload.profile, debug: false }
     payload.pet = { ...payload.pet, location: 'outside' }
@@ -1249,7 +1265,7 @@ describe('旅行饼狗应用控制器', () => {
     })
     fireEvent.click(await screen.findByRole('button', { name: '进入这次旅程' }))
 
-    expect(screen.getByTestId('schema-version')).toHaveTextContent('10')
+    expect(screen.getByTestId('schema-version')).toHaveTextContent('11')
     expect(screen.getByTestId('activity-duration')).toHaveTextContent(
       DEFAULT_GAME_BALANCE.activityDurationMs.toString(),
     )
@@ -1597,13 +1613,13 @@ describe('旅行饼狗应用控制器', () => {
 
     expect(screen.getByTestId('collection-count')).toHaveTextContent('3')
     expect(screen.getByTestId('friend-count')).toHaveTextContent('5')
-    expect(screen.getByText('DEBUG：收好 8 份收藏与好友记录。')).toBeVisible()
+    expect(screen.getByText('DEBUG：新增 31 项收藏、好友与衣服记录。')).toBeVisible()
 
     fireEvent.click(screen.getByRole('button', { name: 'DEBUG 一键撤销所有收集' }))
 
     expect(screen.getByTestId('collection-count')).toHaveTextContent('0')
     expect(screen.getByTestId('friend-count')).toHaveTextContent('0')
-    expect(screen.getByText('DEBUG：清理 8 份收藏与好友记录。')).toBeVisible()
+    expect(screen.getByText('DEBUG：清理 31 项收藏、好友、衣服与造型记录。')).toBeVisible()
   })
 
   it('休息 effect 会把新的日夜过场 key 传给房间 UI', async () => {
@@ -1620,7 +1636,7 @@ describe('旅行饼狗应用控制器', () => {
 
     expect(screen.getByTestId('rest-transition-key')).toHaveTextContent('1')
     expect(screen.getByTestId('companion-days')).toHaveTextContent('5')
-    expect(screen.getByTestId('apple-count')).toHaveTextContent('19')
+    expect(screen.getByTestId('apple-count')).toHaveTextContent('18')
     expect(screen.getByText('天亮啦，饼狗又有精神了。')).toBeVisible()
   })
 
@@ -1659,7 +1675,7 @@ describe('旅行饼狗应用控制器', () => {
     expect(amount.querySelector('.apple-amount__number')).toHaveTextContent('1')
   })
 
-  it('先预览迁移后的 V10 称呼与陪伴天数，再采用导入进度', async () => {
+  it('先预览迁移后的 V11 称呼与陪伴天数，再采用导入进度', async () => {
     vi.mocked(importBingoSave).mockResolvedValue(importResult(legacyGame()))
 
     render(<App />)
@@ -1679,14 +1695,14 @@ describe('旅行饼狗应用控制器', () => {
 
     fireEvent.click(screen.getByRole('button', { name: '进入这次旅程' }))
 
-    expect(screen.getByTestId('schema-version')).toHaveTextContent('10')
+    expect(screen.getByTestId('schema-version')).toHaveTextContent('11')
     expect(screen.getByTestId('display-name')).toHaveTextContent('你')
     expect(screen.getByTestId('companion-days')).toHaveTextContent('1')
     expect(screen.getByTestId('apple-count')).toHaveTextContent('9')
     expect(screen.getByTestId('collection-count')).toHaveTextContent('1')
   })
 
-  it('v1 导入后再次导出时只写 V10 载荷与新版游戏版本', async () => {
+  it('v1 导入后再次导出时只写 V11 载荷与新版游戏版本', async () => {
     vi.mocked(importBingoSave).mockResolvedValue(importResult(legacyGame()))
     vi.mocked(createBingoSave).mockResolvedValue({
       fileName: 'migrated.bingo',
@@ -1704,9 +1720,9 @@ describe('旅行饼狗应用控制器', () => {
     await waitFor(() => expect(createBingoSave).toHaveBeenCalledOnce())
     expect(createBingoSave).toHaveBeenCalledWith(
       {
-        gameVersion: '0.10.0-demo.1',
+        gameVersion: '0.10.0',
         payload: expect.objectContaining({
-          schemaVersion: 10,
+          schemaVersion: 11,
           profile: expect.objectContaining({ displayName: '你', companionDays: 1 }),
           friends: {},
         }),
@@ -1938,9 +1954,9 @@ describe('旅行饼狗应用控制器', () => {
     )
     const persisted = readBrowserGameCache()
     expect(persisted).toMatchObject({
-      gameVersion: '0.10.0-demo.1',
+      gameVersion: '0.10.0',
       updatedAt: expect.any(Number),
-      payload: expect.objectContaining({ schemaVersion: 10 }),
+      payload: expect.objectContaining({ schemaVersion: 11 }),
     })
     expect(persisted!.updatedAt).toBeGreaterThanOrEqual(current)
     expect(createBingoSave).toHaveBeenCalledOnce()
@@ -1953,7 +1969,7 @@ describe('旅行饼狗应用控制器', () => {
     writeBrowserGameCache(
       createBrowserGameCache({
         saveId: 'reconciled-periodic-save',
-        gameVersion: '0.10.0-demo.1',
+        gameVersion: '0.10.0',
         now: current - 3 * 24 * 60 * 60 * 1_000,
         payload: cachedGame,
       }),
@@ -1988,7 +2004,7 @@ describe('旅行饼狗应用控制器', () => {
     await waitFor(() => expect(downloadBingoSave).toHaveBeenCalledOnce())
     expect(createBingoSave).toHaveBeenCalledWith(
       {
-        gameVersion: '0.10.0-demo.1',
+        gameVersion: '0.10.0',
         payload: expect.objectContaining({
           activeActivity: null,
           collections: expect.objectContaining({
@@ -2026,7 +2042,7 @@ describe('旅行饼狗应用控制器', () => {
     await waitFor(() => expect(downloadBingoSave).toHaveBeenCalledOnce())
     expect(createBingoSave).toHaveBeenCalledWith(
       {
-        gameVersion: '0.10.0-demo.1',
+        gameVersion: '0.10.0',
         payload: expect.objectContaining({
           activeActivity: null,
           collections: {},
@@ -2185,7 +2201,7 @@ describe('旅行饼狗应用控制器', () => {
     expect(persistedKeys).not.toContain('videosByBvid')
     expect(persistedKeys).not.toContain('recordPlayerVideos')
     expect(payload).toMatchObject({
-      schemaVersion: 10,
+      schemaVersion: 11,
       collections: {},
       friends: {},
       world: 'game',
@@ -2299,7 +2315,7 @@ describe('旅行饼狗应用控制器', () => {
     await waitFor(() => expect(createBingoSave).toHaveBeenCalledOnce())
     expect(createBingoSave).toHaveBeenCalledWith(
       {
-        gameVersion: '0.10.0-demo.1',
+        gameVersion: '0.10.0',
         payload: expect.objectContaining({
           activeActivity: expect.objectContaining({
             rewardPlan: expect.objectContaining({ collection: null }),
@@ -2333,7 +2349,7 @@ describe('旅行饼狗应用控制器', () => {
     expect(exportedInput.payload.reality.pomodoro.selectedPostcardId).toBeNull()
   })
 
-  it('本地导入 V5 迁至 V10 后在统一准备链中协调不可达任务', async () => {
+  it('本地导入 V5 迁至 V11 后在统一准备链中协调不可达任务', async () => {
     const payload = asV5(gameWithUnavailableCollectionTask())
     const originalSequence = payload.random.sequences.tasks
     vi.mocked(importBingoSave).mockResolvedValue(importResult(payload))
@@ -2345,7 +2361,7 @@ describe('旅行饼狗应用控制器', () => {
     })
     fireEvent.click(await screen.findByRole('button', { name: '进入这次旅程' }))
 
-    expect(screen.getByTestId('schema-version')).toHaveTextContent('10')
+    expect(screen.getByTestId('schema-version')).toHaveTextContent('11')
     expect(screen.getByTestId('task-instance-ids')).toHaveTextContent(
       'keep-completed-backpack,keep-partial-room',
     )

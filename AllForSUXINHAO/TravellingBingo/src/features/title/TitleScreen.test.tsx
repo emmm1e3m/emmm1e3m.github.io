@@ -46,6 +46,12 @@ const importPreview = {
 }
 
 describe('TitleScreen 新游戏称呼', () => {
+  it('展示当前产品版本', () => {
+    render(<TitleScreen {...props()} />)
+
+    expect(screen.getByText('TRAVELLING BINGO · v0.10')).toBeVisible()
+  })
+
   it('拒绝空白称呼并标记输入错误', () => {
     const onStart = vi.fn()
     render(<TitleScreen {...props(onStart)} />)
@@ -160,20 +166,24 @@ describe('TitleScreen 新游戏称呼', () => {
     render(<TitleScreen {...props()} cachedPreview={cachedPreview} />)
 
     const socialLinks = screen.getByRole('navigation', { name: '微博主页' })
-    const noticeButton = screen.getByRole('button', { name: /更新公告 · 饼屋的新布置/u })
+    const noticeButton = screen.getByRole('button', {
+      name: /更新公告 · v0\.10 · 饼屋的新布置/u,
+    })
     const cachedSummary = screen.getByRole('region', { name: '缓存存档摘要' })
     expect(socialLinks.compareDocumentPosition(noticeButton)).toBe(Node.DOCUMENT_POSITION_FOLLOWING)
     expect(noticeButton.compareDocumentPosition(cachedSummary)).toBe(
       Node.DOCUMENT_POSITION_FOLLOWING,
     )
-    expect(noticeButton).toHaveTextContent('目前刷播功能不稳定，请暂时不要通过此方式刷播')
+    expect(noticeButton).toHaveTextContent('刷播现在可以正常使用了')
 
     noticeButton.focus()
     fireEvent.click(noticeButton)
     const dialog = screen.getByRole('dialog', { name: '饼屋的新布置' })
-    expect(dialog).toHaveTextContent('刷播独立成窗')
-    expect(dialog).toHaveTextContent('手机也能进入现实维度')
-    expect(dialog).toHaveTextContent('目前刷播功能不稳定，请暂时不要通过此方式刷播')
+    expect(dialog).toHaveTextContent('更新公告 · v0.10')
+    expect(dialog).toHaveTextContent('奇迹饼狗上线')
+    expect(dialog).toHaveTextContent('多套造型随心保存')
+    expect(dialog).toHaveTextContent('合拍相册开张')
+    expect(dialog).toHaveTextContent('刷播现在可以正常使用了')
 
     fireEvent.click(screen.getByRole('button', { name: '收好啦' }))
     expect(screen.queryByRole('dialog', { name: '饼屋的新布置' })).not.toBeInTheDocument()

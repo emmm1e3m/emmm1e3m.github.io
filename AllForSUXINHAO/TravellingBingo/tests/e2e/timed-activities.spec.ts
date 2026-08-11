@@ -168,7 +168,7 @@ test.describe('所有读条活动的确认与取消', () => {
   }
 })
 
-test('睡觉读条时饼狗在床上且房间变暗，领取后增加 1 天和 1🍎', async ({ page }, testInfo) => {
+test('睡觉读条时饼狗在床上且房间变暗，领取后只增加 1 天', async ({ page }, testInfo) => {
   test.skip(testInfo.project.name !== 'chromium', '日夜过场只在桌面项目验证')
   await startGame(page, { debug: true, seed: 'rest-e2e', displayName: '晚安' })
   await setDebugDuration(page, '10 秒')
@@ -198,8 +198,10 @@ test('睡觉读条时饼狗在床上且房间变暗，领取后增加 1 天和 1
 
   const reward = await completeActivity(page)
   await expect(reward).toContainText('饼狗睡醒啦')
+  await expect(reward).toContainText('认真度过的时间，也被饼狗记住了。')
+  await expect(reward.getByLabel(/得到 \d+🍎/u)).toHaveCount(0)
   expect(await readCompanionDays(page)).toBe(daysBefore + 1)
-  expect(await readAppleCount(page)).toBe(applesBefore + 1)
+  expect(await readAppleCount(page)).toBe(applesBefore)
   await expect(darkness).toHaveClass(/is-playing/u)
   await saveScreenshot(page, 'rest-day-night-reward.png', false)
   await reward.getByRole('button', { name: '回到房间' }).click()

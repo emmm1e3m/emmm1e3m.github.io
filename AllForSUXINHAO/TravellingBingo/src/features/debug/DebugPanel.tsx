@@ -127,7 +127,7 @@ export function DebugPanel({ game, onAction, onBackup }: DebugPanelProps) {
           </>
         ) : pendingBulkAction === 'collect-all' ? (
           <div className="debug-confirm" role="group" aria-label="确认一键全收集">
-            <strong>确认把全部收藏和好朋友加入调试档？</strong>
+            <strong>确认把全部收藏、好朋友和衣服加入调试档？</strong>
             <button
               type="button"
               onClick={() => {
@@ -143,7 +143,9 @@ export function DebugPanel({ game, onAction, onBackup }: DebugPanelProps) {
           </div>
         ) : (
           <div className="debug-confirm" role="group" aria-label="确认清空收集">
-            <strong>确认清空全部收藏和好朋友记录？</strong>
+            <strong>
+              确认清空全部收藏、好朋友、已购衣服（保留初始款）和保存造型？历史合拍的人物与造型快照会保留，明信片背景会清空。
+            </strong>
             <button
               className="debug-action--danger"
               type="button"

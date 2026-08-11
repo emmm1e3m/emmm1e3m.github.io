@@ -79,6 +79,7 @@ export default defineConfig({
           'assets/fonts/*.woff2',
           'assets/game/*.webp',
           'assets/friends/*.webp',
+          'assets/miracle/**/*.webp',
           'assets/links/*.jpg',
           'assets/collectibles/**/*-480.webp',
         ],

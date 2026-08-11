@@ -3,12 +3,7 @@ export { PomodoroFocusOverlay } from './PomodoroFocusOverlay'
 export { PostcardPicker } from './PostcardPicker'
 export { RealityReturnDialog } from './RealityReturnDialog'
 export { RealitySettlementResultDialog } from './RealitySettlementResultDialog'
-export {
-  StreamPanel,
-  STREAM_INSTRUCTION,
-  type StreamPanelProps,
-  type StreamSessionHistoryItem,
-} from './StreamPanel'
+export { StreamPanel, STREAM_INSTRUCTION, type StreamPanelProps } from './StreamPanel'
 export { buildRealityTodoViews, buildUnlockedPostcardBackgrounds } from './realityViewModel'
 export {
   STREAM_MAX_SESSION_DURATION_MS,
@@ -18,13 +13,10 @@ export {
   parseStreamSelfTestInput,
   useStreamPlayback,
   type BuildStreamPlayerUrlOptions,
-  type StoredStreamSession,
   type StreamInputError,
   type StreamParseResult,
   type StreamPlaybackController,
   type StreamPlaybackState,
-  type StreamRoundCompletion,
-  type StreamSessionEnd,
   type StreamStartSettings,
 } from './stream/useStreamPlayback'
 export { WorkPanel } from './WorkPanel'

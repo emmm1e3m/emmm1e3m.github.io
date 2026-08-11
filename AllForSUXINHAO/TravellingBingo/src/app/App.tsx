@@ -22,7 +22,7 @@ import { PwaUpdatePrompt, type InstallPwaUpdate } from '@/components/PwaUpdatePr
 import { loadContentCatalog, type ContentCatalog } from '@/content'
 import {
   createInitialGameState,
-  migrateStoredGameStateToV10,
+  migrateStoredGameStateToV11,
   normalizeImportedGameBalance,
   reconcileGameStateWithCatalog,
   suspendRealityLeaseAfterLoad,
@@ -51,7 +51,7 @@ import {
   type BingoSaveSummary,
 } from '@/infrastructure/persistence'
 
-const GAME_VERSION = '0.10.0-demo.1'
+const GAME_VERSION = '0.10.0'
 const DEBUG_PASSWORD = 'TravellingBingo'
 const PERIODIC_BACKUP_INTERVAL_MS = 3 * 24 * 60 * 60 * 1_000
 
@@ -151,7 +151,7 @@ function prepareStoredGame(
   catalog: CollectionCatalog,
   now: number,
 ): GameState {
-  const migrated = migrateStoredGameStateToV10(stored, { now, catalog })
+  const migrated = migrateStoredGameStateToV11(stored, { now, catalog })
   const normalized = normalizeImportedGameBalance(migrated)
   const reconciled = reconcileGameStateWithCatalog(normalized, catalog)
   const suspended = suspendRealityLeaseAfterLoad(reconciled)
@@ -598,9 +598,9 @@ export function App({
           )
         } else if (effect.type === 'debug-applied') {
           if (effect.action === 'debug/collect-all') {
-            setToast(`DEBUG：收好 ${effect.changedCount ?? 0} 份收藏与好友记录。`)
+            setToast(`DEBUG：新增 ${effect.changedCount ?? 0} 项收藏、好友与衣服记录。`)
           } else if (effect.action === 'debug/clear-all') {
-            setToast(`DEBUG：清理 ${effect.changedCount ?? 0} 份收藏与好友记录。`)
+            setToast(`DEBUG：清理 ${effect.changedCount ?? 0} 项收藏、好友、衣服与造型记录。`)
           } else {
             setToast('DEBUG 操作已应用。')
           }

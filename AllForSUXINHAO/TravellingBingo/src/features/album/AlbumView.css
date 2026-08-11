@@ -34,6 +34,109 @@
   object-position: center;
 }
 
+.album-page--v4 .album-grid--photos {
+  grid-template-columns: repeat(auto-fill, minmax(min(100%, 250px), 1fr));
+}
+
+.wardrobe-photo-card {
+  min-width: 0;
+  overflow: hidden;
+  padding: 0;
+  border: 1px solid #d7ad8d;
+  border-radius: 20px;
+  color: #563b34;
+  background: #fffaf2;
+  box-shadow: 0 8px 22px rgb(98 54 39 / 10%);
+  text-align: left;
+}
+
+.wardrobe-photo-card:hover:not(:disabled) {
+  border-color: #bd6f60;
+  transform: translateY(-2px);
+}
+
+.wardrobe-photo-card__preview {
+  border-bottom: 1px solid #e5cbb5;
+}
+
+.wardrobe-photo-card__copy {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 0.8rem;
+  padding: 0.85rem 0.95rem;
+}
+
+.wardrobe-photo-card__copy strong {
+  min-width: 0;
+  overflow: hidden;
+  font-family: var(--font-display);
+  font-weight: 400;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.wardrobe-photo-card__copy time {
+  flex: 0 0 auto;
+  font-family: var(--font-ui);
+  font-size: 0.76rem;
+  font-variant-numeric: tabular-nums;
+}
+
+.wardrobe-photo-detail-backdrop {
+  z-index: 105;
+  padding: max(12px, env(safe-area-inset-top)) max(12px, env(safe-area-inset-right))
+    max(12px, env(safe-area-inset-bottom)) max(12px, env(safe-area-inset-left));
+  overflow: hidden;
+}
+
+.wardrobe-photo-detail {
+  position: relative;
+  width: min(1180px, 100%);
+  max-height: 100%;
+  display: grid;
+  grid-template-columns: minmax(0, 3fr) minmax(270px, 2fr);
+  overflow: hidden;
+  border: 1px solid #d6ad8c;
+  border-radius: 24px;
+  background: #fffaf2;
+  box-shadow: 0 24px 80px rgb(79 45 33 / 28%);
+}
+
+.wardrobe-photo-detail__close {
+  position: absolute;
+  z-index: 5;
+  top: 0.85rem;
+  right: 0.85rem;
+}
+
+.wardrobe-photo-detail__preview {
+  align-self: center;
+  border-right: 1px solid #e2c6ae;
+}
+
+.wardrobe-photo-detail__copy {
+  min-width: 0;
+  align-self: center;
+  padding: 4rem 1.5rem 1.5rem;
+}
+
+.wardrobe-photo-detail__copy h3 {
+  margin: 0.75rem 0 0.5rem;
+  font-family: var(--font-display);
+  font-weight: 400;
+}
+
+.wardrobe-photo-detail__actions {
+  display: grid;
+  gap: 0.65rem;
+  margin-top: 1.25rem;
+}
+
+.wardrobe-photo-detail__error {
+  color: #a93d4d;
+}
+
 .album-page--v4 .collectible-detail-backdrop {
   overflow: hidden;
 }
@@ -272,6 +375,21 @@
   .collectible-fullscreen__toolbar button {
     min-height: 40px;
     padding-block: 0.42rem;
+  }
+
+  .wardrobe-photo-detail {
+    grid-template-columns: 1fr;
+    grid-template-rows: auto minmax(0, 1fr);
+    overflow-y: auto;
+  }
+
+  .wardrobe-photo-detail__preview {
+    border-right: 0;
+    border-bottom: 1px solid #e2c6ae;
+  }
+
+  .wardrobe-photo-detail__copy {
+    padding: 1.2rem;
   }
 }
 

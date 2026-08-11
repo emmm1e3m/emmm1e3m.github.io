@@ -142,9 +142,11 @@ const fixedAssetEntries = precacheEntries.filter(
     entry.url.startsWith('assets/game/') ||
     entry.url.startsWith('assets/fonts/') ||
     entry.url.startsWith('assets/friends/') ||
+    entry.url.startsWith('assets/miracle/') ||
     entry.url.startsWith('assets/links/') ||
     entry.url.startsWith('icons/') ||
     entry.url === 'data/friends.json' ||
+    entry.url === 'data/miracle-wardrobe.json' ||
     entry.url === 'data/video-catalog.json' ||
     entry.url === 'favourites/3682220021.txt' ||
     entry.url === 'favourites/3986840044.txt' ||
@@ -205,6 +207,9 @@ function isAllowedGameFile(relativePath) {
     /^assets\/game\/[a-z0-9][a-z0-9-]*\.webp$/u.test(relativePath) ||
     /^assets\/fonts\/[A-Za-z0-9][A-Za-z0-9._-]*\.woff2$/u.test(relativePath) ||
     /^assets\/friends\/[a-z0-9][a-z0-9-]*\.webp$/u.test(relativePath) ||
+    /^assets\/miracle\/(?:characters|outfits|accessories)\/[a-z0-9][a-z0-9-]*\.webp$/u.test(
+      relativePath,
+    ) ||
     /^assets\/links\/weibo-[0-9]+\.jpg$/u.test(relativePath) ||
     /^assets\/collectibles\/(?:million-shots|postcards|site-firsts)\/[a-z0-9][a-z0-9-]*\.webp$/u.test(
       relativePath,
@@ -225,6 +230,10 @@ const allowedGameDirectories = new Set([
   'assets/friends',
   'assets/game',
   'assets/links',
+  'assets/miracle',
+  'assets/miracle/accessories',
+  'assets/miracle/characters',
+  'assets/miracle/outfits',
   'data',
   'favourites',
   'icons',
@@ -258,9 +267,11 @@ for (const relativePath of publishedGameFiles.filter(
     entry.startsWith('assets/game/') ||
     entry.startsWith('assets/fonts/') ||
     entry.startsWith('assets/friends/') ||
+    entry.startsWith('assets/miracle/') ||
     entry.startsWith('assets/links/') ||
     entry.startsWith('icons/') ||
     entry === 'data/friends.json' ||
+    entry === 'data/miracle-wardrobe.json' ||
     entry === 'data/video-catalog.json' ||
     entry === 'favourites/3682220021.txt' ||
     entry === 'favourites/3986840044.txt' ||
@@ -291,6 +302,36 @@ if (JSON.stringify(publishedFriendFiles) !== JSON.stringify(expectedFriendFiles)
   throw new Error(`发布包好友图鉴目录不精确：实际 ${publishedFriendFiles.join(', ') || '为空'}`)
 }
 
+const miracleCatalog = JSON.parse(
+  await readFile(resolve(gameRoot, 'data/miracle-wardrobe.json'), 'utf8'),
+)
+if (
+  miracleCatalog.schemaVersion !== 1 ||
+  miracleCatalog.characters?.length !== 6 ||
+  miracleCatalog.outfits?.length !== 8 ||
+  miracleCatalog.accessories?.length !== 16
+) {
+  throw new Error('发布包奇迹饼狗目录数量或版本不一致')
+}
+const expectedMiracleFiles = [
+  ...miracleCatalog.characters,
+  ...miracleCatalog.outfits,
+  ...miracleCatalog.accessories,
+]
+  .map((entry) => entry.url)
+  .sort()
+const publishedMiracleFiles = publishedGameFiles
+  .filter((entry) => entry.startsWith('assets/miracle/'))
+  .sort()
+if (
+  new Set(expectedMiracleFiles).size !== expectedMiracleFiles.length ||
+  JSON.stringify(publishedMiracleFiles) !== JSON.stringify(expectedMiracleFiles)
+) {
+  throw new Error(
+    `发布包奇迹饼狗素材目录不精确：实际 ${publishedMiracleFiles.length}，预期 ${expectedMiracleFiles.length}`,
+  )
+}
+
 const expectedLinkFiles = ['assets/links/weibo-7760819929.jpg', 'assets/links/weibo-7878664767.jpg']
 const publishedLinkFiles = publishedGameFiles
   .filter((entry) => entry.startsWith('assets/links/'))
@@ -298,7 +339,11 @@ const publishedLinkFiles = publishedGameFiles
 if (JSON.stringify(publishedLinkFiles) !== JSON.stringify(expectedLinkFiles)) {
   throw new Error(`发布包微博头像目录不精确：实际 ${publishedLinkFiles.join(', ') || '为空'}`)
 }
-for (const dataFile of ['data/friends.json', 'data/video-catalog.json']) {
+for (const dataFile of [
+  'data/friends.json',
+  'data/miracle-wardrobe.json',
+  'data/video-catalog.json',
+]) {
   if (!publishedGameFiles.includes(dataFile)) {
     throw new Error(`发布包缺少运行时数据：${dataFile}`)
   }

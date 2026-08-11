@@ -28,12 +28,11 @@ import {
   buildRealityTodoViews,
   buildUnlockedPostcardBackgrounds,
   type RealityNotificationPermission,
-  type StreamRoundCompletion,
-  type StreamSessionEnd,
   useStreamPlayback,
 } from '@/features/reality'
 import { RewardDialog } from '@/features/rewards/RewardDialog'
 import { UpdateNoticeDialog } from '@/features/update-notice/UpdateNotice'
+import { MiracleWardrobePage } from '@/features/wardrobe/MiracleWardrobePage'
 
 import './game-v2.css'
 import './game-v3.css'
@@ -234,6 +233,7 @@ export function GameHome({
   const [petMenuOpenRequest, setPetMenuOpenRequest] = useState(0)
   const [helpOpen, setHelpOpen] = useState(false)
   const [updateNoticeOpen, setUpdateNoticeOpen] = useState(false)
+  const [wardrobeOpen, setWardrobeOpen] = useState(false)
   const [dimensionDialog, setDimensionDialog] = useState<DimensionDialogMode | null>(null)
   const [dimensionTransition, setDimensionTransition] = useState<DimensionTransitionState | null>(
     null,
@@ -259,22 +259,7 @@ export function GameHome({
     () => catalog.recordPlayerVideos.map(toPlayerTrack),
     [catalog.recordPlayerVideos],
   )
-  const handleStreamRoundCompleted = useCallback(
-    (event: StreamRoundCompletion) => {
-      onAction({ type: 'reality/stream-session-progress', ...event })
-    },
-    [onAction],
-  )
-  const handleStreamSessionEnded = useCallback(
-    (event: StreamSessionEnd) => {
-      onAction({ type: 'reality/stream-session-end', ...event })
-    },
-    [onAction],
-  )
-  const streamPlayback = useStreamPlayback({
-    onRoundCompleted: handleStreamRoundCompleted,
-    onSessionEnded: handleStreamSessionEnded,
-  })
+  const streamPlayback = useStreamPlayback()
   const handlePetCenterChange = useCallback((point: RoomPixelPoint) => {
     visiblePetCenterRef.current = point
   }, [])
@@ -318,6 +303,7 @@ export function GameHome({
     : dimensionDialog
   const overlayOpen =
     panel === 'album' ||
+    wardrobeOpen ||
     helpOpen ||
     updateNoticeOpen ||
     reward !== null ||
@@ -537,6 +523,7 @@ export function GameHome({
                   catalog={catalog}
                   now={now}
                   onNavigate={navigate}
+                  onOpenWardrobe={() => setWardrobeOpen(true)}
                   onAction={onAction}
                   onBackup={onBackup}
                   onTaskEvent={taskEvent}
@@ -581,6 +568,7 @@ export function GameHome({
           <AlbumView
             catalog={catalog}
             game={game}
+            onAction={onAction}
             onClose={() => onPanel(null)}
             onInspect={(item) =>
               taskEvent({
@@ -592,6 +580,15 @@ export function GameHome({
             onPlayerOpened={(collectionId, bvid) =>
               taskEvent({ type: 'collection-player-opened', collectionId, bvid })
             }
+          />
+        )}
+
+        {wardrobeOpen && (
+          <MiracleWardrobePage
+            game={game}
+            catalog={catalog}
+            onClose={() => setWardrobeOpen(false)}
+            onAction={onAction}
           />
         )}
 
@@ -637,15 +634,17 @@ export function GameHome({
         />
         <PersistentPlayerDock
           compact={!(hasSidePanel || panel === 'album' || pomodoroActive)}
-          interactionDisabled={dimensionTransition !== null}
+          interactionDisabled={dimensionTransition !== null || wardrobeOpen}
           className={
-            pomodoroActive
-              ? 'persistent-bilibili-player--focus'
-              : hasSidePanel
-                ? 'persistent-bilibili-player--context'
-                : panel === 'album'
-                  ? 'persistent-bilibili-player--album'
-                  : ''
+            wardrobeOpen
+              ? 'persistent-bilibili-player--wardrobe'
+              : pomodoroActive
+                ? 'persistent-bilibili-player--focus'
+                : hasSidePanel
+                  ? 'persistent-bilibili-player--context'
+                  : panel === 'album'
+                    ? 'persistent-bilibili-player--album'
+                    : ''
           }
           onExpandRequest={
             pomodoroActive || panel === 'album' ? undefined : () => navigate('record-player')

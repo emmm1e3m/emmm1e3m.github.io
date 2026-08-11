@@ -431,7 +431,7 @@ describe('收藏墙模态框', () => {
 })
 
 describe('现实刷播运行时', () => {
-  it('切换信息面板时保留正在运行的窗口与轮次状态', async () => {
+  it('切换信息面板时保留正在运行的窗口与配置，不在主游戏显示状态统计', async () => {
     const openedWindow = {
       closed: false,
       close: vi.fn(),
@@ -446,13 +446,15 @@ describe('现实刷播运行时', () => {
     fireEvent.click(screen.getByRole('button', { name: '开始刷播' }))
 
     await waitFor(() => expect(openSpy).toHaveBeenCalledOnce())
-    expect(screen.getByText('独立页正在准备')).toBeVisible()
+    expect(screen.getByRole('button', { name: '停止刷播' })).toBeVisible()
+    expect(screen.queryByText('独立页正在准备')).not.toBeInTheDocument()
 
     fireEvent.click(screen.getByRole('button', { name: '工作' }))
     expect(screen.getByRole('heading', { name: '苹果钟与待办' })).toBeVisible()
 
     fireEvent.click(screen.getByRole('button', { name: '刷播' }))
-    expect(screen.getByText('独立页正在准备')).toBeVisible()
+    expect(screen.getByRole('button', { name: '停止刷播' })).toBeVisible()
+    expect(screen.queryByText('独立页正在准备')).not.toBeInTheDocument()
     expect(screen.getByRole('textbox', { name: '自测视频BV号或链接' })).toBeDisabled()
     expect(screen.getByRole('textbox', { name: '自测视频BV号或链接' })).toHaveValue('BV1xx411c7mD')
     expect(openSpy).toHaveBeenCalledOnce()
@@ -547,8 +549,10 @@ describe('房间互动', () => {
     fireEvent.click(noticeButton)
 
     const dialog = screen.getByRole('dialog', { name: '饼屋的新布置' })
-    expect(dialog).toHaveTextContent('刷播独立成窗')
-    expect(dialog).toHaveTextContent('目前刷播功能不稳定，请暂时不要通过此方式刷播')
+    expect(dialog).toHaveTextContent('更新公告 · v0.10')
+    expect(dialog).toHaveTextContent('奇迹饼狗上线')
+    expect(dialog).toHaveTextContent('合拍相册开张')
+    expect(dialog).toHaveTextContent('刷播现在可以正常使用了')
     fireEvent.keyDown(document, { key: 'Escape' })
 
     expect(screen.queryByRole('dialog', { name: '饼屋的新布置' })).not.toBeInTheDocument()
@@ -885,8 +889,8 @@ describe('房间互动', () => {
   })
 })
 
-describe('舞台测试与调试控件', () => {
-  it('同步打开隔离窗口、导航到舞台测试并记录任务事件且不误报拦截', () => {
+describe('衣架菜单、舞台测试与调试控件', () => {
+  it('衣架侧栏同步打开独立舞台测试并记录任务事件且不误报拦截', () => {
     const replace = vi.fn()
     const popup = { opener: globalThis, location: { replace }, close: vi.fn() }
     const open = vi.spyOn(globalThis, 'open').mockReturnValue(popup as unknown as Window)
@@ -907,7 +911,9 @@ describe('舞台测试与调试控件', () => {
       />,
     )
 
-    fireEvent.click(screen.getByRole('button', { name: '开始舞台测试' }))
+    expect(screen.getByRole('heading', { name: '奇迹饼狗' })).toBeInTheDocument()
+    expect(screen.getByText('今天仍可购买')).toBeInTheDocument()
+    fireEvent.click(screen.getByRole('button', { name: '打开独立舞台测试' }))
     expect(open).toHaveBeenCalledWith(
       '',
       '_blank',
@@ -924,6 +930,71 @@ describe('舞台测试与调试控件', () => {
       }),
     )
     open.mockRestore()
+  })
+
+  it('从衣架侧栏打开三页签全屏页，关闭后返回侧栏', () => {
+    render(
+      <GameHome
+        game={collectedGame()}
+        catalog={catalog}
+        now={1_000}
+        panel="wardrobe"
+        dirty={false}
+        reward={null}
+        onPanel={vi.fn()}
+        onAction={vi.fn()}
+        onExit={vi.fn()}
+        onBackup={vi.fn()}
+        onDismissReward={vi.fn()}
+      />,
+    )
+
+    expect(screen.queryByRole('dialog', { name: '奇迹饼狗' })).not.toBeInTheDocument()
+    fireEvent.click(screen.getByRole('button', { name: '进入奇迹饼狗' }))
+
+    const dialog = screen.getByRole('dialog', { name: '奇迹饼狗' })
+    expect(within(dialog).getAllByRole('tab')).toHaveLength(3)
+    expect(within(dialog).queryByRole('tab', { name: '今日衣橱' })).not.toBeInTheDocument()
+    expect(document.querySelector('.game-layout')).toHaveAttribute('inert')
+
+    fireEvent.click(within(dialog).getByRole('button', { name: '关闭衣柜' }))
+    expect(screen.queryByRole('dialog', { name: '奇迹饼狗' })).not.toBeInTheDocument()
+    expect(screen.getByRole('button', { name: '进入奇迹饼狗' })).toBeInTheDocument()
+  })
+
+  it('奇迹饼狗全屏打开时持久播放器降层且不可交互，关闭后恢复', () => {
+    const commonProps = {
+      catalog: videoCatalog,
+      now: 1_000,
+      dirty: false,
+      reward: null,
+      onPanel: vi.fn(),
+      onAction: vi.fn(),
+      onExit: vi.fn(),
+      onBackup: vi.fn(),
+      onDismissReward: vi.fn(),
+    } as const
+    const { rerender } = render(
+      <GameHome {...commonProps} game={videoCollectedGame()} panel="album" />,
+    )
+    fireEvent.click(screen.getByRole('button', { name: /带视频的收藏/u }))
+    fireEvent.click(screen.getByRole('button', { name: '关闭详情' }))
+
+    const dock = screen.getByTestId('persistent-bilibili-player')
+    const iframe = screen.getByTitle('Bilibili 外链播放器：收藏播放器桥接测试')
+    rerender(<GameHome {...commonProps} game={videoCollectedGame()} panel="wardrobe" />)
+    fireEvent.click(screen.getByRole('button', { name: '进入奇迹饼狗' }))
+
+    expect(dock).toHaveClass('persistent-bilibili-player--wardrobe')
+    expect(dock).toHaveAttribute('data-interaction-state', 'disabled')
+    expect(iframe).toHaveAttribute('tabindex', '-1')
+    for (const control of within(dock).getAllByRole('button', { hidden: true })) {
+      expect(control).toBeDisabled()
+    }
+
+    fireEvent.click(screen.getByRole('button', { name: '关闭衣柜' }))
+    expect(dock).not.toHaveClass('persistent-bilibili-player--wardrobe')
+    expect(dock).toHaveAttribute('data-interaction-state', 'enabled')
   })
 
   it('DEBUG 面板不用原生下拉框并提供四个概率滑杆', () => {

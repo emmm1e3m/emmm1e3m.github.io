@@ -2,7 +2,6 @@ export const STREAM_PLAYER_MESSAGE_TYPE = 'travelling-bingo:stream-player'
 export const STREAM_PLAYER_MESSAGE_VERSION = 1
 export const STREAM_PLAYER_HISTORY_KEY = 'travelling-bingo:stream-player-history:v1'
 
-export type StreamPlayerStatus = 'opening' | 'waiting'
 export type StreamPlayerOutcome = 'completed' | 'stopped'
 
 export interface StoredStreamSession {
@@ -22,26 +21,9 @@ interface StreamPlayerMessageBase {
 export type StreamPlayerEvent =
   | (StreamPlayerMessageBase & {
       readonly event: 'started'
-      readonly startedAt: number
-    })
-  | (StreamPlayerMessageBase & {
-      readonly event: 'status'
-      readonly status: StreamPlayerStatus
-      readonly round: number
-      readonly openedCount: number
-      readonly totalCount: number
-      readonly nextRoundAt: number | null
-      readonly message: string
-    })
-  | (StreamPlayerMessageBase & {
-      readonly event: 'round-completed'
-      readonly round: number
-      readonly completedAt: number
     })
   | (StreamPlayerMessageBase & {
       readonly event: 'ended'
-      readonly endedAt: number
-      readonly roundsCompleted: number
       readonly outcome: StreamPlayerOutcome
     })
 
@@ -76,39 +58,11 @@ function hasValidBase(value: Record<string, unknown>) {
 export function parseStreamPlayerEvent(value: unknown): StreamPlayerEvent | null {
   if (!isRecord(value) || !hasValidBase(value)) return null
 
-  if (value.event === 'started' && isFiniteTimestamp(value.startedAt)) {
+  if (value.event === 'started') {
     return value as unknown as StreamPlayerEvent
   }
 
-  if (
-    value.event === 'status' &&
-    (value.status === 'opening' || value.status === 'waiting') &&
-    isSafeNonNegativeInteger(value.round) &&
-    Number(value.round) >= 1 &&
-    isSafeNonNegativeInteger(value.openedCount) &&
-    isSafeNonNegativeInteger(value.totalCount) &&
-    Number(value.openedCount) <= Number(value.totalCount) &&
-    (value.nextRoundAt === null || isFiniteTimestamp(value.nextRoundAt)) &&
-    typeof value.message === 'string'
-  ) {
-    return value as unknown as StreamPlayerEvent
-  }
-
-  if (
-    value.event === 'round-completed' &&
-    isSafeNonNegativeInteger(value.round) &&
-    Number(value.round) >= 1 &&
-    isFiniteTimestamp(value.completedAt)
-  ) {
-    return value as unknown as StreamPlayerEvent
-  }
-
-  if (
-    value.event === 'ended' &&
-    isFiniteTimestamp(value.endedAt) &&
-    isSafeNonNegativeInteger(value.roundsCompleted) &&
-    (value.outcome === 'completed' || value.outcome === 'stopped')
-  ) {
+  if (value.event === 'ended' && (value.outcome === 'completed' || value.outcome === 'stopped')) {
     return value as unknown as StreamPlayerEvent
   }
 

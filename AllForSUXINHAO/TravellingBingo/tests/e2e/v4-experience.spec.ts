@@ -144,7 +144,12 @@ test.describe('V9 房间契约', () => {
       '选择收藏夹，也可以加入一个自测视频 BV 号或完整视频链接（可留空）。',
     )
     await expect(streamPanel).toContainText('会使用当前浏览器账号，登录时每天不要超过5小时。')
-    await expect(streamPanel).toContainText('移动端使用前请先用自测视频测试。')
+    await expect(streamPanel).toContainText(
+      '刷播会在单独页面运行，请允许本站弹出窗口；启动刷播窗口后，返回游戏维度也可以继续。',
+    )
+    await expect(streamPanel).toContainText(
+      '在新设备/浏览器上请先检查：若登录，历史记录里出现刷播视频为成功；若未登录，自测视频播放量增加为成功。',
+    )
 
     await room.locator('[data-hotspot="二楼电脑·冲热"]').click()
     const trendPanel = page.locator('.context-panel--reality-trend')

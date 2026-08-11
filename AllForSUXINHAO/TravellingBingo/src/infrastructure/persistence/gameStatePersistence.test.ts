@@ -15,7 +15,7 @@ import {
   DEFAULT_GAME_BALANCE,
   DEFAULT_GAME_BALANCE_V3,
   deriveActivityTiming,
-  migrateStoredGameStateToV10,
+  migrateStoredGameStateToV11,
   normalizeImportedGameBalance,
   reconcileGameStateWithCatalog,
   reduceGame,
@@ -28,6 +28,7 @@ import {
   type GameStateV5LegacyMusic,
   type GameStateV7,
   type GameTransition,
+  generateWardrobeShop,
 } from '@/domain'
 
 import { createBingoSave, importBingoSave, type BingoSaveError } from './bingoSave'
@@ -98,7 +99,9 @@ function asPublishedV5(state: GameState): GameStateV5 {
     todos: state.reality.todos,
     pomodoro: state.reality.pomodoro,
   }
-  return { ...state, schemaVersion: 5, reality }
+  const { wardrobe: _wardrobe, ...withoutWardrobe } = state
+  void _wardrobe
+  return { ...withoutWardrobe, schemaVersion: 5, reality }
 }
 
 function asPublishedV7(state: GameState): GameStateV7 {
@@ -110,7 +113,9 @@ function asPublishedV7(state: GameState): GameStateV7 {
     pomodoro: structuredClone(state.reality.pomodoro),
     streamHistory: structuredClone(state.reality.streamHistory),
   }
-  return { ...structuredClone(state), schemaVersion: 7, reality }
+  const { wardrobe: _wardrobe, ...withoutWardrobe } = structuredClone(state)
+  void _wardrobe
+  return { ...withoutWardrobe, schemaVersion: 7, reality }
 }
 
 describe('游戏活动存档时长快照', () => {
@@ -262,7 +267,7 @@ describe('游戏活动存档时长快照', () => {
     })
   })
 
-  it('严格导入 V7 后显式迁移默认刷播设置与现实租约，并只以 V10 再次导出', async () => {
+  it('严格导入 V7 后显式迁移默认刷播设置、现实租约与衣柜，并只以 V11 再次导出', async () => {
     const v7 = asPublishedV7(
       createInitialGameState({ now: 50_000, seed: 'stream-settings-v7-save' }),
     )
@@ -277,10 +282,10 @@ describe('游戏活动存档时长快照', () => {
     const imported = await importBingoSave(oldSave.text, importableGameStateSchema, {
       subtle: webcrypto.subtle,
     })
-    const migrated = migrateStoredGameStateToV10(imported.payload, { now: 70_000, catalog })
+    const migrated = migrateStoredGameStateToV11(imported.payload, { now: 70_000, catalog })
 
     expect(migrated).toMatchObject({
-      schemaVersion: 10,
+      schemaVersion: 11,
       reality: {
         streamSettings: { selfTestBvid: null, favoriteId: 3682220021 },
       },
@@ -288,7 +293,7 @@ describe('游戏活动存档时长快照', () => {
     expect(gameStateSchema.safeParse(migrated).success).toBe(true)
 
     const currentSave = await createBingoSave(
-      { gameVersion: '0.10.0-demo.1', exportedAt: 80_000, payload: migrated },
+      { gameVersion: '0.10.0', exportedAt: 80_000, payload: migrated },
       gameStateSchema,
       { subtle: webcrypto.subtle },
     )
@@ -413,6 +418,13 @@ describe('游戏活动存档时长快照', () => {
         currentIndex: 0,
         loopMode: 'single',
       },
+      wardrobe: {
+        ...initial.wardrobe,
+        shop: {
+          companionDay: 3,
+          assetIds: generateWardrobeShop(initial.random.seed, 3, initial.wardrobe.ownedAssetIds),
+        },
+      },
     }
     expect(gameStateSchema.safeParse(state).success).toBe(true)
 
@@ -497,7 +509,7 @@ describe('游戏活动存档时长快照', () => {
     if (imported.payload.schemaVersion !== 3) throw new Error('测试存档没有保留 V3 payload')
 
     const normalized = normalizeImportedGameBalance(
-      migrateStoredGameStateToV10(imported.payload, { now: startedAt + 1_000, catalog }),
+      migrateStoredGameStateToV11(imported.payload, { now: startedAt + 1_000, catalog }),
       futureDefault,
     )
     expect(normalized.gameBalance).toEqual(futureDefault)
@@ -586,7 +598,7 @@ describe('游戏活动存档时长快照', () => {
       subtle: webcrypto.subtle,
     })
     const normalized = normalizeImportedGameBalance(
-      migrateStoredGameStateToV10(imported.payload, { now: startedAt + 1_000, catalog }),
+      migrateStoredGameStateToV11(imported.payload, { now: startedAt + 1_000, catalog }),
     )
 
     expect(normalized.gameBalance).toEqual(DEFAULT_GAME_BALANCE)
@@ -604,10 +616,10 @@ describe('冻结的已发布存档兼容性', () => {
 
     expect(imported.summary.schemaVersion).toBe(1)
     expect(imported.payload.schemaVersion).toBe(1)
-    const migrated = migrateStoredGameStateToV10(imported.payload, { now: 900_000, catalog })
+    const migrated = migrateStoredGameStateToV11(imported.payload, { now: 900_000, catalog })
 
     expect(migrated).toMatchObject({
-      schemaVersion: 10,
+      schemaVersion: 11,
       profile: { displayName: '你', companionDays: 3 },
       friends: {},
       reality: {
@@ -626,7 +638,7 @@ describe('冻结的已发布存档兼容性', () => {
 
     const migrated = reconcileGameStateWithCatalog(
       normalizeImportedGameBalance(
-        migrateStoredGameStateToV10(imported.payload, { now: 900_000, catalog }),
+        migrateStoredGameStateToV11(imported.payload, { now: 900_000, catalog }),
       ),
       catalog,
     )
@@ -668,7 +680,7 @@ describe('冻结的已发布存档兼容性', () => {
     const imported = await importBingoSave(text, importableGameStateSchema, {
       subtle: webcrypto.subtle,
     })
-    const migrated = migrateStoredGameStateToV10(imported.payload, { now: 900_000, catalog })
+    const migrated = migrateStoredGameStateToV11(imported.payload, { now: 900_000, catalog })
 
     expect(migrated.profile.debug).toBe(true)
     expect(migrated.gameBalance).toEqual({
@@ -719,7 +731,7 @@ describe('冻结的已发布存档兼容性', () => {
     const imported = await importBingoSave(oldSave.text, importableGameStateSchema, {
       subtle: webcrypto.subtle,
     })
-    const migrated = migrateStoredGameStateToV10(imported.payload, { now: 2_000, catalog })
+    const migrated = migrateStoredGameStateToV11(imported.payload, { now: 2_000, catalog })
 
     expect(migrated.musicPlayer).toEqual({
       currentBvid: 'BV1234567890',

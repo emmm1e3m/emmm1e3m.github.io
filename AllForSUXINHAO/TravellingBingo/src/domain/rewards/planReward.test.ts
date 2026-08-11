@@ -360,7 +360,7 @@ describe('收藏奖励无重复规则', () => {
     expect(reward.collection).toMatchObject({ category: 'postcard' })
   })
 
-  it('睡觉奖励固定一个苹果且不产生收藏或朋友', () => {
+  it('睡觉不产生苹果、收藏或朋友', () => {
     const reward = planActivityReward({
       kind: 'rest',
       rewardSeed: 'rest-fixed',

@@ -40,8 +40,10 @@ function initialState(): GameStateV4 {
     todos: current.reality.todos,
     pomodoro: { ...current.reality.pomodoro, session: null },
   }
+  const { wardrobe: _wardrobe, ...withoutWardrobe } = current
+  void _wardrobe
   return {
-    ...current,
+    ...withoutWardrobe,
     schemaVersion: 4,
     tasks,
     reality,

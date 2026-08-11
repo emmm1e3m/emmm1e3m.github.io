@@ -25,7 +25,9 @@ function v5Fixture(): GameStateV5 {
     todos: current.reality.todos,
     pomodoro: current.reality.pomodoro,
   }
-  return { ...current, schemaVersion: 5, reality }
+  const { wardrobe: _wardrobe, ...withoutWardrobe } = current
+  void _wardrobe
+  return { ...withoutWardrobe, schemaVersion: 5, reality }
 }
 
 describe('schemaVersion 5 -> 6 显式迁移', () => {

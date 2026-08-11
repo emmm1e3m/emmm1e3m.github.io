@@ -1,8 +1,15 @@
 import { fireEvent, render, screen, waitFor, within } from '@testing-library/react'
-import type { ReactNode } from 'react'
+import { useState, type ReactNode } from 'react'
 
 import type { ContentCatalog, RecordPlayerVideo } from '@/content'
-import { createInitialGameState, type GameAction, type GameState } from '@/domain'
+import {
+  createInitialGameState,
+  reduceGame,
+  type CollectionCatalog,
+  type GameAction,
+  type GameState,
+} from '@/domain'
+import { getWardrobeCatalogItem } from '@/domain/game/wardrobe'
 import { BilibiliPlayerProvider, PersistentPlayerDock } from '@/features/player'
 import type { StreamPlaybackController } from '@/features/reality'
 
@@ -46,6 +53,13 @@ const contentCatalog: ContentCatalog = {
   friendById: {},
   videosByBvid: Object.fromEntries(recordVideos.map((video) => [video.bvid, video])),
   recordPlayerVideos: recordVideos,
+}
+
+const emptyCollectionCatalog: CollectionCatalog = {
+  postcard: [],
+  'million-shot': [],
+  'site-first': [],
+  siteFirstChronology: [],
 }
 
 function gameWithActiveTravel(): GameState {
@@ -120,24 +134,12 @@ function idleStreamPlayback(): StreamPlaybackController {
   return {
     state: {
       status: 'idle',
-      sessionId: null,
-      startedAt: null,
-      favoriteId: 3682220021,
-      selfTestBvid: null,
       stopAfterMs: null,
-      round: 0,
-      sessionRoundsCompleted: 0,
-      openedCount: 0,
-      totalCount: 0,
-      nextRoundAt: null,
       message: '尚未开始刷播',
       errors: [],
     },
-    standaloneHistory: [],
     start: vi.fn(() => ({ ok: true as const, bvid: null, errors: [] as const })),
     stop: vi.fn(),
-    getRemainingMs: vi.fn(() => null),
-    getStopRemainingMs: vi.fn(() => null),
   }
 }
 
@@ -183,7 +185,59 @@ function ControlledPlayerHarness({
   )
 }
 
+function WardrobePanelHarness({ onOpenWardrobe }: { onOpenWardrobe: () => void }) {
+  const [game, setGame] = useState<GameState>(() => {
+    const initial = createInitialGameState({ now: 1_000, seed: 'wardrobe-panel' })
+    return {
+      ...initial,
+      economy: { apples: 50 },
+      wardrobe: {
+        ...initial.wardrobe,
+        shop: {
+          companionDay: initial.wardrobe.shop.companionDay,
+          assetIds: ['green-sailor-top', 'red-ruffle-dress', 'black-tie-uniform'],
+        },
+      },
+    }
+  })
+
+  return (
+    <ContextPanel
+      {...commonProps}
+      panel="wardrobe"
+      game={game}
+      onOpenWardrobe={onOpenWardrobe}
+      onAction={(action) => {
+        setGame((current) => {
+          const transition = reduceGame(current, action, emptyCollectionCatalog)
+          return transition.ok ? transition.state : current
+        })
+      }}
+    />
+  )
+}
+
 describe('ContextPanel 信息栏交互', () => {
+  it('衣架侧栏展示准备信息，购买后立即移除当日商品，并进入奇迹饼狗', () => {
+    const onOpenWardrobe = vi.fn()
+    render(<WardrobePanelHarness onOpenWardrobe={onOpenWardrobe} />)
+
+    expect(screen.getByText('进入搭配室前，可以先看看今天衣架上还有哪些衣服。')).toBeVisible()
+    expect(screen.getByRole('heading', { name: '今天仍可购买' })).toBeVisible()
+
+    for (const assetId of ['green-sailor-top', 'red-ruffle-dress', 'black-tie-uniform'] as const) {
+      const name = getWardrobeCatalogItem(assetId)?.name ?? assetId
+      const item = screen.getByText(name).closest('article')
+      expect(item).not.toBeNull()
+      fireEvent.click(within(item as HTMLElement).getByRole('button', { name: '买下' }))
+      expect(screen.queryByText(name)).not.toBeInTheDocument()
+    }
+    expect(screen.getByText('今天衣架上的新衣服都已经收好啦。')).toBeVisible()
+
+    fireEvent.click(screen.getByRole('button', { name: '进入奇迹饼狗' }))
+    expect(onOpenWardrobe).toHaveBeenCalledOnce()
+  })
+
   it('PanelHeader 保持左侧标签，并且不再重复提供收起信息栏按钮', () => {
     render(
       <ContextPanel

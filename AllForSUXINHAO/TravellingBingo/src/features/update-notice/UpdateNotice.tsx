@@ -20,9 +20,11 @@ export function UpdateNoticeCard({ onOpen }: UpdateNoticeCardProps) {
       onClick={onOpen}
     >
       <span className="update-notice-card__copy">
-        <strong>更新公告 · {notice.title}</strong>
+        <strong>
+          更新公告 · {notice.version} · {notice.title}
+        </strong>
         <span>{notice.summary}</span>
-        <span className="update-notice-card__warning">{notice.warning}</span>
+        <span className="update-notice-card__highlight">{notice.highlight}</span>
       </span>
       <time dateTime={notice.publishedDate}>{notice.publishedLabel}</time>
     </button>
@@ -58,14 +60,14 @@ export function UpdateNoticeDialog({ open, onClose }: UpdateNoticeDialogProps) {
         onMouseDown={(event) => event.stopPropagation()}
       >
         <div className="update-notice-dialog__topline">
-          <span className="paper-tag">更新公告</span>
+          <span className="paper-tag">更新公告 · {notice.version}</span>
           <time dateTime={notice.publishedDate}>{notice.publishedLabel}</time>
         </div>
         <h2 id="update-notice-title">{notice.title}</h2>
         <p className="update-notice-dialog__summary">{notice.summary}</p>
-        <p className="update-notice-dialog__warning" role="note">
-          <strong>请留意</strong>
-          <span>{notice.warning}</span>
+        <p className="update-notice-dialog__highlight">
+          <strong>已经就绪</strong>
+          <span>{notice.highlight}</span>
         </p>
         <ul className="update-notice-dialog__list">
           {notice.entries.map((entry) => (

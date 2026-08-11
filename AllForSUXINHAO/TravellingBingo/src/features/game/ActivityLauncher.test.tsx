@@ -53,24 +53,12 @@ function idleStreamPlayback(): StreamPlaybackController {
   return {
     state: {
       status: 'idle',
-      sessionId: null,
-      startedAt: null,
-      favoriteId: 3682220021,
-      selfTestBvid: null,
       stopAfterMs: null,
-      round: 0,
-      sessionRoundsCompleted: 0,
-      openedCount: 0,
-      totalCount: 0,
-      nextRoundAt: null,
       message: '尚未开始刷播',
       errors: [],
     },
-    standaloneHistory: [],
     start: vi.fn(() => ({ ok: true as const, bvid: null, errors: [] as const })),
     stop: vi.fn(),
-    getRemainingMs: vi.fn(() => null),
-    getStopRemainingMs: vi.fn(() => null),
   }
 }
 

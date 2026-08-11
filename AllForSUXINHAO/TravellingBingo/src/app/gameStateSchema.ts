@@ -12,7 +12,8 @@ import {
   gameStateV7Schema as frozenGameStateV7Schema,
   gameStateV8Schema as frozenGameStateV8Schema,
   gameStateV9Schema as frozenGameStateV9Schema,
-  gameStateV10Schema as currentGameStateV10Schema,
+  gameStateV10Schema as frozenGameStateV10Schema,
+  gameStateV11Schema as currentGameStateV11Schema,
   type GameState,
   type GameStateV1,
   type GameStateV2,
@@ -24,6 +25,7 @@ import {
   type GameStateV7,
   type GameStateV8,
   type GameStateV9,
+  type GameStateV10,
   type StoredGameState,
 } from '@/domain'
 
@@ -54,17 +56,46 @@ const gameStateV8ImportSchema: z.ZodType<GameStateV8> = frozenGameStateV8Schema
 /** 已发布 V9 严格载荷；现实停留改用可暂停的页面租约。 */
 const gameStateV9ImportSchema: z.ZodType<GameStateV9> = frozenGameStateV9Schema
 
-/** V10 当前严格载荷；刷播设置改用本地收藏夹 ID。 */
-const gameStateV10ImportSchema: z.ZodType<GameState> = currentGameStateV10Schema
+/** 已发布 V10 严格载荷；刷播设置改用本地收藏夹 ID。 */
+const gameStateV10ImportSchema: z.ZodType<GameStateV10> = frozenGameStateV10Schema
 
-const gameStateV10ExportSchema = gameStateV10ImportSchema.superRefine((state, context) => {
+/** V11 当前严格载荷；新增奇迹饼狗的服装、保存形象与合拍相册。 */
+const gameStateV11ImportSchema: z.ZodType<GameState> = currentGameStateV11Schema
+
+const gameStateV11ExportSchema = gameStateV11ImportSchema.superRefine((state, context) => {
+  const candidate: unknown = state
+  if (typeof candidate !== 'object' || candidate === null || Array.isArray(candidate)) return
+  const record = candidate as Record<string, unknown>
+  const profile = record.profile
+  const gameBalance = record.gameBalance
   if (
-    !state.profile.debug &&
-    (state.gameBalance.activityDurationMs !== DEFAULT_GAME_BALANCE.activityDurationMs ||
+    typeof profile !== 'object' ||
+    profile === null ||
+    Array.isArray(profile) ||
+    typeof gameBalance !== 'object' ||
+    gameBalance === null ||
+    Array.isArray(gameBalance)
+  ) {
+    return
+  }
+  const debug = (profile as Record<string, unknown>).debug
+  const activityDurationMs = (gameBalance as Record<string, unknown>).activityDurationMs
+  const probabilities = (gameBalance as Record<string, unknown>).probabilities
+  if (
+    typeof debug !== 'boolean' ||
+    typeof activityDurationMs !== 'number' ||
+    typeof probabilities !== 'object' ||
+    probabilities === null ||
+    Array.isArray(probabilities)
+  ) {
+    return
+  }
+  const probabilityRecord = probabilities as Record<string, unknown>
+  if (
+    !debug &&
+    (activityDurationMs !== DEFAULT_GAME_BALANCE.activityDurationMs ||
       Object.entries(DEFAULT_GAME_BALANCE.probabilities).some(
-        ([key, value]) =>
-          state.gameBalance.probabilities[key as keyof typeof state.gameBalance.probabilities] !==
-          value,
+        ([key, value]) => probabilityRecord[key] !== value,
       ))
   ) {
     context.addIssue({
@@ -75,11 +106,11 @@ const gameStateV10ExportSchema = gameStateV10ImportSchema.superRefine((state, co
   }
 })
 
-/** 新导出只写 V10；目录总数、视频元数据与派生倒计时不属于存档。 */
-export const gameStateSchema: z.ZodType<GameState> = gameStateV10ExportSchema
+/** 新导出只写 V11；目录元数据、图片与派生倒计时不属于存档。 */
+export const gameStateSchema: z.ZodType<GameState> = gameStateV11ExportSchema
 
 /**
- * 导入只严格解析原始 v1/v2/v3/v4/v5/v6/v7/v8/v9/v10：importBingoSave 必须先按文件原值验证摘要，
+ * 导入只严格解析原始 v1/v2/v3/v4/v5/v6/v7/v8/v9/v10/v11：importBingoSave 必须先按文件原值验证摘要，
  * App 随后才能显式迁移、规范规则、reconcile 可安全修复的旧引用并完成语义校验。
  */
 export const importableGameStateSchema: z.ZodType<StoredGameState> = z.union([
@@ -94,6 +125,7 @@ export const importableGameStateSchema: z.ZodType<StoredGameState> = z.union([
   gameStateV8ImportSchema,
   gameStateV9ImportSchema,
   gameStateV10ImportSchema,
+  gameStateV11ImportSchema,
 ])
 
 export type ImportableGameState =
@@ -107,4 +139,5 @@ export type ImportableGameState =
   | GameStateV7
   | GameStateV8
   | GameStateV9
+  | GameStateV10
   | GameState

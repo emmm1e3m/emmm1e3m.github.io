@@ -19,8 +19,10 @@ const catalog: CollectionCatalog = {
 
 function v9Fixture(): GameStateV9 {
   const current = createInitialGameState({ now: 1_000, seed: 'strict-v9-to-v10' })
+  const { wardrobe: _wardrobe, ...withoutWardrobe } = structuredClone(current)
+  void _wardrobe
   return {
-    ...structuredClone(current),
+    ...withoutWardrobe,
     schemaVersion: 9,
     reality: {
       ...structuredClone(current.reality),

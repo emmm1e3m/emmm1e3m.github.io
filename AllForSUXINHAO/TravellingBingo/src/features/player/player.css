@@ -97,6 +97,7 @@
   width: min(360px, calc(100vw - 1.5rem));
   max-height: min(54dvh, 440px);
   overflow-y: auto;
+  font-family: var(--font-display);
 }
 
 /* 侧栏播放器与信息栏共享一份场景间距；固定块高让相邻边界可精确对齐。 */
@@ -157,6 +158,16 @@ body:has(.modal-backdrop:not(.collectible-detail-backdrop):not(.collectible-full
   .persistent-bilibili-player::-webkit-scrollbar {
     display: none;
   }
+
+  /* 单列房间也使用与信息栏滚动留白一致的已知块高。 */
+  .persistent-bilibili-player--context {
+    box-sizing: border-box;
+    height: var(--scene-player-collapsed-block-size);
+  }
+
+  .persistent-bilibili-player--context.is-expanded {
+    height: var(--scene-player-expanded-block-size);
+  }
 }
 
 @media (max-width: 620px) {
@@ -176,8 +187,17 @@ body:has(.modal-backdrop:not(.collectible-detail-backdrop):not(.collectible-full
     gap: 0.3rem;
   }
 
+  /* 唱片机信息栏中的收起条保持一行，70px 块高中控制始终可见。 */
+  .persistent-bilibili-player--context .persistent-bilibili-player__bar {
+    display: flex;
+  }
+
   .persistent-bilibili-player__bar p {
     grid-column: 1 / -1;
+  }
+
+  .persistent-bilibili-player--context .persistent-bilibili-player__bar p {
+    grid-column: auto;
   }
 
   .persistent-bilibili-player button {
@@ -186,6 +206,11 @@ body:has(.modal-backdrop:not(.collectible-detail-backdrop):not(.collectible-full
     min-height: 44px;
     padding: 0.35rem 0.45rem;
     font-size: 0.7rem;
+  }
+
+  .persistent-bilibili-player--context button {
+    width: 44px;
+    flex-basis: 44px;
   }
 }
 

@@ -20,4 +20,13 @@ describe('V4 界面字号契约', () => {
       /\.game-page--v4 \.reality-eyebrow[^}]*\{[^}]*font-size:\s*var\(--v4-support-copy-size\);/su,
     )
   })
+
+  it('房间信息栏正文与表单控件统一使用乐融融字体', () => {
+    expect(gameV4Styles).toMatch(
+      /\.game-page--v4 \.context-panel,\s*\.game-page--v4 \.context-panel :where\(button, input, textarea, select, option\)\s*\{[^}]*font-family:\s*var\(--font-display\);/su,
+    )
+    expect(gameV4Styles).toMatch(
+      /\.game-page--v4 \.context-panel :where\(\.numeric-copy, input\[type='number'\]\)\s*\{[^}]*font-variant-numeric:\s*tabular-nums;/su,
+    )
+  })
 })

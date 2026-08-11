@@ -5,6 +5,7 @@ import { createDefaultGameBalance } from './gameBalance'
 import { normalizeDisplayName } from './profile'
 import { assertValidTimestamp } from './time'
 import type { GameState } from './types'
+import { createInitialWardrobeState } from './wardrobe'
 
 export interface InitialGameOptions {
   now: number
@@ -28,7 +29,7 @@ export function createInitialGameState(options: InitialGameOptions): GameState {
   })
 
   return {
-    schemaVersion: 10,
+    schemaVersion: 11,
     profile: {
       createdAt: options.now,
       debug: options.debug ?? false,
@@ -88,5 +89,6 @@ export function createInitialGameState(options: InitialGameOptions): GameState {
       currentIndex: 0,
       loopMode: 'list',
     },
+    wardrobe: createInitialWardrobeState(options.seed, 0),
   }
 }

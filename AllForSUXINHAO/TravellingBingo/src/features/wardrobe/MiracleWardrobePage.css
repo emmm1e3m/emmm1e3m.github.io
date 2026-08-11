@@ -1,0 +1,793 @@
+.miracle-wardrobe-page {
+  position: fixed;
+  z-index: 52;
+  inset: 0;
+  overflow-x: hidden;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  padding: max(24px, env(safe-area-inset-top)) max(22px, env(safe-area-inset-right))
+    max(40px, env(safe-area-inset-bottom)) max(22px, env(safe-area-inset-left));
+  color: var(--v2-cocoa, #583c35);
+  background:
+    radial-gradient(circle at 8% 12%, rgb(246 192 187 / 35%), transparent 28%),
+    radial-gradient(circle at 94% 5%, rgb(238 211 154 / 32%), transparent 24%),
+    linear-gradient(145deg, #fffaf1, #f7e6d8);
+  font-family: var(--font-ui, 'TravellingBingo UI', 'Microsoft YaHei UI', sans-serif);
+  animation: page-in 240ms ease;
+  scrollbar-width: none;
+}
+
+.miracle-wardrobe-page::-webkit-scrollbar,
+.miracle-editor-tools::-webkit-scrollbar,
+.miracle-photo-tools::-webkit-scrollbar,
+.miracle-postcard-picker::-webkit-scrollbar {
+  width: 0;
+  height: 0;
+}
+
+.miracle-wardrobe-page h2,
+.miracle-wardrobe-page h3,
+.miracle-wardrobe-page h4,
+.miracle-wardrobe-page strong,
+.miracle-wardrobe-page .paper-tag {
+  font-family: var(--font-display, 'TravellingBingo Display', 'Microsoft YaHei UI', sans-serif);
+  font-weight: 400;
+}
+
+.miracle-wardrobe-header {
+  width: min(1180px, 100%);
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 1rem;
+  margin: 0 auto 1rem;
+}
+
+.miracle-wardrobe-header h2 {
+  margin: 0.5rem 0 0.25rem;
+  font-size: clamp(2.2rem, 5vw, 4.2rem);
+  line-height: 0.95;
+  letter-spacing: -0.05em;
+}
+
+.miracle-wardrobe-header p {
+  max-width: 680px;
+  margin: 0;
+  color: #8d6c61;
+}
+
+.miracle-wardrobe-header__actions {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  flex-wrap: wrap;
+  gap: 0.65rem;
+}
+
+.miracle-wardrobe-wallet {
+  min-height: 44px;
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  padding: 0.55rem 0.8rem;
+  border: 1px solid #e1bd94;
+  border-radius: 999px;
+  background: #fff6dc;
+  white-space: nowrap;
+}
+
+.miracle-wardrobe-tabs {
+  position: sticky;
+  z-index: 12;
+  top: max(0px, env(safe-area-inset-top));
+  width: min(1180px, 100%);
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 0.45rem;
+  margin: 0 auto 1rem;
+  padding: 0.55rem;
+  border: 1px solid #ddb99d;
+  border-radius: 18px;
+  background: rgb(255 249 241 / 94%);
+  box-shadow: 0 8px 22px rgb(81 47 34 / 10%);
+  backdrop-filter: blur(12px);
+}
+
+.miracle-wardrobe-tabs button,
+.miracle-target-picker button,
+.miracle-participant-picker button,
+.miracle-layer-actions button,
+.miracle-layer-list button {
+  min-height: 44px;
+  border: 1px solid #d5ae94;
+  border-radius: 13px;
+  color: #704d43;
+  background: #fffaf3;
+  cursor: pointer;
+}
+
+.miracle-wardrobe-tabs button {
+  border-color: transparent;
+  background: transparent;
+}
+
+.miracle-wardrobe-tabs button.is-active,
+.miracle-target-picker button[aria-pressed='true'],
+.miracle-participant-picker button.is-selected {
+  border-color: #a72f42;
+  color: #fff;
+  background: #bc394f;
+}
+
+.miracle-wardrobe-live {
+  width: min(1180px, 100%);
+  min-height: 1.25rem;
+  margin: -0.35rem auto 0.45rem;
+  color: #9e4855;
+  font-size: 0.82rem;
+  text-align: right;
+}
+
+.miracle-wardrobe-panel {
+  width: min(1180px, 100%);
+  margin: 0 auto;
+}
+
+.miracle-panel-heading {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 1rem;
+  margin-bottom: 1rem;
+}
+
+.miracle-panel-heading h3,
+.miracle-editor-tools h3,
+.miracle-photo-tools h3 {
+  margin: 0 0 0.35rem;
+  font-size: clamp(1.35rem, 2.5vw, 2rem);
+}
+
+.miracle-panel-heading p,
+.miracle-editor-tools p,
+.miracle-photo-tools p {
+  margin: 0;
+  color: #8c6a60;
+}
+
+.miracle-panel-heading > span {
+  padding: 0.45rem 0.65rem;
+  border: 1px solid #d9b694;
+  border-radius: 999px;
+  background: #fff8e9;
+  white-space: nowrap;
+}
+
+.miracle-shop-grid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 1rem;
+}
+
+.miracle-item-card {
+  min-width: 0;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  gap: 0.75rem;
+  padding: 0.9rem;
+  border: 1.5px solid #d8b18f;
+  border-radius: 24px;
+  background: rgb(255 252 246 / 92%);
+  box-shadow: 0 9px 24px rgb(91 54 40 / 10%);
+}
+
+.miracle-item-card__visual {
+  display: grid;
+  place-items: center;
+  aspect-ratio: 1;
+  overflow: hidden;
+  border-radius: 18px;
+  background: radial-gradient(circle, rgb(255 255 255 / 90%) 0 35%, transparent 70%), #f5e7d8;
+}
+
+.miracle-item-card__visual img {
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+}
+
+.miracle-item-card__copy {
+  display: grid;
+  grid-template-columns: 1fr auto;
+  align-items: center;
+  gap: 0.2rem 0.75rem;
+}
+
+.miracle-item-card__copy span:first-child {
+  grid-column: 1 / -1;
+  color: #a07b6e;
+  font-size: 0.78rem;
+}
+
+.miracle-item-card__copy h4 {
+  margin: 0;
+  font-size: 1.25rem;
+}
+
+.miracle-editor-layout,
+.miracle-photo-layout {
+  display: grid;
+  grid-template-columns: minmax(360px, 1.1fr) minmax(310px, 0.9fr);
+  gap: 1rem;
+  align-items: start;
+}
+
+.miracle-editor-stage,
+.miracle-editor-tools,
+.miracle-photo-stage,
+.miracle-photo-tools,
+.miracle-stage-test,
+.miracle-empty-state {
+  padding: 1rem;
+  border: 1.5px solid #d8b18f;
+  border-radius: 24px;
+  background: rgb(255 252 246 / 92%);
+  box-shadow: 0 9px 24px rgb(91 54 40 / 10%);
+}
+
+.miracle-editor-tools,
+.miracle-photo-tools {
+  display: grid;
+  gap: 1rem;
+}
+
+.miracle-editor-tools > section + section,
+.miracle-photo-tools > section + section {
+  padding-top: 1rem;
+  border-top: 1px dashed #d7b8a4;
+}
+
+.miracle-target-picker,
+.miracle-participant-picker {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+  margin-bottom: 0.8rem;
+}
+
+.miracle-target-picker button,
+.miracle-participant-picker button {
+  padding: 0.5rem 0.8rem;
+}
+
+.miracle-look-library {
+  display: grid;
+  gap: 0.45rem;
+  margin-bottom: 0.75rem;
+}
+
+.miracle-look-library h3,
+.miracle-look-library p {
+  margin: 0;
+}
+
+.miracle-look-library > div {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.45rem;
+}
+
+.miracle-look-library button {
+  min-height: 38px;
+  padding: 0.4rem 0.65rem;
+  border: 1px solid #d5ae94;
+  border-radius: 12px;
+  color: #704d43;
+  background: #fffaf3;
+  cursor: pointer;
+}
+
+.miracle-look-library button.is-selected {
+  border-color: #bc394f;
+  color: #a1283e;
+  background: #fff0f1;
+}
+
+.miracle-look-name {
+  display: grid;
+  gap: 0.35rem;
+  margin-bottom: 0.75rem;
+}
+
+.miracle-look-name input,
+.miracle-participant-looks select {
+  min-width: 0;
+  min-height: 44px;
+  padding: 0.55rem 0.7rem;
+  border: 1px solid #d5ae94;
+  border-radius: 12px;
+  color: #704d43;
+  background: #fffaf3;
+  font: inherit;
+}
+
+.miracle-look-canvas {
+  position: relative;
+  width: min(100%, 620px);
+  aspect-ratio: 1;
+  margin: 0 auto;
+  overflow: hidden;
+  isolation: isolate;
+  border: 1.5px solid #d9b79f;
+  border-radius: 28px;
+  background:
+    radial-gradient(circle at 50% 45%, #fff 0 26%, transparent 62%),
+    linear-gradient(#faeee2, #f7e3d4);
+  touch-action: none;
+}
+
+.miracle-look-character {
+  position: absolute;
+  z-index: 200;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+  user-select: none;
+}
+
+.miracle-look-layer {
+  position: absolute;
+  aspect-ratio: 1;
+  min-width: 0;
+  min-height: 0;
+  padding: 0;
+  border: 0;
+  outline: 0;
+  background: transparent;
+  cursor: grab;
+  touch-action: none;
+  transform-origin: center;
+}
+
+.miracle-look-layer::before,
+.miracle-photo-hit-layer button::before {
+  content: '';
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  width: max(100%, 44px);
+  height: max(100%, 44px);
+  transform: translate(-50%, -50%);
+}
+
+.miracle-look-layer:active {
+  cursor: grabbing;
+}
+
+.miracle-look-layer.is-selected::after {
+  content: '';
+  position: absolute;
+  inset: 6%;
+  border: 2px dashed #bd3449;
+  border-radius: 16px;
+  pointer-events: none;
+}
+
+.miracle-transform-handle {
+  position: absolute;
+  z-index: 8;
+  right: -11px;
+  bottom: -11px;
+  width: 24px;
+  height: 24px;
+  border: 3px solid #fffaf3;
+  border-radius: 50%;
+  background: #bc394f;
+  box-shadow: 0 2px 7px rgb(82 39 38 / 28%);
+  cursor: grab;
+  touch-action: none;
+}
+
+.miracle-transform-handle:active {
+  cursor: grabbing;
+}
+
+.miracle-look-layer img {
+  display: block;
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+  user-select: none;
+}
+
+.miracle-editor-save-row {
+  display: grid;
+  grid-template-columns: minmax(0, 1.4fr) minmax(0, 1fr);
+  gap: 0.65rem;
+  margin-top: 0.8rem;
+}
+
+.miracle-asset-buttons {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 0.55rem;
+}
+
+.miracle-asset-buttons button {
+  min-width: 0;
+  min-height: 92px;
+  display: grid;
+  grid-template-rows: 1fr auto;
+  gap: 0.2rem;
+  padding: 0.35rem;
+  border: 1px solid #d7b49e;
+  border-radius: 14px;
+  color: #725047;
+  background: #fff9f1;
+  cursor: pointer;
+}
+
+.miracle-asset-buttons img {
+  width: 100%;
+  min-height: 0;
+  aspect-ratio: 1;
+  object-fit: contain;
+}
+
+.miracle-asset-buttons span {
+  overflow: hidden;
+  font-size: 0.72rem;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.miracle-transform-controls {
+  display: grid;
+  gap: 0.65rem;
+}
+
+.miracle-layer-actions {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 0.45rem;
+}
+
+.miracle-layer-actions button {
+  padding: 0.45rem;
+  font-size: 0.78rem;
+}
+
+.miracle-layer-list > div {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.4rem;
+}
+
+.miracle-layer-list button {
+  min-height: 36px;
+  padding: 0.35rem 0.55rem;
+  font-size: 0.76rem;
+}
+
+.miracle-layer-list button.is-selected {
+  border-color: #bc394f;
+  color: #a1283e;
+  background: #fff0f1;
+}
+
+.miracle-photo-stage {
+  display: grid;
+  gap: 0.8rem;
+}
+
+.miracle-photo-canvas {
+  position: relative;
+  overflow: clip;
+  border: 1.5px solid #d9b79f;
+  border-radius: 20px;
+  background: #fffaf2;
+  touch-action: none;
+}
+
+.miracle-photo-canvas .photo-composition {
+  width: 100%;
+  border-radius: inherit;
+}
+
+.persistent-bilibili-player--wardrobe {
+  z-index: 40;
+  pointer-events: none;
+}
+
+.game-page .miracle-panel > .paper-button + .paper-button {
+  margin-top: 0.55rem;
+}
+
+.miracle-panel__shop {
+  display: grid;
+  gap: 0.55rem;
+  margin: 1rem 0;
+}
+
+.miracle-panel__shop h3,
+.miracle-panel__shop p {
+  margin: 0;
+}
+
+.miracle-panel__offers {
+  display: grid;
+  gap: 0.5rem;
+}
+
+.miracle-panel__offers article {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto auto;
+  align-items: center;
+  gap: 0.55rem;
+  padding: 0.55rem;
+  border: 1px solid #d8b79e;
+  border-radius: 13px;
+  background: #fffaf3;
+}
+
+.miracle-panel__offers article > span:first-child {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.miracle-panel__offers button {
+  min-height: 38px;
+  padding: 0.35rem 0.6rem;
+  border: 1px solid #b93a4e;
+  border-radius: 10px;
+  color: #fff;
+  background: #bc394f;
+  cursor: pointer;
+}
+
+.miracle-photo-hit-layer {
+  position: absolute;
+  z-index: 10;
+  inset: 0;
+}
+
+.miracle-photo-hit-layer button {
+  position: absolute;
+  aspect-ratio: 1;
+  min-width: 0;
+  min-height: 0;
+  padding: 0;
+  border: 2px solid transparent;
+  border-radius: 18px;
+  background: transparent;
+  cursor: grab;
+  touch-action: none;
+  transform-origin: center;
+}
+
+.miracle-photo-hit-layer button.is-selected {
+  border-color: #bc394f;
+  box-shadow: 0 0 0 2px rgb(255 255 255 / 75%) inset;
+}
+
+.miracle-participant-looks {
+  display: grid;
+  gap: 0.55rem;
+  margin-top: 0.75rem;
+}
+
+.miracle-participant-looks label {
+  display: grid;
+  grid-template-columns: minmax(7rem, auto) minmax(0, 1fr);
+  align-items: center;
+  gap: 0.55rem;
+}
+
+.miracle-postcard-picker {
+  max-height: 250px;
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 0.45rem;
+  overflow-y: auto;
+  padding: 0.2rem;
+  scrollbar-width: none;
+}
+
+.miracle-postcard-picker button {
+  min-width: 0;
+  display: grid;
+  gap: 0.3rem;
+  padding: 0.35rem;
+  border: 1px solid #d7b49e;
+  border-radius: 13px;
+  color: #704d43;
+  background: #fffaf3;
+  cursor: pointer;
+}
+
+.miracle-postcard-picker button.is-selected {
+  border: 2px solid #bc394f;
+  background: #fff0ef;
+}
+
+.miracle-postcard-picker img,
+.miracle-postcard-picker button > span {
+  width: 100%;
+  aspect-ratio: 4 / 3;
+  object-fit: cover;
+  border-radius: 9px;
+}
+
+.miracle-postcard-picker button > span {
+  display: grid;
+  place-items: center;
+  background: #f1dfcb;
+}
+
+.miracle-postcard-picker strong {
+  overflow: hidden;
+  font-size: 0.72rem;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.miracle-collection {
+  display: grid;
+  gap: 1rem;
+}
+
+.miracle-collection-group {
+  padding: 0.9rem;
+  border: 1px solid #d8b79e;
+  border-radius: 20px;
+  background: rgb(255 252 246 / 90%);
+}
+
+.miracle-collection-group h4 {
+  margin: 0 0 0.7rem;
+  font-size: 1.25rem;
+}
+
+.miracle-collection-group > div {
+  display: grid;
+  grid-template-columns: repeat(6, minmax(0, 1fr));
+  gap: 0.65rem;
+}
+
+.miracle-collection-group article {
+  min-width: 0;
+  display: grid;
+  gap: 0.3rem;
+  text-align: center;
+}
+
+.miracle-collection-group img {
+  width: 100%;
+  aspect-ratio: 1;
+  object-fit: contain;
+  border-radius: 14px;
+  background: #f7e8da;
+}
+
+.miracle-collection-group strong {
+  overflow: hidden;
+  font-size: 0.76rem;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.miracle-stage-test,
+.miracle-empty-state {
+  max-width: 760px;
+  margin: 1rem auto;
+  text-align: center;
+}
+
+.miracle-stage-test h3,
+.miracle-empty-state h3 {
+  margin: 1rem 0 0.4rem;
+  font-size: clamp(1.6rem, 4vw, 2.6rem);
+}
+
+.miracle-stage-test p,
+.miracle-empty-state p {
+  margin: 0 auto 1.2rem;
+  color: #8c6a60;
+}
+
+.miracle-empty-state > span {
+  font-size: 3rem;
+}
+
+@media (max-width: 860px) {
+  .miracle-editor-layout,
+  .miracle-photo-layout {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .miracle-editor-tools,
+  .miracle-photo-tools {
+    max-height: none;
+  }
+
+  .miracle-shop-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .miracle-collection-group > div {
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+  }
+}
+
+@media (max-width: 620px) {
+  .miracle-wardrobe-page {
+    padding: max(14px, env(safe-area-inset-top)) max(10px, env(safe-area-inset-right))
+      max(24px, env(safe-area-inset-bottom)) max(10px, env(safe-area-inset-left));
+  }
+
+  .miracle-wardrobe-header {
+    align-items: stretch;
+    flex-direction: column;
+  }
+
+  .miracle-wardrobe-header__actions {
+    justify-content: space-between;
+  }
+
+  .miracle-wardrobe-tabs {
+    grid-template-columns: repeat(3, minmax(76px, 1fr));
+    overflow-x: auto;
+    padding: 0.4rem;
+  }
+
+  .miracle-wardrobe-tabs button {
+    padding: 0.4rem;
+    font-size: 0.76rem;
+  }
+
+  .miracle-shop-grid {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .miracle-panel-heading {
+    flex-direction: column;
+  }
+
+  .miracle-editor-stage,
+  .miracle-editor-tools,
+  .miracle-photo-stage,
+  .miracle-photo-tools {
+    padding: 0.7rem;
+    border-radius: 18px;
+  }
+
+  .miracle-look-canvas {
+    border-radius: 20px;
+  }
+
+  .miracle-asset-buttons {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+
+  .miracle-editor-save-row,
+  .miracle-layer-actions {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .miracle-postcard-picker {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .miracle-collection-group > div {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .miracle-wardrobe-page {
+    animation: none;
+  }
+}

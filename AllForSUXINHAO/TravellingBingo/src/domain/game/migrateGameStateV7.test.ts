@@ -26,7 +26,9 @@ function v7Fixture(): GameStateV7 {
     pomodoro: structuredClone(current.reality.pomodoro),
     streamHistory: structuredClone(current.reality.streamHistory),
   }
-  return { ...structuredClone(current), schemaVersion: 7, reality }
+  const { wardrobe: _wardrobe, ...withoutWardrobe } = structuredClone(current)
+  void _wardrobe
+  return { ...withoutWardrobe, schemaVersion: 7, reality }
 }
 
 describe('schemaVersion 7 -> 8 显式迁移', () => {

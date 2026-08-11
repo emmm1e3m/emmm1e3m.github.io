@@ -217,23 +217,35 @@ describe('房屋场景定位与返回交互', () => {
     expect(onTaskEvent).toHaveBeenCalledTimes(1)
   })
 
-  it('房间、信息栏和播放器的可见留白只使用一份场景间距', () => {
+  it('播放器不再生成信息栏空白遮罩，滚动内容会为实际控制条留出末尾空间', () => {
     expect(globalStyles).toContain('--scene-component-gap: clamp(10px, 0.8vw, 14px);')
     expect(gameV3Styles).toContain('--shell-gap: var(--scene-component-gap);')
     expect(gameV4Styles).toMatch(
       /\.game-page--v4 \.game-layout--v3\.has-side-panel\s*\{[^}]*column-gap:\s*var\(--scene-component-gap\);/su,
     )
-    expect(gameV4Styles).toMatch(
-      /\.persistent-bilibili-player--context\) \.game-page--v4 \.context-stack\s*\{[^}]*var\(--scene-player-collapsed-block-size\) \+ var\(--scene-component-gap\)/su,
+    expect(gameV4Styles).not.toMatch(
+      /\.persistent-bilibili-player--context[^}]*\.context-stack\s*\{[^}]*padding-bottom:/su,
     )
     expect(gameV4Styles).toMatch(
-      /\.persistent-bilibili-player--context\.is-expanded\) \.game-page--v4 \.context-stack\s*\{[^}]*var\(--scene-player-expanded-block-size\) \+ var\(--scene-component-gap\)/su,
+      /\.persistent-bilibili-player--context\) \.game-page--v4 \.context-content--v4\s*\{[^}]*padding-bottom:\s*calc\(var\(--scene-player-collapsed-block-size\) \+ var\(--scene-component-gap\)\);[^}]*scroll-padding-bottom:/su,
+    )
+    expect(gameV4Styles).toMatch(
+      /\.persistent-bilibili-player--context\.is-expanded\)[^{]*\{[^}]*padding-bottom:\s*calc\(var\(--scene-player-expanded-block-size\) \+ var\(--scene-component-gap\)\);[^}]*scroll-padding-bottom:/su,
     )
     expect(playerStyles).toMatch(
       /\.persistent-bilibili-player--context\s*\{[^}]*--player-dock-bottom:\s*var\(--scene-component-gap\);[^}]*height:\s*var\(--scene-player-collapsed-block-size\);/su,
     )
     expect(playerStyles).toMatch(
       /\.persistent-bilibili-player--context\.is-expanded\s*\{[^}]*height:\s*var\(--scene-player-expanded-block-size\);/su,
+    )
+    expect(playerStyles).toMatch(
+      /@media \(max-width: 960px\)[\s\S]*?\.persistent-bilibili-player--context\s*\{[^}]*height:\s*var\(--scene-player-collapsed-block-size\);/u,
+    )
+    expect(playerStyles).toMatch(
+      /\.persistent-bilibili-player--context \.persistent-bilibili-player__bar\s*\{[^}]*display:\s*flex;/su,
+    )
+    expect(gameV4Styles).toMatch(
+      /\.record-panel \.bilibili-playlist-panel__tracks ol\s*\{[^}]*max-height:\s*none;[^}]*overflow-y:\s*visible;/su,
     )
   })
 

@@ -13,21 +13,9 @@ export {
 } from '@/features/reality/stream/popupProtocol'
 
 export type StreamPlayerEventPayload =
-  | { readonly event: 'started'; readonly startedAt: number }
-  | {
-      readonly event: 'status'
-      readonly status: 'opening' | 'waiting'
-      readonly round: number
-      readonly openedCount: number
-      readonly totalCount: number
-      readonly nextRoundAt: number | null
-      readonly message: string
-    }
-  | { readonly event: 'round-completed'; readonly round: number; readonly completedAt: number }
+  | { readonly event: 'started' }
   | {
       readonly event: 'ended'
-      readonly endedAt: number
-      readonly roundsCompleted: number
       readonly outcome: 'completed' | 'stopped'
     }
 

@@ -42,7 +42,7 @@ describe('DebugPanel', () => {
     expect(onAction).not.toHaveBeenCalled()
 
     const confirmation = screen.getByRole('group', { name: '确认一键全收集' })
-    expect(within(confirmation).getByText('确认把全部收藏和好朋友加入调试档？')).toBeVisible()
+    expect(within(confirmation).getByText('确认把全部收藏、好朋友和衣服加入调试档？')).toBeVisible()
     fireEvent.click(within(confirmation).getByRole('button', { name: '确认全收集' }))
 
     expect(onAction).toHaveBeenCalledTimes(1)
@@ -67,7 +67,11 @@ describe('DebugPanel', () => {
     expect(onAction).not.toHaveBeenCalled()
 
     const confirmation = screen.getByRole('group', { name: '确认清空收集' })
-    expect(within(confirmation).getByText('确认清空全部收藏和好朋友记录？')).toBeVisible()
+    expect(
+      within(confirmation).getByText(
+        '确认清空全部收藏、好朋友、已购衣服（保留初始款）和保存造型？历史合拍的人物与造型快照会保留，明信片背景会清空。',
+      ),
+    ).toBeVisible()
     fireEvent.click(within(confirmation).getByRole('button', { name: '确认清空' }))
 
     expect(onAction).toHaveBeenCalledTimes(1)

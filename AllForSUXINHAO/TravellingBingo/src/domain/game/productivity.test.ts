@@ -8,7 +8,7 @@ import {
   REALITY_REWARD_INTERVAL_MS,
 } from './constants'
 import { createInitialGameState } from './createGameState'
-import { gameStateV10Schema } from './migrateGameStateV9'
+import { gameStateV11Schema } from './migrateGameStateV10'
 import {
   deriveRealityActiveDurationMs,
   isProductivityAction,
@@ -185,7 +185,7 @@ describe('现实维度', () => {
     )
     expect(left.state.reality.pendingSettlement?.fullRewardApples).toBe(1)
     expect(left.state.reality.pendingSettlement?.activeDurationMs).toBe(REALITY_REWARD_INTERVAL_MS)
-    expect(gameStateV10Schema.safeParse(left.state).success).toBe(true)
+    expect(gameStateV11Schema.safeParse(left.state).success).toBe(true)
   })
 
   it('不足一个苹果时直接返回游戏维度，不创建确认结算', () => {
@@ -718,7 +718,7 @@ describe('苹果钟与通知', () => {
     expect(seventhDay.state.random.sequences.preferences).toBe(
       expectedPreferenceGeneration.nextSequence,
     )
-    expect(gameStateV10Schema.safeParse(seventhDay.state).success).toBe(true)
+    expect(gameStateV11Schema.safeParse(seventhDay.state).success).toBe(true)
     expect(seventhDay.effects).toContainEqual({
       type: 'player-effect-expired',
       effect: 'vitality',

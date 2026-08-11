@@ -42,7 +42,10 @@ export function startKeepAliveAudio() {
   audio.preload = 'auto'
   let disposed = false
 
-  const removeRetry = () => document.removeEventListener('pointerdown', attemptPlay)
+  const removeRetry = () => {
+    document.removeEventListener('pointerdown', attemptPlay)
+    document.removeEventListener('keydown', attemptPlay)
+  }
   const attemptPlay = () => {
     if (disposed) return
     const playback = audio.play()
@@ -51,6 +54,7 @@ export function startKeepAliveAudio() {
   }
 
   document.addEventListener('pointerdown', attemptPlay)
+  document.addEventListener('keydown', attemptPlay)
   attemptPlay()
 
   return () => {

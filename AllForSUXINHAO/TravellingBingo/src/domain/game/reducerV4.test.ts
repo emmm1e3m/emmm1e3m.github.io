@@ -3,6 +3,7 @@ import { describe, expect, it } from 'vitest'
 import { createInitialGameState } from './createGameState'
 import { BASE_ACTIVITY_DURATION_MS, ITEM_PRICES, PIANO_NOTE_IDS } from './constants'
 import { reduceGame } from './reducer'
+import { STARTER_WARDROBE_ASSET_IDS, WARDROBE_ASSET_IDS } from './wardrobe'
 import type {
   ActivityKind,
   CollectionCatalog,
@@ -413,7 +414,7 @@ describe('V4 调试收集与用户播放列表', () => {
     expect(cleared.random.sequences.tasks).toBe(originalSequence)
   })
 
-  it('一键全收集包含好友，清空收集同时清空且保持其他长期状态', () => {
+  it('一键全收集包含好友和全部服装，清空时恢复初始衣服并删除造型', () => {
     const debug = {
       ...createInitialGameState({ now: 0, seed: 'debug-all', debug: true }),
       friends: {
@@ -436,12 +437,29 @@ describe('V4 调试收集与用户播放列表', () => {
     expect(Object.keys(collected.collections)).toHaveLength(3)
     expect(Object.keys(collected.friends)).toHaveLength(5)
     expect(collected.friends['signal-dog']).toEqual(debug.friends['signal-dog'])
+    expect(collected.wardrobe.ownedAssetIds).toEqual([...WARDROBE_ASSET_IDS])
+
+    const withLook = successful(
+      reduceGame(
+        collected,
+        {
+          type: 'wardrobe/look-create',
+          targetId: 'bingo',
+          name: '调试造型',
+          elements: [],
+          now: 150,
+        },
+        catalog,
+      ),
+    ).state
 
     const cleared = successful(
-      reduceGame(collected, { type: 'debug/clear-all', now: 200 }, catalog),
+      reduceGame(withLook, { type: 'debug/clear-all', now: 200 }, catalog),
     ).state
     expect(cleared.collections).toEqual({})
     expect(cleared.friends).toEqual({})
+    expect(cleared.wardrobe.ownedAssetIds).toEqual([...STARTER_WARDROBE_ASSET_IDS])
+    expect(cleared.wardrobe.looks).toEqual({})
     expect(cleared.reality.nextStaySequence).toBe(4)
   })
 

@@ -36,6 +36,25 @@ interface PlayerFrame {
 
 type PageStatus = 'idle' | 'loading' | StreamSchedulerStatus | 'error'
 
+export const STREAM_PLAYER_DEBUG_ENABLED_KEY = 'travelling-bingo:stream-player-debug-enabled:v1'
+
+function readDebugEnabled() {
+  try {
+    return localStorage.getItem(STREAM_PLAYER_DEBUG_ENABLED_KEY) === '1'
+  } catch {
+    return false
+  }
+}
+
+function storeDebugEnabled(enabled: boolean) {
+  try {
+    if (enabled) localStorage.setItem(STREAM_PLAYER_DEBUG_ENABLED_KEY, '1')
+    else localStorage.removeItem(STREAM_PLAYER_DEBUG_ENABLED_KEY)
+  } catch {
+    // 本地存储不可用时，DEBUG 仍可在当前页面使用。
+  }
+}
+
 function formatDateTime(timestamp: number) {
   return new Intl.DateTimeFormat('zh-CN', {
     month: '2-digit',
@@ -87,7 +106,6 @@ export function StreamPlayerApp() {
 
   const schedulerRef = useRef<StreamRoundScheduler | null>(null)
   const abortControllerRef = useRef<AbortController | null>(null)
-  const stopKeepAliveRef = useRef<(() => void) | null>(null)
   const startedRef = useRef(false)
   const completedTaskRef = useRef(false)
   const autostartHandledRef = useRef(false)
@@ -110,9 +128,10 @@ export function StreamPlayerApp() {
   const [showPassword, setShowPassword] = useState(false)
   const [password, setPassword] = useState('')
   const [passwordError, setPasswordError] = useState('')
-  const [debugEnabled, setDebugEnabled] = useState(false)
+  const [debugEnabled, setDebugEnabled] = useState(readDebugEnabled)
   const [showPlayers, setShowPlayers] = useState(false)
   const [roundSeconds, setRoundSeconds] = useState(String(DEFAULT_STREAM_ROUND_INTERVAL_MS / 1_000))
+  const roundIntervalMsRef = useRef(DEFAULT_STREAM_ROUND_INTERVAL_MS)
   const [debugMessage, setDebugMessage] = useState('')
 
   const postToMain = useCallback(
@@ -141,6 +160,27 @@ export function StreamPlayerApp() {
     [query],
   )
 
+  const stopPlayback = useCallback(() => {
+    const scheduler = schedulerRef.current
+    if (scheduler !== null) {
+      scheduler.stop()
+      return
+    }
+    if (!startedRef.current) return
+
+    abortControllerRef.current?.abort()
+    abortControllerRef.current = null
+    const endedAt = Date.now()
+    finishHistory(endedAt, 0, 'stopped')
+    postToMain({ event: 'ended', outcome: 'stopped' })
+    startedRef.current = false
+    completedTaskRef.current = true
+    setSnapshot(null)
+    setFrames([])
+    setStatus('stopped')
+    setErrorMessage('')
+  }, [finishHistory, postToMain])
+
   const start = useCallback(async () => {
     if (query === null || startedRef.current) return
     let nextConfig: StreamPlayerQuery
@@ -160,7 +200,7 @@ export function StreamPlayerApp() {
     if (completedTaskRef.current) sessionIdRef.current = crypto.randomUUID()
     completedTaskRef.current = false
     startedRef.current = true
-    startedAtRef.current = null
+    startedAtRef.current = Date.now()
     schedulerRef.current?.dispose()
     schedulerRef.current = null
     setSnapshot(null)
@@ -168,7 +208,6 @@ export function StreamPlayerApp() {
     setActiveConfig(nextConfig)
     setStatus('loading')
     setErrorMessage('')
-    stopKeepAliveRef.current = startKeepAliveAudio()
     const controller = new AbortController()
     abortControllerRef.current = controller
 
@@ -182,9 +221,10 @@ export function StreamPlayerApp() {
         catalogBvids,
         selfTestBvid: nextConfig.selfTestBvid,
         stopAt,
+        roundIntervalMs: roundIntervalMsRef.current,
         onStarted: (startedAt) => {
           startedAtRef.current = startedAt
-          postToMain({ event: 'started', startedAt })
+          postToMain({ event: 'started' })
         },
         onOpenVideo: (bvid, round, index) => {
           setFrames((current) => [
@@ -202,30 +242,12 @@ export function StreamPlayerApp() {
         onStatus: (nextSnapshot) => {
           setSnapshot(nextSnapshot)
           setStatus(nextSnapshot.status)
-          if (nextSnapshot.status !== 'opening' && nextSnapshot.status !== 'waiting') return
-          postToMain({
-            event: 'status',
-            status: nextSnapshot.status,
-            round: nextSnapshot.round,
-            openedCount: nextSnapshot.openedCount,
-            totalCount: nextSnapshot.totalCount,
-            nextRoundAt: nextSnapshot.status === 'waiting' ? nextSnapshot.nextActionAt : null,
-            message:
-              nextSnapshot.status === 'opening'
-                ? `第 ${nextSnapshot.round} 轮正在打开视频`
-                : `第 ${nextSnapshot.round} 轮已全部打开`,
-          })
-        },
-        onRoundCompleted: (round, completedAt) => {
-          postToMain({ event: 'round-completed', round, completedAt })
         },
         onEnded: (outcome, endedAt, roundsCompleted) => {
           finishHistory(endedAt, roundsCompleted, outcome)
-          postToMain({ event: 'ended', endedAt, roundsCompleted, outcome })
+          postToMain({ event: 'ended', outcome })
           startedRef.current = false
           completedTaskRef.current = true
-          stopKeepAliveRef.current?.()
-          stopKeepAliveRef.current = null
         },
       })
       schedulerRef.current = scheduler
@@ -236,10 +258,12 @@ export function StreamPlayerApp() {
       setActiveConfig(null)
       setStatus('error')
       setErrorMessage(error instanceof Error ? error.message : '刷播未能启动。')
-      stopKeepAliveRef.current?.()
-      stopKeepAliveRef.current = null
     }
   }, [favoriteId, finishHistory, postToMain, query, selfTestInput, stopHoursInput])
+
+  useEffect(() => {
+    return startKeepAliveAudio()
+  }, [])
 
   useEffect(() => {
     if (!query?.autostart || autostartHandledRef.current) return undefined
@@ -254,11 +278,11 @@ export function StreamPlayerApp() {
     const receiveCommand = (event: MessageEvent<unknown>) => {
       if (event.origin !== window.location.origin || event.source !== opener) return
       if (!isStreamPlayerStopCommand(event.data, sessionIdRef.current)) return
-      schedulerRef.current?.stop()
+      stopPlayback()
     }
     window.addEventListener('message', receiveCommand)
     return () => window.removeEventListener('message', receiveCommand)
-  }, [query])
+  }, [query, stopPlayback])
 
   useEffect(() => {
     const reconcile = () => schedulerRef.current?.reconcile()
@@ -274,7 +298,6 @@ export function StreamPlayerApp() {
     () => () => {
       abortControllerRef.current?.abort()
       schedulerRef.current?.dispose()
-      stopKeepAliveRef.current?.()
     },
     [],
   )
@@ -286,8 +309,21 @@ export function StreamPlayerApp() {
       return
     }
     setDebugEnabled(true)
+    storeDebugEnabled(true)
     setShowPassword(false)
+    setPassword('')
     setPasswordError('')
+  }
+
+  const closeDebug = () => {
+    setDebugEnabled(false)
+    storeDebugEnabled(false)
+    setShowPlayers(false)
+    setShowPassword(false)
+    setSecretClicks(0)
+    setPassword('')
+    setPasswordError('')
+    setDebugMessage('')
   }
 
   const applyDebugInterval = () => {
@@ -296,8 +332,15 @@ export function StreamPlayerApp() {
       setDebugMessage('请填写大于 0 的秒数。')
       return
     }
-    schedulerRef.current?.setRoundIntervalMs(parsedSeconds * 1_000)
-    setDebugMessage(`轮次间隔已设为 ${parsedSeconds} 秒。`)
+    const intervalMs = parsedSeconds * 1_000
+    roundIntervalMsRef.current = intervalMs
+    const running = status === 'opening' || status === 'waiting'
+    if (running) schedulerRef.current?.setRoundIntervalMs(intervalMs)
+    setDebugMessage(
+      running
+        ? `轮次间隔已设为 ${parsedSeconds} 秒。`
+        : `轮次间隔已设为 ${parsedSeconds} 秒，下次启动生效。`,
+    )
   }
 
   const onTitleClick = () => {
@@ -307,7 +350,7 @@ export function StreamPlayerApp() {
     if (next >= 5) setShowPassword(true)
   }
 
-  const canStop = status === 'opening' || status === 'waiting'
+  const canStop = status === 'loading' || status === 'opening' || status === 'waiting'
   const canStart =
     status === 'idle' || status === 'error' || status === 'stopped' || status === 'completed'
   const canConfigure = canStart
@@ -316,10 +359,12 @@ export function StreamPlayerApp() {
   return (
     <main className="stream-page">
       <header className="stream-hero">
-        <span className="paper-tag">刷播小窗口</span>
-        <h1 onClick={onTitleClick}>刷播播放器</h1>
+        <span className="paper-tag">SUperView</span>
+        <h1 onClick={onTitleClick}>在线刷播工具</h1>
         <p>会使用当前浏览器账号，登录时每天不要超过5小时。</p>
-        <p>移动端使用前请先用自测视频测试。</p>
+        <p>
+          在新设备/浏览器上请先检查：若登录，历史记录里出现刷播视频为成功；若未登录，自测视频播放量增加为成功。
+        </p>
       </header>
 
       {query !== null ? (
@@ -429,11 +474,7 @@ export function StreamPlayerApp() {
               </button>
             ) : null}
             {canStop ? (
-              <button
-                className="paper-button"
-                type="button"
-                onClick={() => schedulerRef.current?.stop()}
-              >
+              <button className="paper-button" type="button" onClick={stopPlayback}>
                 停止刷播
               </button>
             ) : null}
@@ -478,7 +519,9 @@ export function StreamPlayerApp() {
         <section className="stream-card stream-debug" aria-labelledby="stream-debug-title">
           <div className="stream-card__heading">
             <h2 id="stream-debug-title">DEBUG</h2>
-            <span className="paper-tag paper-tag--debug">只影响本页</span>
+            <button className="paper-button" type="button" onClick={closeDebug}>
+              关闭DEBUG
+            </button>
           </div>
           <label className="stream-check">
             <input

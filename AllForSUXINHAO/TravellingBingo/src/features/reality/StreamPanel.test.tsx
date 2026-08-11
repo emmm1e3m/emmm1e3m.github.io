@@ -1,20 +1,11 @@
-import { fireEvent, render, screen, within } from '@testing-library/react'
+import { fireEvent, render, screen } from '@testing-library/react'
 
 import { StreamPanel, STREAM_INSTRUCTION, type StreamPanelProps } from './StreamPanel'
 
 function playback(overrides: Partial<StreamPanelProps['playback']> = {}) {
   return {
     status: 'idle' as const,
-    sessionId: null,
-    startedAt: null,
-    favoriteId: 3682220021 as const,
-    selfTestBvid: null,
     stopAfterMs: null,
-    round: 0,
-    sessionRoundsCompleted: 0,
-    openedCount: 0,
-    totalCount: 0,
-    nextRoundAt: null,
     message: '尚未开始刷播',
     errors: [],
     ...overrides,
@@ -23,9 +14,6 @@ function playback(overrides: Partial<StreamPanelProps['playback']> = {}) {
 
 function renderPanel(overrides: Partial<StreamPanelProps> = {}) {
   const props: StreamPanelProps = {
-    completedRounds: 2,
-    recentSessions: [],
-    standaloneHistory: [],
     selfTestBvid: null,
     favoriteId: 3682220021,
     playback: playback(),
@@ -44,7 +32,16 @@ describe('StreamPanel', () => {
 
     expect(screen.getByText(STREAM_INSTRUCTION)).toBeVisible()
     expect(screen.getByText('会使用当前浏览器账号，登录时每天不要超过5小时。')).toBeVisible()
-    expect(screen.getByText('移动端使用前请先用自测视频测试。')).toBeVisible()
+    expect(
+      screen.getByText(
+        '刷播会在单独页面运行，请允许本站弹出窗口；启动刷播窗口后，返回游戏维度也可以继续。',
+      ),
+    ).toBeVisible()
+    expect(
+      screen.getByText(
+        '在新设备/浏览器上请先检查：若登录，历史记录里出现刷播视频为成功；若未登录，自测视频播放量增加为成功。',
+      ),
+    ).toBeVisible()
     expect(screen.getByRole('radio', { name: '刷播' })).toBeChecked()
     expect(screen.getByRole('radio', { name: '测试' })).not.toBeChecked()
     expect(screen.queryByText(/维度穿透|游客刷播|打开方式|视频间隔/u)).not.toBeInTheDocument()
@@ -84,55 +81,18 @@ describe('StreamPanel', () => {
     expect(props.onStart).not.toHaveBeenCalled()
   })
 
-  it('合并存档与独立页最近记录并按任务去重', () => {
-    renderPanel({
-      recentSessions: [
-        {
-          sessionId: 'same',
-          startedAt: 100,
-          endedAt: 200,
-          roundsCompleted: 2,
-          outcome: 'completed',
-        },
-      ],
-      standaloneHistory: [
-        {
-          sessionId: 'same',
-          startedAt: 100,
-          endedAt: 200,
-          roundsCompleted: 2,
-          outcome: 'completed',
-        },
-        {
-          sessionId: 'standalone',
-          startedAt: 300,
-          endedAt: 400,
-          roundsCompleted: 1,
-          outcome: 'stopped',
-        },
-      ],
-    })
-
-    const history = screen.getByRole('heading', { name: '最近任务' }).closest('section')!
-    expect(within(history).getAllByRole('listitem')).toHaveLength(2)
-    expect(screen.getByText('按时完成 · 2 轮')).toBeVisible()
-    expect(screen.getByText('已停止 · 1 轮')).toBeVisible()
-  })
-
-  it('运行时只有停止入口，并展示独立页回传的绝对下一轮时间', () => {
+  it('主游戏不展示轮次与最近记录，运行时只保留停止入口', () => {
     const { props } = renderPanel({
       playback: playback({
         status: 'waiting',
-        round: 3,
-        openedCount: 5,
-        totalCount: 6,
-        nextRoundAt: new Date('2026-08-11T08:20:30Z').getTime(),
-        message: '第 3 轮运行中',
+        message: '刷播窗口正在运行',
       }),
     })
 
     expect(screen.getByRole('button', { name: '停止刷播' })).toBeVisible()
-    expect(screen.getByText('5 / 6')).toBeVisible()
+    expect(screen.queryByText('累计完成轮次')).not.toBeInTheDocument()
+    expect(screen.queryByText('最近任务')).not.toBeInTheDocument()
+    expect(screen.queryByText('5 / 6')).not.toBeInTheDocument()
     fireEvent.click(screen.getByRole('button', { name: '停止刷播' }))
     expect(props.onStop).toHaveBeenCalledTimes(1)
   })

@@ -57,11 +57,15 @@ export function reconcileGameStateWithCatalog(
     id === null || (catalog.postcard.includes(id) && state.collections[id] !== undefined)
   const clearsSelectedPostcard = !isUsablePostcard(selectedPostcardId)
   const clearsSessionPostcard = !isUsablePostcard(sessionPostcardId)
+  const clearsPhotoBackgrounds = Object.values(state.wardrobe.photos).some(
+    (photo) => !isUsablePostcard(photo.postcardId),
+  )
   if (
     !repairsTaskBoard &&
     !clearsPlannedCollection &&
     !clearsSelectedPostcard &&
-    !clearsSessionPostcard
+    !clearsSessionPostcard &&
+    !clearsPhotoBackgrounds
   ) {
     return state
   }
@@ -97,5 +101,16 @@ export function reconcileGameStateWithCatalog(
             },
           }
         : state.reality,
+    wardrobe: clearsPhotoBackgrounds
+      ? {
+          ...state.wardrobe,
+          photos: Object.fromEntries(
+            Object.entries(state.wardrobe.photos).map(([photoId, photo]) => [
+              photoId,
+              isUsablePostcard(photo.postcardId) ? photo : { ...photo, postcardId: null },
+            ]),
+          ),
+        }
+      : state.wardrobe,
   }
 }

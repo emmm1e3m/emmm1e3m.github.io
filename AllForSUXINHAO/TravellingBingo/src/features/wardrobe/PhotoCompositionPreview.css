@@ -1,0 +1,59 @@
+.photo-composition {
+  position: relative;
+  width: 100%;
+  aspect-ratio: 4 / 3;
+  overflow: hidden;
+  overflow: clip;
+  isolation: isolate;
+  background: #fffaf2;
+}
+
+.photo-composition__postcard,
+.photo-composition__people {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+}
+
+.photo-composition__postcard {
+  display: block;
+  object-fit: fill;
+  object-position: center;
+}
+
+.photo-composition__people {
+  z-index: 1;
+  isolation: isolate;
+  pointer-events: none;
+}
+
+.photo-composition__participant {
+  position: absolute;
+  display: block;
+  aspect-ratio: 1;
+  transform-origin: center;
+}
+
+.photo-composition__character,
+.photo-composition__element {
+  position: absolute;
+  display: block;
+  max-width: none;
+  user-select: none;
+}
+
+.photo-composition__character {
+  inset: 0;
+  z-index: 0;
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+}
+
+.photo-composition__element {
+  aspect-ratio: 1;
+  height: auto;
+  transform-origin: center;
+  object-fit: contain;
+}

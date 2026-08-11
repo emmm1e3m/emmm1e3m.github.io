@@ -515,15 +515,18 @@
   overflow: hidden;
 }
 
-/* 桌面播放器使用已知块高；信息栏据此精确留出同一份场景间距。 */
-@media (min-width: 961px) {
-  body:has(.persistent-bilibili-player--context) .game-page--v4 .context-stack {
-    padding-bottom: calc(var(--scene-player-collapsed-block-size) + var(--scene-component-gap));
-  }
+/* 播放器固定在信息栏下方时，不再用 context-stack 生成一块空白遮罩。
+ * 改为给真正的滚动内容留出末尾空间，最后一项可以滚到播放器上方。 */
+body:has(.persistent-bilibili-player--context) .game-page--v4 .context-content--v4 {
+  padding-bottom: calc(var(--scene-player-collapsed-block-size) + var(--scene-component-gap));
+  scroll-padding-bottom: calc(
+    var(--scene-player-collapsed-block-size) + var(--scene-component-gap)
+  );
+}
 
-  body:has(.persistent-bilibili-player--context.is-expanded) .game-page--v4 .context-stack {
-    padding-bottom: calc(var(--scene-player-expanded-block-size) + var(--scene-component-gap));
-  }
+body:has(.persistent-bilibili-player--context.is-expanded) .game-page--v4 .context-content--v4 {
+  padding-bottom: calc(var(--scene-player-expanded-block-size) + var(--scene-component-gap));
+  scroll-padding-bottom: calc(var(--scene-player-expanded-block-size) + var(--scene-component-gap));
 }
 
 .game-page--v4 .context-content--v4 {
@@ -690,7 +693,8 @@
 }
 
 .game-page--v4 .record-panel .bilibili-playlist-panel__tracks ol {
-  max-height: 13.5rem;
+  max-height: none;
+  overflow-y: visible;
 }
 
 .game-page--v4 .reality-context-panel .reality-data-grid,
@@ -851,6 +855,16 @@
 .game-page.game-page--v4 {
   --v4-body-copy-size: 0.9rem;
   --v4-support-copy-size: 0.82rem;
+}
+
+/* 房间右侧信息栏只使用乐融融。数字仍启用等宽数字特性，缺字沿字体变量的回退栈显示。 */
+.game-page--v4 .context-panel,
+.game-page--v4 .context-panel :where(button, input, textarea, select, option) {
+  font-family: var(--font-display);
+}
+
+.game-page--v4 .context-panel :where(.numeric-copy, input[type='number']) {
+  font-variant-numeric: tabular-nums;
 }
 
 /* 设施标签统一使用可画乐融融，并维持至少 44px 的点击区域。 */

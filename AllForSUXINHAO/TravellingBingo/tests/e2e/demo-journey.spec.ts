@@ -29,7 +29,7 @@ async function exportAndExit(page: import('@playwright/test').Page) {
   return download
 }
 
-test('用户名、V10 收藏、魔法与现实字段可以下载并恢复', async ({ page }, testInfo) => {
+test('用户名、V11 收藏、魔法与现实字段可以下载并恢复', async ({ page }, testInfo) => {
   test.skip(testInfo.project.name !== 'chromium', '完整存档往返只在桌面项目验证')
   await startGame(page, { debug: true, seed: 'e2e-4', displayName: TEST_PLAYER_NAME })
   await setDebugDuration(page, '10 秒')
@@ -101,9 +101,9 @@ test('用户名、V10 收藏、魔法与现实字段可以下载并恢复', asyn
   expect(envelope).toMatchObject({
     format: 'travelling-bingo-save',
     schemaVersion: 1,
-    gameVersion: '0.10.0-demo.1',
+    gameVersion: '0.10.0',
     payload: {
-      schemaVersion: 10,
+      schemaVersion: 11,
       profile: { debug: true, displayName: TEST_PLAYER_NAME, companionDays: 1 },
       economy: { apples: savedAppleCount },
       inventory: {
@@ -194,7 +194,7 @@ test('进行中的任务保存绝对结束时间，离线完成后读档立即�
   await expect(page.getByRole('button', { name: '看看这次的结果' })).toBeEnabled()
 })
 
-test('奇迹饼狗以新弹窗安全打开搭配测试', async ({ context, page }, testInfo) => {
+test('衣架侧栏进入奇迹饼狗，并安全打开独立舞台测试', async ({ context, page }, testInfo) => {
   test.skip(testInfo.project.name !== 'chromium', '外部弹窗只在桌面项目验证')
   await context.route(STAGE_TEST_URL, async (route) => {
     await route.fulfill({
@@ -205,11 +205,22 @@ test('奇迹饼狗以新弹窗安全打开搭配测试', async ({ context, page 
   })
   await startGame(page, { seed: 'stage-popup-e2e', displayName: '搭配测试' })
   await page.locator('[data-hotspot="衣架"]').click()
+  await expect(page.getByRole('region', { name: '铲铲饼屋互动场景' })).toBeVisible()
   await expect(page.getByRole('heading', { name: '奇迹饼狗' })).toBeVisible()
-  await expect(page.getByText('什么样的搭配最合适呢？', { exact: true })).toBeVisible()
+  await expect(
+    page.getByText('进入搭配室前，可以先看看今天衣架上还有哪些衣服。', { exact: true }),
+  ).toBeVisible()
+
+  await page.getByRole('button', { name: '进入奇迹饼狗' }).click()
+  const wardrobe = page.getByRole('dialog', { name: '奇迹饼狗' })
+  await expect(wardrobe).toBeVisible()
+  await expect(wardrobe.getByRole('tab', { name: '搭配室' })).toBeVisible()
+  await wardrobe.getByRole('button', { name: '关闭衣柜' }).click()
+  await expect(wardrobe).toBeHidden()
+  await expect(page.getByRole('region', { name: '铲铲饼屋互动场景' })).toBeVisible()
 
   const popupPromise = context.waitForEvent('page')
-  await page.getByRole('button', { name: '开始舞台测试' }).click()
+  await page.getByRole('button', { name: '打开独立舞台测试' }).click()
   const popup = await popupPromise
   await popup.waitForURL(STAGE_TEST_URL)
   await popup.waitForLoadState('domcontentloaded')
@@ -224,8 +235,9 @@ test('搭配测试弹窗被拦截时显示 noopener fallback', async ({ context,
   })
   await startGame(page, { seed: 'e2e-4', displayName: '拦截测试' })
   await page.locator('[data-hotspot="衣架"]').click()
+  await expect(page.getByRole('region', { name: '铲铲饼屋互动场景' })).toBeVisible()
   const pageCountBefore = context.pages().length
-  await page.getByRole('button', { name: '开始舞台测试' }).click()
+  await page.getByRole('button', { name: '打开独立舞台测试' }).click()
 
   const fallback = page.getByRole('alert').filter({ hasText: '弹出窗口被浏览器拦住了' })
   await expect(fallback).toBeVisible()

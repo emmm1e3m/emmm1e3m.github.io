@@ -7,7 +7,7 @@ import {
   migrateGameStateV6ToV7,
   migrateStoredGameStateToV7,
 } from './migrateGameStateV6'
-import { gameStateV10Schema } from './migrateGameStateV9'
+import { gameStateV11Schema } from './migrateGameStateV10'
 import { reduceGame } from './reducer'
 import type { CollectionCatalog, GameStateV5, GameStateV6, GameTransition } from './types'
 
@@ -27,7 +27,9 @@ function v5Fixture(): GameStateV5 {
     todos: current.reality.todos,
     pomodoro: current.reality.pomodoro,
   }
-  return { ...current, schemaVersion: 5, reality }
+  const { wardrobe: _wardrobe, ...withoutWardrobe } = current
+  void _wardrobe
+  return { ...withoutWardrobe, schemaVersion: 5, reality }
 }
 
 function v6Fixture(): GameStateV6 {
@@ -140,7 +142,7 @@ describe('V7 刷播会话历史', () => {
         },
       ],
     })
-    expect(gameStateV10Schema.safeParse(state).success).toBe(true)
+    expect(gameStateV11Schema.safeParse(state).success).toBe(true)
   })
 
   it('相同的结束动作保持幂等，冲突动作不能改写已结束记录', () => {
@@ -247,7 +249,7 @@ describe('V7 刷播会话历史', () => {
     expect(state.reality.streamHistory.recentSessions.map((session) => session.sessionId)).toEqual(
       Array.from({ length: 10 }, (_, index) => `session-${12 - index}`),
     )
-    expect(gameStateV10Schema.safeParse(state).success).toBe(true)
+    expect(gameStateV11Schema.safeParse(state).success).toBe(true)
   })
 
   it('拒绝非法时间、轮次、重复身份及超过累计轮次的结束记录', () => {
@@ -291,7 +293,7 @@ describe('V7 刷播会话历史', () => {
 
   it('当前严格 schema 拒绝额外字段、重复会话、非因果时间和会话轮次超出累计值', () => {
     const valid = createInitialGameState({ now: 1_000, seed: 'v8-stream-history-schema' })
-    expect(gameStateV10Schema.safeParse(valid).success).toBe(true)
+    expect(gameStateV11Schema.safeParse(valid).success).toBe(true)
 
     const session = {
       sessionId: 'session-1',
@@ -316,7 +318,7 @@ describe('V7 刷播会话历史', () => {
 
     for (const streamHistory of invalidHistories) {
       expect(
-        gameStateV10Schema.safeParse({
+        gameStateV11Schema.safeParse({
           ...valid,
           reality: { ...valid.reality, streamHistory },
         }).success,

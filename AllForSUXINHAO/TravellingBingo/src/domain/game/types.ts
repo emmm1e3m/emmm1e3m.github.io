@@ -56,6 +56,108 @@ export interface FriendEntry {
 
 export type FriendCollection = Partial<Record<FriendId, FriendEntry>>
 
+export type WardrobeTargetId = 'bingo' | FriendId
+
+export type WardrobeAssetId =
+  | 'green-sailor-top'
+  | 'red-ruffle-dress'
+  | 'monochrome-maid-dress'
+  | 'black-stage-suit'
+  | 'black-tie-uniform'
+  | 'blue-street-jacket'
+  | 'tan-bear-suit'
+  | 'cream-apple-cape'
+  | 'round-glasses'
+  | 'square-glasses'
+  | 'maid-headband'
+  | 'black-beret'
+  | 'cat-ears'
+  | 'microphone'
+  | 'signal-sign'
+  | 'apple-cake'
+  | 'paw-glove'
+  | 'check-sign'
+  | 'cross-sign'
+  | 'dim-sum-basket'
+  | 'apple-cuffs'
+  | 'apple-badge'
+  | 'black-fedora'
+  | 'red-bead-trim'
+
+export type WardrobeAssetCategory = 'outfit' | 'headwear' | 'face' | 'accessory' | 'prop'
+
+/**
+ * 奇迹饼狗只在存档中保存目录 ID。名称、图片与基准尺寸由当前版本的服装目录提供，
+ * 不能把图片 URL、data URL 或完整合成图写进存档。
+ */
+export interface WardrobeCatalogItem {
+  id: WardrobeAssetId
+  name: string
+  category: WardrobeAssetCategory
+  priceApples: number
+  starter: boolean
+  defaultTransform: WardrobeTransform
+}
+
+export interface WardrobeTransform {
+  /** 所属画布中的归一化中心坐标，范围为 0–1。 */
+  x: number
+  y: number
+  /** 相对服装目录基准宽度的缩放。 */
+  scale: number
+  /** 规范化到 -180–180 度。 */
+  rotation: number
+  /** 数值越大越靠前；同一组合中的 z 必须唯一。 */
+  z: number
+}
+
+export interface WardrobeElement extends WardrobeTransform {
+  /** 同一形象内稳定且唯一，允许一件已购元素被放置多次。 */
+  placementId: string
+  assetId: WardrobeAssetId
+}
+
+export interface SavedWardrobeLook {
+  lookId: string
+  targetId: WardrobeTargetId
+  name: string
+  elements: WardrobeElement[]
+  createdAt: number
+  updatedAt: number
+}
+
+export interface WardrobePhotoParticipant extends WardrobeTransform {
+  targetId: WardrobeTargetId
+  /** 仅记录创建合拍时选择的来源；造型删除后仍保留快照。 */
+  sourceLookId: string | null
+  /** 合拍创建时冻结的轻量搭配快照；以后改造型不会改写旧照片。 */
+  elements: WardrobeElement[]
+}
+
+export interface WardrobePhoto {
+  photoId: string
+  /** 内容目录变化时可以协调为 null；新合拍仍必须选择已拥有明信片。 */
+  postcardId: string | null
+  participants: WardrobePhotoParticipant[]
+  createdAt: number
+}
+
+export interface WardrobeState {
+  /** 海星体锚点、归一化坐标与缩放语义的版本。 */
+  layoutVersion: 1
+  shop: {
+    companionDay: number
+    /** 当天刷新时冻结的商品，不因购买而补位；全收集后可以为空。 */
+    assetIds: WardrobeAssetId[]
+  }
+  /** 顺序即获得顺序；ID 唯一。 */
+  ownedAssetIds: WardrobeAssetId[]
+  nextLookSequence: number
+  looks: Record<string, SavedWardrobeLook>
+  nextPhotoSequence: number
+  photos: Record<string, WardrobePhoto>
+}
+
 export type Inventory = Record<ItemId, number>
 
 /** V1–V3 冻结的五种旧道具结构；不能随 V4 冰箱扩项漂移。 */
@@ -626,7 +728,12 @@ export interface GameStateV10 extends Omit<GameStateV9, 'schemaVersion' | 'reali
   reality: RealityStateV10
 }
 
-export type GameState = GameStateV10
+export interface GameStateV11 extends Omit<GameStateV10, 'schemaVersion'> {
+  schemaVersion: 11
+  wardrobe: WardrobeState
+}
+
+export type GameState = GameStateV11
 
 export interface ActivityTiming {
   phase: ActivityPhase
@@ -687,6 +794,19 @@ export type GameErrorCode =
   | 'DUPLICATE_ID'
   | 'INVALID_BVID'
   | 'INVALID_STREAM_FAVORITE'
+  | 'WARDROBE_ITEM_NOT_FOR_SALE'
+  | 'WARDROBE_ITEM_ALREADY_OWNED'
+  | 'WARDROBE_TARGET_LOCKED'
+  | 'WARDROBE_ASSET_NOT_OWNED'
+  | 'WARDROBE_LOOK_INVALID'
+  | 'WARDROBE_LOOK_NAME_INVALID'
+  | 'WARDROBE_LOOK_LIMIT_REACHED'
+  | 'WARDROBE_LOOK_NOT_FOUND'
+  | 'WARDROBE_LOOK_TARGET_MISMATCH'
+  | 'WARDROBE_PHOTO_LIMIT_REACHED'
+  | 'WARDROBE_PHOTO_NOT_FOUND'
+  | 'WARDROBE_POSTCARD_NOT_OWNED'
+  | 'WARDROBE_PARTICIPANTS_INVALID'
   | 'DEBUG_REQUIRED'
 
 export interface GameError {
@@ -756,6 +876,29 @@ export type GameAction =
   | { type: 'clock/tick'; now: number }
   | { type: 'music/track-select'; bvid: string; index: number }
   | { type: 'music/loop-set'; loopMode: MusicLoopMode }
+  | { type: 'wardrobe/item-purchase'; assetId: string }
+  | {
+      type: 'wardrobe/look-create'
+      targetId: WardrobeTargetId
+      name: string
+      elements: WardrobeElement[]
+      now: number
+    }
+  | {
+      type: 'wardrobe/look-update'
+      lookId: string
+      name: string
+      elements: WardrobeElement[]
+      now: number
+    }
+  | { type: 'wardrobe/look-delete'; lookId: string }
+  | {
+      type: 'wardrobe/photo-create'
+      postcardId: string
+      participants: Array<WardrobeTransform & { targetId: WardrobeTargetId; lookId: string | null }>
+      now: number
+    }
+  | { type: 'wardrobe/photo-delete'; photoId: string }
   | { type: 'debug/apples-adjust'; delta: number }
   | { type: 'debug/item-adjust'; itemId: ItemId; delta: number }
   | { type: 'debug/collection-set'; collectionId: string; owned: boolean; now: number }
@@ -846,12 +989,19 @@ export type GameEffect =
       change: 'track-selected' | 'loop-set'
       bvid?: string | null
     }
+  | { type: 'wardrobe-item-purchased'; assetId: string; applesSpent: number }
+  | { type: 'wardrobe-look-created'; look: SavedWardrobeLook }
+  | { type: 'wardrobe-look-updated'; look: SavedWardrobeLook }
+  | { type: 'wardrobe-look-deleted'; lookId: string; targetId: WardrobeTargetId }
+  | { type: 'wardrobe-photo-created'; photo: WardrobePhoto }
+  | { type: 'wardrobe-photo-deleted'; photoId: string }
   | {
       type: 'debug-applied'
       action: GameAction['type']
       changedCount?: number
       collectionChangedCount?: number
       friendChangedCount?: number
+      wardrobeChangedCount?: number
     }
 
 export type GameTransition =

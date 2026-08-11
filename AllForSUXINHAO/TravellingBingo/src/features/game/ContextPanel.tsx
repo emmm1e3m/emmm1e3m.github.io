@@ -6,6 +6,8 @@ import { type ContentCatalog } from '@/content'
 import {
   deriveActivityTiming,
   getVitalityMagicAvailability,
+  getWardrobePurchaseAvailability,
+  getWardrobeShopItems,
   ITEM_PRICES,
   type ActivityKind,
   type CollectionCatalog,
@@ -38,6 +40,7 @@ interface ContextPanelProps {
   catalog: ContentCatalog
   now: number
   onNavigate: (panel: PanelId | null) => void
+  onOpenWardrobe?: () => void
   onAction: (action: GameAction) => void
   onBackup: () => void
   onTaskEvent: (event: TaskEvent) => void
@@ -184,9 +187,6 @@ function RealityPanel({
   if (panel === 'reality-stream') {
     return (
       <StreamPanel
-        completedRounds={game.reality.streamHistory.completedRounds}
-        recentSessions={game.reality.streamHistory.recentSessions}
-        standaloneHistory={streamPlayback.standaloneHistory}
         selfTestBvid={game.reality.streamSettings.selfTestBvid}
         favoriteId={game.reality.streamSettings.favoriteId}
         playback={streamPlayback.state}
@@ -264,6 +264,7 @@ export function ContextPanel({
   catalog,
   now,
   onNavigate,
+  onOpenWardrobe,
   onAction,
   onBackup,
   onTaskEvent,
@@ -756,6 +757,8 @@ export function ContextPanel({
   }
 
   if (panel === 'wardrobe') {
+    const availableShopItems = getWardrobeShopItems(game)
+
     function openStageTest() {
       const popup = globalThis.open(
         '',
@@ -786,13 +789,41 @@ export function ContextPanel({
         className="quiet-panel miracle-panel"
       >
         <h2>奇迹饼狗</h2>
-        <p>什么样的搭配最合适呢？</p>
+        <p>进入搭配室前，可以先看看今天衣架上还有哪些衣服。</p>
+        <section className="miracle-panel__shop" aria-labelledby="miracle-panel-shop-title">
+          <h3 id="miracle-panel-shop-title">今天仍可购买</h3>
+          {availableShopItems.length > 0 ? (
+            <div className="miracle-panel__offers">
+              {availableShopItems.map((item) => {
+                const availability = getWardrobePurchaseAvailability(game, item.id)
+                return (
+                  <article key={item.id}>
+                    <span>{item.name}</span>
+                    <AppleAmount value={item.priceApples} />
+                    <button
+                      type="button"
+                      disabled={!availability.canPurchase}
+                      onClick={() => onAction({ type: 'wardrobe/item-purchase', assetId: item.id })}
+                    >
+                      {availability.canPurchase ? '买下' : availability.message}
+                    </button>
+                  </article>
+                )
+              })}
+            </div>
+          ) : (
+            <p>今天衣架上的新衣服都已经收好啦。</p>
+          )}
+        </section>
         <button
           className="paper-button paper-button--primary"
           type="button"
-          onClick={openStageTest}
+          onClick={onOpenWardrobe}
         >
-          开始舞台测试
+          进入奇迹饼狗
+        </button>
+        <button className="paper-button" type="button" onClick={openStageTest}>
+          打开独立舞台测试
         </button>
         {popupBlocked && (
           <p className="popup-fallback" role="alert">

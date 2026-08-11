@@ -46,6 +46,7 @@ export type ImportedGameStateValidationCode =
   | 'TASK_BOARD_INVALID'
   | 'PET_FATIGUE_MISMATCH'
   | 'POMODORO_BACKGROUND_INVALID'
+  | 'WARDROBE_PHOTO_BACKGROUND_INVALID'
 
 export type ImportedGameStateValidation =
   | { ok: true }
@@ -281,6 +282,19 @@ export function validateImportedGameState(
       return invalid(
         'POMODORO_BACKGROUND_INVALID',
         `苹果钟背景“${postcardId}”不是当前已拥有的明信片。`,
+      )
+    }
+  }
+
+  for (const photo of Object.values(state.wardrobe.photos)) {
+    if (
+      photo.postcardId !== null &&
+      (!catalog.postcard.includes(photo.postcardId) ||
+        state.collections[photo.postcardId] === undefined)
+    ) {
+      return invalid(
+        'WARDROBE_PHOTO_BACKGROUND_INVALID',
+        `合拍背景“${photo.postcardId}”不是当前已拥有的明信片。`,
       )
     }
   }

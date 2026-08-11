@@ -113,7 +113,7 @@ export function TitleScreen({
       <section className="landing-shell" aria-labelledby="game-title">
         <div className="landing-copy">
           <div className="landing-overline">
-            <span>TRAVELLING BINGO</span>
+            <span>TRAVELLING BINGO · v0.10</span>
             {debugUnlocked && (
               <span className="landing-secret" role="status">
                 门牌已亮

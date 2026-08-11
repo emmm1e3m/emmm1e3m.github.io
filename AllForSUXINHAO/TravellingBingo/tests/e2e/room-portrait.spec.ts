@@ -401,7 +401,7 @@ test('1024px 房间中刷播与冲热在悬停放大后仍保持分离', async (
   expect(boxesOverlap(streamBox!, trendBox!)).toBe(false)
 })
 
-test('信息栏下方播放器在展开和收起时都复用房间侧边间距', async ({ page }, testInfo) => {
+test('播放器与信息栏同列，展开和收起时最后一首都能滚到控制区上方', async ({ page }, testInfo) => {
   test.skip(testInfo.project.name !== 'chromium', '桌面三组件几何只在 Chromium 验证')
   await page.setViewportSize({ width: 1440, height: 900 })
   await startGame(page, { seed: 'scene-gap-e2e', displayName: '间距测试' })
@@ -419,31 +419,41 @@ test('信息栏下方播放器在展开和收起时都复用房间侧边间距',
 
   const player = page.getByTestId('persistent-bilibili-player')
   await expect(player).toHaveClass(/persistent-bilibili-player--context/u)
+  const panelContent = panel.locator('.context-content--v4')
+  const lastTrack = panel.getByRole('list', { name: '全站第一曲目' }).getByRole('listitem').last()
 
-  async function expectSharedGap() {
-    const [roomBox, panelBox, playerBox] = await Promise.all([
+  async function expectAlignedAndUnobscured() {
+    await panelContent.evaluate((element) => {
+      element.scrollTop = element.scrollHeight
+    })
+
+    const [roomBox, panelBox, playerBox, lastTrackBox] = await Promise.all([
       room.boundingBox(),
       panel.boundingBox(),
       player.boundingBox(),
+      lastTrack.boundingBox(),
     ])
-    expect(roomBox && panelBox && playerBox).toBeTruthy()
+    expect(roomBox && panelBox && playerBox && lastTrackBox).toBeTruthy()
     const roomToPanel = panelBox!.x - (roomBox!.x + roomBox!.width)
-    const panelToPlayer = playerBox!.y - (panelBox!.y + panelBox!.height)
     expect(roomToPanel).toBeGreaterThan(0)
-    expectNear(panelToPlayer, roomToPanel)
+    expectNear(playerBox!.x, panelBox!.x)
+    expectNear(playerBox!.width, panelBox!.width)
+
+    const trackToPlayer = playerBox!.y - (lastTrackBox!.y + lastTrackBox!.height)
+    expect(trackToPlayer).toBeGreaterThanOrEqual(roomToPanel - 2)
   }
 
   await expect(player).toHaveAttribute('data-dock-state', 'expanded')
   const expandedPlayerBox = await player.boundingBox()
   expect(expandedPlayerBox).not.toBeNull()
-  await expectSharedGap()
+  await expectAlignedAndUnobscured()
 
   await player.getByRole('button', { name: '隐藏画面' }).click()
   await expect(player).toHaveAttribute('data-dock-state', 'collapsed')
   const collapsedPlayerBox = await player.boundingBox()
   expect(collapsedPlayerBox).not.toBeNull()
   expect(Math.abs(collapsedPlayerBox!.width - expandedPlayerBox!.width)).toBeLessThan(0.5)
-  await expectSharedGap()
+  await expectAlignedAndUnobscured()
 })
 
 test('DEBUG 仍会生成拒绝意愿，暗淡按钮询问后显示领域拒绝', async ({ page }, testInfo) => {

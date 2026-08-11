@@ -2,9 +2,11 @@ import { fireEvent, render, screen, within } from '@testing-library/react'
 
 import type { BilibiliVideo, CollectibleItem, ContentCatalog, FriendItem } from '@/content'
 import { createInitialGameState, type CollectibleCategory, type GameState } from '@/domain'
+import type { GameAction, WardrobePhoto } from '@/domain/game/types'
 import { BilibiliPlayerProvider, PersistentPlayerDock } from '@/features/player'
 
 import albumStyles from './AlbumView.css?raw'
+import photoPreviewStyles from '@/features/wardrobe/PhotoCompositionPreview.css?raw'
 import { AlbumView } from './AlbumView'
 
 function collectible(id: string, category: CollectibleCategory, title: string): CollectibleItem {
@@ -104,11 +106,13 @@ function AlbumHarness({
   game,
   onClose = vi.fn(),
   onPlayerOpened,
+  onAction,
 }: {
   catalog: ContentCatalog
   game: GameState
   onClose?: () => void
   onPlayerOpened?: (collectionId: string, bvid: string) => void
+  onAction?: (action: GameAction) => void
 }) {
   return (
     <BilibiliPlayerProvider
@@ -116,7 +120,13 @@ function AlbumHarness({
       onAction={() => undefined}
       tracks={catalog.recordPlayerVideos}
     >
-      <AlbumView catalog={catalog} game={game} onClose={onClose} onPlayerOpened={onPlayerOpened} />
+      <AlbumView
+        catalog={catalog}
+        game={game}
+        onClose={onClose}
+        onPlayerOpened={onPlayerOpened}
+        onAction={onAction}
+      />
       <PersistentPlayerDock />
     </BilibiliPlayerProvider>
   )
@@ -290,6 +300,159 @@ describe('饼狗的收藏墙', () => {
 
     expect(screen.getByRole('tab', { name: '好朋友们【5/5】' })).toBeVisible()
     expect(screen.getByText('收藏进度【5/5】')).toBeVisible()
+  })
+
+  it('合拍相册使用独立计数，旧合拍按元素快照重建且不随当前造型改变', () => {
+    const catalog = contentCatalog([oldestPostcard])
+    const initial = gameWithCollections([[oldestPostcard.id, 1_000]])
+    const savedPhoto: WardrobePhoto = {
+      photoId: 'photo-album-snapshot',
+      postcardId: oldestPostcard.id,
+      createdAt: 4_000,
+      participants: [
+        {
+          targetId: 'bingo',
+          sourceLookId: 'look-current',
+          x: 0.5,
+          y: 0.58,
+          scale: 0.32,
+          rotation: 0,
+          z: 1,
+          elements: [
+            {
+              placementId: 'saved-glasses',
+              assetId: 'round-glasses',
+              x: 0.5,
+              y: 0.39,
+              scale: 0.48,
+              rotation: 0,
+              z: 2,
+            },
+          ],
+        },
+      ],
+    }
+    const game: GameState = {
+      ...initial,
+      wardrobe: {
+        ...initial.wardrobe,
+        photos: { [savedPhoto.photoId]: savedPhoto },
+        looks: {
+          'look-current': {
+            lookId: 'look-current',
+            targetId: 'bingo',
+            name: '当前造型',
+            createdAt: 4_500,
+            updatedAt: 5_000,
+            elements: [
+              {
+                placementId: 'current-dress',
+                assetId: 'red-ruffle-dress',
+                x: 0.5,
+                y: 0.56,
+                scale: 0.92,
+                rotation: 0,
+                z: 10,
+              },
+            ],
+          },
+        },
+      },
+    }
+    const { container, rerender } = render(<AlbumHarness catalog={catalog} game={game} />)
+
+    expect(screen.getByText('收藏进度【1/1】')).toBeVisible()
+    expect(screen.getByRole('tab', { name: '合拍相册【1】' })).toBeVisible()
+    fireEvent.click(screen.getByRole('tab', { name: '合拍相册【1】' }))
+    const photoPreview = container.querySelector<HTMLElement>(
+      '[data-photo-id="photo-album-snapshot"]',
+    )
+    expect(photoPreview).not.toBeNull()
+    expect(photoPreview?.getAttribute('style')).toContain('aspect-ratio: 480 / 640')
+    expect(photoPreviewStyles).toContain('overflow: clip;')
+    expect(photoPreviewStyles).toContain('object-fit: fill;')
+    expect(screen.getByText('奇迹合拍')).toBeVisible()
+    expect(container.querySelector('img[src$="round-glasses.webp"]')).not.toBeNull()
+    expect(container.querySelector('img[src$="red-ruffle-dress.webp"]')).toBeNull()
+
+    const changedCurrentLook: GameState = {
+      ...game,
+      wardrobe: {
+        ...game.wardrobe,
+        looks: {
+          'look-current': {
+            lookId: 'look-current',
+            targetId: 'bingo',
+            name: '后来改过的造型',
+            createdAt: 4_500,
+            updatedAt: 6_000,
+            elements: [
+              {
+                placementId: 'new-current-look',
+                assetId: 'black-stage-suit',
+                x: 0.5,
+                y: 0.56,
+                scale: 0.92,
+                rotation: 0,
+                z: 10,
+              },
+            ],
+          },
+        },
+      },
+    }
+    rerender(<AlbumHarness catalog={catalog} game={changedCurrentLook} />)
+
+    expect(container.querySelector('img[src$="round-glasses.webp"]')).not.toBeNull()
+    expect(container.querySelector('img[src$="black-stage-suit.webp"]')).toBeNull()
+    expect(screen.getByText('收藏进度【1/1】')).toBeVisible()
+  })
+
+  it('合拍详情删除时只派发目标 photoId，失效明信片仍显示暖白预览', () => {
+    const catalog = contentCatalog([oldestPostcard])
+    const initial = gameWithCollections([])
+    const photo: WardrobePhoto = {
+      photoId: 'photo-delete-target',
+      postcardId: null,
+      createdAt: 7_000,
+      participants: [
+        {
+          targetId: 'bingo',
+          sourceLookId: null,
+          x: 0.5,
+          y: 0.58,
+          scale: 0.32,
+          rotation: 0,
+          z: 1,
+          elements: [],
+        },
+      ],
+    }
+    const game: GameState = {
+      ...initial,
+      wardrobe: { ...initial.wardrobe, photos: { [photo.photoId]: photo } },
+    }
+    const onAction = vi.fn()
+    const { container } = render(<AlbumHarness catalog={catalog} game={game} onAction={onAction} />)
+
+    fireEvent.click(screen.getByRole('tab', { name: '合拍相册【1】' }))
+    fireEvent.click(screen.getByRole('button', { name: /打开详情/u }))
+    expect(
+      within(screen.getByRole('dialog', { name: '奇迹合拍' })).getByRole('heading', {
+        name: '奇迹合拍',
+      }),
+    ).toBeVisible()
+    expect(screen.getByText(/原来的明信片暂时找不到了/u)).toBeVisible()
+    expect(
+      container.querySelector('.wardrobe-photo-detail__preview img[src*="postcard"]'),
+    ).toBeNull()
+
+    fireEvent.click(screen.getByRole('button', { name: '删除这张合拍' }))
+    expect(onAction).toHaveBeenCalledOnce()
+    expect(onAction).toHaveBeenCalledWith({
+      type: 'wardrobe/photo-delete',
+      photoId: 'photo-delete-target',
+    })
   })
 
   it('图片详情可进入 contain 全屏，提供同源下载并在关闭后返回图片按钮', () => {

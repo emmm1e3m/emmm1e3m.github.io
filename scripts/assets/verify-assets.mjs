@@ -16,6 +16,7 @@ import {
   inspectFontCodePoints,
   summarizeCharacters,
 } from './font-metadata.mjs'
+import { ACCESSORY_DEFINITIONS, OUTFIT_DEFINITIONS } from './build-miracle-assets.mjs'
 
 const workspaceRoot = resolve(fileURLToPath(new URL('../..', import.meta.url)))
 const publicRoot = resolve(workspaceRoot, 'AllForSUXINHAO/TravellingBingo/public')
@@ -71,6 +72,10 @@ const postcardLockPath = resolve(
 const postcardPublicAssetRoot = resolve(publicRoot, 'assets/collectibles/postcards')
 const friendCatalogPath = resolve(publicRoot, 'data/friends.json')
 const friendPublicAssetRoot = resolve(publicRoot, 'assets/friends')
+const miracleCatalogPath = resolve(publicRoot, 'data/miracle-wardrobe.json')
+const miracleCharacterRoot = resolve(publicRoot, 'assets/miracle/characters')
+const miracleOutfitRoot = resolve(publicRoot, 'assets/miracle/outfits')
+const miracleAccessoryRoot = resolve(publicRoot, 'assets/miracle/accessories')
 const demoVisualsPath = resolve(publicRoot, 'data/demo-visuals.json')
 const demoGameAssetRoot = resolve(publicRoot, 'assets/game')
 const appIconRoot = resolve(publicRoot, 'icons')
@@ -110,6 +115,14 @@ const expectedFriends = [
   { id: 'xin-hao-rabbit', name: '心好兔', kind: 'rabbit', sourceCell: 3 },
   { id: 'signal-dog', name: '信号狗', kind: 'dog', sourceCell: 4 },
   { id: 'bili-bing', name: '饼哩饼哩', kind: 'human-like', sourceCell: 5 },
+]
+const expectedMiracleCharacters = [
+  { id: 'bingo', name: '饼狗' },
+  { id: 'class-representative-bing', name: '课代饼' },
+  { id: 'san-hao-rabbit', name: '三好兔' },
+  { id: 'xin-hao-rabbit', name: '心好兔' },
+  { id: 'signal-dog', name: '信号狗' },
+  { id: 'bili-bing', name: '饼哩饼哩' },
 ]
 
 function ensure(condition, message) {
@@ -275,6 +288,7 @@ async function verifyHorizontalAtlas(target, columns, label) {
   }
 
   ensure(transparentRgbLeakPixels === 0, `${label} 的完全透明像素含有隐藏彩色数据`)
+  return { data, info, target }
 }
 
 function verifyGenerationSummary(generation, label, expectedMode) {
@@ -365,6 +379,69 @@ async function verifyExactDirectory(directory, expectedNames, label) {
     JSON.stringify(actualNames) === JSON.stringify(expected),
     `${label} 与目录清单不一致：实际 ${actualNames.length}，预期 ${expected.length}`,
   )
+}
+
+async function verifyMiracleCutout(entry, { label, expectedPrefix, canvasSize, padding }) {
+  ensure(entry?.mime === 'image/webp', `${label} 的 MIME 不是 image/webp`)
+  ensure(entry.encoding === 'lossless', `${label} 必须使用无损 WebP`)
+  ensure(entry.width === canvasSize && entry.height === canvasSize, `${label} 的画布尺寸不一致`)
+  ensure(Number.isInteger(entry.byteLength) && entry.byteLength > 0, `${label} 的字节数不合法`)
+
+  const target = resolveSafeRelative(publicRoot, entry.url, `${label} 路径`, expectedPrefix)
+  ensure(entry.url.endsWith('.webp'), `${label} 的扩展名不是 WebP`)
+  const bytes = await readFile(target)
+  ensure(bytes.byteLength === entry.byteLength, `${label} 的实际字节数与目录不符`)
+  ensure(bytes.includes(Buffer.from('VP8L')), `${label} 不是无损 WebP 数据`)
+  const metadata = await sharp(bytes, { failOn: 'warning' }).metadata()
+  ensure(
+    metadata.format === 'webp' &&
+      metadata.width === canvasSize &&
+      metadata.height === canvasSize &&
+      metadata.hasAlpha === true,
+    `${label} 的格式、尺寸或透明通道不一致`,
+  )
+
+  const { data, info } = await sharp(bytes)
+    .ensureAlpha()
+    .raw()
+    .toBuffer({ resolveWithObject: true })
+  let minX = info.width
+  let minY = info.height
+  let maxX = -1
+  let maxY = -1
+  let visiblePixels = 0
+  let partialPixels = 0
+  let transparentRgbLeakPixels = 0
+  for (let offset = 0; offset < data.length; offset += info.channels) {
+    const alpha = data[offset + 3]
+    if (alpha === 0) {
+      if (data[offset] !== 0 || data[offset + 1] !== 0 || data[offset + 2] !== 0) {
+        transparentRgbLeakPixels += 1
+      }
+      continue
+    }
+    const pixelIndex = offset / info.channels
+    const x = pixelIndex % info.width
+    const y = Math.floor(pixelIndex / info.width)
+    minX = Math.min(minX, x)
+    minY = Math.min(minY, y)
+    maxX = Math.max(maxX, x)
+    maxY = Math.max(maxY, y)
+    visiblePixels += 1
+    if (alpha < 255) partialPixels += 1
+  }
+  ensure(visiblePixels > canvasSize * canvasSize * 0.08, `${label} 的主体覆盖过小`)
+  ensure(visiblePixels < canvasSize * canvasSize * 0.8, `${label} 的透明背景不足`)
+  ensure(partialPixels > 0, `${label} 缺少抗锯齿透明边缘`)
+  ensure(
+    minX >= padding - 1 &&
+      minY >= padding - 1 &&
+      canvasSize - 1 - maxX >= padding - 1 &&
+      canvasSize - 1 - maxY >= padding - 1,
+    `${label} 触碰画布安全边界`,
+  )
+  ensure(transparentRgbLeakPixels === 0, `${label} 的完全透明像素含有隐藏彩色数据`)
+  return { data, info, target }
 }
 
 function ensureRealPostcardReference(value, label) {
@@ -1056,6 +1133,164 @@ for (const [index, expected] of expectedFriends.entries()) {
 ensure(friendImageHashes.size === expectedFriends.length, '好友图鉴派生图数量或摘要不唯一')
 await verifyExactDirectory(friendPublicAssetRoot, expectedFriendFileNames, '公开好友图鉴素材目录')
 
+const miracleCatalog = JSON.parse(await readFile(miracleCatalogPath, 'utf8'))
+ensure(miracleCatalog.schemaVersion === 1, '奇迹饼狗衣柜目录版本不受支持')
+ensure(miracleCatalog.rights === 'user-confirmed-authorized', '奇迹饼狗衣柜缺少用户授权口径')
+ensure(
+  miracleCatalog.processing?.tool === 'sharp' &&
+    miracleCatalog.processing.mode === 'soft-chroma-key-component-grid-cutout' &&
+    miracleCatalog.processing.transparentPixelRgb === '000000' &&
+    miracleCatalog.processing.outputEncoding === 'lossless-webp',
+  '奇迹饼狗衣柜没有记录可复现的透明素材处理方式',
+)
+
+const expectedMiracleSources = {
+  bingo: 'exec-8b48c6b7-ef64-4d0f-8bc9-7b203ae98702.png',
+  outfits: 'exec-48447d79-4359-4ac8-a211-ce93b1f9cff4.png',
+  blackTieUniform: 'exec-91d985b4-1158-4a4b-8e81-94d9e8b541e0.png',
+  accessories: 'exec-a348e66e-5aca-4fa3-872e-8e16f29e68cf.png',
+}
+for (const [sourceId, filename] of Object.entries(expectedMiracleSources)) {
+  const sourceEntry = miracleCatalog.sources?.[sourceId]
+  const expectedPath = `resources/raw/travelling-bingo/generated/miracle/${filename}`
+  ensure(
+    sourceEntry?.path === expectedPath &&
+      sourceEntry.width === 1254 &&
+      sourceEntry.height === 1254 &&
+      sourceEntry.mime === 'image/png' &&
+      Number.isInteger(sourceEntry.byteLength) &&
+      sourceEntry.byteLength > 0,
+    `奇迹饼狗 ${sourceId} 母版目录信息不一致`,
+  )
+  const sourceTarget = resolveSafeRelative(
+    workspaceRoot,
+    sourceEntry.path,
+    `奇迹饼狗 ${sourceId} 母版路径`,
+    'resources/raw/travelling-bingo/generated/miracle/',
+  )
+  const sourceBytes = await readFile(sourceTarget)
+  const sourceMetadata = await sharp(sourceBytes, { failOn: 'warning' }).metadata()
+  ensure(
+    sourceMetadata.format === 'png' &&
+      sourceMetadata.width === 1254 &&
+      sourceMetadata.height === 1254 &&
+      sourceBytes.byteLength === sourceEntry.byteLength,
+    `奇迹饼狗 ${sourceId} 母版实际格式、尺寸或字节数不一致`,
+  )
+}
+
+ensure(
+  miracleCatalog.characters?.length === expectedMiracleCharacters.length,
+  '奇迹饼狗角色目录必须包含饼狗和 5 位朋友',
+)
+const miracleCharacterNames = new Set()
+for (const [index, expected] of expectedMiracleCharacters.entries()) {
+  const character = miracleCatalog.characters[index]
+  ensure(
+    character?.id === expected.id && character.name === expected.name,
+    `奇迹饼狗第 ${index + 1} 个角色身份不一致`,
+  )
+  ensure(
+    character.url === `assets/miracle/characters/${expected.id}.webp`,
+    `${expected.name} 的奇迹饼狗角色路径不一致`,
+  )
+  await verifyMiracleCutout(character, {
+    label: `${expected.name}奇迹饼狗角色底稿`,
+    expectedPrefix: 'assets/miracle/characters/',
+    canvasSize: 768,
+    padding: 34,
+  })
+  miracleCharacterNames.add(`${expected.id}.webp`)
+}
+await verifyExactDirectory(miracleCharacterRoot, miracleCharacterNames, '奇迹饼狗角色素材目录')
+
+ensure(
+  miracleCatalog.outfits?.length === OUTFIT_DEFINITIONS.length,
+  '奇迹饼狗衣柜必须精确包含 8 套服装',
+)
+const miracleOutfitNames = new Set()
+for (const [index, expected] of OUTFIT_DEFINITIONS.entries()) {
+  const outfit = miracleCatalog.outfits[index]
+  ensure(
+    outfit?.id === expected.id &&
+      outfit.name === expected.name &&
+      outfit.category === expected.category &&
+      outfit.categoryName === expected.categoryName &&
+      outfit.priceApples === expected.priceApples &&
+      outfit.starter === expected.starter,
+    `奇迹饼狗第 ${index + 1} 套服装信息不一致`,
+  )
+  ensureJsonEqual(
+    outfit.defaultTransform,
+    expected.defaultTransform,
+    `${expected.name} 的默认变换不一致`,
+  )
+  ensure(
+    outfit.url === `assets/miracle/outfits/${expected.id}.webp`,
+    `${expected.name} 的服装路径不一致`,
+  )
+  const verifiedOutfit = await verifyMiracleCutout(outfit, {
+    label: `${expected.name}服装`,
+    expectedPrefix: 'assets/miracle/outfits/',
+    canvasSize: 512,
+    padding: 24,
+  })
+  if (expected.id === 'black-tie-uniform') {
+    let visibleGreenPixels = 0
+    for (let offset = 0; offset < verifiedOutfit.data.length; offset += 4) {
+      const [r, g, b, alpha] = verifiedOutfit.data.subarray(offset, offset + 4)
+      if (alpha >= 8 && g - r >= 20 && g - b >= 20) visibleGreenPixels += 1
+    }
+    ensure(visibleGreenPixels === 0, '黑色领带制服仍有可见绿幕边缘')
+  }
+  miracleOutfitNames.add(`${expected.id}.webp`)
+}
+await verifyExactDirectory(miracleOutfitRoot, miracleOutfitNames, '奇迹饼狗服装素材目录')
+
+ensure(
+  miracleCatalog.accessories?.length === ACCESSORY_DEFINITIONS.length,
+  '奇迹饼狗衣柜必须精确包含 16 件配饰',
+)
+const miracleAccessoryNames = new Set()
+for (const [index, expected] of ACCESSORY_DEFINITIONS.entries()) {
+  const accessory = miracleCatalog.accessories[index]
+  ensure(
+    accessory?.id === expected.id &&
+      accessory.name === expected.name &&
+      accessory.category === expected.category &&
+      accessory.categoryName === expected.categoryName &&
+      accessory.priceApples === expected.priceApples &&
+      accessory.starter === expected.starter &&
+      accessory.lensTreatment === expected.lensTreatment,
+    `奇迹饼狗第 ${index + 1} 件配饰信息不一致`,
+  )
+  ensureJsonEqual(
+    accessory.defaultTransform,
+    expected.defaultTransform,
+    `${expected.name} 的默认变换不一致`,
+  )
+  ensure(
+    accessory.url === `assets/miracle/accessories/${expected.id}.webp`,
+    `${expected.name} 的配饰路径不一致`,
+  )
+  const verifiedAccessory = await verifyMiracleCutout(accessory, {
+    label: `${expected.name}配饰`,
+    expectedPrefix: 'assets/miracle/accessories/',
+    canvasSize: 512,
+    padding: 24,
+  })
+  if (expected.lensTreatment !== undefined) {
+    let visibleBluePixels = 0
+    for (let offset = 0; offset < verifiedAccessory.data.length; offset += 4) {
+      const [r, g, b, alpha] = verifiedAccessory.data.subarray(offset, offset + 4)
+      if (alpha >= 8 && b >= 90 && b - r >= 30 && b - g >= 16) visibleBluePixels += 1
+    }
+    ensure(visibleBluePixels === 0, `${expected.name}仍有可见蓝色镜片`)
+  }
+  miracleAccessoryNames.add(`${expected.id}.webp`)
+}
+await verifyExactDirectory(miracleAccessoryRoot, miracleAccessoryNames, '奇迹饼狗配饰素材目录')
+
 const demoVisuals = JSON.parse(await readFile(demoVisualsPath, 'utf8'))
 ensure(demoVisuals.schemaVersion === 2, 'Demo 视觉目录版本不受支持')
 ensure(demoVisuals.rights === 'user-confirmed-authorized', 'Demo 视觉目录缺少用户授权口径')
@@ -1409,5 +1644,5 @@ ensure(
 await verifyExactDirectory(publicFontAssetRoot, expectedFontFileNames, '公开字体素材目录')
 
 console.log(
-  `素材校验通过：${publicCatalog.itemCount} 张百万直拍、${siteFirstPublicCatalog.itemCount} 项全站第一、${favouriteSnapshots.map(({ bvids }) => bvids.length).join(' + ')} 条双收藏夹刷播快照、${postcardSource.itemCount} 条明信片候选、${postcardPublicCatalog.itemCount} 张真实明信片（${expectedPostcardDerivativeCount} 个 WebP）、${friendCatalog.itemCount} 位好友、${Object.keys(videoCatalog.videos).length} 条视频、${expectedGameFileNames.size} 个 Demo 视觉文件及 ${fontManifest.fonts.length} 个 2500 常用字 WOFF2 字体一致；本地核验百万直拍原图 ${verifiedMillionOriginals}/${source.items.length}、明信片原图 ${verifiedPostcardOriginals}/${postcardPublicCatalog.itemCount}、字体母版 ${verifiedFontSources}/${expectedFonts.size}`,
+  `素材校验通过：${publicCatalog.itemCount} 张百万直拍、${siteFirstPublicCatalog.itemCount} 项全站第一、${favouriteSnapshots.map(({ bvids }) => bvids.length).join(' + ')} 条双收藏夹刷播快照、${postcardSource.itemCount} 条明信片候选、${postcardPublicCatalog.itemCount} 张真实明信片（${expectedPostcardDerivativeCount} 个 WebP）、${friendCatalog.itemCount} 位好友、奇迹饼狗 ${miracleCatalog.characters.length} 个角色 + ${miracleCatalog.outfits.length} 套服装 + ${miracleCatalog.accessories.length} 件配饰、${Object.keys(videoCatalog.videos).length} 条视频、${expectedGameFileNames.size} 个 Demo 视觉文件及 ${fontManifest.fonts.length} 个 2500 常用字 WOFF2 字体一致；本地核验百万直拍原图 ${verifiedMillionOriginals}/${source.items.length}、明信片原图 ${verifiedPostcardOriginals}/${postcardPublicCatalog.itemCount}、字体母版 ${verifiedFontSources}/${expectedFonts.size}`,
 )

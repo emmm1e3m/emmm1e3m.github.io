@@ -41,6 +41,14 @@ import { validateCollectionCatalog } from './validateCollectionCatalog'
 import { isMusicPlayerAction, reduceMusicPlayer } from './musicPlayer'
 import { isProductivityAction, reduceProductivity } from './productivity'
 import { isValidTimestamp } from './time'
+import {
+  generateWardrobeShop,
+  isWardrobeAction,
+  reduceWardrobe,
+  refreshWardrobeShopForCompanionDay,
+  STARTER_WARDROBE_ASSET_IDS,
+  WARDROBE_ASSET_IDS,
+} from './wardrobe'
 import type {
   ActivityKind,
   ActivityRun,
@@ -774,6 +782,16 @@ function setDebugCollection(
     !action.owned && state.reality.pomodoro.selectedPostcardId === action.collectionId
   const removedSessionPostcard =
     !action.owned && state.reality.pomodoro.session?.postcardId === action.collectionId
+  const clearsPhotoBackground =
+    !action.owned && findCollectionCategory(catalog, action.collectionId) === 'postcard'
+  const nextPhotos = clearsPhotoBackground
+    ? Object.fromEntries(
+        Object.entries(state.wardrobe.photos).map(([photoId, photo]) => [
+          photoId,
+          photo.postcardId === action.collectionId ? { ...photo, postcardId: null } : photo,
+        ]),
+      )
+    : state.wardrobe.photos
   const nextState = {
     ...state,
     collections: nextCollections,
@@ -792,6 +810,10 @@ function setDebugCollection(
             },
           }
         : state.reality,
+    wardrobe:
+      nextPhotos === state.wardrobe.photos
+        ? state.wardrobe
+        : { ...state.wardrobe, photos: nextPhotos },
   }
   return succeed(
     action.owned ? nextState : reconcileTasksAfterCollectionRemoval(nextState, catalog),
@@ -833,15 +855,31 @@ function collectAllForDebug(
     }
     friendChangedCount += 1
   }
-  return succeed({ ...state, collections: nextCollections, friends: nextFriends }, [
+  const wardrobeChangedCount = WARDROBE_ASSET_IDS.filter(
+    (assetId) => !state.wardrobe.ownedAssetIds.includes(assetId),
+  ).length
+  return succeed(
     {
-      type: 'debug-applied',
-      action: action.type,
-      changedCount: collectionChangedCount + friendChangedCount,
-      collectionChangedCount,
-      friendChangedCount,
+      ...state,
+      collections: nextCollections,
+      friends: nextFriends,
+      wardrobe: {
+        ...state.wardrobe,
+        shop: { ...state.wardrobe.shop, assetIds: [] },
+        ownedAssetIds: [...WARDROBE_ASSET_IDS],
+      },
     },
-  ])
+    [
+      {
+        type: 'debug-applied',
+        action: action.type,
+        changedCount: collectionChangedCount + friendChangedCount + wardrobeChangedCount,
+        collectionChangedCount,
+        friendChangedCount,
+        wardrobeChangedCount,
+      },
+    ],
+  )
 }
 
 function clearAllForDebug(
@@ -857,6 +895,9 @@ function clearAllForDebug(
   }
   const collectionChangedCount = Object.keys(state.collections).length
   const friendChangedCount = Object.keys(state.friends).length
+  const wardrobeChangedCount =
+    state.wardrobe.ownedAssetIds.filter((assetId) => assetId !== STARTER_WARDROBE_ASSET_IDS[0])
+      .length + Object.keys(state.wardrobe.looks).length
   const session = state.reality.pomodoro.session
   const clearedState = {
     ...state,
@@ -870,14 +911,34 @@ function clearAllForDebug(
         session: session === null ? null : { ...session, postcardId: null },
       },
     },
+    wardrobe: {
+      ...state.wardrobe,
+      shop: {
+        companionDay: state.profile.companionDays,
+        assetIds: generateWardrobeShop(
+          state.random.seed,
+          state.profile.companionDays,
+          STARTER_WARDROBE_ASSET_IDS,
+        ),
+      },
+      ownedAssetIds: [...STARTER_WARDROBE_ASSET_IDS],
+      looks: {},
+      photos: Object.fromEntries(
+        Object.entries(state.wardrobe.photos).map(([photoId, photo]) => [
+          photoId,
+          photo.postcardId === null ? photo : { ...photo, postcardId: null },
+        ]),
+      ),
+    },
   }
   return succeed(reconcileTasksAfterCollectionRemoval(clearedState, catalog), [
     {
       type: 'debug-applied',
       action: action.type,
-      changedCount: collectionChangedCount + friendChangedCount,
+      changedCount: collectionChangedCount + friendChangedCount + wardrobeChangedCount,
       collectionChangedCount,
       friendChangedCount,
+      wardrobeChangedCount,
     },
   ])
 }
@@ -1101,6 +1162,7 @@ function reducePreparedGame(
 ): GameTransition {
   if (isMusicPlayerAction(action)) return reduceMusicPlayer(state, action)
   if (isProductivityAction(action)) return reduceProductivity(state, action, catalog)
+  if (isWardrobeAction(action)) return reduceWardrobe(state, action, catalog)
   switch (action.type) {
     case 'activity/start':
       return startActivity(state, action, catalog)
@@ -1168,7 +1230,8 @@ export function reduceGame(
 
   const now = 'now' in action ? action.now : null
   if (now === null || !isValidTimestamp(now)) return transition
-  const refreshed = refreshCompletedTaskBoard(transition.state, now, catalog)
+  const taskRefreshed = refreshCompletedTaskBoard(transition.state, now, catalog)
+  const refreshed = refreshWardrobeShopForCompanionDay(taskRefreshed)
 
   // 游戏日推进与任务板刷新属于同一次成功提交；失败动作和现实时间流逝都不会换板。
   return refreshed === transition.state ? transition : { ...transition, state: refreshed }

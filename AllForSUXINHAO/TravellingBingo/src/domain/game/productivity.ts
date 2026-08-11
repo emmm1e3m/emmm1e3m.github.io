@@ -11,6 +11,7 @@ import { saturatingAddSafeCounter } from './counters'
 import { isPetTired } from '../pet/preferences'
 import { resolveVitalityForCompanionDayAdvance } from '../player/vitality'
 import { isValidTimestamp, MAX_DATE_TIMESTAMP_MS } from './time'
+import { refreshWardrobeShopForCompanionDay } from './wardrobe'
 import type {
   CollectionCatalog,
   GameAction,
@@ -689,7 +690,7 @@ export function isProductivityAction(action: GameAction): action is Productivity
 /**
  * 现实空间、待办与苹果钟的纯状态机。所有时间由 action 显式传入，失败分支保留原 state 引用。
  */
-export function reduceProductivity(
+function reducePreparedProductivity(
   state: GameState,
   action: ProductivityAction,
   catalog: CollectionCatalog,
@@ -724,4 +725,17 @@ export function reduceProductivity(
         ? completeDueWork(state, action.now)
         : fail(state, 'INVALID_TIME', '时钟时间无效')
   }
+}
+
+export function reduceProductivity(
+  state: GameState,
+  action: ProductivityAction,
+  catalog: CollectionCatalog,
+): GameTransition {
+  const transition = reducePreparedProductivity(state, action, catalog)
+  if (!transition.ok || transition.state.profile.companionDays <= state.profile.companionDays) {
+    return transition
+  }
+  const refreshed = refreshWardrobeShopForCompanionDay(transition.state)
+  return refreshed === transition.state ? transition : { ...transition, state: refreshed }
 }

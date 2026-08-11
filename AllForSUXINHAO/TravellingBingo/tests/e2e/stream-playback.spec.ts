@@ -1,4 +1,4 @@
-import { expect, test, type BrowserContext, type Request } from '@playwright/test'
+import { expect, test, type BrowserContext } from '@playwright/test'
 
 import { enterReality, startGame } from './support/game'
 
@@ -97,7 +97,7 @@ test.describe('独立刷播页真实流程', () => {
     await panel.getByRole('button', { name: '开始刷播' }).click()
     const popup = await popupPromise
     await popup.waitForLoadState('domcontentloaded')
-    await expect(popup.getByRole('heading', { name: '刷播播放器' })).toBeVisible()
+    await expect(popup.getByRole('heading', { name: '在线刷播工具' })).toBeVisible()
 
     const playerFrames = popup.locator('[data-testid="player-host"] iframe')
     await expect.poll(() => requests.favoriteRequests.length).toBe(1)
@@ -112,7 +112,7 @@ test.describe('独立刷播页真实流程', () => {
     )
     expect(requests.playerRequests).toHaveLength(2)
 
-    const title = popup.getByRole('heading', { name: '刷播播放器' })
+    const title = popup.getByRole('heading', { name: '在线刷播工具' })
     for (let click = 0; click < 5; click += 1) await title.click()
     await popup.getByRole('textbox', { name: 'DEBUG密码' }).fill('SUperView')
     await popup.getByRole('button', { name: '解锁DEBUG' }).click()
@@ -130,8 +130,9 @@ test.describe('独立刷播页真实流程', () => {
     await expect(popup.locator('[data-status]')).toHaveAttribute('data-round', '2')
 
     await popup.getByRole('button', { name: '停止刷播' }).click()
+    await expect(popup.locator('.stream-history')).toContainText('1 轮')
     await page.bringToFront()
-    await expect(panel.getByText('已停止 · 1 轮')).toBeVisible()
+    await expect(panel.getByRole('heading', { name: '最近任务' })).toHaveCount(0)
     expect(requests.unexpectedRequests).toEqual([])
   })
 })
