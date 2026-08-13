@@ -39,11 +39,7 @@ describe('StreamPlayerApp', () => {
         '静默播放功能在某些条件下可能失效，因此请务必检查轮次和自测视频涨幅的关系。',
       ),
     ).toBeVisible()
-    expect(
-      screen.getByText(
-        '在新设备/浏览器上请先检查：若登录，历史记录里出现刷播视频为成功；若未登录，自测视频播放量增加为成功。',
-      ),
-    ).toBeVisible()
+    expect(screen.queryByText(/在新设备\/浏览器上请先检查/u)).not.toBeInTheDocument()
     expect(HTMLMediaElement.prototype.play).toHaveBeenCalled()
     expect(screen.getByRole('radio', { name: '刷播' })).toBeChecked()
     expect(screen.getByRole('radio', { name: '静默播放' })).toBeChecked()
@@ -124,7 +120,7 @@ describe('StreamPlayerApp', () => {
     expect(screen.queryAllByTitle(/刷播视频$/u)).toHaveLength(0)
     expect(screen.getAllByText('新标签页')).not.toHaveLength(0)
     fireEvent.click(screen.getByRole('button', { name: '停止刷播' }))
-    expect(handle.close).toHaveBeenCalled()
+    expect(handle.close).not.toHaveBeenCalled()
   })
 
   it('首屏读取历史被浏览器拒绝时仍可正常打开', () => {

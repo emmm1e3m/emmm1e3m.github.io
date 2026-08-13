@@ -181,9 +181,7 @@ test.describe('V9 房间契约', () => {
     await expect(streamPanel.getByRole('radio', { name: '静默播放' })).toBeChecked()
     await expect(streamPanel.getByRole('radio', { name: '新标签页' })).not.toBeChecked()
     await expect(streamPanel.getByRole('radio', { name: '弹出窗口' })).not.toBeChecked()
-    await expect(streamPanel).toContainText(
-      '在新设备/浏览器上请先检查：若登录，历史记录里出现刷播视频为成功；若未登录，自测视频播放量增加为成功。',
-    )
+    await expect(streamPanel).not.toContainText('在新设备/浏览器上请先检查')
 
     await room.locator('[data-hotspot="二楼电脑·冲热"]').click()
     const trendPanel = page.locator('.context-panel--reality-trend')

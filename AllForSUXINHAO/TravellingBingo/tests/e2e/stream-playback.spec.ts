@@ -224,7 +224,7 @@ test.describe('独立刷播页真实流程', () => {
             recordIndex,
           ),
         )
-        .toBe(true)
+        .toBe(false)
     }
 
     await page.bringToFront()

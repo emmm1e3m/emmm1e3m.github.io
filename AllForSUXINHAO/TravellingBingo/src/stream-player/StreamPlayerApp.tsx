@@ -119,7 +119,6 @@ export function StreamPlayerApp() {
   const openerRef = useRef(window.opener ?? null)
   const channelSessionIdRef = useRef(query?.sessionId ?? '')
   const historyRunIdRef = useRef('')
-  const openedWindowsRef = useRef<Window[]>([])
 
   const [status, setStatus] = useState<PageStatus>(query === null ? 'error' : 'idle')
   const [favoriteId, setFavoriteId] = useState<StreamFavoriteId>(query?.favoriteId ?? '3682220021')
@@ -148,14 +147,6 @@ export function StreamPlayerApp() {
 
   const clearRoundPlayers = useCallback(() => {
     setFrames([])
-    openedWindowsRef.current.forEach((handle) => {
-      try {
-        if (!handle.closed) handle.close()
-      } catch {
-        // 仅关闭由本站打开且浏览器仍允许访问的窗口。
-      }
-    })
-    openedWindowsRef.current = []
   }, [])
 
   const postToMain = useCallback(
@@ -275,7 +266,6 @@ export function StreamPlayerApp() {
           const url = buildFullVideoUrl(bvid)
           const handle = openFullVideoTarget(url, nextConfig.playbackMode)
           if (handle === null) return false
-          openedWindowsRef.current.push(handle)
           return true
         },
         onOpenFailed: () => {
@@ -436,9 +426,6 @@ export function StreamPlayerApp() {
         <p>移动端离开刷播页面可能会导致刷播暂停。</p>
         <p>请在网页版哔哩哔哩设置‘自动开播’和‘播完暂停’。</p>
         <p>静默播放功能在某些条件下可能失效，因此请务必检查轮次和自测视频涨幅的关系。</p>
-        <p>
-          在新设备/浏览器上请先检查：若登录，历史记录里出现刷播视频为成功；若未登录，自测视频播放量增加为成功。
-        </p>
       </header>
 
       {query !== null ? (

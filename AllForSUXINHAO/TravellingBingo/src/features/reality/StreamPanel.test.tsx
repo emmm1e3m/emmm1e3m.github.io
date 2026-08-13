@@ -44,11 +44,7 @@ describe('StreamPanel', () => {
         '静默播放功能在某些条件下可能失效，因此请务必检查轮次和自测视频涨幅的关系。',
       ),
     ).toBeVisible()
-    expect(
-      screen.getByText(
-        '在新设备/浏览器上请先检查：若登录，历史记录里出现刷播视频为成功；若未登录，自测视频播放量增加为成功。',
-      ),
-    ).toBeVisible()
+    expect(screen.queryByText(/在新设备\/浏览器上请先检查/u)).not.toBeInTheDocument()
     expect(screen.getByRole('radio', { name: '刷播' })).toBeChecked()
     expect(screen.getByRole('radio', { name: '测试' })).not.toBeChecked()
     expect(screen.getByRole('radio', { name: '静默播放' })).toBeChecked()

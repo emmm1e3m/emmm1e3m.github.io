@@ -24,7 +24,6 @@ const STREAM_GUIDANCE = [
   '会使用当前浏览器账号，登录时每天不要超过5小时。',
   '请在网页版哔哩哔哩设置‘自动开播’和‘播完暂停’。',
   '静默播放功能在某些条件下可能失效，因此请务必检查轮次和自测视频涨幅的关系。',
-  '在新设备/浏览器上请先检查：若登录，历史记录里出现刷播视频为成功；若未登录，自测视频播放量增加为成功。',
 ] as const
 
 const STREAM_FAVORITES: readonly { id: StreamFavoriteId; label: string }[] = [
