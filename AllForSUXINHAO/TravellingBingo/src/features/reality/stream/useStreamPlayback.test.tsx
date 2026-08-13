@@ -43,6 +43,7 @@ describe('useStreamPlayback', () => {
         selfTestBvid: 'BV1xx411c7mD',
         stopAfterMs: 5 * 3_600_000,
         sessionId: 'session-1',
+        playbackMode: 'popup',
       }),
     )
 
@@ -51,6 +52,7 @@ describe('useStreamPlayback', () => {
       favoriteId: '3986840044',
       sessionId: 'session-1',
       autostart: '1',
+      mode: 'popup',
       selfTest: 'BV1xx411c7mD',
       stopHours: '5',
     })

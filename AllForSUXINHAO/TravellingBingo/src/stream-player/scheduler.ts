@@ -20,7 +20,8 @@ export interface StreamSchedulerSnapshot {
 
 export interface StreamSchedulerCallbacks {
   readonly onStarted?: (startedAt: number) => void
-  readonly onOpenVideo: (bvid: string, round: number, index: number) => void
+  readonly onOpenVideo: (bvid: string, round: number, index: number) => boolean | void
+  readonly onOpenFailed?: (bvid: string, round: number, index: number) => void
   readonly onClearRound: () => void
   readonly onStatus?: (snapshot: StreamSchedulerSnapshot) => void
   readonly onRoundCompleted?: (round: number, completedAt: number) => void
@@ -59,6 +60,7 @@ export class StreamRoundScheduler {
   private timer: unknown = null
   private queue: readonly string[] = []
   private active = false
+  private startedEmitted = false
   private snapshot: StreamSchedulerSnapshot | null = null
 
   constructor(options: StreamSchedulerOptions) {
@@ -80,6 +82,7 @@ export class StreamRoundScheduler {
     if (this.active) return
     const startedAt = this.now()
     this.active = true
+    this.startedEmitted = false
     this.snapshot = {
       status: 'opening',
       startedAt,
@@ -94,7 +97,6 @@ export class StreamRoundScheduler {
       this.finish('completed')
       return
     }
-    this.callbacks.onStarted?.(startedAt)
     this.beginRound()
   }
 
@@ -191,7 +193,16 @@ export class StreamRoundScheduler {
     const index = this.snapshot.openedCount
     const bvid = this.queue[index]
     if (bvid === undefined) return
-    this.callbacks.onOpenVideo(bvid, this.snapshot.round, index)
+    const opened = this.callbacks.onOpenVideo(bvid, this.snapshot.round, index)
+    if (opened === false) {
+      this.finish('stopped')
+      this.callbacks.onOpenFailed?.(bvid, this.snapshot.round, index)
+      return
+    }
+    if (!this.startedEmitted) {
+      this.startedEmitted = true
+      this.callbacks.onStarted?.(this.snapshot.startedAt)
+    }
     const openedCount = index + 1
     const finishedOpening = openedCount >= this.queue.length
     this.snapshot = {

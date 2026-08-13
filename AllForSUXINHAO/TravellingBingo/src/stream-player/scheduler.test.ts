@@ -24,7 +24,9 @@ function createHarness(overrides: Partial<StreamSchedulerOptions> = {}) {
     clearTimer: (timer) => {
       ;(timer as { cleared: boolean }).cleared = true
     },
-    onOpenVideo: (bvid, round, index) => opened.push({ bvid, round, index }),
+    onOpenVideo: (bvid, round, index) => {
+      opened.push({ bvid, round, index })
+    },
     onClearRound: () => {
       clears += 1
     },
@@ -64,10 +66,12 @@ describe('StreamRoundScheduler', () => {
   })
 
   it('首个视频立即创建，后续视频按 5 秒绝对时点打开', () => {
-    const harness = createHarness()
+    const onStarted = vi.fn()
+    const harness = createHarness({ onStarted })
     harness.scheduler.start()
 
     expect(harness.opened).toEqual([{ bvid: FIRST, round: 1, index: 0 }])
+    expect(onStarted).toHaveBeenCalledOnce()
     expect(harness.timer?.delayMs).toBe(5_000)
 
     harness.setNow(5_999)
@@ -81,6 +85,28 @@ describe('StreamRoundScheduler', () => {
       status: 'waiting',
       nextActionAt: 316_000,
     })
+  })
+
+  it('首个目标被浏览器拦截时不报告 started、不计打开且不继续调度', () => {
+    const onStarted = vi.fn()
+    const onOpenFailed = vi.fn()
+    const harness = createHarness({
+      onStarted,
+      onOpenVideo: () => false,
+      onOpenFailed,
+    })
+
+    harness.scheduler.start()
+
+    expect(onStarted).not.toHaveBeenCalled()
+    expect(onOpenFailed).toHaveBeenCalledWith(FIRST, 1, 0)
+    expect(harness.scheduler.getSnapshot()).toMatchObject({
+      status: 'stopped',
+      openedCount: 0,
+      totalCount: 0,
+      nextActionAt: null,
+    })
+    expect(harness.timer).toBeNull()
   })
 
   it('最后一个 iframe 创建后 310 秒销毁全轮并立即开始下轮', () => {

@@ -41,12 +41,20 @@ describe('StreamPanel', () => {
     expect(screen.getByText('请在网页版哔哩哔哩设置‘自动开播’和‘播完暂停’。')).toBeVisible()
     expect(
       screen.getByText(
+        '静默播放功能在某些条件下可能失效，因此请务必检查轮次和自测视频涨幅的关系。',
+      ),
+    ).toBeVisible()
+    expect(
+      screen.getByText(
         '在新设备/浏览器上请先检查：若登录，历史记录里出现刷播视频为成功；若未登录，自测视频播放量增加为成功。',
       ),
     ).toBeVisible()
     expect(screen.getByRole('radio', { name: '刷播' })).toBeChecked()
     expect(screen.getByRole('radio', { name: '测试' })).not.toBeChecked()
-    expect(screen.queryByText(/维度穿透|游客刷播|打开方式|视频间隔/u)).not.toBeInTheDocument()
+    expect(screen.getByRole('radio', { name: '静默播放' })).toBeChecked()
+    expect(screen.getByRole('radio', { name: '新标签页' })).not.toBeChecked()
+    expect(screen.getByRole('radio', { name: '弹出窗口' })).not.toBeChecked()
+    expect(screen.queryByText(/维度穿透|游客刷播|视频间隔/u)).not.toBeInTheDocument()
   })
 
   it('有效自测视频输入立即持久化，并把收藏夹与定时停止传给独立页', () => {
@@ -63,6 +71,19 @@ describe('StreamPanel', () => {
     expect(props.onStart).toHaveBeenCalledWith('BV1xx411c7mD', {
       favoriteId: 3682220021,
       stopAfterMs: 18_000_000,
+      playbackMode: 'silent',
+    })
+  })
+
+  it('把选中的完整视频打开方式传给独立页', () => {
+    const { props } = renderPanel()
+    fireEvent.click(screen.getByRole('radio', { name: '新标签页' }))
+    fireEvent.click(screen.getByRole('button', { name: '开始刷播' }))
+
+    expect(props.onStart).toHaveBeenCalledWith('', {
+      favoriteId: 3682220021,
+      stopAfterMs: null,
+      playbackMode: 'tab',
     })
   })
 

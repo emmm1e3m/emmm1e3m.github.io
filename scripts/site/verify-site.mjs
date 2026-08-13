@@ -79,7 +79,7 @@ if (unexpectedEntries.length > 0 || allForSuxinhaoEntries.length !== 1) {
 const serviceWorker = await readFile(resolve(gameRoot, 'sw.js'), 'utf8')
 if (
   !serviceWorker.includes(
-    'ignoreURLParametersMatching:[/^(?:favoriteId|selfTest|stopHours|sessionId|autostart)$/u]',
+    'ignoreURLParametersMatching:[/^(?:favoriteId|selfTest|stopHours|sessionId|autostart|mode)$/u]',
   )
 ) {
   throw new Error('Service Worker 没有忽略刷播页的受控配置参数')

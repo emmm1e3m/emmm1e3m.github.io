@@ -19,6 +19,15 @@ export const STREAM_FAVORITE_LABELS: Readonly<Record<StreamFavoriteId, string>> 
 export const STREAM_VIDEO_INTERVAL_MS = 5_000
 export const DEFAULT_STREAM_ROUND_INTERVAL_MS = 310_000
 
+export const STREAM_PLAYBACK_MODES = ['silent', 'tab', 'popup'] as const
+export type StreamPlaybackMode = (typeof STREAM_PLAYBACK_MODES)[number]
+
+export const STREAM_PLAYBACK_MODE_LABELS: Readonly<Record<StreamPlaybackMode, string>> = {
+  silent: '静默播放',
+  tab: '新标签页',
+  popup: '弹出窗口',
+}
+
 const DEFAULT_STREAM_FAVORITE_ID = String(DOMAIN_DEFAULT_STREAM_FAVORITE_ID) as StreamFavoriteId
 
 export interface StreamPlayerQuery {
@@ -27,6 +36,7 @@ export interface StreamPlayerQuery {
   readonly stopHours: number | null
   readonly sessionId: string
   readonly autostart: boolean
+  readonly playbackMode: StreamPlaybackMode
 }
 
 export class StreamPlayerConfigError extends Error {
@@ -38,6 +48,10 @@ export class StreamPlayerConfigError extends Error {
 
 export function isStreamFavoriteId(value: string): value is StreamFavoriteId {
   return STREAM_FAVORITE_IDS.some((favoriteId) => favoriteId === value)
+}
+
+export function isStreamPlaybackMode(value: string): value is StreamPlaybackMode {
+  return STREAM_PLAYBACK_MODES.some((mode) => mode === value)
 }
 
 function normalizeBvid(value: string) {
@@ -97,6 +111,10 @@ export function parseStreamPlayerQuery(
   const stopHours = parseStopHoursInput(params.get('stopHours') ?? '')
 
   const sessionId = params.get('sessionId')?.trim() || createSessionId()
+  const rawPlaybackMode = params.get('mode') ?? 'silent'
+  if (!isStreamPlaybackMode(rawPlaybackMode)) {
+    throw new StreamPlayerConfigError('请选择静默播放、新标签页或弹出窗口。')
+  }
 
   return {
     favoriteId,
@@ -104,6 +122,7 @@ export function parseStreamPlayerQuery(
     stopHours,
     sessionId,
     autostart: params.get('autostart') === '1',
+    playbackMode: rawPlaybackMode,
   }
 }
 
@@ -156,6 +175,11 @@ export function buildOfficialPlayerUrl(bvid: string) {
     t: '0',
   })
   return `https://player.bilibili.com/player.html?${query.toString()}`
+}
+
+/** 新标签页与弹出窗口共用完整视频页地址。 */
+export function buildFullVideoUrl(bvid: string) {
+  return `https://www.bilibili.com/video/${bvid}/?autoplay=1&t=0`
 }
 
 export async function fetchFavoriteCatalog(favoriteId: StreamFavoriteId, signal?: AbortSignal) {

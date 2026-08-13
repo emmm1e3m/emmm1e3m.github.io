@@ -1,5 +1,6 @@
 import {
   buildOfficialPlayerUrl,
+  buildFullVideoUrl,
   buildStreamRound,
   parseFavoriteCatalog,
   parseSelfTestInput,
@@ -17,13 +18,14 @@ describe('stream player catalog', () => {
       stopHours: null,
       sessionId: 'local-session',
       autostart: false,
+      playbackMode: 'silent',
     })
   })
 
   it('解析主游戏传入的自动开始参数', () => {
     expect(
       parseStreamPlayerQuery(
-        '?favoriteId=3986840044&selfTest=BV1xx411c7mD&stopHours=4.5&sessionId=s-1&autostart=1',
+        '?favoriteId=3986840044&selfTest=BV1xx411c7mD&stopHours=4.5&sessionId=s-1&autostart=1&mode=popup',
       ),
     ).toEqual({
       favoriteId: '3986840044',
@@ -31,6 +33,7 @@ describe('stream player catalog', () => {
       stopHours: 4.5,
       sessionId: 's-1',
       autostart: true,
+      playbackMode: 'popup',
     })
   })
 
@@ -78,5 +81,17 @@ describe('stream player catalog', () => {
     expect(url.searchParams.get('autoplay')).toBe('1')
     expect(url.searchParams.get('muted')).toBe('1')
     expect(url.searchParams.get('t')).toBe('0')
+  })
+
+  it('新标签页与弹出窗口共用完整视频页面地址', () => {
+    const url = new URL(buildFullVideoUrl(CATALOG[0]))
+    expect(url.origin).toBe('https://www.bilibili.com')
+    expect(url.pathname).toBe(`/video/${CATALOG[0]}/`)
+    expect(url.searchParams.get('autoplay')).toBe('1')
+    expect(url.searchParams.get('t')).toBe('0')
+  })
+
+  it('拒绝未知播放方式', () => {
+    expect(() => parseStreamPlayerQuery('?mode=background')).toThrow('静默播放')
   })
 })

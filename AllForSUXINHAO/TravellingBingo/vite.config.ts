@@ -88,7 +88,9 @@ export default defineConfig({
         dontCacheBustURLsMatching: /^assets\/[^/]+-[A-Za-z0-9_-]{8,}\.(?:js|css)$/u,
         navigateFallback: '/AllForSUXINHAO/TravellingBingo/index.html',
         // 独立刷播页携带配置参数时仍应命中自己的预缓存入口，不能落入游戏首页。
-        ignoreURLParametersMatching: [/^(?:favoriteId|selfTest|stopHours|sessionId|autostart)$/u],
+        ignoreURLParametersMatching: [
+          /^(?:favoriteId|selfTest|stopHours|sessionId|autostart|mode)$/u,
+        ],
         navigateFallbackDenylist: [
           /^\/AllForSUXINHAO\/TravellingBingo\/stream-player\.html(?:$|\?)/u,
         ],

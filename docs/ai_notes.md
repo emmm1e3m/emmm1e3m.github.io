@@ -157,11 +157,11 @@ public/assets/game/chan-chan-house-v2-1098.webp
 - 电脑端和移动端都可进入、恢复现实维度；设备能力判断只在打开 `reality-trend` 时拦截冲热。玩家可见提示只说冲热目前在电脑端开放，不描述输入设备、媒体查询或检测细节。
 - 二楼现实入口拆分为“刷播”和“冲热（开发中）”；冲热页只保留居中的字母建设站入口。一楼“工作”按 `PostcardPicker` 背景、苹果钟时长、待办 CRUD 的顺序渲染；背景选项来自已拥有明信片与已保存奇迹合拍。
 - `features/reality/stream/parser.ts` 接受单个可选裸 BVID 或 `http(s)` B 站完整视频链接，规范为 BVID 后写入 `reality.streamSettings.selfTestBvid`；`favoriteId` 只能取 `3682220021 | 3986840044`。当前刷播设置只持久化这两个字段。
-- `features/reality/stream/useStreamPlayback.ts` 只在用户手势内同步 `window.open()` 一个名为 `SUperView` 的 430 × 760 独立窗口，并通过查询参数传入 `favoriteId`、`selfTest`、`stopHours`、`sessionId` 与 `autostart=1`。主游戏不创建 B 站 iframe，也不负责视频顺序；弹窗被拦截时只显示授权后重新开始。
-- `StreamPanel` 把主说明、设备检查、弹窗权限、时长限制、继续运行提醒和“移动端离开刷播页面可能会导致刷播暂停。”合并为一个分点 guidance 容器，不再拆成多块非标准提示。主游戏与独立页都显示“请在网页版哔哩哔哩设置‘自动开播’和‘播完暂停’。” `src/stream-player/` 是“在线刷播工具”独立页实现。页面可从 URL 自动带入设置，也可在自身 UI 修改收藏夹、自测视频和定时停止后手动开始。固定使用同源 `favourites/<favoriteId>.txt`，`fetch(..., { credentials: 'same-origin' })` 后逐行校验 BV；运行时没有 B 站收藏夹 API、HTML 代理或 CORS 读取。
-- `StreamRoundScheduler` 每轮用 Fisher–Yates 重新打乱收藏夹并把自测 BVID 固定追加在末尾；首个 iframe 立即创建，之后固定每 5 秒创建一个。URL 固定带 `autoplay=1&muted=1&danmaku=0&t=0`；界面不描述内部去重行为。
-- 最后一个 iframe 创建后才以 `Date.now()` 设置轮次截止时间，生产默认 310 秒。到期先统一移除本轮全部 iframe，再完成轮次并立即开始下一轮；定时停止同样使用绝对墙钟截止。`visibilitychange` / `pageshow` 只调用 `reconcile()` 处理当前到期动作，不维护每秒自增计数器，也不补开多轮。
-- 在线刷播工具挂载时即创建循环的低音量 WAV 保活音频，空闲、运行和停止后都保持，只有页面卸载时释放。播放器 iframe 始终真实存在；默认 CSS 隐藏，只有独立页 DEBUG 中选择“显示播放器”才展示。
+- `features/reality/stream/useStreamPlayback.ts` 只在用户手势内同步 `window.open()` 一个名为 `SUperView` 的 430 × 760 独立窗口，并通过查询参数传入 `favoriteId`、`selfTest`、`stopHours`、`mode`、`sessionId` 与 `autostart=1`。主游戏不创建 B 站播放器，也不负责视频顺序；弹窗被拦截时只显示授权后重新开始。独立页无参数直达仍有完整表单，主游戏只提供初始配置。
+- `StreamPanel` 把主说明、设备检查、弹窗权限、时长限制、继续运行提醒和“移动端离开刷播页面可能会导致刷播暂停。”合并为一个分点 guidance 容器，不再拆成多块非标准提示。主游戏与独立页都显示“请在网页版哔哩哔哩设置‘自动开播’和‘播完暂停’。”以及静默播放失效风险。`src/stream-player/` 是“在线刷播工具”独立页实现。页面可从 URL 自动带入设置，也可在自身 UI 修改收藏夹、自测视频、定时停止与播放方式后手动开始。固定使用同源 `favourites/<favoriteId>.txt`，`fetch(..., { credentials: 'same-origin' })` 后逐行校验 BV；运行时没有 B 站收藏夹 API、HTML 代理或 CORS 读取。
+- `StreamRoundScheduler` 每轮用 Fisher–Yates 重新打乱收藏夹并把自测 BVID 固定追加在末尾；首个目标立即创建，之后固定每 5 秒创建一个。`silent` 使用带 `autoplay=1&muted=1&danmaku=0&t=0` 的官方 iframe；`tab` 与 `popup` 共用带 `autoplay=1&t=0` 的完整视频页 URL，只在 `window.open` 的窗口特征上不同。打开回调必须返回成功后才增加计数并首次发出 `started`，被浏览器拦截时不得误发每日奖励。
+- 最后一个播放目标创建后才以 `Date.now()` 设置轮次截止时间，生产默认 310 秒。到期先统一移除 iframe 或关闭由本站打开的标签页/窗口，再完成轮次并立即开始下一轮；定时停止同样使用绝对墙钟截止。`visibilitychange` / `pageshow` 只调用 `reconcile()` 处理当前到期动作，不维护每秒自增计数器，也不补开多轮。
+- 在线刷播工具挂载时即创建循环的低音量 WAV 保活音频，空闲、运行和停止后都保持，只有页面卸载时释放。静默模式的播放器 iframe 始终真实存在；DEBUG 未选择显示时固定在视口内 `1 × 1px`、透明度 `0.01`、`pointer-events: none`，且保留 `aria-hidden`、`inert` 与 `tabIndex=-1`。DEBUG 只对静默模式提供可见播放器开关。
 - 隐藏 DEBUG 由独立页大标题连续点击 5 次后出现密码框，密码严格为 `SUperView`。解锁状态写入独立页 `localStorage`，重开页面自动恢复；“关闭 DEBUG”会清除该状态，之后再次开启需要重新验证密码。DEBUG 可修改本页轮次间隔并切换播放器显示；主游戏 DEBUG 与之完全解耦。
 - 会话可快照 0–24 小时的定时停止，0/null 为不限时。主游戏仅从窗口生命周期派生 HUD 的启动中、运行中或停止中状态，不接收或展示轮次、倒计时与最近任务，也不写入新的轮次或会话统计；`reality.streamHistory` 仅作为冻结兼容字段随旧存档保留。完整状态和最近 10 次任务只在独立页展示并写入独立页自己的 `localStorage`。每完成一轮调用 history upsert，以同一 `sessionId` 覆盖当前 `running/checkpoint` 记录；正常停止覆盖同一记录为 `final`，`pagehide` 只作兜底，保证硬关闭至少留下上一完整轮。0 轮正常停止也可形成 final。运行中的 iframe、定时器、保活音频和独立页 DEBUG 状态不进入 `.bingo`。
 - 当前独立窗口发出同源且 session 匹配的受信 `started` 后，主 UI 以语义有效的本地 `YYYY-MM-DD` dispatch `stream/daily-reward-claim`，首次奖励 20🍎。点击开始、`window.open()` 成功或收藏夹开始加载均不触发；`lastRewardDateKey` 表示已经结算的最大本地日期，同日或更早日期的 claim 保持原状态且不产生 effect，只有严格更晚的现实日期首次 `started` 才能再次领取。`lastRewardDateKey` 即使苹果达到上限也会写入；实际到账数才累加 `statistics.applesEarned`，不改刷播活动的 `started/claimed`。这条 started/claim 管道不是轮次/会话统计，也不能证明 B 站真实播放。
@@ -179,7 +179,7 @@ public/assets/game/chan-chan-house-v2-1098.webp
 - 守候音频只在三个旅程入口的明确用户手势中创建并复用，运行期保持开启；状态栏不显示开关。它不能绕过浏览器或操作系统的后台冻结策略。
 - `useScreenWakeLock.ts` 只在移动主输入媒体查询匹配、旅程运行且页面可见时请求屏幕常亮；隐藏时释放、重新可见时再请求。API 缺失或权限拒绝静默降级，不把常亮请求解释为后台调度保证。
 - GitHub Pages 是静态托管，浏览器不能伪造 B 站 Referer；B 站 API、DASH/MP4 流也不向当前 Pages Origin 提供可直接播放的跨域响应。因此不固化会过期的签名流地址，也不引入未知第三方代理，继续使用官方 iframe。
-- 独立刷播页与收藏/唱片机播放器是两条独立调度边界，但都只嵌入官方 B 站 iframe。B 站 iframe 文档运行在 B 站来源下，浏览器按自身第三方 Cookie 策略决定是否附带现有 B 站会话；`allow="autoplay"` 只委托自动播放能力，`referrerPolicy` 只约束 Referer，不控制 Cookie。
+- 独立刷播页与收藏/唱片机播放器是独立调度边界。静默刷播与收藏播放器嵌入官方 B 站 iframe；新标签页/弹出窗口刷播则打开完整 B 站视频页。浏览器按自身 Cookie、自动播放与弹窗策略决定登录态和页面行为；`allow="autoplay"` 只委托 iframe 自动播放能力，`referrerPolicy` 只约束 Referer，不控制 Cookie。
 - B 站 iframe 内自己的脚本会发起媒体、统计、历史或心跳请求。这些是嵌入文档的行为，不表示 GitHub Pages 父页实现了跨域访问。父页受同源策略限制，不能读取 iframe 的 Cookie、DOM、真实播放状态或网络响应，只能控制 URL、创建顺序、绝对时间和节点移除；轮次截止时销毁文档后，其后续活动才随文档结束。
 - 刷播 iframe 的创建、移除、本地轮次和 `postMessage` 只证明本站调度发生，不能证明 B 站真实播放、播完、历史记录或计数增加。
 - 两个微博头像原链接是带到期签名的外链，发布资源已下载到 `public/assets/links/` 并加入 Workbox 预缓存；第二个目标采用实际 href 与已有来源账号一致的 UID `7760819929`。
@@ -209,5 +209,7 @@ npm run site:assemble
 npm run site:verify
 npm run test:e2e
 ```
+
+刷播浏览器验收的当前增量合同：覆盖三种互斥播放方式、`tab`/`popup` 共用完整视频页 URL、视口内 `1 × 1px`/`opacity: 0.01`/不可交互的静默 iframe、浏览器拦截时不发 `started` 和不领奖，以及主游戏 `mode` 参数与独立页无参数完整配置。跨域标签页/窗口与 iframe 一样，只能验证创建和清理，不能验证真实播放或计数。
 
 `npm run verify` 不包含 Playwright；浏览器 E2E 必须单独执行。测试播放器时只能断言请求 URL、iframe 生命周期、任务事件和持久状态，不能断言跨域 iframe 的真实播放状态。现实刷播测试应覆盖 BV/完整链接规范化与 V12 持久化、两份 TXT 唯一来源、`SUperView` 窗口与“在线刷播工具”标题、独立页参数/手动设置/自动开始、两页自动开播/播完暂停提示、移动端提示、每轮随机且自测末尾、固定 5 秒创建间隔、最后创建后墙钟等待 310 秒、轮末统一销毁、0/空不限时、独立 DEBUG 持久/关闭、默认隐藏播放器、页面常驻保活、同 session checkpoint/final upsert 与硬关闭保留完整轮、主游戏 HUD 只显示窗口生命周期状态、主游戏不写入轮次/会话统计、冻结兼容字段往返、受信 started 门槛、有效本地日期、同日/更早日期幂等与严格更晚日期再领，以及无代理/运行时收藏夹 API 请求；不得把 iframe `load`、本地轮次、窗口创建或每日奖励解释为 B 站真实播放或计数。迁移测试需固定 V10→V11 将尚未领取的旧睡觉 `baseApples` 归零、其他活动快照不变，并覆盖冻结 V11→V12 的单轴转双轴、空 decorations、苹果钟背景引用与空每日奖励日期。奇迹饼狗另需覆盖衣架缩略图及冰箱同款购买态、空商品隐藏购买标题、日初 `min(3, remaining)` 商店、购买后不补位、紧凑 100dvh 桌面三栏/移动单列、50% 同坐标组合层、多套造型、已遇好友权限、分类筛选、图层顺序与精简文案、一行四图标操作及无障碍名称、`scaleX/scaleY` 角落手柄、当前角色透明 PNG、照片独立 decorations 与全局 z、1–6 位合拍、清空人物与装饰但保留背景、复用苹果钟明信片选择器且拒绝白纸/历史合拍背景、无收藏明信片时仍可用本地图片按天然比例预览/下载且不派发保存、预览/导出 object URL 生命周期、衣服收藏完整居中、相册列表固定 4:3 `cover` 与详情原比例 `natural`、相册删除、PNG 导出和 `.bingo` 不含位图；收藏/工作/UI 另覆盖百万直拍与全站第一海报真实比例、明信片/已保存合拍苹果钟背景、工作区背景→时长→待办顺序、苹果钟专属 stream 顶部 2% 裁切、速度/活力魔法直接使用且无二次确认、三级字体、移动端 room→context 顺序和公告 version/date DOM 顺序。

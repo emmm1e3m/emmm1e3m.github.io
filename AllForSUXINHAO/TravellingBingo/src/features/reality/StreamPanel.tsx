@@ -1,6 +1,11 @@
 import { useId, useState } from 'react'
 
 import type { StreamFavoriteId } from '@/domain'
+import {
+  STREAM_PLAYBACK_MODE_LABELS,
+  STREAM_PLAYBACK_MODES,
+  type StreamPlaybackMode,
+} from '@/stream-player/catalog'
 
 import {
   STREAM_MAX_SESSION_DURATION_MS,
@@ -18,6 +23,7 @@ const STREAM_GUIDANCE = [
   '移动端离开刷播页面可能会导致刷播暂停。',
   '会使用当前浏览器账号，登录时每天不要超过5小时。',
   '请在网页版哔哩哔哩设置‘自动开播’和‘播完暂停’。',
+  '静默播放功能在某些条件下可能失效，因此请务必检查轮次和自测视频涨幅的关系。',
   '在新设备/浏览器上请先检查：若登录，历史记录里出现刷播视频为成功；若未登录，自测视频播放量增加为成功。',
 ] as const
 
@@ -49,7 +55,9 @@ export function StreamPanel({
 }: StreamPanelProps) {
   const headingId = useId()
   const favoriteLegendId = useId()
+  const playbackModeLegendId = useId()
   const [input, setInput] = useState(selfTestBvid ?? '')
+  const [playbackMode, setPlaybackMode] = useState<StreamPlaybackMode>('silent')
   const [stopAfterHours, setStopAfterHours] = useState(() =>
     playback.stopAfterMs === null ? '' : String(playback.stopAfterMs / 3_600_000),
   )
@@ -68,6 +76,7 @@ export function StreamPanel({
     onStart(input, {
       favoriteId,
       stopAfterMs: stopHours === 0 ? null : stopHours * 3_600_000,
+      playbackMode,
     })
   }
 
@@ -111,6 +120,28 @@ export function StreamPanel({
             />
             <span>
               <strong>{favorite.label}</strong>
+            </span>
+          </label>
+        ))}
+      </fieldset>
+
+      <fieldset
+        className="reality-stream-modes reality-stream-modes--playback"
+        aria-labelledby={playbackModeLegendId}
+        disabled={running}
+      >
+        <legend id={playbackModeLegendId}>播放方式</legend>
+        {STREAM_PLAYBACK_MODES.map((mode) => (
+          <label key={mode}>
+            <input
+              type="radio"
+              name={`${headingId}-playback-mode`}
+              value={mode}
+              checked={playbackMode === mode}
+              onChange={() => setPlaybackMode(mode)}
+            />
+            <span>
+              <strong>{STREAM_PLAYBACK_MODE_LABELS[mode]}</strong>
             </span>
           </label>
         ))}

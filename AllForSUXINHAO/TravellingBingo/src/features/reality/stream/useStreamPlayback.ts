@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
 
 import type { StreamFavoriteId } from '@/domain'
+import type { StreamPlaybackMode } from '@/stream-player/catalog'
 
 import { createStreamPlayerStopCommand, parseStreamPlayerEvent } from './popupProtocol'
 import { parseStreamSelfTestInput, type StreamInputError, type StreamParseResult } from './parser'
@@ -11,6 +12,7 @@ export type StreamPlaybackStatus =
 export interface StreamStartSettings {
   readonly favoriteId: StreamFavoriteId
   readonly stopAfterMs?: number | null
+  readonly playbackMode?: StreamPlaybackMode
 }
 
 export interface StreamPlaybackState {
@@ -73,6 +75,7 @@ export interface BuildStreamPlayerUrlOptions {
   readonly selfTestBvid: string | null
   readonly stopAfterMs: number | null
   readonly sessionId: string
+  readonly playbackMode?: StreamPlaybackMode
 }
 
 export function buildStreamPlayerUrl({
@@ -81,11 +84,13 @@ export function buildStreamPlayerUrl({
   selfTestBvid,
   stopAfterMs,
   sessionId,
+  playbackMode = 'silent',
 }: BuildStreamPlayerUrlOptions) {
   const url = new URL('stream-player.html', baseUrl)
   url.searchParams.set('favoriteId', String(favoriteId))
   url.searchParams.set('sessionId', sessionId)
   url.searchParams.set('autostart', '1')
+  url.searchParams.set('mode', playbackMode)
   if (selfTestBvid !== null) url.searchParams.set('selfTest', selfTestBvid)
   if (stopAfterMs !== null) url.searchParams.set('stopHours', String(stopAfterMs / 3_600_000))
   return url.toString()
@@ -140,6 +145,7 @@ export function useStreamPlayback({
         selfTestBvid: result.bvid,
         stopAfterMs,
         sessionId,
+        playbackMode: settings.playbackMode,
       })
       const handle = window.open(url, STREAM_POPUP_NAME, STREAM_POPUP_FEATURES)
       if (!handle) {

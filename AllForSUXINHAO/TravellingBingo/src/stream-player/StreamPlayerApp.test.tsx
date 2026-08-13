@@ -2,6 +2,7 @@ import { act, cleanup, fireEvent, render, screen, waitFor } from '@testing-libra
 
 import { STREAM_PLAYER_DEBUG_ENABLED_KEY, StreamPlayerApp } from './StreamPlayerApp'
 import { STREAM_PLAYER_HISTORY_KEY } from './history'
+import { openFullVideoTarget } from './playerTarget'
 
 const FAVORITE_TEXT = 'BV1xx411c7mD\nBV1Q541167Qg\n'
 
@@ -35,11 +36,17 @@ describe('StreamPlayerApp', () => {
     expect(screen.getByText('请在网页版哔哩哔哩设置‘自动开播’和‘播完暂停’。')).toBeVisible()
     expect(
       screen.getByText(
+        '静默播放功能在某些条件下可能失效，因此请务必检查轮次和自测视频涨幅的关系。',
+      ),
+    ).toBeVisible()
+    expect(
+      screen.getByText(
         '在新设备/浏览器上请先检查：若登录，历史记录里出现刷播视频为成功；若未登录，自测视频播放量增加为成功。',
       ),
     ).toBeVisible()
     expect(HTMLMediaElement.prototype.play).toHaveBeenCalled()
     expect(screen.getByRole('radio', { name: '刷播' })).toBeChecked()
+    expect(screen.getByRole('radio', { name: '静默播放' })).toBeChecked()
     fireEvent.click(screen.getByRole('radio', { name: '测试' }))
     fireEvent.change(screen.getByRole('textbox', { name: '自测视频BV号或链接' }), {
       target: { value: 'https://www.bilibili.com/video/BV1mK4y1C7Bz/' },
@@ -60,6 +67,64 @@ describe('StreamPlayerApp', () => {
     expect(screen.getByRole('radio', { name: '刷播' })).toBeEnabled()
     fireEvent.click(screen.getByRole('button', { name: '开始刷播' }))
     await waitFor(() => expect(fetchMock).toHaveBeenCalledTimes(2))
+  })
+
+  it('新标签页和弹出窗口共用完整视频打开逻辑，仅窗口特征不同', () => {
+    const replace = vi.fn()
+    const handle = {
+      closed: false,
+      close: vi.fn(),
+      location: { replace },
+      opener: window,
+    } as unknown as Window
+    const open = vi.spyOn(window, 'open').mockReturnValue(handle)
+    const videoUrl = 'https://www.bilibili.com/video/BV1xx411c7mD/?autoplay=1&t=0'
+
+    expect(openFullVideoTarget(videoUrl, 'tab')).toBe(handle)
+    expect(open).toHaveBeenLastCalledWith('', '_blank', undefined)
+    expect(replace).toHaveBeenLastCalledWith(videoUrl)
+    expect(handle.opener).toBeNull()
+
+    expect(openFullVideoTarget(videoUrl, 'popup')).toBe(handle)
+    expect(open).toHaveBeenLastCalledWith(
+      '',
+      '_blank',
+      'popup=yes,width=960,height=720,resizable=yes,scrollbars=yes',
+    )
+    expect(replace).toHaveBeenCalledTimes(2)
+  })
+
+  it('完整视频页面被拦截时返回失败', () => {
+    vi.spyOn(window, 'open').mockReturnValue(null)
+    expect(openFullVideoTarget('https://www.bilibili.com/video/BV1xx411c7mD/', 'tab')).toBeNull()
+  })
+
+  it('独立页选择新标签页后打开完整视频且不创建 iframe', async () => {
+    vi.stubGlobal(
+      'fetch',
+      vi.fn().mockResolvedValue({ ok: true, text: async () => 'BV1xx411c7mD\n' }),
+    )
+    const replace = vi.fn()
+    const handle = {
+      closed: false,
+      close: vi.fn(),
+      location: { replace },
+      opener: window,
+    } as unknown as Window
+    vi.spyOn(window, 'open').mockReturnValue(handle)
+    render(<StreamPlayerApp />)
+
+    fireEvent.click(screen.getByRole('radio', { name: '新标签页' }))
+    fireEvent.click(screen.getByRole('button', { name: '开始刷播' }))
+
+    await waitFor(() => expect(replace).toHaveBeenCalledOnce())
+    expect(replace).toHaveBeenCalledWith(
+      'https://www.bilibili.com/video/BV1xx411c7mD/?autoplay=1&t=0',
+    )
+    expect(screen.queryAllByTitle(/刷播视频$/u)).toHaveLength(0)
+    expect(screen.getAllByText('新标签页')).not.toHaveLength(0)
+    fireEvent.click(screen.getByRole('button', { name: '停止刷播' }))
+    expect(handle.close).toHaveBeenCalled()
   })
 
   it('首屏读取历史被浏览器拒绝时仍可正常打开', () => {
@@ -175,6 +240,37 @@ describe('StreamPlayerApp', () => {
         sessionId: 'invalid-catalog',
         event: 'failed',
         message: '收藏夹第 1 行不是有效的 BV 号。',
+      }),
+      window.location.origin,
+    )
+  })
+
+  it('完整视频页面被拦截时不回传 started，避免主游戏误发奖励', async () => {
+    window.history.replaceState(
+      {},
+      '',
+      '/stream-player.html?favoriteId=3682220021&sessionId=blocked-tab&autostart=1&mode=tab',
+    )
+    const opener = { postMessage: vi.fn() } as unknown as Window
+    Object.defineProperty(window, 'opener', { configurable: true, value: opener })
+    vi.stubGlobal(
+      'fetch',
+      vi.fn().mockResolvedValue({ ok: true, text: async () => 'BV1xx411c7mD\n' }),
+    )
+    vi.spyOn(window, 'open').mockReturnValue(null)
+
+    render(<StreamPlayerApp />)
+
+    expect(await screen.findByText('刷播未能启动')).toBeVisible()
+    expect(screen.getByText(/浏览器拦截了完整视频页面/u)).toBeVisible()
+    expect(opener.postMessage).not.toHaveBeenCalledWith(
+      expect.objectContaining({ event: 'started' }),
+      expect.any(String),
+    )
+    expect(opener.postMessage).toHaveBeenCalledWith(
+      expect.objectContaining({
+        sessionId: 'blocked-tab',
+        event: 'failed',
       }),
       window.location.origin,
     )
@@ -492,12 +588,12 @@ describe('StreamPlayerApp', () => {
     fireEvent.change(password, { target: { value: 'SUperView' } })
     fireEvent.click(screen.getByRole('button', { name: '解锁DEBUG' }))
 
-    expect(screen.getByRole('checkbox', { name: '显示播放器' })).toBeVisible()
+    expect(screen.getByRole('checkbox', { name: '显示静默播放器' })).toBeVisible()
     expect(screen.getByRole('spinbutton', { name: '轮次间隔（秒）' })).toHaveValue(310)
     expect(localStorage.getItem(STREAM_PLAYER_DEBUG_ENABLED_KEY)).toBe('1')
 
     fireEvent.click(screen.getByRole('button', { name: '关闭DEBUG' }))
-    expect(screen.queryByRole('checkbox', { name: '显示播放器' })).not.toBeInTheDocument()
+    expect(screen.queryByRole('checkbox', { name: '显示静默播放器' })).not.toBeInTheDocument()
     expect(localStorage.getItem(STREAM_PLAYER_DEBUG_ENABLED_KEY)).toBeNull()
 
     for (let count = 0; count < 5; count += 1) fireEvent.click(title)
@@ -508,7 +604,7 @@ describe('StreamPlayerApp', () => {
     localStorage.setItem(STREAM_PLAYER_DEBUG_ENABLED_KEY, '1')
     render(<StreamPlayerApp />)
 
-    expect(screen.getByRole('checkbox', { name: '显示播放器' })).toBeVisible()
+    expect(screen.getByRole('checkbox', { name: '显示静默播放器' })).toBeVisible()
     expect(screen.queryByLabelText('DEBUG密码')).not.toBeInTheDocument()
   })
 

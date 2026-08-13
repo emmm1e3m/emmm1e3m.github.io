@@ -296,6 +296,10 @@
   border: 0;
 }
 
+.reality-stream-modes--playback {
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+}
+
 .reality-stream-modes legend {
   margin-bottom: 0.42rem;
 }
@@ -1221,7 +1225,8 @@ body:has(.persistent-bilibili-player--focus.is-expanded) .pomodoro-focus__worksp
 }
 
 @media (max-width: 680px) {
-  .reality-stream-modes {
+  .reality-stream-modes,
+  .reality-stream-modes--playback {
     grid-template-columns: minmax(0, 1fr);
   }
 

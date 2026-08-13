@@ -1,6 +1,7 @@
 ﻿import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 
 import {
+  buildFullVideoUrl,
   buildOfficialPlayerUrl,
   DEFAULT_STREAM_ROUND_INTERVAL_MS,
   fetchFavoriteCatalog,
@@ -9,13 +10,17 @@ import {
   parseStreamPlayerQuery,
   STREAM_FAVORITE_LABELS,
   STREAM_FAVORITE_IDS,
+  STREAM_PLAYBACK_MODE_LABELS,
+  STREAM_PLAYBACK_MODES,
   type StreamFavoriteId,
+  type StreamPlaybackMode,
   type StreamPlayerQuery,
 } from './catalog'
 import { readStreamPlayerHistory, type StreamPlayerHistoryItem } from './history'
 import { storeStreamSession } from '@/features/reality/stream/popupProtocol'
 import { formatLocalDateKey } from '@/features/reality/stream/localDate'
 import { startKeepAliveAudio } from './keepAlive'
+import { openFullVideoTarget } from './playerTarget'
 import {
   createStreamPlayerEvent,
   isStreamPlayerStopCommand,
@@ -114,9 +119,13 @@ export function StreamPlayerApp() {
   const openerRef = useRef(window.opener ?? null)
   const channelSessionIdRef = useRef(query?.sessionId ?? '')
   const historyRunIdRef = useRef('')
+  const openedWindowsRef = useRef<Window[]>([])
 
   const [status, setStatus] = useState<PageStatus>(query === null ? 'error' : 'idle')
   const [favoriteId, setFavoriteId] = useState<StreamFavoriteId>(query?.favoriteId ?? '3682220021')
+  const [playbackMode, setPlaybackMode] = useState<StreamPlaybackMode>(
+    query?.playbackMode ?? 'silent',
+  )
   const [selfTestInput, setSelfTestInput] = useState(query?.selfTestBvid ?? '')
   const [stopHoursInput, setStopHoursInput] = useState(
     query?.stopHours === null || query?.stopHours === undefined ? '' : String(query.stopHours),
@@ -136,6 +145,18 @@ export function StreamPlayerApp() {
   const [roundSeconds, setRoundSeconds] = useState(String(DEFAULT_STREAM_ROUND_INTERVAL_MS / 1_000))
   const roundIntervalMsRef = useRef(DEFAULT_STREAM_ROUND_INTERVAL_MS)
   const [debugMessage, setDebugMessage] = useState('')
+
+  const clearRoundPlayers = useCallback(() => {
+    setFrames([])
+    openedWindowsRef.current.forEach((handle) => {
+      try {
+        if (!handle.closed) handle.close()
+      } catch {
+        // 仅关闭由本站打开且浏览器仍允许访问的窗口。
+      }
+    })
+    openedWindowsRef.current = []
+  }, [])
 
   const postToMain = useCallback(
     (event: StreamPlayerEventPayload) => {
@@ -182,10 +203,10 @@ export function StreamPlayerApp() {
     postToMain({ event: 'ended', outcome: 'stopped' })
     startedRef.current = false
     setSnapshot(null)
-    setFrames([])
+    clearRoundPlayers()
     setStatus('stopped')
     setErrorMessage('')
-  }, [postToMain, saveHistory])
+  }, [clearRoundPlayers, postToMain, saveHistory])
 
   const start = useCallback(async () => {
     if (query === null || startedRef.current) return
@@ -196,6 +217,7 @@ export function StreamPlayerApp() {
         favoriteId,
         selfTestBvid: parseSelfTestInput(selfTestInput),
         stopHours: parseStopHoursInput(stopHoursInput),
+        playbackMode,
       }
     } catch (error) {
       const message = error instanceof Error ? error.message : '刷播设置无效。'
@@ -211,7 +233,7 @@ export function StreamPlayerApp() {
     schedulerRef.current?.dispose()
     schedulerRef.current = null
     setSnapshot(null)
-    setFrames([])
+    clearRoundPlayers()
     setActiveConfig(nextConfig)
     setStatus('loading')
     setErrorMessage('')
@@ -236,18 +258,33 @@ export function StreamPlayerApp() {
           postToMain({ event: 'started', dateKey: formatLocalDateKey(startedAt) })
         },
         onOpenVideo: (bvid, round, index) => {
-          setFrames((current) => [
-            ...current,
-            {
-              id: `${round}:${index}:${bvid}`,
-              bvid,
-              url: buildOfficialPlayerUrl(bvid),
-              round,
-              index,
-            },
-          ])
+          if (nextConfig.playbackMode === 'silent') {
+            setFrames((current) => [
+              ...current,
+              {
+                id: `${round}:${index}:${bvid}`,
+                bvid,
+                url: buildOfficialPlayerUrl(bvid),
+                round,
+                index,
+              },
+            ])
+            return true
+          }
+
+          const url = buildFullVideoUrl(bvid)
+          const handle = openFullVideoTarget(url, nextConfig.playbackMode)
+          if (handle === null) return false
+          openedWindowsRef.current.push(handle)
+          return true
         },
-        onClearRound: () => setFrames([]),
+        onOpenFailed: () => {
+          const message = '浏览器拦截了完整视频页面，请允许本站打开新窗口后重新开始。'
+          setStatus('error')
+          setErrorMessage(message)
+          postToMain({ event: 'failed', message })
+        },
+        onClearRound: clearRoundPlayers,
         onRoundCompleted: (round, completedAt) => {
           saveHistory(completedAt, round, 'running')
         },
@@ -277,7 +314,16 @@ export function StreamPlayerApp() {
       setErrorMessage(message)
       postToMain({ event: 'failed', message })
     }
-  }, [favoriteId, postToMain, query, saveHistory, selfTestInput, stopHoursInput])
+  }, [
+    clearRoundPlayers,
+    favoriteId,
+    playbackMode,
+    postToMain,
+    query,
+    saveHistory,
+    selfTestInput,
+    stopHoursInput,
+  ])
 
   useEffect(() => {
     return startKeepAliveAudio()
@@ -322,8 +368,9 @@ export function StreamPlayerApp() {
     () => () => {
       abortControllerRef.current?.abort()
       schedulerRef.current?.dispose()
+      clearRoundPlayers()
     },
-    [],
+    [clearRoundPlayers],
   )
 
   const unlockDebug = (event: React.FormEvent<HTMLFormElement>) => {
@@ -388,6 +435,7 @@ export function StreamPlayerApp() {
         <p>会使用当前浏览器账号，登录时每天不要超过5小时。</p>
         <p>移动端离开刷播页面可能会导致刷播暂停。</p>
         <p>请在网页版哔哩哔哩设置‘自动开播’和‘播完暂停’。</p>
+        <p>静默播放功能在某些条件下可能失效，因此请务必检查轮次和自测视频涨幅的关系。</p>
         <p>
           在新设备/浏览器上请先检查：若登录，历史记录里出现刷播视频为成功；若未登录，自测视频播放量增加为成功。
         </p>
@@ -429,6 +477,28 @@ export function StreamPlayerApp() {
                 </label>
               ))}
             </div>
+            <span className="stream-config__label">播放方式</span>
+            <div
+              className="stream-radio-group stream-radio-group--modes"
+              role="group"
+              aria-label="播放方式"
+            >
+              {STREAM_PLAYBACK_MODES.map((mode) => (
+                <label key={mode}>
+                  <input
+                    type="radio"
+                    name="stream-playback-mode"
+                    value={mode}
+                    checked={playbackMode === mode}
+                    onChange={(event) => {
+                      setPlaybackMode(event.target.value as StreamPlaybackMode)
+                      setShowPlayers(false)
+                    }}
+                  />
+                  {STREAM_PLAYBACK_MODE_LABELS[mode]}
+                </label>
+              ))}
+            </div>
             <label htmlFor="stream-self-test">自测视频（可留空）</label>
             <input
               id="stream-self-test"
@@ -453,6 +523,10 @@ export function StreamPlayerApp() {
           </fieldset>
 
           <dl className="stream-facts">
+            <div>
+              <dt>播放方式</dt>
+              <dd>{STREAM_PLAYBACK_MODE_LABELS[visibleConfig?.playbackMode ?? playbackMode]}</dd>
+            </div>
             <div>
               <dt>自测视频</dt>
               <dd>{visibleConfig?.selfTestBvid ?? '未添加'}</dd>
@@ -549,14 +623,16 @@ export function StreamPlayerApp() {
               关闭DEBUG
             </button>
           </div>
-          <label className="stream-check">
-            <input
-              type="checkbox"
-              checked={showPlayers}
-              onChange={(event) => setShowPlayers(event.target.checked)}
-            />
-            显示播放器
-          </label>
+          {(activeConfig?.playbackMode ?? playbackMode) === 'silent' ? (
+            <label className="stream-check">
+              <input
+                type="checkbox"
+                checked={showPlayers}
+                onChange={(event) => setShowPlayers(event.target.checked)}
+              />
+              显示静默播放器
+            </label>
+          ) : null}
           <label htmlFor="stream-debug-round-seconds">轮次间隔（秒）</label>
           <div className="stream-debug__row">
             <input

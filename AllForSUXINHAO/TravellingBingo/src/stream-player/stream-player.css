@@ -164,6 +164,10 @@ body {
   gap: 8px;
 }
 
+.stream-radio-group--modes {
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+}
+
 .stream-radio-group label {
   display: flex;
   align-items: center;
@@ -297,13 +301,21 @@ body {
 .stream-frames--hidden {
   position: fixed;
   top: 0;
-  left: -10000px;
-  z-index: -1;
-  width: 640px;
-  height: 360px;
+  left: 0;
+  z-index: 0;
+  width: 1px;
+  height: 1px;
   overflow: hidden;
-  opacity: 0.001;
+  opacity: 0.01;
   pointer-events: none;
+}
+
+.stream-frames--hidden .stream-frame-grid,
+.stream-frames--hidden .stream-frame,
+.stream-frames--hidden .stream-frame iframe {
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
 }
 
 .stream-frames--visible {
@@ -363,6 +375,10 @@ body {
   }
 
   .stream-debug__row {
+    grid-template-columns: 1fr;
+  }
+
+  .stream-radio-group--modes {
     grid-template-columns: 1fr;
   }
 }
