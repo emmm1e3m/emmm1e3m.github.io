@@ -186,11 +186,57 @@
       .emoji-font {
         font-family: 'Apple Color Emoji', 'Segoe UI Emoji', 'Noto Color Emoji', sans-serif;
       }
+      .ratio-options {
+        display: grid;
+        grid-template-columns: repeat(3, 1fr);
+        gap: 7px;
+      }
+      .ratio-options button {
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        gap: 10px;
+        min-height: 50px;
+        border: 1px solid #e3e3e3;
+        border-radius: 9px;
+        background: white;
+        font-size: 12px;
+      }
+      .ratio-symbol {
+        display: inline-block;
+        flex-shrink: 0;
+        border: 1.5px solid #8a8a8a;
+        border-radius: 3px;
+      }
+      .ratio-options button[aria-pressed='true'] {
+        background: #eee;
+        border-color: #777;
+        color: #222;
+      }
+      .ratio-options button[aria-pressed='true'] .ratio-symbol {
+        border-color: #333;
+      }
       .emoji-grid {
         display: grid;
         grid-template-columns: repeat(8, 1fr);
         gap: 5px;
         margin: 12px 0;
+      }
+      .emoji-grid.expanded {
+        max-height: 360px;
+        overflow-y: auto;
+        align-content: start;
+        overscroll-behavior: contain;
+      }
+      .emoji-toggle {
+        width: 100%;
+        border: 0;
+        border-radius: 8px;
+        padding: 9px;
+        margin: 0 0 12px;
+        background: #f5f5f5;
+        color: #666;
+        font-size: 12px;
       }
       .emoji-grid button {
         min-width: 0;
@@ -515,6 +561,14 @@
               ><button class="remove" id="remove">移除第二个</button>
             </div>
             <div class="emoji-grid emoji-font" id="emoji-grid" aria-label="常用 Emoji"></div>
+            <button
+              class="emoji-toggle"
+              id="emoji-toggle"
+              aria-expanded="false"
+              aria-controls="emoji-grid"
+            >
+              展开更多 Emoji（320）⌄
+            </button>
             <div class="row">
               <input
                 class="text-input"
@@ -535,7 +589,7 @@
             <div class="heading">
               <h2><span class="number">02</span>壁纸设置</h2>
             </div>
-            <p class="font-note">等比例缩放图案和间距，缩小可显示更多 Emoji。</p>
+            <p class="font-note">以中央 Emoji 为中心缩放，缩小可显示更多图案。</p>
             <div class="range-row">
               <label for="zoom">缩放</label
               ><input id="zoom" type="range" min="50" max="160" value="100" step="1" /><output
@@ -549,26 +603,64 @@
                 >#F5F5F5</code
               ><label class="auto"><input type="checkbox" id="auto" checked />自动配色</label>
             </div>
-            <div class="swatches" id="swatches"></div>
           </section>
           <section class="section">
             <div class="heading">
               <h2><span class="number">03</span>画布尺寸</h2>
               <span class="hint">高清 PNG</span>
             </div>
-            <select id="ratio" aria-label="壁纸尺寸">
-              <option value="1080,1920">手机 · 9:16　1080 × 1920</option>
-              <option value="1080,2340">全面屏 · 6:13　1080 × 2340</option>
-              <option value="1170,2532">iPhone · 1170 × 2532</option>
-              <option value="1440,2560" selected>手机 2K · 9:16　1440 × 2560</option>
-              <option value="2160,3840">手机 4K · 9:16　2160 × 3840</option>
-              <option value="1920,1080">桌面 · 16:9　1920 × 1080</option>
-              <option value="2560,1440">桌面 2K · 16:9　2560 × 1440</option>
-              <option value="3840,2160">桌面 4K · 16:9　3840 × 2160</option>
-              <option value="2048,1536">平板 · 4:3　2048 × 1536</option>
-              <option value="1080,1080">正方形 · 1:1　1080 × 1080</option>
-              <option value="1080,1440">竖版 · 3:4　1080 × 1440</option>
-            </select>
+            <label class="label">比例</label>
+            <div class="ratio-options" id="ratios" role="group" aria-label="壁纸比例">
+              <button data-ratio="9,16" aria-label="比例 9:16" aria-pressed="true">
+                <span
+                  class="ratio-symbol"
+                  style="width: 15px; height: 26px"
+                  aria-hidden="true"
+                ></span
+                ><span>9:16</span></button
+              ><button data-ratio="6,13" aria-label="比例 6:13" aria-pressed="false">
+                <span
+                  class="ratio-symbol"
+                  style="width: 12px; height: 26px"
+                  aria-hidden="true"
+                ></span
+                ><span>6:13</span></button
+              ><button data-ratio="16,9" aria-label="比例 16:9" aria-pressed="false">
+                <span
+                  class="ratio-symbol"
+                  style="width: 26px; height: 15px"
+                  aria-hidden="true"
+                ></span
+                ><span>16:9</span></button
+              ><button data-ratio="4,3" aria-label="比例 4:3" aria-pressed="false">
+                <span
+                  class="ratio-symbol"
+                  style="width: 26px; height: 20px"
+                  aria-hidden="true"
+                ></span
+                ><span>4:3</span></button
+              ><button data-ratio="3,4" aria-label="比例 3:4" aria-pressed="false">
+                <span
+                  class="ratio-symbol"
+                  style="width: 20px; height: 26px"
+                  aria-hidden="true"
+                ></span
+                ><span>3:4</span></button
+              ><button data-ratio="1,1" aria-label="比例 1:1" aria-pressed="false">
+                <span
+                  class="ratio-symbol"
+                  style="width: 26px; height: 26px"
+                  aria-hidden="true"
+                ></span
+                ><span>1:1</span>
+              </button>
+            </div>
+            <label class="label">清晰度</label>
+            <div class="segmented" role="group" aria-label="清晰度">
+              <button data-resolution="2k" aria-pressed="true">2K</button
+              ><button data-resolution="4k" aria-pressed="false">4K</button>
+            </div>
+            <p class="font-note" id="export-dimensions">1440 × 2560 像素</p>
           </section>
         </div>
         <div class="preview-column">
@@ -594,7 +686,14 @@
     </main>
     <script>
       const $ = (id) => document.getElementById(id)
-      const state = { emojis: ['🐰', '🍎'], slot: 0, phase: 0, bg: '#f5f5f5' }
+      const state = {
+        emojis: ['🐰', '🍎'],
+        slot: 0,
+        phase: 0,
+        ratio: [9, 16],
+        resolution: '2k',
+        bg: '#f5f5f5',
+      }
       const common = [
         '🐰',
         '🍎',
@@ -628,16 +727,294 @@
         '🩷',
         '💜',
         '✨',
-      ]
-      const colors = [
-        '#ffffff',
-        '#f5f5f5',
-        '#e5e5e5',
-        '#cccccc',
-        '#999999',
-        '#666666',
-        '#333333',
-        '#000000',
+        '😀',
+        '😄',
+        '🥰',
+        '😘',
+        '😎',
+        '🥹',
+        '😭',
+        '🥳',
+        '😴',
+        '🤍',
+        '🖤',
+        '❤️',
+        '💛',
+        '💚',
+        '💙',
+        '🤎',
+        '🐸',
+        '🐣',
+        '🐥',
+        '🐧',
+        '🦄',
+        '🐝',
+        '🐢',
+        '🦭',
+        '🌊',
+        '🍉',
+        '🍇',
+        '🍐',
+        '🥐',
+        '🍰',
+        '☕',
+        '🧸',
+        '#️⃣',
+        '🀄',
+        '🇦🇨',
+        '🌀',
+        '🌭',
+        '🌱',
+        '🎅',
+        '🎒',
+        '🏻',
+        '👁️‍🗨️',
+        '*️⃣',
+        '🃏',
+        '🇦🇩',
+        '🌁',
+        '🌮',
+        '🌲',
+        '🏂',
+        '🎓',
+        '🏼',
+        '👹',
+        '0️⃣',
+        '🇦🇪',
+        '🌂',
+        '🌯',
+        '🌳',
+        '🏃‍♀️',
+        '🎙️',
+        '🏽',
+        '👺',
+        '1️⃣',
+        '🎁',
+        '🇦🇫',
+        '🌃',
+        '🌰',
+        '🌴',
+        '🏃‍♀️‍➡️',
+        '🎚️',
+        '🏾',
+        '👻',
+        '2️⃣',
+        '🎃',
+        '🇦🇬',
+        '🌄',
+        '🌶️',
+        '🌵',
+        '🏃‍♂️',
+        '🎛️',
+        '🏿',
+        '👽',
+        '3️⃣',
+        '🎄',
+        '🇦🇮',
+        '🌅',
+        '🌽',
+        '🏃‍♂️‍➡️',
+        '🎞️',
+        '👾',
+        '4️⃣',
+        '🎆',
+        '🇦🇱',
+        '🌆',
+        '🍄‍🟫',
+        '🏃‍➡️',
+        '🎤',
+        '👿',
+        '5️⃣',
+        '🎇',
+        '🇦🇲',
+        '🌇',
+        '🍅',
+        '🌹',
+        '🏃',
+        '🎥',
+        '💀',
+        '6️⃣',
+        '🎈',
+        '🇦🇴',
+        '🍆',
+        '🌺',
+        '🏄‍♀️',
+        '🎧',
+        '💋',
+        '7️⃣',
+        '🎉',
+        '🇦🇶',
+        '🌉',
+        '🏄‍♂️',
+        '🎩',
+        '💌',
+        '8️⃣',
+        '🎊',
+        '🇦🇷',
+        '🍈',
+        '🏄',
+        '🎬',
+        '💓',
+        '9️⃣',
+        '🎋',
+        '🇦🇸',
+        '🌋',
+        '🌾',
+        '🏇',
+        '🎵',
+        '💔',
+        '©️',
+        '🎍',
+        '🇦🇹',
+        '🌌',
+        '🌿',
+        '🏊‍♀️',
+        '🎶',
+        '💕',
+        '®️',
+        '🎎',
+        '🇦🇺',
+        '🌍',
+        '🍋‍🟩',
+        '🏊‍♂️',
+        '🎷',
+        '💖',
+        '🅰️',
+        '🎏',
+        '🇦🇼',
+        '🌎',
+        '🍁',
+        '🏊',
+        '🎸',
+        '💗',
+        '🅱️',
+        '🎐',
+        '🇦🇽',
+        '🌏',
+        '🍌',
+        '🍂',
+        '🏋️‍♀️',
+        '🎹',
+        '💘',
+        '🅾️',
+        '🎑',
+        '🇦🇿',
+        '🌐',
+        '🍍',
+        '🍃',
+        '🏋️‍♂️',
+        '🎺',
+        '🅿️',
+        '🎖️',
+        '🇧🇦',
+        '🌑',
+        '🏋️',
+        '🎻',
+        '🆎',
+        '🎗️',
+        '🇧🇧',
+        '🌒',
+        '🍏',
+        '🏵️',
+        '🏌️‍♀️',
+        '🎼',
+        '🆑',
+        '🎟️',
+        '🇧🇩',
+        '🌓',
+        '🐀',
+        '🏌️‍♂️',
+        '🏮',
+        '🆒',
+        '🎣',
+        '🇧🇪',
+        '🌔',
+        '🐁',
+        '🏌️',
+        '🏷️',
+        '💝',
+        '🆓',
+        '🎨',
+        '🇧🇫',
+        '🌕',
+        '🐂',
+        '👀',
+        '🏹',
+        '💞',
+        '🆔',
+        '🎫',
+        '🇧🇬',
+        '🌖',
+        '🐃',
+        '👁️',
+        '👑',
+        '💟',
+        '🆕',
+        '🎭',
+        '🇧🇭',
+        '🌗',
+        '🍔',
+        '🐄',
+        '👂',
+        '👒',
+        '💢',
+        '🆖',
+        '🎮',
+        '🇧🇮',
+        '🌘',
+        '🍕',
+        '🐅',
+        '👃',
+        '👓',
+        '💤',
+        '🆗',
+        '🎯',
+        '🇧🇯',
+        '🍖',
+        '🐆',
+        '👄',
+        '👔',
+        '💥',
+        '🆘',
+        '🎰',
+        '🇧🇱',
+        '🌚',
+        '🍗',
+        '🐇',
+        '👅',
+        '👕',
+        '💦',
+        '🆙',
+        '🎱',
+        '🇧🇲',
+        '🌛',
+        '🍘',
+        '🐈‍⬛',
+        '👆',
+        '👖',
+        '💨',
+        '🆚',
+        '🎲',
+        '🇧🇳',
+        '🌜',
+        '🍙',
+        '🐈',
+        '👇',
+        '👗',
+        '💩',
+        '🈁',
+        '🎳',
+        '🇧🇴',
+        '🌝',
+        '🍚',
+        '🐉',
+        '👈',
+        '👘',
+        '💫',
+        '🈂️',
+        '🎴',
+        '🇧🇶',
+        '🌞',
       ]
       const systemFont = '"Segoe UI Emoji","Noto Color Emoji","Apple Color Emoji",sans-serif'
       function font() {
@@ -743,16 +1120,48 @@
           b += data[i + 2] * weight
           total += weight
         }
-        state.bg = total
-          ? '#' +
-            [r, g, b]
-              .map((v) =>
-                Math.round(245 * 0.77 + (v / total) * 0.23)
-                  .toString(16)
-                  .padStart(2, '0'),
-              )
-              .join('')
-          : '#f2f0f6'
+        if (!total) {
+          state.bg = '#f5f5f5'
+          return
+        }
+        const rgb = [r, g, b].map((v) => v / total / 255)
+        const hi = Math.max(...rgb),
+          lo = Math.min(...rgb),
+          delta = hi - lo
+        if (delta < 0.01) {
+          state.bg = '#f5f5f5'
+          return
+        }
+        let hue =
+          hi === rgb[0]
+            ? ((rgb[1] - rgb[2]) / delta) % 6
+            : hi === rgb[1]
+              ? (rgb[2] - rgb[0]) / delta + 2
+              : (rgb[0] - rgb[1]) / delta + 4
+        hue = (hue + 6) % 6
+        const sourceSaturation = delta / (1 - Math.abs(hi + lo - 1))
+        const saturation = Math.min(0.86, Math.max(0.32, sourceSaturation * 1.2))
+        const lightness = sourceSaturation < 0.3 ? 0.955 : 0.9
+        const chroma = (1 - Math.abs(2 * lightness - 1)) * saturation
+        const secondary = chroma * (1 - Math.abs((hue % 2) - 1))
+        const offset = lightness - chroma / 2
+        const channels = [
+          [chroma, secondary, 0],
+          [secondary, chroma, 0],
+          [0, chroma, secondary],
+          [0, secondary, chroma],
+          [secondary, 0, chroma],
+          [chroma, 0, secondary],
+        ][Math.floor(hue)]
+        state.bg =
+          '#' +
+          channels
+            .map((v) =>
+              Math.round((v + offset) * 255)
+                .toString(16)
+                .padStart(2, '0'),
+            )
+            .join('')
       }
       // 按参考图复现固定错行网格：大图间距 0.6、行距 0.18，小图位于左下空隙。
       // 大图缩小，大小比固定为 1.95:1，所有表情保持正立；相同比例预览与导出共用坐标。
@@ -768,11 +1177,14 @@
         ctx.textBaseline = 'middle'
         ctx.globalAlpha = 0.6
         const mod = (n, m) => ((n % m) + m) % m
-        for (let row = 0; row < Math.ceil(height / (unit * 0.18)) + 1; row++) {
-          for (let col = -2; col < Math.ceil(width / (unit * 0.6)) + 1; col++) {
-            const x = unit * (0.21 + 0.6 * col + 0.3 * mod(row, 2))
-            const y = unit * (0.18 + 0.18 * row)
-            const index = mod(Math.ceil(row / 2) + col + 1 + state.phase, state.emojis.length)
+        const rows = Math.ceil(height / (unit * 0.36)) + 2
+        const cols = Math.ceil(width / (unit * 1.2)) + 2
+        // 以中心大图为固定锚点，正负行列成对延展，缩放不会移动锚点。
+        for (let row = -rows; row <= rows; row++) {
+          for (let col = -cols; col <= cols; col++) {
+            const x = width / 2 + unit * (0.6 * col + 0.3 * mod(row, 2))
+            const y = height / 2 + unit * 0.18 * row
+            const index = mod(Math.ceil(row / 2) + col + state.phase, state.emojis.length)
             paintEmoji(ctx, state.emojis[index], x, y, size)
             paintEmoji(
               ctx,
@@ -784,8 +1196,14 @@
           }
         }
       }
+      function dimensions() {
+        const longest = state.resolution === '4k' ? 3840 : 2560
+        const [w, h] = state.ratio
+        const scale = longest / Math.max(w, h)
+        return [Math.round(w * scale), Math.round(h * scale)]
+      }
       function render() {
-        const [w, h] = $('ratio').value.split(',').map(Number)
+        const [w, h] = dimensions()
         const available = Math.max(100, $('stage').clientWidth - 12)
         const maxHeight = innerWidth <= 800 ? 360 : 565
         const scale = Math.min(available / w, maxHeight / h)
@@ -796,11 +1214,9 @@
         $('preview').style.width = pw + 'px'
         $('preview').style.height = ph + 'px'
         $('dimensions').textContent = w + ' × ' + h
+        $('export-dimensions').textContent = w + ' × ' + h + ' 像素'
         $('color').value = state.bg
         $('hex').textContent = state.bg.toUpperCase()
-        document
-          .querySelectorAll('.swatch')
-          .forEach((b) => b.setAttribute('aria-pressed', String(b.dataset.color === state.bg)))
         if (saveUrl) {
           URL.revokeObjectURL(saveUrl)
           saveUrl = null
@@ -833,14 +1249,25 @@
         render()
         message('')
       }
-      common.forEach((emoji) => {
+      common.forEach((emoji, index) => {
         const b = document.createElement('button')
         b.textContent = emoji
+        b.hidden = index >= 64
         b.dataset.emoji = emoji
         b.setAttribute('aria-label', '选择 ' + emoji)
         b.onclick = () => choose(emoji)
         $('emoji-grid').append(b)
       })
+      $('emoji-toggle').onclick = () => {
+        const expanded = $('emoji-toggle').getAttribute('aria-expanded') !== 'true'
+        $('emoji-toggle').setAttribute('aria-expanded', String(expanded))
+        $('emoji-toggle').textContent = expanded ? '收起 Emoji ⌃' : '展开更多 Emoji（320）⌄'
+        $('emoji-grid').classList.toggle('expanded', expanded)
+        $('emoji-grid')
+          .querySelectorAll('button')
+          .forEach((b, i) => (b.hidden = !expanded && i >= 64))
+        $('emoji-grid').scrollTop = 0
+      }
       $('remove').onclick = () => {
         state.emojis = state.emojis.slice(0, 1)
         state.slot = 0
@@ -883,19 +1310,6 @@
         $('zoom-out').value = $('zoom').value + '%'
         render()
       }
-      colors.forEach((color) => {
-        const b = document.createElement('button')
-        b.className = 'swatch'
-        b.style.background = color
-        b.dataset.color = color
-        b.setAttribute('aria-label', '背景色 ' + color)
-        b.onclick = () => {
-          $('auto').checked = false
-          state.bg = color
-          render()
-        }
-        $('swatches').append(b)
-      })
       $('color').oninput = () => {
         $('auto').checked = false
         state.bg = $('color').value
@@ -906,7 +1320,26 @@
         render()
       }
       $('font').onchange = refreshFont
-      $('ratio').onchange = render
+      document.querySelectorAll('[data-ratio]').forEach(
+        (button) =>
+          (button.onclick = () => {
+            state.ratio = button.dataset.ratio.split(',').map(Number)
+            document
+              .querySelectorAll('[data-ratio]')
+              .forEach((b) => b.setAttribute('aria-pressed', String(b === button)))
+            render()
+          }),
+      )
+      document.querySelectorAll('[data-resolution]').forEach(
+        (button) =>
+          (button.onclick = () => {
+            state.resolution = button.dataset.resolution
+            document
+              .querySelectorAll('[data-resolution]')
+              .forEach((b) => b.setAttribute('aria-pressed', String(b === button)))
+            render()
+          }),
+      )
       $('shuffle').onclick = () => {
         state.phase = 1 - state.phase
         render()
@@ -919,7 +1352,7 @@
         try {
           await document.fonts.ready
           if ($('font').value === 'apple') await loadApple()
-          const [w, h] = $('ratio').value.split(',').map(Number)
+          const [w, h] = dimensions()
           const canvas = document.createElement('canvas')
           draw(canvas, w, h)
           const blob = await new Promise((resolve) => canvas.toBlob(resolve, 'image/png'))
