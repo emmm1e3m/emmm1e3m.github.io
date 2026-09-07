@@ -220,3 +220,5 @@ npm run test:e2e
 - `assemble-site.mjs` 和 `verify-site.mjs` 以精确白名单发布页面及字体，与游戏资源隔离。
 - 不用默认 subset-font 裁剪 CBDT/CBLC 字体：本次实测会丢失彩色表。保留完整 Emoji 专用 TTF；WOFF2 仅略减体积且往返失败，不用于发布。
 - 预览与 PNG 导出使用同一确定性布局和 Canvas 字体；ResizeObserver 经 requestAnimationFrame 调度，避免布局反馈报错。
+
+- 当前壁纸唯一滑块 `zoom`：50%–160%，统一缩放坐标间距与两档 Emoji；大图系数 0.13、小图系数 1/15，alpha=0.6。两种斜线按整数网格分组验证 794 对相邻元素无重复。
