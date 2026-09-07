@@ -7,6 +7,9 @@ const workspaceRoot = resolve(fileURLToPath(new URL('../..', import.meta.url)))
 const outputRoot = resolve(workspaceRoot, '_site')
 const buildRoot = resolve(workspaceRoot, 'dist/travelling-bingo')
 const rootEntry = resolve(workspaceRoot, 'index.html')
+const emojiWallpaperEntry = resolve(workspaceRoot, 'emoji-wallpaper.html')
+const emojiAssetsRoot = resolve(workspaceRoot, 'emoji-assets')
+const expectedEmojiFiles = ['apple-emoji.ttf']
 const streamPlayerEntry = resolve(buildRoot, 'stream-player.html')
 const favouriteRoot = resolve(buildRoot, 'favourites')
 const expectedFavouriteFiles = ['3682220021.txt', '3986840044.txt']
@@ -62,6 +65,16 @@ assertOwnedDirectory(stagingRoot, /^_site\.__staging-[\w-]+$/u)
 assertOwnedDirectory(backupRoot, /^_site\.__backup-[\w-]+$/u)
 
 await requireRegularFile(rootEntry, '根首页')
+await requireRegularFile(emojiWallpaperEntry, 'Emoji 壁纸独立页')
+await requireDirectory(emojiAssetsRoot, 'Emoji 素材目录')
+const emojiEntries = await readdir(emojiAssetsRoot, { withFileTypes: true })
+if (
+  emojiEntries.some((entry) => !entry.isFile() || entry.isSymbolicLink()) ||
+  JSON.stringify(emojiEntries.map((entry) => entry.name).sort()) !==
+    JSON.stringify(expectedEmojiFiles)
+) {
+  throw new Error('Emoji 素材目录只能包含 apple-emoji.ttf 一个普通文件')
+}
 await requireDirectory(buildRoot, 'TravellingBingo 构建产物')
 await requireRegularFile(resolve(buildRoot, 'index.html'), 'TravellingBingo 构建入口')
 await requireRegularFile(streamPlayerEntry, '刷播独立页')
@@ -83,6 +96,14 @@ try {
   await mkdir(resolve(stagingRoot, 'AllForSUXINHAO'), { recursive: true })
 
   await copyFile(rootEntry, resolve(stagingRoot, 'index.html'))
+  await copyFile(emojiWallpaperEntry, resolve(stagingRoot, 'emoji-wallpaper.html'))
+  await mkdir(resolve(stagingRoot, 'emoji-assets'))
+  for (const filename of expectedEmojiFiles) {
+    await copyFile(
+      resolve(emojiAssetsRoot, filename),
+      resolve(stagingRoot, 'emoji-assets', filename),
+    )
+  }
   await cp(buildRoot, resolve(stagingRoot, 'AllForSUXINHAO/TravellingBingo'), {
     recursive: true,
   })
@@ -121,4 +142,4 @@ try {
   }
 }
 
-console.log('站点组装完成：输入已预检，并原子替换根首页与 TravellingBingo 发布目录')
+console.log('站点组装完成：输入已预检，并原子替换根首页、Emoji 壁纸与 TravellingBingo 发布目录')

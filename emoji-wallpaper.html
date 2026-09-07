@@ -1,0 +1,948 @@
+<!doctype html>
+<html lang="zh-CN">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width,initial-scale=1" />
+    <link rel="icon" href="data:," />
+    <meta name="theme-color" content="#f7f6f2" />
+    <title>Emoji 壁纸 · 把喜欢铺满屏幕</title>
+    <style>
+      @font-face {
+        font-family: 'Wallpaper Apple Emoji';
+        src: url('emoji-assets/apple-emoji.ttf') format('truetype');
+        font-style: normal;
+        font-weight: 400;
+        font-display: block;
+      }
+      :root {
+        font-family:
+          Inter,
+          -apple-system,
+          BlinkMacSystemFont,
+          'Segoe UI',
+          'Microsoft YaHei',
+          sans-serif;
+        color: #303c35;
+        background: #f7f6f2;
+        font-synthesis: none;
+      }
+      * {
+        box-sizing: border-box;
+      }
+      body {
+        margin: 0;
+      }
+      button,
+      input,
+      select {
+        font: inherit;
+      }
+      button,
+      a,
+      input,
+      select {
+        -webkit-tap-highlight-color: transparent;
+      }
+      button {
+        cursor: pointer;
+      }
+      button:focus-visible,
+      a:focus-visible,
+      input:focus-visible,
+      select:focus-visible {
+        outline: 3px solid #91b7a2;
+        outline-offset: 3px;
+      }
+      button {
+        color: inherit;
+      }
+      header {
+        max-width: 1320px;
+        margin: auto;
+        padding: 26px 36px;
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        border-bottom: 1px solid #e5e6df;
+      }
+      a {
+        color: inherit;
+        text-decoration: none;
+      }
+      .brand {
+        display: flex;
+        gap: 12px;
+        align-items: center;
+        font-weight: 700;
+        letter-spacing: -0.4px;
+      }
+      .brand-icon {
+        background: #e3eadf;
+        border-radius: 12px;
+        padding: 9px;
+        font-size: 22px;
+      }
+      .back {
+        font-size: 13px;
+        color: #6d786f;
+      }
+      main {
+        max-width: 1250px;
+        margin: auto;
+        padding: 38px 30px 30px;
+      }
+      .intro {
+        display: flex;
+        justify-content: space-between;
+        align-items: flex-end;
+        margin-bottom: 28px;
+      }
+      .eyebrow {
+        color: #7b8b7c;
+        font-size: 11px;
+        letter-spacing: 2px;
+        font-weight: 700;
+      }
+      h1 {
+        font-size: 32px;
+        letter-spacing: -1.3px;
+        margin: 9px 0;
+      }
+      p {
+        color: #7d827b;
+        font-size: 13px;
+        line-height: 1.8;
+        margin: 0;
+      }
+      .local {
+        border: 1px solid #dce3d6;
+        border-radius: 30px;
+        padding: 7px 12px;
+        color: #71836e;
+        font-size: 11px;
+      }
+      .workspace {
+        display: grid;
+        grid-template-columns: 370px 1fr;
+        gap: 28px;
+      }
+      .panel {
+        min-width: 0;
+        background: white;
+        border: 1px solid #e7e8e0;
+        border-radius: 22px;
+        padding: 24px;
+      }
+      .section + .section {
+        border-top: 1px solid #efefe9;
+        margin-top: 22px;
+        padding-top: 22px;
+      }
+      .heading {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        margin-bottom: 14px;
+      }
+      h2 {
+        font-size: 14px;
+        margin: 0;
+        font-weight: 650;
+      }
+      .number {
+        font-size: 10px;
+        color: #97a18f;
+        margin-right: 8px;
+      }
+      .hint {
+        font-size: 11px;
+        color: #92978e;
+      }
+      .slots {
+        display: flex;
+        gap: 10px;
+        margin-bottom: 13px;
+      }
+      .slot {
+        position: relative;
+        border: 1px solid #e6e8df;
+        background: #f7f8f3;
+        width: 65px;
+        height: 61px;
+        border-radius: 14px;
+        font-size: 30px;
+      }
+      .slot.active {
+        border: 2px solid #7c9572;
+        background: #f0f4e9;
+      }
+      .slot small {
+        position: absolute;
+        right: 5px;
+        bottom: 2px;
+        font-size: 9px;
+        color: #7d8975;
+      }
+      .remove {
+        border: 0;
+        background: transparent;
+        font-size: 11px;
+        color: #81877b;
+        margin-left: auto;
+      }
+      .emoji-font {
+        font-family: 'Apple Color Emoji', 'Segoe UI Emoji', 'Noto Color Emoji', sans-serif;
+      }
+      .emoji-grid {
+        display: grid;
+        grid-template-columns: repeat(8, 1fr);
+        gap: 5px;
+        margin: 12px 0;
+      }
+      .emoji-grid button {
+        min-width: 0;
+        padding: 2px;
+        border: 0;
+        background: transparent;
+        border-radius: 9px;
+        font-size: 23px;
+        min-height: 36px;
+      }
+      .emoji-grid button:hover {
+        background: #edf2e8;
+      }
+      .row {
+        display: flex;
+        gap: 8px;
+        align-items: center;
+      }
+      .text-input,
+      select {
+        min-width: 0;
+        width: 100%;
+        border: 1px solid #e3e6db;
+        border-radius: 10px;
+        padding: 10px;
+        background: #fff;
+        color: #505a4b;
+        font-size: 12px;
+      }
+      .small-btn {
+        flex-shrink: 0;
+        border: 1px solid #e3e6db;
+        background: #f7f8f3;
+        border-radius: 10px;
+        padding: 10px 13px;
+        font-size: 12px;
+      }
+      label.label {
+        display: block;
+        font-size: 12px;
+        margin: 13px 0 7px;
+      }
+      .font-note {
+        font-size: 10px;
+        margin-top: 7px;
+        line-height: 1.6;
+      }
+      .segmented {
+        display: flex;
+        gap: 6px;
+      }
+      .segmented button {
+        flex: 1;
+        border: 1px solid #e4e7dd;
+        border-radius: 10px;
+        background: #fff;
+        padding: 10px 4px;
+        font-size: 12px;
+      }
+      .segmented button[aria-pressed='true'] {
+        background: #eaf0e3;
+        border-color: #99ad8b;
+        color: #48603c;
+      }
+      .range-row {
+        display: grid;
+        grid-template-columns: 48px 1fr 32px;
+        align-items: center;
+        gap: 8px;
+        font-size: 12px;
+        margin-top: 15px;
+      }
+      .range-row output {
+        text-align: right;
+        font-size: 11px;
+        color: #818a79;
+      }
+      input[type='range'] {
+        width: 100%;
+        accent-color: #809b6f;
+      }
+      input[type='checkbox'] {
+        accent-color: #809b6f;
+      }
+      .swatches {
+        display: flex;
+        gap: 9px;
+        margin-top: 12px;
+        flex-wrap: wrap;
+      }
+      .swatch {
+        width: 28px;
+        height: 28px;
+        border-radius: 50%;
+        border: 3px solid white;
+        box-shadow: 0 0 0 1px #e1e4d9;
+      }
+      .swatch[aria-pressed='true'] {
+        box-shadow: 0 0 0 2px #829775;
+      }
+      .color-row {
+        display: flex;
+        align-items: center;
+        gap: 10px;
+        margin-top: 14px;
+        font-size: 12px;
+      }
+      .color-row input[type='color'] {
+        width: 32px;
+        height: 30px;
+        padding: 0;
+        border: 0;
+        background: transparent;
+      }
+      .color-row code {
+        font-size: 11px;
+        color: #818775;
+      }
+      .auto {
+        margin-left: auto;
+        display: flex;
+        gap: 5px;
+        align-items: center;
+        font-size: 11px;
+      }
+      .preview-panel {
+        display: flex;
+        flex-direction: column;
+        min-width: 0;
+        background: #eeeee7;
+        border: 1px solid #e5e5dc;
+        border-radius: 22px;
+        padding: 21px 25px;
+      }
+      .preview-top {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        font-size: 11px;
+        color: #8b9285;
+      }
+      .live {
+        display: flex;
+        gap: 6px;
+        align-items: center;
+      }
+      .live:before {
+        content: '';
+        width: 6px;
+        height: 6px;
+        background: #88a174;
+        border-radius: 50%;
+      }
+      .stage {
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        min-height: 570px;
+        flex: 1;
+        padding: 24px 0;
+      }
+      .canvas-wrap {
+        border-radius: 22px;
+        overflow: hidden;
+        box-shadow: 0 18px 45px #45523b1c;
+        border: 5px solid #fff9;
+        line-height: 0;
+        max-width: 100%;
+      }
+      canvas {
+        display: block;
+        max-width: 100%;
+        width: auto;
+        height: auto;
+      }
+      .preview-bottom {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        gap: 12px;
+        border-top: 1px solid #dedfd5;
+        padding-top: 18px;
+      }
+      .shuffle {
+        background: #f9faf5;
+        border: 1px solid #dcdfd3;
+        border-radius: 10px;
+        font-size: 12px;
+        padding: 10px 13px;
+      }
+      .preview-bottom p {
+        font-size: 11px;
+      }
+      .export {
+        display: flex;
+        gap: 12px;
+        align-items: center;
+        margin-top: 20px;
+      }
+      .download {
+        flex: 1;
+        border: 0;
+        background: #526a43;
+        color: white;
+        font-weight: 600;
+        border-radius: 12px;
+        padding: 15px 20px;
+        font-size: 14px;
+      }
+      .download:hover {
+        background: #415735;
+      }
+      .export-note {
+        font-size: 11px;
+        color: #94998e;
+        text-align: center;
+        margin-top: 9px;
+      }
+      footer {
+        text-align: center;
+        font-size: 11px;
+        color: #a0a598;
+        margin: 25px 0 6px;
+      }
+      #status {
+        font-size: 12px;
+        color: #61764f;
+        min-height: 20px;
+        margin-top: 8px;
+      }
+      #save-link {
+        font-size: 12px;
+        text-decoration: underline;
+        display: none;
+      }
+      @media (min-width: 900px) {
+        .preview-column {
+          position: sticky;
+          top: 20px;
+          align-self: start;
+        }
+      }
+      @media (max-width: 800px) {
+        header {
+          padding: 18px 20px;
+        }
+        main {
+          padding: 26px 16px;
+        }
+        .intro {
+          margin-bottom: 20px;
+        }
+        .local {
+          display: none;
+        }
+        h1 {
+          font-size: 27px;
+        }
+        .workspace {
+          grid-template-columns: 1fr;
+          gap: 18px;
+        }
+        .preview-column {
+          grid-row: 1;
+        }
+        .stage {
+          min-height: 360px;
+          padding: 18px 0;
+        }
+        .panel {
+          padding: 20px;
+        }
+        .preview-panel {
+          padding: 16px;
+        }
+        .canvas-wrap {
+          border-radius: 18px;
+        }
+        .preview-bottom p {
+          max-width: 170px;
+        }
+        .export {
+          margin-top: 12px;
+        }
+      }
+    </style>
+  </head>
+  <body>
+    <header>
+      <a class="brand" href="emoji-wallpaper.html"
+        ><span class="brand-icon">✳</span> Emoji Wallpaper</a
+      ><a class="back" href="/">← 返回主页</a>
+    </header>
+    <main>
+      <div class="intro">
+        <div>
+          <div class="eyebrow">LITTLE THINGS, HAPPY SCREENS</div>
+          <h1>把喜欢，铺满屏幕。</h1>
+          <p>选一两个 Emoji，调一抹颜色。你的专属壁纸就这么简单。</p>
+        </div>
+        <span class="local">● 本地生成 · 无需上传</span>
+      </div>
+      <div class="workspace">
+        <div class="panel">
+          <section class="section">
+            <div class="heading">
+              <h2><span class="number">01</span>选择你的 Emoji</h2>
+              <span class="hint">最多两个，点击替换</span>
+            </div>
+            <div class="slots">
+              <button
+                class="slot active emoji-font"
+                id="slot0"
+                aria-label="编辑第一个 Emoji"
+                aria-pressed="true"
+              >
+                🐰<small>1</small></button
+              ><button
+                class="slot emoji-font"
+                id="slot1"
+                aria-label="编辑第二个 Emoji"
+                aria-pressed="false"
+              >
+                🍎<small>2</small></button
+              ><button class="remove" id="remove">移除第二个</button>
+            </div>
+            <div class="emoji-grid emoji-font" id="emoji-grid" aria-label="常用 Emoji"></div>
+            <div class="row">
+              <input
+                class="text-input"
+                id="custom"
+                aria-label="粘贴一到两个 Emoji"
+                placeholder="也可以粘贴 Emoji，例如 🐱🫧"
+                maxlength="80"
+              /><button class="small-btn" id="apply">使用</button>
+            </div>
+            <label class="label" for="font">Emoji 字体</label
+            ><select id="font">
+              <option value="system">系统 Emoji</option>
+              <option value="apple" selected>苹果 Emoji</option>
+            </select>
+            <p class="font-note" id="font-note">正在加载苹果 Emoji…</p>
+          </section>
+          <section class="section">
+            <div class="heading">
+              <h2><span class="number">02</span>排版与氛围</h2>
+            </div>
+            <p class="font-note">大小交错 · 正立无旋转 · 参考图同款排布</p>
+            <div class="range-row">
+              <label for="size">大小</label
+              ><input id="size" type="range" min="50" max="135" value="88" /><output id="size-out"
+                >88</output
+              >
+            </div>
+            <div class="range-row">
+              <label for="density">密度</label
+              ><input id="density" type="range" min="3" max="8" value="4" /><output id="density-out"
+                >4</output
+              >
+            </div>
+            <div class="range-row">
+              <label for="softness">柔和</label
+              ><input id="softness" type="range" min="0" max="65" value="18" /><output
+                id="softness-out"
+                >18%</output
+              >
+            </div>
+            <div class="color-row">
+              <label for="color">背景</label><input type="color" id="color" value="#f8d4d3" /><code
+                id="hex"
+                >#F8D4D3</code
+              ><label class="auto"><input type="checkbox" id="auto" checked />自动配色</label>
+            </div>
+            <div class="swatches" id="swatches"></div>
+          </section>
+          <section class="section">
+            <div class="heading">
+              <h2><span class="number">03</span>画布尺寸</h2>
+              <span class="hint">高清 PNG</span>
+            </div>
+            <select id="ratio" aria-label="壁纸尺寸">
+              <option value="1080,1920">手机 · 9:16　1080 × 1920</option>
+              <option value="1080,2340" selected>全面屏 · 6:13　1080 × 2340</option>
+              <option value="1170,2532">iPhone · 1170 × 2532</option>
+              <option value="1440,2560">手机 2K · 9:16　1440 × 2560</option>
+              <option value="1920,1080">桌面 · 16:9　1920 × 1080</option>
+              <option value="2560,1440">桌面 2K · 16:9　2560 × 1440</option>
+              <option value="3840,2160">桌面 4K · 16:9　3840 × 2160</option>
+              <option value="2048,1536">平板 · 4:3　2048 × 1536</option>
+              <option value="1080,1080">正方形 · 1:1　1080 × 1080</option>
+              <option value="1080,1440">竖版 · 3:4　1080 × 1440</option>
+            </select>
+          </section>
+        </div>
+        <div class="preview-column">
+          <div class="preview-panel">
+            <div class="preview-top">
+              <span class="live">实时预览</span><span id="dimensions">1080 × 2340</span>
+            </div>
+            <div class="stage" id="stage">
+              <div class="canvas-wrap">
+                <canvas id="preview" aria-label="Emoji 壁纸实时预览"></canvas>
+              </div>
+            </div>
+            <div class="preview-bottom">
+              <p>一点小快乐，每次点亮屏幕都看得见。</p>
+              <button class="shuffle" id="shuffle">⇄ 交换表情位置</button>
+            </div>
+          </div>
+          <div class="export"><button class="download" id="download">↓ 下载壁纸 PNG</button></div>
+          <p class="export-note">原始分辨率 · 无水印 · 纯净背景</p>
+          <div id="status" role="status" aria-live="polite"></div>
+          <a id="save-link" target="_blank" rel="noopener">打开生成的图片（可长按保存）</a>
+        </div>
+      </div>
+      <footer>MADE OF EMOJI & A LITTLE JOY</footer>
+    </main>
+    <script>
+      const $ = (id) => document.getElementById(id)
+      const state = { emojis: ['🐰', '🍎'], slot: 0, phase: 0, bg: '#f8d4d3' }
+      const common = [
+        '🐰',
+        '🍎',
+        '🐱',
+        '🫧',
+        '🐶',
+        '🐼',
+        '🐻',
+        '🦊',
+        '🍓',
+        '🍒',
+        '🍋',
+        '🍊',
+        '🍑',
+        '🥑',
+        '🍄',
+        '🍀',
+        '🌷',
+        '🌼',
+        '🌸',
+        '🌻',
+        '🌈',
+        '☁️',
+        '⭐',
+        '🌙',
+        '🦋',
+        '🐬',
+        '🪼',
+        '🐳',
+        '🎀',
+        '🩷',
+        '💜',
+        '✨',
+      ]
+      const colors = [
+        '#f8d4d3',
+        '#f2f0f6',
+        '#e1e9d5',
+        '#d9e9f2',
+        '#fff0c9',
+        '#e3dbef',
+        '#f0dfcf',
+        '#303c46',
+      ]
+      const systemFont = '"Segoe UI Emoji","Noto Color Emoji","Apple Color Emoji",sans-serif'
+      function font() {
+        return $('font').value === 'apple'
+          ? '"Wallpaper Apple Emoji","Apple Color Emoji",' + systemFont
+          : systemFont
+      }
+      let saveUrl = null
+      let applePromise = null
+      async function loadApple() {
+        if (!applePromise)
+          applePromise = document.fonts
+            .load('48px "Wallpaper Apple Emoji"', '🐰🍎🐱🫧')
+            .then((faces) => {
+              if (!faces.length) throw new Error('字体加载失败')
+            })
+            .catch((error) => {
+              applePromise = null
+              throw error
+            })
+        return applePromise
+      }
+      function paintEmoji(ctx, emoji, x, y, size) {
+        ctx.font = size + 'px ' + font()
+        ctx.fillText(emoji, x, y)
+      }
+      function styleEmojis() {
+        document.querySelectorAll('.emoji-font').forEach((el) => (el.style.fontFamily = font()))
+      }
+      async function refreshFont() {
+        message('')
+        $('download').disabled = true
+        try {
+          if ($('font').value === 'apple') {
+            $('font-note').textContent = '首次加载苹果字体，请稍候…'
+            await loadApple()
+            $('font-note').textContent = '苹果字体已就绪，预览和下载均使用同一套表情。'
+          } else $('font-note').textContent = '使用当前设备的彩色 Emoji，预览与导出保持一致。'
+        } catch {
+          $('font').value = 'system'
+          $('font-note').textContent = '苹果字体加载失败，已切换系统 Emoji；可重新选择重试。'
+        } finally {
+          $('download').disabled = false
+          styleEmojis()
+          autoColor()
+          render()
+        }
+      }
+      function message(text) {
+        $('status').textContent = text
+      }
+      function autoColor() {
+        if (!$('auto').checked) return
+        const sample = document.createElement('canvas')
+        sample.width = 64
+        sample.height = 64
+        const c = sample.getContext('2d', { willReadFrequently: true })
+        c.font = '46px ' + font()
+        c.textAlign = 'center'
+        c.textBaseline = 'middle'
+        paintEmoji(c, state.emojis[state.emojis.length - 1], 32, 32, 46)
+        const data = c.getImageData(0, 0, 64, 64).data
+        let r = 0,
+          g = 0,
+          b = 0,
+          total = 0
+        for (let i = 0; i < data.length; i += 4) {
+          const max = Math.max(data[i], data[i + 1], data[i + 2]),
+            min = Math.min(data[i], data[i + 1], data[i + 2])
+          const weight = ((data[i + 3] / 255) * (max - min)) / 255
+          if (max < 70) continue
+          r += data[i] * weight
+          g += data[i + 1] * weight
+          b += data[i + 2] * weight
+          total += weight
+        }
+        state.bg = total
+          ? '#' +
+            [r, g, b]
+              .map((v) =>
+                Math.round(245 * 0.77 + (v / total) * 0.23)
+                  .toString(16)
+                  .padStart(2, '0'),
+              )
+              .join('')
+          : '#f2f0f6'
+      }
+      // 按参考图复现固定错行网格：大图间距 0.6、行距 0.18，小图位于左下空隙。
+      // 大小比固定为 2.4:1，所有表情保持正立；相同比例预览与导出共用坐标。
+      function draw(canvas, width, height) {
+        canvas.width = width
+        canvas.height = height
+        const ctx = canvas.getContext('2d')
+        ctx.fillStyle = state.bg
+        ctx.fillRect(0, 0, width, height)
+        const unit = (width * 4) / Number($('density').value)
+        const size = (unit * 0.16 * Number($('size').value)) / 88
+        ctx.textAlign = 'center'
+        ctx.textBaseline = 'middle'
+        ctx.globalAlpha = 1 - Number($('softness').value) / 100
+        const mod = (n, m) => ((n % m) + m) % m
+        for (let row = 0; row < Math.ceil(height / (unit * 0.18)) + 1; row++) {
+          for (let col = -2; col < Math.ceil(width / (unit * 0.6)) + 1; col++) {
+            const x = unit * (0.21 + 0.6 * col + 0.3 * mod(row, 2))
+            const y = unit * (0.18 + 0.18 * row)
+            const index = mod(Math.ceil(row / 2) + col + 1 + state.phase, state.emojis.length)
+            paintEmoji(ctx, state.emojis[index], x, y, size)
+            paintEmoji(
+              ctx,
+              state.emojis[mod(index + 1, state.emojis.length)],
+              x - unit * 0.15,
+              y + unit * 0.09,
+              size / 2.4,
+            )
+          }
+        }
+      }
+      function render() {
+        const [w, h] = $('ratio').value.split(',').map(Number)
+        const available = Math.max(100, $('stage').clientWidth - 12)
+        const maxHeight = innerWidth <= 800 ? 360 : 565
+        const scale = Math.min(available / w, maxHeight / h)
+        const pw = Math.round(w * scale),
+          ph = Math.round(h * scale)
+        const dpr = Math.min(devicePixelRatio || 1, 2)
+        draw($('preview'), Math.round(pw * dpr), Math.round(ph * dpr))
+        $('preview').style.width = pw + 'px'
+        $('preview').style.height = ph + 'px'
+        $('dimensions').textContent = w + ' × ' + h
+        $('color').value = state.bg
+        $('hex').textContent = state.bg.toUpperCase()
+        document
+          .querySelectorAll('.swatch')
+          .forEach((b) => b.setAttribute('aria-pressed', String(b.dataset.color === state.bg)))
+        if (saveUrl) {
+          URL.revokeObjectURL(saveUrl)
+          saveUrl = null
+          $('save-link').style.display = 'none'
+        }
+      }
+      function slots() {
+        for (let i = 0; i < 2; i++) {
+          const el = $('slot' + i)
+          el.dataset.emoji = state.emojis[i] || '+'
+          el.replaceChildren(document.createTextNode(state.emojis[i] || '+'))
+          const small = document.createElement('small')
+          small.textContent = i + 1
+          el.append(small)
+          el.classList.toggle('active', state.slot === i)
+          el.setAttribute('aria-pressed', String(state.slot === i))
+        }
+        $('remove').disabled = state.emojis.length < 2
+        styleEmojis()
+      }
+      for (let i = 0; i < 2; i++)
+        $('slot' + i).onclick = () => {
+          state.slot = i
+          slots()
+        }
+      function choose(emoji) {
+        state.emojis[state.slot] = emoji
+        slots()
+        autoColor()
+        render()
+        message('')
+      }
+      common.forEach((emoji) => {
+        const b = document.createElement('button')
+        b.textContent = emoji
+        b.dataset.emoji = emoji
+        b.setAttribute('aria-label', '选择 ' + emoji)
+        b.onclick = () => choose(emoji)
+        $('emoji-grid').append(b)
+      })
+      $('remove').onclick = () => {
+        state.emojis = state.emojis.slice(0, 1)
+        state.slot = 0
+        slots()
+        autoColor()
+        render()
+      }
+      function applyCustom() {
+        const value = $('custom').value.trim()
+        const parts =
+          typeof Intl.Segmenter === 'function'
+            ? [...new Intl.Segmenter(undefined, { granularity: 'grapheme' }).segment(value)].map(
+                (s) => s.segment,
+              )
+            : Array.from(value)
+        const valid = parts.filter((p) =>
+          /\p{Extended_Pictographic}|\p{Regional_Indicator}|\u20e3/u.test(p),
+        )
+        if (
+          !valid.length ||
+          valid.length > 2 ||
+          parts.some((p) => p.trim() && !valid.includes(p))
+        ) {
+          message('请粘贴一个或两个 Emoji。')
+          return
+        }
+        if (valid.length === 2) {
+          state.emojis = valid
+          slots()
+          autoColor()
+          render()
+        } else choose(valid[0])
+        message('已使用你的 Emoji')
+      }
+      $('apply').onclick = applyCustom
+      $('custom').onkeydown = (e) => {
+        if (e.key === 'Enter') applyCustom()
+      }
+      for (const id of ['size', 'density', 'softness'])
+        $(id).oninput = () => {
+          $(id + '-out').value = $(id).value + (id === 'softness' ? '%' : '')
+          render()
+        }
+      colors.forEach((color) => {
+        const b = document.createElement('button')
+        b.className = 'swatch'
+        b.style.background = color
+        b.dataset.color = color
+        b.setAttribute('aria-label', '背景色 ' + color)
+        b.onclick = () => {
+          $('auto').checked = false
+          state.bg = color
+          render()
+        }
+        $('swatches').append(b)
+      })
+      $('color').oninput = () => {
+        $('auto').checked = false
+        state.bg = $('color').value
+        render()
+      }
+      $('auto').onchange = () => {
+        autoColor()
+        render()
+      }
+      $('font').onchange = refreshFont
+      $('ratio').onchange = render
+      $('shuffle').onclick = () => {
+        state.phase = 1 - state.phase
+        render()
+        message('已交换大小图案中的表情位置')
+      }
+      $('download').onclick = async () => {
+        const button = $('download')
+        button.disabled = true
+        button.textContent = '正在生成…'
+        try {
+          await document.fonts.ready
+          if ($('font').value === 'apple') await loadApple()
+          const [w, h] = $('ratio').value.split(',').map(Number)
+          const canvas = document.createElement('canvas')
+          draw(canvas, w, h)
+          const blob = await new Promise((resolve) => canvas.toBlob(resolve, 'image/png'))
+          if (!blob) throw new Error('PNG 生成失败')
+          if (saveUrl) URL.revokeObjectURL(saveUrl)
+          saveUrl = URL.createObjectURL(blob)
+          const a = document.createElement('a')
+          a.href = saveUrl
+          a.download = `emoji-wallpaper-${w}x${h}.png`
+          a.click()
+          $('save-link').href = saveUrl
+          $('save-link').style.display = 'inline'
+          message(`已生成 ${w} × ${h} PNG；若未自动下载，可打开图片保存。`)
+        } catch (error) {
+          message('生成失败，请重试或选择较小尺寸。')
+        } finally {
+          button.disabled = false
+          button.textContent = '↓ 下载壁纸 PNG'
+        }
+      }
+      let resizeFrame = 0
+      new ResizeObserver(() => {
+        cancelAnimationFrame(resizeFrame)
+        resizeFrame = requestAnimationFrame(render)
+      }).observe($('stage'))
+      slots()
+      document.querySelectorAll('.emoji-font').forEach((el) => (el.style.fontFamily = font()))
+      document.fonts.ready.then(refreshFont)
+    </script>
+  </body>
+</html>

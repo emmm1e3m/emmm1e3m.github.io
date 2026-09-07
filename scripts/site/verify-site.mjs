@@ -5,6 +5,7 @@ import { fileURLToPath } from 'node:url'
 const workspaceRoot = resolve(fileURLToPath(new URL('../..', import.meta.url)))
 const siteRoot = resolve(workspaceRoot, '_site')
 const favouriteIds = ['3682220021', '3986840044']
+const expectedEmojiFiles = ['apple-emoji.ttf']
 
 if (!siteRoot.startsWith(`${workspaceRoot}${sep}`)) {
   throw new Error('发布目录越界')
@@ -16,6 +17,8 @@ if (!siteRootStats.isDirectory() || siteRootStats.isSymbolicLink()) {
 
 const requiredFiles = [
   'index.html',
+  'emoji-wallpaper.html',
+  ...expectedEmojiFiles.map((filename) => `emoji-assets/${filename}`),
   '.nojekyll',
   'AllForSUXINHAO/TravellingBingo/index.html',
   'AllForSUXINHAO/TravellingBingo/stream-player.html',
@@ -32,11 +35,31 @@ if (!rootHtml.includes('href="/AllForSUXINHAO/TravellingBingo/"')) {
   throw new Error('根首页缺少旅行饼狗最终子路径入口')
 }
 
+if (!rootHtml.includes('href="/emoji-wallpaper.html"')) {
+  throw new Error('根首页缺少 Emoji 壁纸入口')
+}
+
+const [sourceWallpaper, publishedWallpaper] = await Promise.all([
+  readFile(resolve(workspaceRoot, 'emoji-wallpaper.html'), 'utf8'),
+  readFile(resolve(siteRoot, 'emoji-wallpaper.html'), 'utf8'),
+])
+if (sourceWallpaper !== publishedWallpaper) {
+  throw new Error('Emoji 壁纸发布页与源文件不一致')
+}
+if (!/<canvas\b/iu.test(publishedWallpaper) || !/<script\b/iu.test(publishedWallpaper)) {
+  throw new Error('Emoji 壁纸页缺少画布或交互脚本')
+}
+if (/<(?:script|link)\b[^>]*(?:src|href)=["'][^"']*AllForSUXINHAO/iu.test(publishedWallpaper)) {
+  throw new Error('Emoji 壁纸独立页不能依赖旅行饼狗资源')
+}
+
 const rootEntries = await readdir(siteRoot, { withFileTypes: true })
 const allowedRootEntries = new Map([
   ['.nojekyll', 'file'],
   ['AllForSUXINHAO', 'directory'],
   ['index.html', 'file'],
+  ['emoji-wallpaper.html', 'file'],
+  ['emoji-assets', 'directory'],
 ])
 const unexpectedRootEntries = rootEntries.filter((entry) => {
   const expectedType = allowedRootEntries.get(entry.name)
@@ -50,6 +73,23 @@ if (unexpectedRootEntries.length > 0 || rootEntries.length !== allowedRootEntrie
   throw new Error(
     `发布根目录只能包含公开白名单：${unexpectedRootEntries.map((entry) => entry.name).join(', ') || '缺少白名单项'}`,
   )
+}
+
+const publishedEmojiRoot = resolve(siteRoot, 'emoji-assets')
+const emojiEntries = await readdir(publishedEmojiRoot, { withFileTypes: true })
+if (
+  emojiEntries.some((entry) => !entry.isFile() || entry.isSymbolicLink()) ||
+  JSON.stringify(emojiEntries.map((entry) => entry.name).sort()) !==
+    JSON.stringify(expectedEmojiFiles)
+) {
+  throw new Error('Emoji 发布素材只能包含 apple-emoji.ttf 一个普通文件')
+}
+for (const filename of expectedEmojiFiles) {
+  const [source, published] = await Promise.all([
+    readFile(resolve(workspaceRoot, 'emoji-assets', filename)),
+    readFile(resolve(publishedEmojiRoot, filename)),
+  ])
+  if (!source.equals(published)) throw new Error(`Emoji 素材发布内容与源文件不一致：${filename}`)
 }
 
 const gameRoot = resolve(siteRoot, 'AllForSUXINHAO/TravellingBingo')
