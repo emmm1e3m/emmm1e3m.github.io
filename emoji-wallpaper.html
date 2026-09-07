@@ -7,13 +7,6 @@
     <meta name="theme-color" content="#f6f6f6" />
     <title>Emoji 壁纸</title>
     <style>
-      @font-face {
-        font-family: 'Wallpaper Apple Emoji';
-        src: url('emoji-assets/apple-emoji.ttf') format('truetype');
-        font-style: normal;
-        font-weight: 400;
-        font-display: block;
-      }
       :root {
         font-family:
           Inter,
@@ -565,9 +558,10 @@
             </div>
             <select id="ratio" aria-label="壁纸尺寸">
               <option value="1080,1920">手机 · 9:16　1080 × 1920</option>
-              <option value="1080,2340" selected>全面屏 · 6:13　1080 × 2340</option>
+              <option value="1080,2340">全面屏 · 6:13　1080 × 2340</option>
               <option value="1170,2532">iPhone · 1170 × 2532</option>
-              <option value="1440,2560">手机 2K · 9:16　1440 × 2560</option>
+              <option value="1440,2560" selected>手机 2K · 9:16　1440 × 2560</option>
+              <option value="2160,3840">手机 4K · 9:16　2160 × 3840</option>
               <option value="1920,1080">桌面 · 16:9　1920 × 1080</option>
               <option value="2560,1440">桌面 2K · 16:9　2560 × 1440</option>
               <option value="3840,2160">桌面 4K · 16:9　3840 × 2160</option>
@@ -580,7 +574,7 @@
         <div class="preview-column">
           <div class="preview-panel">
             <div class="preview-top">
-              <span class="live">实时预览</span><span id="dimensions">1080 × 2340</span>
+              <span class="live">实时预览</span><span id="dimensions">1440 × 2560</span>
             </div>
             <div class="stage" id="stage">
               <div class="canvas-wrap">
@@ -653,17 +647,46 @@
       }
       let saveUrl = null
       let applePromise = null
+      // 单独缓存带版本的字体；刷新直接读取 Cache Storage，不依赖服务器缓存时长。
+      // 隐私模式或存储额度不足时，退回浏览器普通 HTTP 缓存。
       async function loadApple() {
         if (!applePromise)
-          applePromise = document.fonts
-            .load('48px "Wallpaper Apple Emoji"', '🐰🍎🐱🫧')
-            .then((faces) => {
-              if (!faces.length) throw new Error('字体加载失败')
-            })
-            .catch((error) => {
-              applePromise = null
-              throw error
-            })
+          applePromise = (async () => {
+            const url = new URL('emoji-assets/apple-emoji.ttf?v=26.2.1', location.href).href
+            let cache = null
+            try {
+              if ('caches' in window) cache = await caches.open('emoji-wallpaper-font-v1')
+            } catch {}
+            let cached = null
+            try {
+              cached = await cache?.match(url)
+            } catch {}
+            const install = async (response) => {
+              const face = new FontFace('Wallpaper Apple Emoji', await response.arrayBuffer())
+              await face.load()
+              document.fonts.add(face)
+            }
+            if (cached) {
+              try {
+                await install(cached)
+                return
+              } catch {
+                try {
+                  await cache.delete(url)
+                } catch {}
+              }
+            }
+            const response = await fetch(url, { cache: 'force-cache' })
+            if (!response.ok) throw new Error('字体下载失败')
+            const copy = response.clone()
+            await install(response)
+            try {
+              await cache?.put(url, copy)
+            } catch {}
+          })().catch((error) => {
+            applePromise = null
+            throw error
+          })
         return applePromise
       }
       function paintEmoji(ctx, emoji, x, y, size) {

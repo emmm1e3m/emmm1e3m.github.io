@@ -222,3 +222,5 @@ npm run test:e2e
 - 预览与 PNG 导出使用同一确定性布局和 Canvas 字体；ResizeObserver 经 requestAnimationFrame 调度，避免布局反馈报错。
 
 - 当前壁纸唯一滑块 `zoom`：50%–160%，统一缩放坐标间距与两档 Emoji；大图系数 0.13、小图系数 1/15，alpha=0.6。两种斜线按整数网格分组验证 794 对相邻元素无重复。
+
+- 苹果字体经 FontFace 加载 ArrayBuffer，缓存名 `emoji-wallpaper-font-v1`、字体 URL 版本 `v=26.2.1`。Cache Storage 不可用时退回 HTTP 缓存；命中但字体损坏时删除并重取。已拦截字体网络请求后刷新验证，字体网络请求为 0，默认导出尺寸实测 1440×2560。
