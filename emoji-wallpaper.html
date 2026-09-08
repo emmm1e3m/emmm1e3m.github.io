@@ -522,26 +522,378 @@
           margin-top: 12px;
         }
       }
+      /* 追加于现有样式之后：黑白灰控件与紧凑分组布局。 */
+      header {
+        padding: 22px 30px;
+      }
+      header h1 {
+        margin: 0;
+        font-size: 22px;
+        line-height: 1.35;
+        letter-spacing: -0.6px;
+      }
+      main {
+        padding-top: 24px;
+      }
+      .intro {
+        display: none;
+      }
+      .brand-icon {
+        display: none;
+      }
+      .workspace {
+        grid-template-columns: 390px minmax(0, 1fr);
+        gap: 24px;
+      }
+      .panel {
+        padding: 22px;
+      }
+      .heading {
+        gap: 8px;
+      }
+      .slots {
+        display: flex;
+        align-items: center;
+        gap: 10px;
+        margin-bottom: 16px;
+      }
+      .slot {
+        flex: 1 1 0;
+        min-width: 0;
+        width: auto;
+        height: 76px;
+        font-size: 37px;
+        border-radius: 12px;
+        background: #fafafa;
+      }
+      .slot.active {
+        border: 2px solid #454545;
+        background: #f1f1f1;
+      }
+      .slot small {
+        right: 8px;
+        bottom: 5px;
+      }
+      #shuffle,
+      #remove {
+        display: inline-flex;
+        flex: 0 0 36px;
+        align-items: center;
+        justify-content: center;
+        min-width: 36px;
+        min-height: 36px;
+        padding: 6px;
+        margin: 0;
+        border: 1px solid #e3e3e3;
+        border-radius: 9px;
+        background: #fff;
+        color: #666;
+        font-size: 16px;
+      }
+      #shuffle:hover,
+      #remove:hover {
+        color: #222;
+        background: #eee;
+      }
+      #shuffle svg,
+      #remove svg {
+        width: 18px;
+        height: 18px;
+      }
+      .category-nav {
+        display: flex;
+        gap: 4px;
+        overflow-x: auto;
+        overscroll-behavior: contain;
+        scrollbar-width: thin;
+        padding: 2px 0 7px;
+      }
+      .category-nav button {
+        flex: 0 0 auto;
+        min-width: 36px;
+        min-height: 36px;
+        border: 0;
+        border-radius: 8px;
+        padding: 6px 9px;
+        background: transparent;
+        color: #747474;
+        font-size: 12px;
+        white-space: nowrap;
+      }
+      .category-nav button:hover,
+      .category-nav button[aria-pressed='true'],
+      .category-nav button.active {
+        background: #ededed;
+        color: #262626;
+      }
+      #emoji-grid.emoji-grid {
+        display: block;
+        max-height: 280px;
+        margin: 4px 0 10px;
+        overflow-y: auto;
+        overflow-x: hidden;
+        overscroll-behavior: contain;
+        scrollbar-width: thin;
+        scrollbar-color: #c8c8c8 transparent;
+        scroll-behavior: smooth;
+      }
+      #emoji-grid.emoji-grid.expanded {
+        max-height: 440px;
+      }
+      .emoji-group {
+        margin: 0 0 15px;
+        scroll-margin-top: 6px;
+      }
+      .emoji-group h3 {
+        margin: 0;
+        padding: 8px 2px;
+        font-size: 11px;
+        line-height: 1.5;
+        color: #858585;
+        font-weight: 500;
+      }
+      .group-grid {
+        display: grid;
+        grid-template-columns: repeat(8, minmax(36px, 1fr));
+        gap: 2px 0;
+      }
+      .group-grid button {
+        min-width: 36px;
+        min-height: 38px;
+        padding: 2px;
+      }
+      .group-grid button[aria-pressed='true'] {
+        background: #eaeaea;
+        box-shadow: inset 0 0 0 1px #bdbdbd;
+      }
+      .emoji-toggle {
+        min-height: 36px;
+      }
+      .color-modes {
+        display: grid;
+        grid-template-columns: repeat(4, minmax(0, 1fr));
+        gap: 5px;
+      }
+      .color-modes button[data-color-mode] {
+        min-width: 0;
+        min-height: 38px;
+        border: 1px solid #e2e2e2;
+        border-radius: 8px;
+        background: #fff;
+        color: #777;
+        padding: 7px 2px;
+        font-size: 12px;
+      }
+      .color-modes button[aria-pressed='true'],
+      .color-modes button.active {
+        border-color: #555;
+        background: #ededed;
+        color: #222;
+      }
+      .color-editor {
+        display: flex;
+        align-items: center;
+        gap: 10px;
+        margin-top: 12px;
+      }
+      .color-editor[hidden] {
+        display: none;
+      }
+      .color-editor #color {
+        flex: 0 0 42px;
+        width: 42px;
+        height: 38px;
+        min-height: 36px;
+        border: 1px solid #ddd;
+        border-radius: 8px;
+        padding: 3px;
+        background: white;
+        cursor: pointer;
+      }
+      .color-editor #hex-input {
+        min-width: 0;
+        width: 100%;
+        height: 38px;
+        border: 1px solid #ddd;
+        border-radius: 8px;
+        background: white;
+        padding: 8px 10px;
+        color: #555;
+        font-family: ui-monospace, monospace;
+        font-size: 12px;
+      }
+      #color-mode-note {
+        color: #858585;
+        font-size: 11px;
+        line-height: 1.6;
+        margin-top: 9px;
+      }
+      .quality-row {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 12px;
+        min-height: 44px;
+        margin-top: 13px;
+        font-size: 12px;
+      }
+      .quality-row label {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        min-height: 36px;
+        cursor: pointer;
+      }
+      input#quality[role='switch'] {
+        appearance: none;
+        -webkit-appearance: none;
+        position: relative;
+        flex: 0 0 46px;
+        width: 46px;
+        height: 36px;
+        margin: 0;
+        border: 0;
+        border-radius: 18px;
+        background: linear-gradient(#d8d8d8, #d8d8d8) center / 46px 26px no-repeat;
+        cursor: pointer;
+      }
+      input#quality[role='switch']::before {
+        content: '';
+        position: absolute;
+        width: 20px;
+        height: 20px;
+        top: 8px;
+        left: 3px;
+        border-radius: 50%;
+        background: white;
+        box-shadow: 0 1px 3px #0002;
+        transition: transform 0.15s ease;
+      }
+      input#quality[role='switch']:checked {
+        background-image: linear-gradient(#4c4c4c, #4c4c4c);
+      }
+      input#quality[role='switch']:checked::before {
+        transform: translateX(20px);
+      }
+      .ratio-options {
+        gap: 6px;
+      }
+      .ratio-options button {
+        min-width: 0;
+        min-height: 46px;
+        gap: 7px;
+      }
+      .range-row {
+        grid-template-columns: 40px minmax(0, 1fr) 38px;
+      }
+      input#zoom {
+        min-width: 0;
+        min-height: 36px;
+        margin: 0;
+        accent-color: #686868;
+      }
+      @media (max-width: 899px) {
+        .workspace {
+          grid-template-columns: minmax(0, 1fr);
+        }
+        header {
+          padding: 18px 20px;
+        }
+        main {
+          padding: 18px 18px 24px;
+        }
+        .panel {
+          padding: 18px;
+        }
+      }
+      @media (max-width: 380px) {
+        header {
+          padding: 16px 12px;
+        }
+        header h1 {
+          font-size: 20px;
+        }
+        main {
+          padding: 12px 8px 20px;
+        }
+        .panel {
+          padding: 12px 7px;
+          border-radius: 16px;
+        }
+        .workspace {
+          gap: 14px;
+        }
+        .slots {
+          gap: 6px;
+        }
+        .slot {
+          height: 68px;
+        }
+        #emoji-grid.emoji-grid {
+          scrollbar-width: none;
+        }
+        #emoji-grid.emoji-grid::-webkit-scrollbar {
+          width: 0;
+        }
+        .preview-panel {
+          padding: 16px 12px;
+        }
+      }
+      @media (prefers-reduced-motion: reduce) {
+        #emoji-grid.emoji-grid {
+          scroll-behavior: auto;
+        }
+        input#quality[role='switch']::before {
+          transition: none;
+        }
+      }
+      .slot small {
+        font-family: system-ui, sans-serif;
+        font-size: 10px;
+        letter-spacing: 0;
+      }
+      .quality-row > span {
+        flex: 1;
+      }
+      .quality-row strong {
+        display: block;
+        font-weight: 600;
+      }
+      .quality-row small {
+        display: block;
+        margin-top: 4px;
+        color: #888;
+        font-size: 11px;
+      }
+      #color-editor-label {
+        flex-shrink: 0;
+        font-size: 11px;
+        color: #888;
+      }
+      button:disabled {
+        cursor: default;
+        opacity: 0.38;
+      }
+      input:disabled {
+        cursor: default;
+      }
+      input#color:disabled {
+        opacity: 1;
+      }
     </style>
   </head>
   <body>
     <header>
-      <a class="brand" href="emoji-wallpaper.html">Emoji 壁纸</a
-      ><a class="back" href="/">← 返回主页</a>
+      <h1 class="brand">Emoji 壁纸</h1>
+      <a class="back" href="/">← 返回主页</a>
     </header>
     <main>
-      <div class="intro">
-        <div>
-          <h1>Emoji 壁纸</h1>
-          <p>选择一到两个 Emoji，生成并下载壁纸。</p>
-        </div>
-      </div>
       <div class="workspace">
         <div class="panel">
           <section class="section">
             <div class="heading">
               <h2><span class="number">01</span>选择你的 Emoji</h2>
-              <span class="hint">最多两个，点击替换</span>
+              <span class="hint" id="selection-hint">正在选择 Emoji 1</span>
             </div>
             <div class="slots">
               <button
@@ -558,16 +910,35 @@
                 aria-pressed="false"
               >
                 🍎<small>2</small></button
-              ><button class="remove" id="remove">移除第二个</button>
+              ><button
+                class="shuffle"
+                id="shuffle"
+                title="交换两个 Emoji"
+                aria-label="交换表情位置"
+              >
+                ⇄</button
+              ><button
+                class="remove"
+                id="remove"
+                aria-label="移除第二个 Emoji"
+                title="移除第二个 Emoji"
+              >
+                ×
+              </button>
             </div>
-            <div class="emoji-grid emoji-font" id="emoji-grid" aria-label="常用 Emoji"></div>
+            <nav class="category-nav" id="category-nav" aria-label="Emoji 分类"></nav>
+            <div
+              class="emoji-grid emoji-font"
+              id="emoji-grid"
+              aria-label="按类型分组的 Emoji"
+            ></div>
             <button
               class="emoji-toggle"
               id="emoji-toggle"
               aria-expanded="false"
               aria-controls="emoji-grid"
             >
-              展开更多 Emoji（320）⌄
+              展开全部 1867 个 Emoji ⌄
             </button>
             <div class="row">
               <input
@@ -597,12 +968,31 @@
                 >100%</output
               >
             </div>
-            <div class="color-row">
-              <label for="color">背景</label><input type="color" id="color" value="#f5f5f5" /><code
-                id="hex"
-                >#F5F5F5</code
-              ><label class="auto"><input type="checkbox" id="auto" checked />自动配色</label>
+            <label class="label">背景颜色</label>
+            <div class="color-modes" role="group" aria-label="背景取色方式">
+              <button data-color-mode="mix" aria-pressed="true">混合</button
+              ><button data-color-mode="emoji1" aria-pressed="false">Emoji 1</button
+              ><button data-color-mode="emoji2" aria-pressed="false">Emoji 2</button
+              ><button data-color-mode="manual" aria-pressed="false">手动</button>
             </div>
+            <div class="color-editor">
+              <input
+                type="color"
+                id="color"
+                value="#f5f5f5"
+                aria-label="手动背景颜色"
+                disabled
+              /><input
+                type="text"
+                id="hex-input"
+                aria-label="背景十六进制颜色"
+                value="#F5F5F5"
+                maxlength="7"
+                spellcheck="false"
+                disabled
+              /><span id="color-editor-label">混合色</span>
+            </div>
+            <p class="font-note" id="color-mode-note">两种背景色各占 50%</p>
           </section>
           <section class="section">
             <div class="heading">
@@ -655,11 +1045,13 @@
                 ><span>1:1</span>
               </button>
             </div>
-            <label class="label">清晰度</label>
-            <div class="segmented" role="group" aria-label="清晰度">
-              <button data-resolution="2k" aria-pressed="true">2K</button
-              ><button data-resolution="4k" aria-pressed="false">4K</button>
-            </div>
+            <label class="quality-row" for="quality"
+              ><span><strong>4K 高清</strong><small>关闭时导出 2K</small></span
+              ><input type="checkbox" role="switch" id="quality" aria-label="4K 高清" /><span
+                class="switch-track"
+                aria-hidden="true"
+              ></span
+            ></label>
             <p class="font-note" id="export-dimensions">1440 × 2560 像素</p>
           </section>
         </div>
@@ -672,9 +1064,6 @@
               <div class="canvas-wrap">
                 <canvas id="preview" aria-label="Emoji 壁纸实时预览"></canvas>
               </div>
-            </div>
-            <div class="preview-bottom">
-              <button class="shuffle" id="shuffle">⇄ 交换表情位置</button>
             </div>
           </div>
           <div class="export"><button class="download" id="download">↓ 下载壁纸 PNG</button></div>
@@ -693,328 +1082,1922 @@
         ratio: [9, 16],
         resolution: '2k',
         bg: '#f5f5f5',
+        colorMode: 'mix',
+        manualColor: null,
       }
-      const common = [
-        '🐰',
-        '🍎',
-        '🐱',
-        '🫧',
-        '🐶',
-        '🐼',
-        '🐻',
-        '🦊',
-        '🍓',
-        '🍒',
-        '🍋',
-        '🍊',
-        '🍑',
-        '🥑',
-        '🍄',
-        '🍀',
-        '🌷',
-        '🌼',
-        '🌸',
-        '🌻',
-        '🌈',
-        '☁️',
-        '⭐',
-        '🌙',
-        '🦋',
-        '🐬',
-        '🪼',
-        '🐳',
-        '🎀',
-        '🩷',
-        '💜',
-        '✨',
-        '😀',
-        '😄',
-        '🥰',
-        '😘',
-        '😎',
-        '🥹',
-        '😭',
-        '🥳',
-        '😴',
-        '🤍',
-        '🖤',
-        '❤️',
-        '💛',
-        '💚',
-        '💙',
-        '🤎',
-        '🐸',
-        '🐣',
-        '🐥',
-        '🐧',
-        '🦄',
-        '🐝',
-        '🐢',
-        '🦭',
-        '🌊',
-        '🍉',
-        '🍇',
-        '🍐',
-        '🥐',
-        '🍰',
-        '☕',
-        '🧸',
-        '#️⃣',
-        '🀄',
-        '🇦🇨',
-        '🌀',
-        '🌭',
-        '🌱',
-        '🎅',
-        '🎒',
-        '🏻',
-        '👁️‍🗨️',
-        '*️⃣',
-        '🃏',
-        '🇦🇩',
-        '🌁',
-        '🌮',
-        '🌲',
-        '🏂',
-        '🎓',
-        '🏼',
-        '👹',
-        '0️⃣',
-        '🇦🇪',
-        '🌂',
-        '🌯',
-        '🌳',
-        '🏃‍♀️',
-        '🎙️',
-        '🏽',
-        '👺',
-        '1️⃣',
-        '🎁',
-        '🇦🇫',
-        '🌃',
-        '🌰',
-        '🌴',
-        '🏃‍♀️‍➡️',
-        '🎚️',
-        '🏾',
-        '👻',
-        '2️⃣',
-        '🎃',
-        '🇦🇬',
-        '🌄',
-        '🌶️',
-        '🌵',
-        '🏃‍♂️',
-        '🎛️',
-        '🏿',
-        '👽',
-        '3️⃣',
-        '🎄',
-        '🇦🇮',
-        '🌅',
-        '🌽',
-        '🏃‍♂️‍➡️',
-        '🎞️',
-        '👾',
-        '4️⃣',
-        '🎆',
-        '🇦🇱',
-        '🌆',
-        '🍄‍🟫',
-        '🏃‍➡️',
-        '🎤',
-        '👿',
-        '5️⃣',
-        '🎇',
-        '🇦🇲',
-        '🌇',
-        '🍅',
-        '🌹',
-        '🏃',
-        '🎥',
-        '💀',
-        '6️⃣',
-        '🎈',
-        '🇦🇴',
-        '🍆',
-        '🌺',
-        '🏄‍♀️',
-        '🎧',
-        '💋',
-        '7️⃣',
-        '🎉',
-        '🇦🇶',
-        '🌉',
-        '🏄‍♂️',
-        '🎩',
-        '💌',
-        '8️⃣',
-        '🎊',
-        '🇦🇷',
-        '🍈',
-        '🏄',
-        '🎬',
-        '💓',
-        '9️⃣',
-        '🎋',
-        '🇦🇸',
-        '🌋',
-        '🌾',
-        '🏇',
-        '🎵',
-        '💔',
-        '©️',
-        '🎍',
-        '🇦🇹',
-        '🌌',
-        '🌿',
-        '🏊‍♀️',
-        '🎶',
-        '💕',
-        '®️',
-        '🎎',
-        '🇦🇺',
-        '🌍',
-        '🍋‍🟩',
-        '🏊‍♂️',
-        '🎷',
-        '💖',
-        '🅰️',
-        '🎏',
-        '🇦🇼',
-        '🌎',
-        '🍁',
-        '🏊',
-        '🎸',
-        '💗',
-        '🅱️',
-        '🎐',
-        '🇦🇽',
-        '🌏',
-        '🍌',
-        '🍂',
-        '🏋️‍♀️',
-        '🎹',
-        '💘',
-        '🅾️',
-        '🎑',
-        '🇦🇿',
-        '🌐',
-        '🍍',
-        '🍃',
-        '🏋️‍♂️',
-        '🎺',
-        '🅿️',
-        '🎖️',
-        '🇧🇦',
-        '🌑',
-        '🏋️',
-        '🎻',
-        '🆎',
-        '🎗️',
-        '🇧🇧',
-        '🌒',
-        '🍏',
-        '🏵️',
-        '🏌️‍♀️',
-        '🎼',
-        '🆑',
-        '🎟️',
-        '🇧🇩',
-        '🌓',
-        '🐀',
-        '🏌️‍♂️',
-        '🏮',
-        '🆒',
-        '🎣',
-        '🇧🇪',
-        '🌔',
-        '🐁',
-        '🏌️',
-        '🏷️',
-        '💝',
-        '🆓',
-        '🎨',
-        '🇧🇫',
-        '🌕',
-        '🐂',
-        '👀',
-        '🏹',
-        '💞',
-        '🆔',
-        '🎫',
-        '🇧🇬',
-        '🌖',
-        '🐃',
-        '👁️',
-        '👑',
-        '💟',
-        '🆕',
-        '🎭',
-        '🇧🇭',
-        '🌗',
-        '🍔',
-        '🐄',
-        '👂',
-        '👒',
-        '💢',
-        '🆖',
-        '🎮',
-        '🇧🇮',
-        '🌘',
-        '🍕',
-        '🐅',
-        '👃',
-        '👓',
-        '💤',
-        '🆗',
-        '🎯',
-        '🇧🇯',
-        '🍖',
-        '🐆',
-        '👄',
-        '👔',
-        '💥',
-        '🆘',
-        '🎰',
-        '🇧🇱',
-        '🌚',
-        '🍗',
-        '🐇',
-        '👅',
-        '👕',
-        '💦',
-        '🆙',
-        '🎱',
-        '🇧🇲',
-        '🌛',
-        '🍘',
-        '🐈‍⬛',
-        '👆',
-        '👖',
-        '💨',
-        '🆚',
-        '🎲',
-        '🇧🇳',
-        '🌜',
-        '🍙',
-        '🐈',
-        '👇',
-        '👗',
-        '💩',
-        '🈁',
-        '🎳',
-        '🇧🇴',
-        '🌝',
-        '🍚',
-        '🐉',
-        '👈',
-        '👘',
-        '💫',
-        '🈂️',
-        '🎴',
-        '🇧🇶',
-        '🌞',
+      const emojiGroups = [
+        {
+          label: '表情与情感',
+          emojis: [
+            '😀',
+            '😃',
+            '😄',
+            '😁',
+            '😆',
+            '😅',
+            '🤣',
+            '😂',
+            '🙂',
+            '🙃',
+            '🫠',
+            '😉',
+            '😊',
+            '😇',
+            '🥰',
+            '😍',
+            '🤩',
+            '😘',
+            '😗',
+            '☺️',
+            '😚',
+            '😙',
+            '🥲',
+            '😋',
+            '😛',
+            '😜',
+            '🤪',
+            '😝',
+            '🤑',
+            '🤗',
+            '🤭',
+            '🫢',
+            '🫣',
+            '🤫',
+            '🤔',
+            '🫡',
+            '🤐',
+            '🤨',
+            '😐',
+            '😑',
+            '😶',
+            '🫥',
+            '😶‍🌫️',
+            '😏',
+            '😒',
+            '🙄',
+            '😬',
+            '😮‍💨',
+            '🤥',
+            '🫨',
+            '🙂‍↔️',
+            '🙂‍↕️',
+            '😌',
+            '😔',
+            '😪',
+            '🤤',
+            '😴',
+            '🫩',
+            '😷',
+            '🤒',
+            '🤕',
+            '🤢',
+            '🤮',
+            '🤧',
+            '🥵',
+            '🥶',
+            '🥴',
+            '😵',
+            '😵‍💫',
+            '🤯',
+            '🤠',
+            '🥳',
+            '🥸',
+            '😎',
+            '🤓',
+            '🧐',
+            '😕',
+            '🫤',
+            '😟',
+            '🙁',
+            '☹️',
+            '😮',
+            '😯',
+            '😲',
+            '😳',
+            '🥺',
+            '🥹',
+            '😦',
+            '😧',
+            '😨',
+            '😰',
+            '😥',
+            '😢',
+            '😭',
+            '😱',
+            '😖',
+            '😣',
+            '😞',
+            '😓',
+            '😩',
+            '😫',
+            '🥱',
+            '😤',
+            '😡',
+            '😠',
+            '🤬',
+            '😈',
+            '👿',
+            '💀',
+            '☠️',
+            '💩',
+            '🤡',
+            '👹',
+            '👺',
+            '👻',
+            '👽',
+            '👾',
+            '🤖',
+            '😺',
+            '😸',
+            '😹',
+            '😻',
+            '😼',
+            '😽',
+            '🙀',
+            '😿',
+            '😾',
+            '🙈',
+            '🙉',
+            '🙊',
+            '💌',
+            '💘',
+            '💝',
+            '💖',
+            '💗',
+            '💓',
+            '💞',
+            '💕',
+            '💟',
+            '❣️',
+            '💔',
+            '❤️‍🔥',
+            '❤️‍🩹',
+            '❤️',
+            '🩷',
+            '🧡',
+            '💛',
+            '💚',
+            '💙',
+            '🩵',
+            '💜',
+            '🤎',
+            '🖤',
+            '🩶',
+            '🤍',
+            '💋',
+            '💯',
+            '💢',
+            '💥',
+            '💫',
+            '💦',
+            '💨',
+            '🕳️',
+            '💬',
+            '👁️‍🗨️',
+            '🗨️',
+            '🗯️',
+            '💭',
+            '💤',
+          ],
+        },
+        {
+          label: '人物与手势',
+          emojis: [
+            '👋',
+            '🤚',
+            '🖐️',
+            '✋',
+            '🖖',
+            '🫱',
+            '🫲',
+            '🫳',
+            '🫴',
+            '🫷',
+            '🫸',
+            '👌',
+            '🤌',
+            '🤏',
+            '✌️',
+            '🤞',
+            '🫰',
+            '🤟',
+            '🤘',
+            '🤙',
+            '👈',
+            '👉',
+            '👆',
+            '🖕',
+            '👇',
+            '☝️',
+            '🫵',
+            '👍',
+            '👎',
+            '✊',
+            '👊',
+            '🤛',
+            '🤜',
+            '👏',
+            '🙌',
+            '🫶',
+            '👐',
+            '🤲',
+            '🤝',
+            '🙏',
+            '✍️',
+            '💅',
+            '🤳',
+            '💪',
+            '🦾',
+            '🦿',
+            '🦵',
+            '🦶',
+            '👂',
+            '🦻',
+            '👃',
+            '🧠',
+            '🫀',
+            '🫁',
+            '🦷',
+            '🦴',
+            '👀',
+            '👁️',
+            '👅',
+            '👄',
+            '🫦',
+            '👶',
+            '🧒',
+            '👦',
+            '👧',
+            '🧑',
+            '👨',
+            '🧔',
+            '🧔‍♂️',
+            '🧔‍♀️',
+            '👨‍🦰',
+            '👨‍🦱',
+            '👨‍🦳',
+            '👨‍🦲',
+            '👩',
+            '👩‍🦰',
+            '🧑‍🦰',
+            '👩‍🦱',
+            '🧑‍🦱',
+            '👩‍🦳',
+            '🧑‍🦳',
+            '👩‍🦲',
+            '🧑‍🦲',
+            '👱‍♀️',
+            '👱‍♂️',
+            '🧓',
+            '👴',
+            '👵',
+            '🙍‍♂️',
+            '🙍‍♀️',
+            '🙎‍♂️',
+            '🙎‍♀️',
+            '🙅‍♂️',
+            '🙅‍♀️',
+            '🙆‍♂️',
+            '🙆‍♀️',
+            '💁‍♂️',
+            '💁‍♀️',
+            '🙋‍♂️',
+            '🙋‍♀️',
+            '🧏',
+            '🧏‍♂️',
+            '🧏‍♀️',
+            '🙇',
+            '🙇‍♂️',
+            '🙇‍♀️',
+            '🤦',
+            '🤦‍♂️',
+            '🤦‍♀️',
+            '🤷',
+            '🤷‍♂️',
+            '🤷‍♀️',
+            '🧑‍⚕️',
+            '👨‍⚕️',
+            '👩‍⚕️',
+            '🧑‍🎓',
+            '👨‍🎓',
+            '👩‍🎓',
+            '🧑‍🏫',
+            '👨‍🏫',
+            '👩‍🏫',
+            '🧑‍⚖️',
+            '👨‍⚖️',
+            '👩‍⚖️',
+            '🧑‍🌾',
+            '👨‍🌾',
+            '👩‍🌾',
+            '🧑‍🍳',
+            '👨‍🍳',
+            '👩‍🍳',
+            '🧑‍🔧',
+            '👨‍🔧',
+            '👩‍🔧',
+            '🧑‍🏭',
+            '👨‍🏭',
+            '👩‍🏭',
+            '🧑‍💼',
+            '👨‍💼',
+            '👩‍💼',
+            '🧑‍🔬',
+            '👨‍🔬',
+            '👩‍🔬',
+            '🧑‍💻',
+            '👨‍💻',
+            '👩‍💻',
+            '🧑‍🎤',
+            '👨‍🎤',
+            '👩‍🎤',
+            '🧑‍🎨',
+            '👨‍🎨',
+            '👩‍🎨',
+            '🧑‍✈️',
+            '👨‍✈️',
+            '👩‍✈️',
+            '🧑‍🚀',
+            '👨‍🚀',
+            '👩‍🚀',
+            '🧑‍🚒',
+            '👨‍🚒',
+            '👩‍🚒',
+            '👮‍♂️',
+            '👮‍♀️',
+            '🕵️‍♂️',
+            '🕵️‍♀️',
+            '💂‍♂️',
+            '💂‍♀️',
+            '🥷',
+            '👷‍♂️',
+            '👷‍♀️',
+            '🫅',
+            '🤴',
+            '👸',
+            '👳‍♂️',
+            '👳‍♀️',
+            '👲',
+            '🧕',
+            '🤵',
+            '🤵‍♂️',
+            '🤵‍♀️',
+            '👰',
+            '👰‍♂️',
+            '👰‍♀️',
+            '🤰',
+            '🫃',
+            '🫄',
+            '🤱',
+            '👩‍🍼',
+            '👨‍🍼',
+            '🧑‍🍼',
+            '👼',
+            '🎅',
+            '🤶',
+            '🧑‍🎄',
+            '🦸',
+            '🦸‍♂️',
+            '🦸‍♀️',
+            '🦹',
+            '🦹‍♂️',
+            '🦹‍♀️',
+            '🧙‍♂️',
+            '🧙‍♀️',
+            '🧚‍♂️',
+            '🧚‍♀️',
+            '🧛‍♂️',
+            '🧛‍♀️',
+            '🧜‍♂️',
+            '🧜‍♀️',
+            '🧝‍♂️',
+            '🧝‍♀️',
+            '🧞‍♂️',
+            '🧞‍♀️',
+            '🧟‍♂️',
+            '🧟‍♀️',
+            '🧌',
+            '💆‍♂️',
+            '💆‍♀️',
+            '💇‍♂️',
+            '💇‍♀️',
+            '🚶‍♂️',
+            '🚶‍♀️',
+            '🚶‍➡️',
+            '🚶‍♀️‍➡️',
+            '🚶‍♂️‍➡️',
+            '🧍',
+            '🧍‍♂️',
+            '🧍‍♀️',
+            '🧎',
+            '🧎‍♂️',
+            '🧎‍♀️',
+            '🧎‍➡️',
+            '🧎‍♀️‍➡️',
+            '🧎‍♂️‍➡️',
+            '🧑‍🦯',
+            '🧑‍🦯‍➡️',
+            '👨‍🦯',
+            '👨‍🦯‍➡️',
+            '👩‍🦯',
+            '👩‍🦯‍➡️',
+            '🧑‍🦼',
+            '🧑‍🦼‍➡️',
+            '👨‍🦼',
+            '👨‍🦼‍➡️',
+            '👩‍🦼',
+            '👩‍🦼‍➡️',
+            '🧑‍🦽',
+            '🧑‍🦽‍➡️',
+            '👨‍🦽',
+            '👨‍🦽‍➡️',
+            '👩‍🦽',
+            '👩‍🦽‍➡️',
+            '🏃‍♂️',
+            '🏃‍♀️',
+            '🏃‍➡️',
+            '🏃‍♀️‍➡️',
+            '🏃‍♂️‍➡️',
+            '💃',
+            '🕺',
+            '🕴️',
+            '👯‍♂️',
+            '👯‍♀️',
+            '🧖‍♂️',
+            '🧖‍♀️',
+            '🧗‍♂️',
+            '🧗‍♀️',
+            '🤺',
+            '🏇',
+            '⛷️',
+            '🏂',
+            '🏌️‍♂️',
+            '🏌️‍♀️',
+            '🏄‍♂️',
+            '🏄‍♀️',
+            '🚣‍♂️',
+            '🚣‍♀️',
+            '🏊‍♂️',
+            '🏊‍♀️',
+            '⛹️‍♂️',
+            '⛹️‍♀️',
+            '🏋️‍♂️',
+            '🏋️‍♀️',
+            '🚴‍♂️',
+            '🚴‍♀️',
+            '🚵‍♂️',
+            '🚵‍♀️',
+            '🤸',
+            '🤸‍♂️',
+            '🤸‍♀️',
+            '🤼',
+            '🤼‍♂️',
+            '🤼‍♀️',
+            '🤽',
+            '🤽‍♂️',
+            '🤽‍♀️',
+            '🤾',
+            '🤾‍♂️',
+            '🤾‍♀️',
+            '🤹',
+            '🤹‍♂️',
+            '🤹‍♀️',
+            '🧘‍♂️',
+            '🧘‍♀️',
+            '🛀',
+            '🛌',
+            '🧑‍🤝‍🧑',
+            '👭',
+            '👫',
+            '👬',
+            '💏',
+            '👩‍❤️‍💋‍👨',
+            '👨‍❤️‍💋‍👨',
+            '👩‍❤️‍💋‍👩',
+            '💑',
+            '👩‍❤️‍👨',
+            '👨‍❤️‍👨',
+            '👩‍❤️‍👩',
+            '👨‍👩‍👦',
+            '👨‍👩‍👧',
+            '👨‍👩‍👧‍👦',
+            '👨‍👩‍👦‍👦',
+            '👨‍👩‍👧‍👧',
+            '👨‍👨‍👦',
+            '👨‍👨‍👧',
+            '👨‍👨‍👧‍👦',
+            '👨‍👨‍👦‍👦',
+            '👨‍👨‍👧‍👧',
+            '👩‍👩‍👦',
+            '👩‍👩‍👧',
+            '👩‍👩‍👧‍👦',
+            '👩‍👩‍👦‍👦',
+            '👩‍👩‍👧‍👧',
+            '👨‍👦',
+            '👨‍👦‍👦',
+            '👨‍👧',
+            '👨‍👧‍👦',
+            '👨‍👧‍👧',
+            '👩‍👦',
+            '👩‍👦‍👦',
+            '👩‍👧',
+            '👩‍👧‍👦',
+            '👩‍👧‍👧',
+            '🗣️',
+            '👤',
+            '👥',
+            '🫂',
+            '🧑‍🧑‍🧒',
+            '🧑‍🧑‍🧒‍🧒',
+            '🧑‍🧒',
+            '🧑‍🧒‍🧒',
+            '👣',
+            '🫆',
+          ],
+        },
+        {
+          label: '动物与自然',
+          emojis: [
+            '🐵',
+            '🐒',
+            '🦍',
+            '🦧',
+            '🐶',
+            '🐕',
+            '🦮',
+            '🐕‍🦺',
+            '🐩',
+            '🐺',
+            '🦊',
+            '🦝',
+            '🐱',
+            '🐈',
+            '🐈‍⬛',
+            '🦁',
+            '🐯',
+            '🐅',
+            '🐆',
+            '🐴',
+            '🫎',
+            '🫏',
+            '🐎',
+            '🦄',
+            '🦓',
+            '🦌',
+            '🦬',
+            '🐮',
+            '🐂',
+            '🐃',
+            '🐄',
+            '🐷',
+            '🐖',
+            '🐗',
+            '🐽',
+            '🐏',
+            '🐑',
+            '🐐',
+            '🐪',
+            '🐫',
+            '🦙',
+            '🦒',
+            '🐘',
+            '🦣',
+            '🦏',
+            '🦛',
+            '🐭',
+            '🐁',
+            '🐀',
+            '🐹',
+            '🐰',
+            '🐇',
+            '🐿️',
+            '🦫',
+            '🦔',
+            '🦇',
+            '🐻',
+            '🐻‍❄️',
+            '🐨',
+            '🐼',
+            '🦥',
+            '🦦',
+            '🦨',
+            '🦘',
+            '🦡',
+            '🐾',
+            '🦃',
+            '🐔',
+            '🐓',
+            '🐣',
+            '🐤',
+            '🐥',
+            '🐦',
+            '🐧',
+            '🕊️',
+            '🦅',
+            '🦆',
+            '🦢',
+            '🦉',
+            '🦤',
+            '🪶',
+            '🦩',
+            '🦚',
+            '🦜',
+            '🪽',
+            '🐦‍⬛',
+            '🪿',
+            '🐦‍🔥',
+            '🐸',
+            '🐊',
+            '🐢',
+            '🦎',
+            '🐍',
+            '🐲',
+            '🐉',
+            '🦕',
+            '🦖',
+            '🐳',
+            '🐋',
+            '🐬',
+            '🦭',
+            '🐟',
+            '🐠',
+            '🐡',
+            '🦈',
+            '🐙',
+            '🐚',
+            '🪸',
+            '🪼',
+            '🦀',
+            '🦞',
+            '🦐',
+            '🦑',
+            '🦪',
+            '🐌',
+            '🦋',
+            '🐛',
+            '🐜',
+            '🐝',
+            '🪲',
+            '🐞',
+            '🦗',
+            '🪳',
+            '🕷️',
+            '🕸️',
+            '🦂',
+            '🦟',
+            '🪰',
+            '🪱',
+            '🦠',
+            '💐',
+            '🌸',
+            '💮',
+            '🪷',
+            '🏵️',
+            '🌹',
+            '🥀',
+            '🌺',
+            '🌻',
+            '🌼',
+            '🌷',
+            '🪻',
+            '🌱',
+            '🪴',
+            '🌲',
+            '🌳',
+            '🌴',
+            '🌵',
+            '🌾',
+            '🌿',
+            '☘️',
+            '🍀',
+            '🍁',
+            '🍂',
+            '🍃',
+            '🪹',
+            '🪺',
+            '🍄',
+            '🪾',
+          ],
+        },
+        {
+          label: '食物与饮品',
+          emojis: [
+            '🍇',
+            '🍈',
+            '🍉',
+            '🍊',
+            '🍋',
+            '🍋‍🟩',
+            '🍌',
+            '🍍',
+            '🥭',
+            '🍎',
+            '🍏',
+            '🍐',
+            '🍑',
+            '🍒',
+            '🍓',
+            '🫐',
+            '🥝',
+            '🍅',
+            '🫒',
+            '🥥',
+            '🥑',
+            '🍆',
+            '🥔',
+            '🥕',
+            '🌽',
+            '🌶️',
+            '🫑',
+            '🥒',
+            '🥬',
+            '🥦',
+            '🧄',
+            '🧅',
+            '🥜',
+            '🫘',
+            '🌰',
+            '🫚',
+            '🫛',
+            '🍄‍🟫',
+            '🫜',
+            '🍞',
+            '🥐',
+            '🥖',
+            '🫓',
+            '🥨',
+            '🥯',
+            '🥞',
+            '🧇',
+            '🧀',
+            '🍖',
+            '🍗',
+            '🥩',
+            '🥓',
+            '🍔',
+            '🍟',
+            '🍕',
+            '🌭',
+            '🥪',
+            '🌮',
+            '🌯',
+            '🫔',
+            '🥙',
+            '🧆',
+            '🥚',
+            '🍳',
+            '🥘',
+            '🍲',
+            '🫕',
+            '🥣',
+            '🥗',
+            '🍿',
+            '🧈',
+            '🧂',
+            '🥫',
+            '🍱',
+            '🍘',
+            '🍙',
+            '🍚',
+            '🍛',
+            '🍜',
+            '🍝',
+            '🍠',
+            '🍢',
+            '🍣',
+            '🍤',
+            '🍥',
+            '🥮',
+            '🍡',
+            '🥟',
+            '🥠',
+            '🥡',
+            '🍦',
+            '🍧',
+            '🍨',
+            '🍩',
+            '🍪',
+            '🎂',
+            '🍰',
+            '🧁',
+            '🥧',
+            '🍫',
+            '🍬',
+            '🍭',
+            '🍮',
+            '🍯',
+            '🍼',
+            '🥛',
+            '☕',
+            '🫖',
+            '🍵',
+            '🍶',
+            '🍾',
+            '🍷',
+            '🍸',
+            '🍹',
+            '🍺',
+            '🍻',
+            '🥂',
+            '🥃',
+            '🫗',
+            '🥤',
+            '🧋',
+            '🧃',
+            '🧉',
+            '🧊',
+            '🥢',
+            '🍽️',
+            '🍴',
+            '🥄',
+            '🔪',
+            '🫙',
+            '🏺',
+          ],
+        },
+        {
+          label: '旅行与地点',
+          emojis: [
+            '🌍',
+            '🌎',
+            '🌏',
+            '🌐',
+            '🗺️',
+            '🗾',
+            '🧭',
+            '🏔️',
+            '⛰️',
+            '🌋',
+            '🗻',
+            '🏕️',
+            '🏖️',
+            '🏜️',
+            '🏝️',
+            '🏞️',
+            '🏟️',
+            '🏛️',
+            '🏗️',
+            '🧱',
+            '🪨',
+            '🪵',
+            '🛖',
+            '🏘️',
+            '🏚️',
+            '🏠',
+            '🏡',
+            '🏢',
+            '🏣',
+            '🏤',
+            '🏥',
+            '🏦',
+            '🏨',
+            '🏩',
+            '🏪',
+            '🏫',
+            '🏬',
+            '🏭',
+            '🏯',
+            '🏰',
+            '💒',
+            '🗼',
+            '🗽',
+            '⛪',
+            '🕌',
+            '🛕',
+            '🕍',
+            '⛩️',
+            '🕋',
+            '⛲',
+            '⛺',
+            '🌁',
+            '🌃',
+            '🏙️',
+            '🌄',
+            '🌅',
+            '🌆',
+            '🌇',
+            '🌉',
+            '♨️',
+            '🎠',
+            '🛝',
+            '🎡',
+            '🎢',
+            '💈',
+            '🎪',
+            '🚂',
+            '🚃',
+            '🚄',
+            '🚅',
+            '🚆',
+            '🚇',
+            '🚈',
+            '🚉',
+            '🚊',
+            '🚝',
+            '🚞',
+            '🚋',
+            '🚌',
+            '🚍',
+            '🚎',
+            '🚐',
+            '🚑',
+            '🚒',
+            '🚓',
+            '🚔',
+            '🚕',
+            '🚖',
+            '🚗',
+            '🚘',
+            '🚙',
+            '🛻',
+            '🚚',
+            '🚛',
+            '🚜',
+            '🏎️',
+            '🏍️',
+            '🛵',
+            '🦽',
+            '🦼',
+            '🛺',
+            '🚲',
+            '🛴',
+            '🛹',
+            '🛼',
+            '🚏',
+            '🛣️',
+            '🛤️',
+            '🛢️',
+            '⛽',
+            '🛞',
+            '🚨',
+            '🚥',
+            '🚦',
+            '🛑',
+            '🚧',
+            '⚓',
+            '🛟',
+            '⛵',
+            '🛶',
+            '🚤',
+            '🛳️',
+            '⛴️',
+            '🛥️',
+            '🚢',
+            '✈️',
+            '🛩️',
+            '🛫',
+            '🛬',
+            '🪂',
+            '💺',
+            '🚁',
+            '🚟',
+            '🚠',
+            '🚡',
+            '🛰️',
+            '🚀',
+            '🛸',
+            '🛎️',
+            '🧳',
+            '⌛',
+            '⏳',
+            '⌚',
+            '⏰',
+            '⏱️',
+            '⏲️',
+            '🕰️',
+            '🕛',
+            '🕧',
+            '🕐',
+            '🕜',
+            '🕑',
+            '🕝',
+            '🕒',
+            '🕞',
+            '🕓',
+            '🕟',
+            '🕔',
+            '🕠',
+            '🕕',
+            '🕡',
+            '🕖',
+            '🕢',
+            '🕗',
+            '🕣',
+            '🕘',
+            '🕤',
+            '🕙',
+            '🕥',
+            '🕚',
+            '🕦',
+            '🌑',
+            '🌒',
+            '🌓',
+            '🌔',
+            '🌕',
+            '🌖',
+            '🌗',
+            '🌘',
+            '🌙',
+            '🌚',
+            '🌛',
+            '🌜',
+            '🌡️',
+            '☀️',
+            '🌝',
+            '🌞',
+            '🪐',
+            '⭐',
+            '🌟',
+            '🌠',
+            '🌌',
+            '☁️',
+            '⛅',
+            '⛈️',
+            '🌤️',
+            '🌥️',
+            '🌦️',
+            '🌧️',
+            '🌨️',
+            '🌩️',
+            '🌪️',
+            '🌫️',
+            '🌬️',
+            '🌀',
+            '🌈',
+            '🌂',
+            '☂️',
+            '☔',
+            '⛱️',
+            '⚡',
+            '❄️',
+            '☃️',
+            '⛄',
+            '☄️',
+            '🔥',
+            '💧',
+            '🌊',
+          ],
+        },
+        {
+          label: '运动与活动',
+          emojis: [
+            '🎃',
+            '🎄',
+            '🎆',
+            '🎇',
+            '🧨',
+            '✨',
+            '🎈',
+            '🎉',
+            '🎊',
+            '🎋',
+            '🎍',
+            '🎎',
+            '🎏',
+            '🎐',
+            '🎑',
+            '🧧',
+            '🎀',
+            '🎁',
+            '🎗️',
+            '🎟️',
+            '🎫',
+            '🎖️',
+            '🏆',
+            '🏅',
+            '🥇',
+            '🥈',
+            '🥉',
+            '⚽',
+            '⚾',
+            '🥎',
+            '🏀',
+            '🏐',
+            '🏈',
+            '🏉',
+            '🎾',
+            '🥏',
+            '🎳',
+            '🏏',
+            '🏑',
+            '🏒',
+            '🥍',
+            '🏓',
+            '🏸',
+            '🥊',
+            '🥋',
+            '🥅',
+            '⛳',
+            '⛸️',
+            '🎣',
+            '🤿',
+            '🎽',
+            '🎿',
+            '🛷',
+            '🥌',
+            '🎯',
+            '🪀',
+            '🪁',
+            '🔫',
+            '🎱',
+            '🔮',
+            '🪄',
+            '🎮',
+            '🕹️',
+            '🎰',
+            '🎲',
+            '🧩',
+            '🧸',
+            '🪅',
+            '🪩',
+            '🪆',
+            '♠️',
+            '♥️',
+            '♦️',
+            '♣️',
+            '♟️',
+            '🃏',
+            '🀄',
+            '🎴',
+            '🎭',
+            '🖼️',
+            '🎨',
+            '🧵',
+            '🪡',
+            '🧶',
+            '🪢',
+          ],
+        },
+        {
+          label: '物品',
+          emojis: [
+            '👓',
+            '🕶️',
+            '🥽',
+            '🥼',
+            '🦺',
+            '👔',
+            '👕',
+            '👖',
+            '🧣',
+            '🧤',
+            '🧥',
+            '🧦',
+            '👗',
+            '👘',
+            '🥻',
+            '🩱',
+            '🩲',
+            '🩳',
+            '👙',
+            '👚',
+            '🪭',
+            '👛',
+            '👜',
+            '👝',
+            '🛍️',
+            '🎒',
+            '🩴',
+            '👞',
+            '👟',
+            '🥾',
+            '🥿',
+            '👠',
+            '👡',
+            '🩰',
+            '👢',
+            '🪮',
+            '👑',
+            '👒',
+            '🎩',
+            '🎓',
+            '🧢',
+            '🪖',
+            '⛑️',
+            '📿',
+            '💄',
+            '💍',
+            '💎',
+            '🔇',
+            '🔈',
+            '🔉',
+            '🔊',
+            '📢',
+            '📣',
+            '📯',
+            '🔔',
+            '🔕',
+            '🎼',
+            '🎵',
+            '🎶',
+            '🎙️',
+            '🎚️',
+            '🎛️',
+            '🎤',
+            '🎧',
+            '📻',
+            '🎷',
+            '🪗',
+            '🎸',
+            '🎹',
+            '🎺',
+            '🎻',
+            '🪕',
+            '🥁',
+            '🪘',
+            '🪇',
+            '🪈',
+            '🪉',
+            '📱',
+            '📲',
+            '☎️',
+            '📞',
+            '📟',
+            '📠',
+            '🔋',
+            '🪫',
+            '🔌',
+            '💻',
+            '🖥️',
+            '🖨️',
+            '⌨️',
+            '🖱️',
+            '🖲️',
+            '💽',
+            '💾',
+            '💿',
+            '📀',
+            '🧮',
+            '🎥',
+            '🎞️',
+            '📽️',
+            '🎬',
+            '📺',
+            '📷',
+            '📸',
+            '📹',
+            '📼',
+            '🔍',
+            '🔎',
+            '🕯️',
+            '💡',
+            '🔦',
+            '🏮',
+            '🪔',
+            '📔',
+            '📕',
+            '📖',
+            '📗',
+            '📘',
+            '📙',
+            '📚',
+            '📓',
+            '📒',
+            '📃',
+            '📜',
+            '📄',
+            '📰',
+            '🗞️',
+            '📑',
+            '🔖',
+            '🏷️',
+            '💰',
+            '🪙',
+            '💴',
+            '💵',
+            '💶',
+            '💷',
+            '💸',
+            '💳',
+            '🧾',
+            '💹',
+            '✉️',
+            '📧',
+            '📨',
+            '📩',
+            '📤',
+            '📥',
+            '📦',
+            '📫',
+            '📪',
+            '📬',
+            '📭',
+            '📮',
+            '🗳️',
+            '✏️',
+            '✒️',
+            '🖋️',
+            '🖊️',
+            '🖌️',
+            '🖍️',
+            '📝',
+            '💼',
+            '📁',
+            '📂',
+            '🗂️',
+            '📅',
+            '📆',
+            '🗒️',
+            '🗓️',
+            '📇',
+            '📈',
+            '📉',
+            '📊',
+            '📋',
+            '📌',
+            '📍',
+            '📎',
+            '🖇️',
+            '📏',
+            '📐',
+            '✂️',
+            '🗃️',
+            '🗄️',
+            '🗑️',
+            '🔒',
+            '🔓',
+            '🔏',
+            '🔐',
+            '🔑',
+            '🗝️',
+            '🔨',
+            '🪓',
+            '⛏️',
+            '⚒️',
+            '🛠️',
+            '🗡️',
+            '⚔️',
+            '💣',
+            '🪃',
+            '🏹',
+            '🛡️',
+            '🪚',
+            '🔧',
+            '🪛',
+            '🔩',
+            '⚙️',
+            '🗜️',
+            '⚖️',
+            '🦯',
+            '🔗',
+            '⛓️‍💥',
+            '⛓️',
+            '🪝',
+            '🧰',
+            '🧲',
+            '🪜',
+            '🪏',
+            '⚗️',
+            '🧪',
+            '🧫',
+            '🧬',
+            '🔬',
+            '🔭',
+            '📡',
+            '💉',
+            '🩸',
+            '💊',
+            '🩹',
+            '🩼',
+            '🩺',
+            '🩻',
+            '🚪',
+            '🛗',
+            '🪞',
+            '🪟',
+            '🛏️',
+            '🛋️',
+            '🪑',
+            '🚽',
+            '🪠',
+            '🚿',
+            '🛁',
+            '🪤',
+            '🪒',
+            '🧴',
+            '🧷',
+            '🧹',
+            '🧺',
+            '🧻',
+            '🪣',
+            '🧼',
+            '🫧',
+            '🪥',
+            '🧽',
+            '🧯',
+            '🛒',
+            '🚬',
+            '⚰️',
+            '🪦',
+            '⚱️',
+            '🧿',
+            '🪬',
+            '🗿',
+            '🪧',
+            '🪪',
+          ],
+        },
+        {
+          label: '符号',
+          emojis: [
+            '🏧',
+            '🚮',
+            '🚰',
+            '♿',
+            '🚹',
+            '🚺',
+            '🚻',
+            '🚼',
+            '🚾',
+            '🛂',
+            '🛃',
+            '🛄',
+            '🛅',
+            '⚠️',
+            '🚸',
+            '⛔',
+            '🚫',
+            '🚳',
+            '🚭',
+            '🚯',
+            '🚱',
+            '🚷',
+            '📵',
+            '🔞',
+            '☢️',
+            '☣️',
+            '⬆️',
+            '↗️',
+            '➡️',
+            '↘️',
+            '⬇️',
+            '↙️',
+            '⬅️',
+            '↖️',
+            '↕️',
+            '↔️',
+            '↩️',
+            '↪️',
+            '⤴️',
+            '⤵️',
+            '🔃',
+            '🔄',
+            '🔙',
+            '🔚',
+            '🔛',
+            '🔜',
+            '🔝',
+            '🛐',
+            '⚛️',
+            '🕉️',
+            '✡️',
+            '☸️',
+            '☯️',
+            '✝️',
+            '☦️',
+            '☪️',
+            '☮️',
+            '🕎',
+            '🔯',
+            '🪯',
+            '♈',
+            '♉',
+            '♊',
+            '♋',
+            '♌',
+            '♍',
+            '♎',
+            '♏',
+            '♐',
+            '♑',
+            '♒',
+            '♓',
+            '⛎',
+            '🔀',
+            '🔁',
+            '🔂',
+            '▶️',
+            '⏩',
+            '⏭️',
+            '⏯️',
+            '◀️',
+            '⏪',
+            '⏮️',
+            '🔼',
+            '⏫',
+            '🔽',
+            '⏬',
+            '⏸️',
+            '⏹️',
+            '⏺️',
+            '⏏️',
+            '🎦',
+            '🔅',
+            '🔆',
+            '📶',
+            '🛜',
+            '📳',
+            '📴',
+            '⚧️',
+            '✖️',
+            '➕',
+            '➖',
+            '➗',
+            '🟰',
+            '♾️',
+            '‼️',
+            '⁉️',
+            '❓',
+            '❔',
+            '❕',
+            '❗',
+            '〰️',
+            '💱',
+            '💲',
+            '♻️',
+            '⚜️',
+            '🔱',
+            '📛',
+            '🔰',
+            '⭕',
+            '✅',
+            '☑️',
+            '✔️',
+            '❌',
+            '❎',
+            '➰',
+            '➿',
+            '〽️',
+            '✳️',
+            '✴️',
+            '❇️',
+            '©️',
+            '®️',
+            '™️',
+            '🫟',
+            '#️⃣',
+            '*️⃣',
+            '0️⃣',
+            '1️⃣',
+            '2️⃣',
+            '3️⃣',
+            '4️⃣',
+            '5️⃣',
+            '6️⃣',
+            '7️⃣',
+            '8️⃣',
+            '9️⃣',
+            '🔟',
+            '🔠',
+            '🔡',
+            '🔢',
+            '🔣',
+            '🔤',
+            '🅰️',
+            '🆎',
+            '🅱️',
+            '🆑',
+            '🆒',
+            '🆓',
+            'ℹ️',
+            '🆔',
+            'Ⓜ️',
+            '🆕',
+            '🆖',
+            '🅾️',
+            '🆗',
+            '🅿️',
+            '🆘',
+            '🆙',
+            '🆚',
+            '🈁',
+            '🈂️',
+            '🈷️',
+            '🈶',
+            '🈯',
+            '🉐',
+            '🈹',
+            '🈚',
+            '🈲',
+            '🉑',
+            '🈸',
+            '🈴',
+            '🈳',
+            '㊗️',
+            '㊙️',
+            '🈺',
+            '🈵',
+            '🔴',
+            '🟠',
+            '🟡',
+            '🟢',
+            '🔵',
+            '🟣',
+            '🟤',
+            '⚫',
+            '⚪',
+            '🟥',
+            '🟧',
+            '🟨',
+            '🟩',
+            '🟦',
+            '🟪',
+            '🟫',
+            '⬛',
+            '⬜',
+            '◼️',
+            '◻️',
+            '◾',
+            '◽',
+            '▪️',
+            '▫️',
+            '🔶',
+            '🔷',
+            '🔸',
+            '🔹',
+            '🔺',
+            '🔻',
+            '💠',
+            '🔘',
+            '🔳',
+            '🔲',
+          ],
+        },
+        {
+          label: '旗帜',
+          emojis: [
+            '🏁',
+            '🚩',
+            '🎌',
+            '🏴',
+            '🏳️',
+            '🏳️‍🌈',
+            '🏳️‍⚧️',
+            '🏴‍☠️',
+            '🇦🇨',
+            '🇦🇩',
+            '🇦🇪',
+            '🇦🇫',
+            '🇦🇬',
+            '🇦🇮',
+            '🇦🇱',
+            '🇦🇲',
+            '🇦🇴',
+            '🇦🇶',
+            '🇦🇷',
+            '🇦🇸',
+            '🇦🇹',
+            '🇦🇺',
+            '🇦🇼',
+            '🇦🇽',
+            '🇦🇿',
+            '🇧🇦',
+            '🇧🇧',
+            '🇧🇩',
+            '🇧🇪',
+            '🇧🇫',
+            '🇧🇬',
+            '🇧🇭',
+            '🇧🇮',
+            '🇧🇯',
+            '🇧🇱',
+            '🇧🇲',
+            '🇧🇳',
+            '🇧🇴',
+            '🇧🇶',
+            '🇧🇷',
+            '🇧🇸',
+            '🇧🇹',
+            '🇧🇻',
+            '🇧🇼',
+            '🇧🇾',
+            '🇧🇿',
+            '🇨🇦',
+            '🇨🇨',
+            '🇨🇩',
+            '🇨🇫',
+            '🇨🇬',
+            '🇨🇭',
+            '🇨🇮',
+            '🇨🇰',
+            '🇨🇱',
+            '🇨🇲',
+            '🇨🇳',
+            '🇨🇴',
+            '🇨🇵',
+            '🇨🇶',
+            '🇨🇷',
+            '🇨🇺',
+            '🇨🇻',
+            '🇨🇼',
+            '🇨🇽',
+            '🇨🇾',
+            '🇨🇿',
+            '🇩🇪',
+            '🇩🇬',
+            '🇩🇯',
+            '🇩🇰',
+            '🇩🇲',
+            '🇩🇴',
+            '🇩🇿',
+            '🇪🇦',
+            '🇪🇨',
+            '🇪🇪',
+            '🇪🇬',
+            '🇪🇭',
+            '🇪🇷',
+            '🇪🇸',
+            '🇪🇹',
+            '🇪🇺',
+            '🇫🇮',
+            '🇫🇯',
+            '🇫🇰',
+            '🇫🇲',
+            '🇫🇴',
+            '🇫🇷',
+            '🇬🇦',
+            '🇬🇧',
+            '🇬🇩',
+            '🇬🇪',
+            '🇬🇫',
+            '🇬🇬',
+            '🇬🇭',
+            '🇬🇮',
+            '🇬🇱',
+            '🇬🇲',
+            '🇬🇳',
+            '🇬🇵',
+            '🇬🇶',
+            '🇬🇷',
+            '🇬🇸',
+            '🇬🇹',
+            '🇬🇺',
+            '🇬🇼',
+            '🇬🇾',
+            '🇭🇰',
+            '🇭🇲',
+            '🇭🇳',
+            '🇭🇷',
+            '🇭🇹',
+            '🇭🇺',
+            '🇮🇨',
+            '🇮🇩',
+            '🇮🇪',
+            '🇮🇱',
+            '🇮🇲',
+            '🇮🇳',
+            '🇮🇴',
+            '🇮🇶',
+            '🇮🇷',
+            '🇮🇸',
+            '🇮🇹',
+            '🇯🇪',
+            '🇯🇲',
+            '🇯🇴',
+            '🇯🇵',
+            '🇰🇪',
+            '🇰🇬',
+            '🇰🇭',
+            '🇰🇮',
+            '🇰🇲',
+            '🇰🇳',
+            '🇰🇵',
+            '🇰🇷',
+            '🇰🇼',
+            '🇰🇾',
+            '🇰🇿',
+            '🇱🇦',
+            '🇱🇧',
+            '🇱🇨',
+            '🇱🇮',
+            '🇱🇰',
+            '🇱🇷',
+            '🇱🇸',
+            '🇱🇹',
+            '🇱🇺',
+            '🇱🇻',
+            '🇱🇾',
+            '🇲🇦',
+            '🇲🇨',
+            '🇲🇩',
+            '🇲🇪',
+            '🇲🇫',
+            '🇲🇬',
+            '🇲🇭',
+            '🇲🇰',
+            '🇲🇱',
+            '🇲🇲',
+            '🇲🇳',
+            '🇲🇴',
+            '🇲🇵',
+            '🇲🇶',
+            '🇲🇷',
+            '🇲🇸',
+            '🇲🇹',
+            '🇲🇺',
+            '🇲🇻',
+            '🇲🇼',
+            '🇲🇽',
+            '🇲🇾',
+            '🇲🇿',
+            '🇳🇦',
+            '🇳🇨',
+            '🇳🇪',
+            '🇳🇫',
+            '🇳🇬',
+            '🇳🇮',
+            '🇳🇱',
+            '🇳🇴',
+            '🇳🇵',
+            '🇳🇷',
+            '🇳🇺',
+            '🇳🇿',
+            '🇴🇲',
+            '🇵🇦',
+            '🇵🇪',
+            '🇵🇫',
+            '🇵🇬',
+            '🇵🇭',
+            '🇵🇰',
+            '🇵🇱',
+            '🇵🇲',
+            '🇵🇳',
+            '🇵🇷',
+            '🇵🇸',
+            '🇵🇹',
+            '🇵🇼',
+            '🇵🇾',
+            '🇶🇦',
+            '🇷🇪',
+            '🇷🇴',
+            '🇷🇸',
+            '🇷🇺',
+            '🇷🇼',
+            '🇸🇦',
+            '🇸🇧',
+            '🇸🇨',
+            '🇸🇩',
+            '🇸🇪',
+            '🇸🇬',
+            '🇸🇭',
+            '🇸🇮',
+            '🇸🇯',
+            '🇸🇰',
+            '🇸🇱',
+            '🇸🇲',
+            '🇸🇳',
+            '🇸🇴',
+            '🇸🇷',
+            '🇸🇸',
+            '🇸🇹',
+            '🇸🇻',
+            '🇸🇽',
+            '🇸🇾',
+            '🇸🇿',
+            '🇹🇦',
+            '🇹🇨',
+            '🇹🇩',
+            '🇹🇫',
+            '🇹🇬',
+            '🇹🇭',
+            '🇹🇯',
+            '🇹🇰',
+            '🇹🇱',
+            '🇹🇲',
+            '🇹🇳',
+            '🇹🇴',
+            '🇹🇷',
+            '🇹🇹',
+            '🇹🇻',
+            '🇹🇼',
+            '🇹🇿',
+            '🇺🇦',
+            '🇺🇬',
+            '🇺🇲',
+            '🇺🇳',
+            '🇺🇸',
+            '🇺🇾',
+            '🇺🇿',
+            '🇻🇦',
+            '🇻🇨',
+            '🇻🇪',
+            '🇻🇬',
+            '🇻🇮',
+            '🇻🇳',
+            '🇻🇺',
+            '🇼🇫',
+            '🇼🇸',
+            '🇽🇰',
+            '🇾🇪',
+            '🇾🇹',
+            '🇿🇦',
+            '🇿🇲',
+            '🇿🇼',
+            '🏴󠁧󠁢󠁥󠁮󠁧󠁿',
+            '🏴󠁧󠁢󠁳󠁣󠁴󠁿',
+            '🏴󠁧󠁢󠁷󠁬󠁳󠁿',
+          ],
+        },
       ]
       const systemFont = '"Segoe UI Emoji","Noto Color Emoji","Apple Color Emoji",sans-serif'
       function font() {
@@ -1095,8 +3078,7 @@
       function message(text) {
         $('status').textContent = text
       }
-      function autoColor() {
-        if (!$('auto').checked) return
+      function emojiBackground(emoji) {
         const sample = document.createElement('canvas')
         sample.width = 64
         sample.height = 64
@@ -1104,7 +3086,7 @@
         c.font = '46px ' + font()
         c.textAlign = 'center'
         c.textBaseline = 'middle'
-        paintEmoji(c, state.emojis[state.emojis.length - 1], 32, 32, 46)
+        paintEmoji(c, emoji, 32, 32, 46)
         const data = c.getImageData(0, 0, 64, 64).data
         let r = 0,
           g = 0,
@@ -1121,16 +3103,14 @@
           total += weight
         }
         if (!total) {
-          state.bg = '#f5f5f5'
-          return
+          return '#f5f5f5'
         }
         const rgb = [r, g, b].map((v) => v / total / 255)
         const hi = Math.max(...rgb),
           lo = Math.min(...rgb),
           delta = hi - lo
         if (delta < 0.01) {
-          state.bg = '#f5f5f5'
-          return
+          return '#f5f5f5'
         }
         let hue =
           hi === rgb[0]
@@ -1153,7 +3133,7 @@
           [secondary, 0, chroma],
           [chroma, 0, secondary],
         ][Math.floor(hue)]
-        state.bg =
+        return (
           '#' +
           channels
             .map((v) =>
@@ -1162,6 +3142,56 @@
                 .padStart(2, '0'),
             )
             .join('')
+        )
+      }
+      // 混合为两种已生成的背景色逐 RGB 通道的算术中点。
+      function autoColor() {
+        const hasSecond = state.emojis.length === 2
+        if (!hasSecond && state.colorMode === 'emoji2') state.colorMode = 'mix'
+        if (state.colorMode === 'manual') {
+          state.bg = state.manualColor || state.bg
+          return
+        }
+        const first = emojiBackground(state.emojis[0])
+        const second = hasSecond ? emojiBackground(state.emojis[1]) : first
+        if (state.colorMode === 'emoji1') state.bg = first
+        else if (state.colorMode === 'emoji2') state.bg = second
+        else
+          state.bg =
+            '#' +
+            [1, 3, 5]
+              .map((i) =>
+                Math.round(
+                  (parseInt(first.slice(i, i + 2), 16) + parseInt(second.slice(i, i + 2), 16)) / 2,
+                )
+                  .toString(16)
+                  .padStart(2, '0'),
+              )
+              .join('')
+      }
+      function colorControls() {
+        const manual = state.colorMode === 'manual'
+        document.querySelectorAll('[data-color-mode]').forEach((b) => {
+          b.setAttribute('aria-pressed', String(b.dataset.colorMode === state.colorMode))
+          b.disabled = b.dataset.colorMode === 'emoji2' && state.emojis.length < 2
+        })
+        $('color').disabled = !manual
+        $('hex-input').disabled = !manual
+        $('color').value = state.bg
+        $('hex-input').value = state.bg.toUpperCase()
+        $('color-editor-label').textContent = {
+          mix: '混合色',
+          emoji1: 'Emoji 1',
+          emoji2: 'Emoji 2',
+          manual: '可编辑',
+        }[state.colorMode]
+        $('color-mode-note').textContent = manual
+          ? '点击色块或输入 HEX 色值'
+          : state.colorMode === 'mix'
+            ? state.emojis.length === 2
+              ? '两种背景色各占 50%'
+              : '当前使用 Emoji 1 的背景色'
+            : '跟随所选 Emoji 的颜色'
       }
       // 按参考图复现固定错行网格：大图间距 0.6、行距 0.18，小图位于左下空隙。
       // 大图缩小，大小比固定为 1.95:1，所有表情保持正立；相同比例预览与导出共用坐标。
@@ -1175,7 +3205,7 @@
         const size = unit * 0.13
         ctx.textAlign = 'center'
         ctx.textBaseline = 'middle'
-        ctx.globalAlpha = 0.6
+        ctx.globalAlpha = 0.52
         const mod = (n, m) => ((n % m) + m) % m
         const rows = Math.ceil(height / (unit * 0.36)) + 2
         const cols = Math.ceil(width / (unit * 1.2)) + 2
@@ -1215,8 +3245,7 @@
         $('preview').style.height = ph + 'px'
         $('dimensions').textContent = w + ' × ' + h
         $('export-dimensions').textContent = w + ' × ' + h + ' 像素'
-        $('color').value = state.bg
-        $('hex').textContent = state.bg.toUpperCase()
+        colorControls()
         if (saveUrl) {
           URL.revokeObjectURL(saveUrl)
           saveUrl = null
@@ -1229,12 +3258,19 @@
           el.dataset.emoji = state.emojis[i] || '+'
           el.replaceChildren(document.createTextNode(state.emojis[i] || '+'))
           const small = document.createElement('small')
-          small.textContent = i + 1
+          small.textContent = 'Emoji ' + (i + 1)
           el.append(small)
           el.classList.toggle('active', state.slot === i)
           el.setAttribute('aria-pressed', String(state.slot === i))
         }
         $('remove').disabled = state.emojis.length < 2
+        $('shuffle').disabled = state.emojis.length < 2
+        $('selection-hint').textContent = '正在选择 Emoji ' + (state.slot + 1)
+        document
+          .querySelectorAll('#emoji-grid button')
+          .forEach((b) =>
+            b.setAttribute('aria-pressed', String(b.dataset.emoji === state.emojis[state.slot])),
+          )
         styleEmojis()
       }
       for (let i = 0; i < 2; i++)
@@ -1249,24 +3285,76 @@
         render()
         message('')
       }
-      common.forEach((emoji, index) => {
-        const b = document.createElement('button')
-        b.textContent = emoji
-        b.hidden = index >= 64
-        b.dataset.emoji = emoji
-        b.setAttribute('aria-label', '选择 ' + emoji)
-        b.onclick = () => choose(emoji)
-        $('emoji-grid').append(b)
+      const emojiTotal = emojiGroups.reduce((sum, g) => sum + g.emojis.length, 0)
+      emojiGroups.forEach((group, groupIndex) => {
+        const section = document.createElement('section')
+        section.className = 'emoji-group'
+        section.id = 'emoji-category-' + groupIndex
+        const title = document.createElement('h3')
+        title.textContent = group.label
+        section.append(title)
+        const grid = document.createElement('div')
+        grid.className = 'group-grid'
+        group.emojis.forEach((emoji, index) => {
+          const b = document.createElement('button')
+          b.textContent = emoji
+          b.hidden = index >= 24
+          b.dataset.emoji = emoji
+          b.dataset.extra = String(index >= 24)
+          b.setAttribute('aria-label', '选择 ' + emoji)
+          b.setAttribute('aria-pressed', 'false')
+          b.onclick = () => choose(emoji)
+          grid.append(b)
+        })
+        section.append(grid)
+        $('emoji-grid').append(section)
+        const nav = document.createElement('button')
+        nav.textContent = group.label
+        nav.setAttribute('aria-controls', section.id)
+        nav.setAttribute('aria-pressed', String(groupIndex === 0))
+        nav.onclick = () => {
+          $('category-nav')
+            .querySelectorAll('button')
+            .forEach((b) => b.setAttribute('aria-pressed', String(b === nav)))
+          $('emoji-grid').scrollTo({
+            top: section.offsetTop - $('emoji-grid').offsetTop,
+            behavior: 'smooth',
+          })
+        }
+        $('category-nav').append(nav)
       })
+      let categoryFrame = 0
+      $('emoji-grid').addEventListener(
+        'scroll',
+        () => {
+          cancelAnimationFrame(categoryFrame)
+          categoryFrame = requestAnimationFrame(() => {
+            const top = $('emoji-grid').getBoundingClientRect().top
+            let current = 0
+            document.querySelectorAll('.emoji-group').forEach((g, i) => {
+              if (g.getBoundingClientRect().top <= top + 24) current = i
+            })
+            $('category-nav')
+              .querySelectorAll('button')
+              .forEach((b, i) => b.setAttribute('aria-pressed', String(i === current)))
+          })
+        },
+        { passive: true },
+      )
       $('emoji-toggle').onclick = () => {
         const expanded = $('emoji-toggle').getAttribute('aria-expanded') !== 'true'
         $('emoji-toggle').setAttribute('aria-expanded', String(expanded))
-        $('emoji-toggle').textContent = expanded ? '收起 Emoji ⌃' : '展开更多 Emoji（320）⌄'
+        $('emoji-toggle').textContent = expanded
+          ? '收起为常用 Emoji ⌃'
+          : '展开全部 ' + emojiTotal + ' 个 Emoji ⌄'
         $('emoji-grid').classList.toggle('expanded', expanded)
-        $('emoji-grid')
+        document
+          .querySelectorAll('#emoji-grid button[data-extra="true"]')
+          .forEach((b) => (b.hidden = !expanded))
+        $('emoji-grid').scrollTo({ top: 0, behavior: 'instant' })
+        $('category-nav')
           .querySelectorAll('button')
-          .forEach((b, i) => (b.hidden = !expanded && i >= 64))
-        $('emoji-grid').scrollTop = 0
+          .forEach((b, i) => b.setAttribute('aria-pressed', String(i === 0)))
       }
       $('remove').onclick = () => {
         state.emojis = state.emojis.slice(0, 1)
@@ -1310,14 +3398,40 @@
         $('zoom-out').value = $('zoom').value + '%'
         render()
       }
+      document.querySelectorAll('[data-color-mode]').forEach(
+        (button) =>
+          (button.onclick = () => {
+            state.colorMode = button.dataset.colorMode
+            if (state.colorMode === 'manual' && !state.manualColor) state.manualColor = state.bg
+            $('hex-input').setCustomValidity('')
+            autoColor()
+            render()
+          }),
+      )
       $('color').oninput = () => {
-        $('auto').checked = false
-        state.bg = $('color').value
+        state.manualColor = $('color').value
+        state.bg = state.manualColor
         render()
       }
-      $('auto').onchange = () => {
-        autoColor()
+      function applyHex() {
+        const raw = $('hex-input').value.trim()
+        const value = raw.startsWith('#') ? raw : '#' + raw
+        if (!/^#[0-9a-f]{6}$/i.test(value)) {
+          $('hex-input').setCustomValidity('请输入六位 HEX 色值，例如 #F8D5D3')
+          $('hex-input').reportValidity()
+          return
+        }
+        $('hex-input').setCustomValidity('')
+        state.manualColor = value.toLowerCase()
+        state.bg = state.manualColor
         render()
+      }
+      $('hex-input').oninput = () => {
+        $('hex-input').setCustomValidity('')
+      }
+      $('hex-input').onchange = applyHex
+      $('hex-input').onkeydown = (e) => {
+        if (e.key === 'Enter') applyHex()
       }
       $('font').onchange = refreshFont
       document.querySelectorAll('[data-ratio]').forEach(
@@ -1330,20 +3444,17 @@
             render()
           }),
       )
-      document.querySelectorAll('[data-resolution]').forEach(
-        (button) =>
-          (button.onclick = () => {
-            state.resolution = button.dataset.resolution
-            document
-              .querySelectorAll('[data-resolution]')
-              .forEach((b) => b.setAttribute('aria-pressed', String(b === button)))
-            render()
-          }),
-      )
-      $('shuffle').onclick = () => {
-        state.phase = 1 - state.phase
+      $('quality').onchange = () => {
+        state.resolution = $('quality').checked ? '4k' : '2k'
         render()
-        message('已交换大小图案中的表情位置')
+      }
+      $('shuffle').onclick = () => {
+        if (state.emojis.length < 2) return
+        state.emojis.reverse()
+        slots()
+        autoColor()
+        render()
+        message('已交换 Emoji 1 和 Emoji 2')
       }
       $('download').onclick = async () => {
         const button = $('download')

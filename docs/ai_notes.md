@@ -216,14 +216,10 @@ npm run test:e2e
 
 ## 独立 Emoji 壁纸发布边界
 
-- 根入口 `emoji-wallpaper.html` 内嵌样式和逻辑；通过 `emoji-assets/apple-emoji.ttf` 加载专用苹果 Emoji 字体。系统字体为回退方案。
-- `assemble-site.mjs` 和 `verify-site.mjs` 以精确白名单发布页面及字体，与游戏资源隔离。
-- 不用默认 subset-font 裁剪 CBDT/CBLC 字体：本次实测会丢失彩色表。保留完整 Emoji 专用 TTF；WOFF2 仅略减体积且往返失败，不用于发布。
-- 预览与 PNG 导出使用同一确定性布局和 Canvas 字体；ResizeObserver 经 requestAnimationFrame 调度，避免布局反馈报错。
-
-- 当前壁纸唯一滑块 `zoom`：50%–160%，统一缩放坐标间距与两档 Emoji；大图系数 0.13、小图系数 1/15，alpha=0.6。两种斜线按整数网格分组验证 794 对相邻元素无重复。
-
-- 苹果字体经 FontFace 加载 ArrayBuffer，缓存名 `emoji-wallpaper-font-v1`、字体 URL 版本 `v=26.2.1`。Cache Storage 不可用时退回 HTTP 缓存；命中但字体损坏时删除并重取。已拦截字体网络请求后刷新验证，字体网络请求为 0，默认导出尺寸实测 1440×2560。
-
-- `draw` 围绕 width/2、height/2 的中心大图生成正负行列；18组实际绘制采样（横竖方形×50/100/160缩放×两种phase）验证中心锚点、位置/大小/emoji中心对称及两组斜线最近邻交替均通过，不将字形像素轮廓描述为严格对称。
-- 尺寸由 `state.ratio` 和 `state.resolution` 统一计算；默认9:16 + 2K。菜单64/320展开收起、390px无溢出和3840×2160实际导出均已验证。
+- 根单页 emoji-wallpaper.html 内嵌样式、脚本及分组 Emoji 数据，依赖仅 emoji-assets/apple-emoji.ttf。assemble-site.mjs / verify-site.mjs 精确白名单发布，与游戏资源隔离。
+- 专用彩色 TTF 保留 CBDT/CBLC 与 GSUB。默认 subset-font 裁剪会丢失彩色表，WOFF2 往返失败，故保留 TTF。
+- FontFace 由 ArrayBuffer 加载；缓存名 emoji-wallpaper-font-v1，URL版本 v=26.2.1；Cache Storage 不可用时回退 HTTP 缓存，坏缓存删除后重取。拦截字体网络并刷新已验证无字体请求。
+- emojiBackground 返回单 Emoji 的浅背景色；autoColor 根据 colorMode 选择 mix/emoji1/emoji2/manual；mix 是两种最终 HEX 的逐 RGB 算术平均。manualColor 独立保留，单 Emoji 删除路径会将 emoji2 模式回退mix。
+- draw以画布中心为大Emoji锚点，固定大小系数0.13与1/15、alpha=0.52；zoom是唯一滑块。18组横竖方形×三种缩放×两种phase的绘制桩断言验证中心、中心点成对对称和两组斜线交替，不声称字形像素轮廓严格对称。
+- state.ratio + state.resolution 统一计算显示和PNG导出尺寸。quality为4K开关；9分类1867项，折叠每类24项，共216项。slots交换直接交换两个emoji内容，同时更新取色、选中标记及画布。
+- 本轮浏览器验证通过：单标题、混合中点、手动色保持、HEX、单Emoji回退、菜单展开/收起、4K尺寸、320px无溢出。发布状态以GitHub Actions及在线HTML核验为准。
