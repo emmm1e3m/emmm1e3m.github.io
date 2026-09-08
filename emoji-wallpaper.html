@@ -941,6 +941,39 @@
         height: 52px;
         flex-basis: 62px;
       }
+      .quality-row {
+        width: 100%;
+        display: grid;
+        grid-template-columns: minmax(0, 1fr) 48px;
+        align-items: center;
+        gap: 12px;
+        min-height: 48px;
+        cursor: pointer;
+      }
+      input#quality[role='switch'] {
+        justify-self: end;
+        display: block;
+        width: 48px;
+        height: 28px;
+        min-height: 28px;
+        border: 0;
+        border-radius: 999px;
+        background: #d5d5d5;
+        box-shadow: inset 0 0 0 1px #00000006;
+      }
+      input#quality[role='switch']::before {
+        width: 22px;
+        height: 22px;
+        top: 3px;
+        left: 3px;
+        box-shadow: 0 1px 3px #0002;
+      }
+      input#quality[role='switch']:checked {
+        background: #333;
+      }
+      input#quality[role='switch']:checked::before {
+        transform: translateX(20px);
+      }
     </style>
   </head>
   <body>
@@ -1094,12 +1127,9 @@
               </button>
             </div>
             <label class="quality-row" for="quality"
-              ><span><strong>4K 高清</strong><small>关闭时导出 2K</small></span
-              ><input type="checkbox" role="switch" id="quality" aria-label="4K 高清" /><span
-                class="switch-track"
-                aria-hidden="true"
-              ></span
-            ></label>
+              ><span class="quality-text"><strong>4K 高清</strong><small>关闭时导出 2K</small></span
+              ><input type="checkbox" role="switch" id="quality" aria-label="4K 高清"
+            /></label>
             <p class="font-note" id="export-dimensions">1440 × 2560 像素</p>
           </section>
         </div>
