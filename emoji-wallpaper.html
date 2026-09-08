@@ -880,6 +880,67 @@
       input#color:disabled {
         opacity: 1;
       }
+      .emoji-group[hidden] {
+        display: none !important;
+      }
+      .category-nav {
+        flex-wrap: wrap;
+        overflow: visible;
+        gap: 3px;
+      }
+      .category-nav button {
+        font-size: 11px;
+        padding: 6px 8px;
+      }
+      #color-dialog {
+        width: min(360px, calc(100vw - 32px));
+        border: 1px solid #ddd;
+        border-radius: 18px;
+        padding: 22px;
+        color: #333;
+        background: #fff;
+        box-shadow: 0 20px 80px #0003;
+      }
+      #color-dialog::backdrop {
+        background: #0004;
+        backdrop-filter: blur(3px);
+      }
+      .dialog-heading {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 12px;
+      }
+      .dialog-heading h2 {
+        font-size: 16px;
+      }
+      #color-close {
+        width: 36px;
+        height: 36px;
+        border: 0;
+        border-radius: 8px;
+        background: #f5f5f5;
+        font-size: 22px;
+        color: #777;
+      }
+      .dialog-done {
+        width: 100%;
+        margin-top: 18px;
+        min-height: 42px;
+        border: 0;
+        border-radius: 10px;
+        background: #333;
+        color: #fff;
+        font-size: 13px;
+      }
+      #color-dialog .color-editor {
+        margin-top: 20px;
+      }
+      #color-dialog #color {
+        width: 62px;
+        height: 52px;
+        flex-basis: 62px;
+      }
     </style>
   </head>
   <body>
@@ -926,7 +987,12 @@
                 ×
               </button>
             </div>
-            <nav class="category-nav" id="category-nav" aria-label="Emoji 分类"></nav>
+            <nav
+              class="category-nav"
+              id="category-nav"
+              aria-label="Emoji 分类"
+              role="tablist"
+            ></nav>
             <div
               class="emoji-grid emoji-font"
               id="emoji-grid"
@@ -975,24 +1041,6 @@
               ><button data-color-mode="emoji2" aria-pressed="false">Emoji 2</button
               ><button data-color-mode="manual" aria-pressed="false">手动</button>
             </div>
-            <div class="color-editor">
-              <input
-                type="color"
-                id="color"
-                value="#f5f5f5"
-                aria-label="手动背景颜色"
-                disabled
-              /><input
-                type="text"
-                id="hex-input"
-                aria-label="背景十六进制颜色"
-                value="#F5F5F5"
-                maxlength="7"
-                spellcheck="false"
-                disabled
-              /><span id="color-editor-label">混合色</span>
-            </div>
-            <p class="font-note" id="color-mode-note">两种背景色各占 50%</p>
           </section>
           <section class="section">
             <div class="heading">
@@ -1073,6 +1121,25 @@
         </div>
       </div>
     </main>
+    <dialog id="color-dialog" aria-labelledby="color-dialog-title">
+      <div class="dialog-heading">
+        <h2 id="color-dialog-title">手动背景颜色</h2>
+        <button id="color-close" aria-label="关闭取色器">×</button>
+      </div>
+      <div class="color-editor">
+        <input type="color" id="color" value="#f5f5f5" aria-label="手动背景颜色" disabled /><input
+          type="text"
+          id="hex-input"
+          aria-label="背景十六进制颜色"
+          value="#F5F5F5"
+          maxlength="7"
+          spellcheck="false"
+          disabled
+        />
+      </div>
+      <p class="font-note" id="color-mode-note">两种背景色各占 50%</p>
+      <button class="dialog-done" id="color-done">完成</button>
+    </dialog>
     <script>
       const $ = (id) => document.getElementById(id)
       const state = {
@@ -1263,57 +1330,57 @@
         {
           label: '人物与手势',
           emojis: [
-            '👋',
-            '🤚',
-            '🖐️',
-            '✋',
-            '🖖',
-            '🫱',
-            '🫲',
-            '🫳',
-            '🫴',
-            '🫷',
-            '🫸',
-            '👌',
-            '🤌',
-            '🤏',
-            '✌️',
-            '🤞',
-            '🫰',
-            '🤟',
-            '🤘',
-            '🤙',
-            '👈',
-            '👉',
-            '👆',
-            '🖕',
-            '👇',
-            '☝️',
-            '🫵',
-            '👍',
-            '👎',
-            '✊',
-            '👊',
-            '🤛',
-            '🤜',
-            '👏',
-            '🙌',
-            '🫶',
-            '👐',
-            '🤲',
-            '🤝',
-            '🙏',
-            '✍️',
-            '💅',
-            '🤳',
-            '💪',
+            '👋🏻',
+            '🤚🏻',
+            '🖐🏻',
+            '✋🏻',
+            '🖖🏻',
+            '🫱🏻',
+            '🫲🏻',
+            '🫳🏻',
+            '🫴🏻',
+            '🫷🏻',
+            '🫸🏻',
+            '👌🏻',
+            '🤌🏻',
+            '🤏🏻',
+            '✌🏻',
+            '🤞🏻',
+            '🫰🏻',
+            '🤟🏻',
+            '🤘🏻',
+            '🤙🏻',
+            '👈🏻',
+            '👉🏻',
+            '👆🏻',
+            '🖕🏻',
+            '👇🏻',
+            '☝🏻',
+            '🫵🏻',
+            '👍🏻',
+            '👎🏻',
+            '✊🏻',
+            '👊🏻',
+            '🤛🏻',
+            '🤜🏻',
+            '👏🏻',
+            '🙌🏻',
+            '🫶🏻',
+            '👐🏻',
+            '🤲🏻',
+            '🤝🏻',
+            '🙏🏻',
+            '✍🏻',
+            '💅🏻',
+            '🤳🏻',
+            '💪🏻',
             '🦾',
             '🦿',
-            '🦵',
-            '🦶',
-            '👂',
-            '🦻',
-            '👃',
+            '🦵🏻',
+            '🦶🏻',
+            '👂🏻',
+            '🦻🏻',
+            '👃🏻',
             '🧠',
             '🫀',
             '🫁',
@@ -1324,293 +1391,122 @@
             '👅',
             '👄',
             '🫦',
-            '👶',
-            '🧒',
-            '👦',
-            '👧',
-            '🧑',
-            '👨',
-            '🧔',
-            '🧔‍♂️',
-            '🧔‍♀️',
-            '👨‍🦰',
-            '👨‍🦱',
-            '👨‍🦳',
-            '👨‍🦲',
-            '👩',
-            '👩‍🦰',
-            '🧑‍🦰',
-            '👩‍🦱',
-            '🧑‍🦱',
-            '👩‍🦳',
-            '🧑‍🦳',
-            '👩‍🦲',
-            '🧑‍🦲',
-            '👱‍♀️',
-            '👱‍♂️',
-            '🧓',
-            '👴',
-            '👵',
-            '🙍‍♂️',
-            '🙍‍♀️',
-            '🙎‍♂️',
-            '🙎‍♀️',
-            '🙅‍♂️',
-            '🙅‍♀️',
-            '🙆‍♂️',
-            '🙆‍♀️',
-            '💁‍♂️',
-            '💁‍♀️',
-            '🙋‍♂️',
-            '🙋‍♀️',
-            '🧏',
-            '🧏‍♂️',
-            '🧏‍♀️',
-            '🙇',
-            '🙇‍♂️',
-            '🙇‍♀️',
-            '🤦',
-            '🤦‍♂️',
-            '🤦‍♀️',
-            '🤷',
-            '🤷‍♂️',
-            '🤷‍♀️',
-            '🧑‍⚕️',
-            '👨‍⚕️',
-            '👩‍⚕️',
-            '🧑‍🎓',
-            '👨‍🎓',
-            '👩‍🎓',
-            '🧑‍🏫',
-            '👨‍🏫',
-            '👩‍🏫',
-            '🧑‍⚖️',
-            '👨‍⚖️',
-            '👩‍⚖️',
-            '🧑‍🌾',
-            '👨‍🌾',
-            '👩‍🌾',
-            '🧑‍🍳',
-            '👨‍🍳',
-            '👩‍🍳',
-            '🧑‍🔧',
-            '👨‍🔧',
-            '👩‍🔧',
-            '🧑‍🏭',
-            '👨‍🏭',
-            '👩‍🏭',
-            '🧑‍💼',
-            '👨‍💼',
-            '👩‍💼',
-            '🧑‍🔬',
-            '👨‍🔬',
-            '👩‍🔬',
-            '🧑‍💻',
-            '👨‍💻',
-            '👩‍💻',
-            '🧑‍🎤',
-            '👨‍🎤',
-            '👩‍🎤',
-            '🧑‍🎨',
-            '👨‍🎨',
-            '👩‍🎨',
-            '🧑‍✈️',
-            '👨‍✈️',
-            '👩‍✈️',
-            '🧑‍🚀',
-            '👨‍🚀',
-            '👩‍🚀',
-            '🧑‍🚒',
-            '👨‍🚒',
-            '👩‍🚒',
-            '👮‍♂️',
-            '👮‍♀️',
-            '🕵️‍♂️',
-            '🕵️‍♀️',
-            '💂‍♂️',
-            '💂‍♀️',
-            '🥷',
-            '👷‍♂️',
-            '👷‍♀️',
-            '🫅',
-            '🤴',
-            '👸',
-            '👳‍♂️',
-            '👳‍♀️',
-            '👲',
-            '🧕',
-            '🤵',
-            '🤵‍♂️',
-            '🤵‍♀️',
-            '👰',
-            '👰‍♂️',
-            '👰‍♀️',
-            '🤰',
-            '🫃',
-            '🫄',
-            '🤱',
-            '👩‍🍼',
-            '👨‍🍼',
-            '🧑‍🍼',
-            '👼',
-            '🎅',
-            '🤶',
-            '🧑‍🎄',
-            '🦸',
-            '🦸‍♂️',
-            '🦸‍♀️',
-            '🦹',
-            '🦹‍♂️',
-            '🦹‍♀️',
-            '🧙‍♂️',
-            '🧙‍♀️',
-            '🧚‍♂️',
-            '🧚‍♀️',
-            '🧛‍♂️',
-            '🧛‍♀️',
-            '🧜‍♂️',
-            '🧜‍♀️',
-            '🧝‍♂️',
-            '🧝‍♀️',
-            '🧞‍♂️',
-            '🧞‍♀️',
-            '🧟‍♂️',
-            '🧟‍♀️',
+            '👶🏻',
+            '🧒🏻',
+            '🧑🏻',
+            '🧔🏻',
+            '🧑🏻‍🦰',
+            '🧑🏻‍🦱',
+            '🧑🏻‍🦳',
+            '🧑🏻‍🦲',
+            '👱🏻',
+            '🧓🏻',
+            '🙍🏻',
+            '🙎🏻',
+            '🙅🏻',
+            '🙆🏻',
+            '💁🏻',
+            '🙋🏻',
+            '🧏🏻',
+            '🙇🏻',
+            '🤦🏻',
+            '🤷🏻',
+            '🧑🏻‍⚕️',
+            '🧑🏻‍🎓',
+            '🧑🏻‍🏫',
+            '🧑🏻‍⚖️',
+            '🧑🏻‍🌾',
+            '🧑🏻‍🍳',
+            '🧑🏻‍🔧',
+            '🧑🏻‍🏭',
+            '🧑🏻‍💼',
+            '🧑🏻‍🔬',
+            '🧑🏻‍💻',
+            '🧑🏻‍🎤',
+            '🧑🏻‍🎨',
+            '🧑🏻‍✈️',
+            '🧑🏻‍🚀',
+            '🧑🏻‍🚒',
+            '👮🏻',
+            '🕵🏻',
+            '💂🏻',
+            '🥷🏻',
+            '👷🏻',
+            '🫅🏻',
+            '👳🏻',
+            '👲🏻',
+            '🧕🏻',
+            '🤵🏻',
+            '👰🏻',
+            '🫄🏻',
+            '🤱🏻',
+            '🧑🏻‍🍼',
+            '👼🏻',
+            '🎅🏻',
+            '🤶🏻',
+            '🧑🏻‍🎄',
+            '🦸🏻',
+            '🦹🏻',
+            '🧙🏻',
+            '🧚🏻',
+            '🧛🏻',
+            '🧜🏻',
+            '🧝🏻',
+            '🧞',
+            '🧟',
             '🧌',
-            '💆‍♂️',
-            '💆‍♀️',
-            '💇‍♂️',
-            '💇‍♀️',
-            '🚶‍♂️',
-            '🚶‍♀️',
-            '🚶‍➡️',
-            '🚶‍♀️‍➡️',
-            '🚶‍♂️‍➡️',
-            '🧍',
-            '🧍‍♂️',
-            '🧍‍♀️',
-            '🧎',
-            '🧎‍♂️',
-            '🧎‍♀️',
-            '🧎‍➡️',
-            '🧎‍♀️‍➡️',
-            '🧎‍♂️‍➡️',
-            '🧑‍🦯',
-            '🧑‍🦯‍➡️',
-            '👨‍🦯',
-            '👨‍🦯‍➡️',
-            '👩‍🦯',
-            '👩‍🦯‍➡️',
-            '🧑‍🦼',
-            '🧑‍🦼‍➡️',
-            '👨‍🦼',
-            '👨‍🦼‍➡️',
-            '👩‍🦼',
-            '👩‍🦼‍➡️',
-            '🧑‍🦽',
-            '🧑‍🦽‍➡️',
-            '👨‍🦽',
-            '👨‍🦽‍➡️',
-            '👩‍🦽',
-            '👩‍🦽‍➡️',
-            '🏃‍♂️',
-            '🏃‍♀️',
-            '🏃‍➡️',
-            '🏃‍♀️‍➡️',
-            '🏃‍♂️‍➡️',
-            '💃',
-            '🕺',
-            '🕴️',
-            '👯‍♂️',
-            '👯‍♀️',
-            '🧖‍♂️',
-            '🧖‍♀️',
-            '🧗‍♂️',
-            '🧗‍♀️',
+            '💆🏻',
+            '💇🏻',
+            '🚶🏻',
+            '🚶🏻‍➡️',
+            '🧍🏻',
+            '🧎🏻',
+            '🧎🏻‍➡️',
+            '🧑🏻‍🦯',
+            '🧑🏻‍🦯‍➡️',
+            '🧑🏻‍🦼',
+            '🧑🏻‍🦼‍➡️',
+            '🧑🏻‍🦽',
+            '🧑🏻‍🦽‍➡️',
+            '🏃🏻',
+            '🏃🏻‍➡️',
+            '💃🏻',
+            '🕺🏻',
+            '🕴🏻',
+            '👯',
+            '🧖🏻',
+            '🧗🏻',
             '🤺',
-            '🏇',
+            '🏇🏻',
             '⛷️',
-            '🏂',
-            '🏌️‍♂️',
-            '🏌️‍♀️',
-            '🏄‍♂️',
-            '🏄‍♀️',
-            '🚣‍♂️',
-            '🚣‍♀️',
-            '🏊‍♂️',
-            '🏊‍♀️',
-            '⛹️‍♂️',
-            '⛹️‍♀️',
-            '🏋️‍♂️',
-            '🏋️‍♀️',
-            '🚴‍♂️',
-            '🚴‍♀️',
-            '🚵‍♂️',
-            '🚵‍♀️',
-            '🤸',
-            '🤸‍♂️',
-            '🤸‍♀️',
+            '🏂🏻',
+            '🏌🏻',
+            '🏄🏻',
+            '🚣🏻',
+            '🏊🏻',
+            '⛹🏻',
+            '🏋🏻',
+            '🚴🏻',
+            '🚵🏻',
+            '🤸🏻',
             '🤼',
-            '🤼‍♂️',
-            '🤼‍♀️',
-            '🤽',
-            '🤽‍♂️',
-            '🤽‍♀️',
-            '🤾',
-            '🤾‍♂️',
-            '🤾‍♀️',
-            '🤹',
-            '🤹‍♂️',
-            '🤹‍♀️',
-            '🧘‍♂️',
-            '🧘‍♀️',
-            '🛀',
-            '🛌',
-            '🧑‍🤝‍🧑',
-            '👭',
-            '👫',
-            '👬',
-            '💏',
-            '👩‍❤️‍💋‍👨',
-            '👨‍❤️‍💋‍👨',
-            '👩‍❤️‍💋‍👩',
-            '💑',
-            '👩‍❤️‍👨',
-            '👨‍❤️‍👨',
-            '👩‍❤️‍👩',
-            '👨‍👩‍👦',
-            '👨‍👩‍👧',
-            '👨‍👩‍👧‍👦',
-            '👨‍👩‍👦‍👦',
-            '👨‍👩‍👧‍👧',
-            '👨‍👨‍👦',
-            '👨‍👨‍👧',
-            '👨‍👨‍👧‍👦',
-            '👨‍👨‍👦‍👦',
-            '👨‍👨‍👧‍👧',
-            '👩‍👩‍👦',
-            '👩‍👩‍👧',
-            '👩‍👩‍👧‍👦',
-            '👩‍👩‍👦‍👦',
-            '👩‍👩‍👧‍👧',
-            '👨‍👦',
-            '👨‍👦‍👦',
-            '👨‍👧',
-            '👨‍👧‍👦',
-            '👨‍👧‍👧',
-            '👩‍👦',
-            '👩‍👦‍👦',
-            '👩‍👧',
-            '👩‍👧‍👦',
-            '👩‍👧‍👧',
-            '🗣️',
-            '👤',
-            '👥',
-            '🫂',
+            '🤽🏻',
+            '🤾🏻',
+            '🤹🏻',
+            '🧘🏻',
+            '🛀🏻',
+            '🛌🏻',
+            '🧑🏻‍🤝‍🧑🏻',
+            '💏🏻',
+            '💑🏻',
             '🧑‍🧑‍🧒',
             '🧑‍🧑‍🧒‍🧒',
             '🧑‍🧒',
             '🧑‍🧒‍🧒',
+            '🗣️',
+            '👤',
+            '👥',
+            '🫂',
             '👣',
             '🫆',
           ],
@@ -3179,12 +3075,6 @@
         $('hex-input').disabled = !manual
         $('color').value = state.bg
         $('hex-input').value = state.bg.toUpperCase()
-        $('color-editor-label').textContent = {
-          mix: '混合色',
-          emoji1: 'Emoji 1',
-          emoji2: 'Emoji 2',
-          manual: '可编辑',
-        }[state.colorMode]
         $('color-mode-note').textContent = manual
           ? '点击色块或输入 HEX 色值'
           : state.colorMode === 'mix'
@@ -3285,77 +3175,81 @@
         render()
         message('')
       }
-      const emojiTotal = emojiGroups.reduce((sum, g) => sum + g.emojis.length, 0)
+      let activeCategory = 0
+      let categoryExpanded = false
+      function showCategory(index) {
+        activeCategory = index
+        document
+          .querySelectorAll('.emoji-group')
+          .forEach((group, i) => (group.hidden = i !== index))
+        $('category-nav')
+          .querySelectorAll('button')
+          .forEach((button, i) => {
+            button.setAttribute('aria-selected', String(i === index))
+            button.setAttribute('aria-pressed', String(i === index))
+            button.tabIndex = i === index ? 0 : -1
+          })
+        document
+          .querySelectorAll('#emoji-grid button[data-extra="true"]')
+          .forEach((button) => (button.hidden = !categoryExpanded))
+        $('emoji-grid').classList.toggle('expanded', categoryExpanded)
+        $('emoji-toggle').hidden = emojiGroups[index].emojis.length <= 48
+        $('emoji-toggle').setAttribute('aria-expanded', String(categoryExpanded))
+        $('emoji-toggle').textContent = categoryExpanded
+          ? '收起本类 Emoji ⌃'
+          : '展开本类全部 ' + emojiGroups[index].emojis.length + ' 个 Emoji ⌄'
+        $('emoji-grid').scrollTo({ top: 0, behavior: 'instant' })
+      }
       emojiGroups.forEach((group, groupIndex) => {
         const section = document.createElement('section')
         section.className = 'emoji-group'
         section.id = 'emoji-category-' + groupIndex
-        const title = document.createElement('h3')
-        title.textContent = group.label
-        section.append(title)
+        section.setAttribute('role', 'tabpanel')
+        section.setAttribute('aria-labelledby', 'category-tab-' + groupIndex)
         const grid = document.createElement('div')
         grid.className = 'group-grid'
         group.emojis.forEach((emoji, index) => {
-          const b = document.createElement('button')
-          b.textContent = emoji
-          b.hidden = index >= 24
-          b.dataset.emoji = emoji
-          b.dataset.extra = String(index >= 24)
-          b.setAttribute('aria-label', '选择 ' + emoji)
-          b.setAttribute('aria-pressed', 'false')
-          b.onclick = () => choose(emoji)
-          grid.append(b)
+          const button = document.createElement('button')
+          button.textContent = emoji
+          button.hidden = index >= 48
+          button.dataset.emoji = emoji
+          button.dataset.extra = String(index >= 48)
+          button.setAttribute('aria-label', '选择 ' + emoji)
+          button.setAttribute('aria-pressed', 'false')
+          button.onclick = () => choose(emoji)
+          grid.append(button)
         })
         section.append(grid)
         $('emoji-grid').append(section)
         const nav = document.createElement('button')
         nav.textContent = group.label
+        nav.id = 'category-tab-' + groupIndex
+        nav.setAttribute('role', 'tab')
         nav.setAttribute('aria-controls', section.id)
-        nav.setAttribute('aria-pressed', String(groupIndex === 0))
         nav.onclick = () => {
-          $('category-nav')
-            .querySelectorAll('button')
-            .forEach((b) => b.setAttribute('aria-pressed', String(b === nav)))
-          $('emoji-grid').scrollTo({
-            top: section.offsetTop - $('emoji-grid').offsetTop,
-            behavior: 'smooth',
-          })
+          categoryExpanded = false
+          showCategory(groupIndex)
+        }
+        nav.onkeydown = (event) => {
+          let next = groupIndex
+          if (event.key === 'ArrowRight') next = (next + 1) % emojiGroups.length
+          else if (event.key === 'ArrowLeft')
+            next = (next + emojiGroups.length - 1) % emojiGroups.length
+          else if (event.key === 'Home') next = 0
+          else if (event.key === 'End') next = emojiGroups.length - 1
+          else return
+          event.preventDefault()
+          categoryExpanded = false
+          showCategory(next)
+          $('category-tab-' + next).focus()
         }
         $('category-nav').append(nav)
       })
-      let categoryFrame = 0
-      $('emoji-grid').addEventListener(
-        'scroll',
-        () => {
-          cancelAnimationFrame(categoryFrame)
-          categoryFrame = requestAnimationFrame(() => {
-            const top = $('emoji-grid').getBoundingClientRect().top
-            let current = 0
-            document.querySelectorAll('.emoji-group').forEach((g, i) => {
-              if (g.getBoundingClientRect().top <= top + 24) current = i
-            })
-            $('category-nav')
-              .querySelectorAll('button')
-              .forEach((b, i) => b.setAttribute('aria-pressed', String(i === current)))
-          })
-        },
-        { passive: true },
-      )
       $('emoji-toggle').onclick = () => {
-        const expanded = $('emoji-toggle').getAttribute('aria-expanded') !== 'true'
-        $('emoji-toggle').setAttribute('aria-expanded', String(expanded))
-        $('emoji-toggle').textContent = expanded
-          ? '收起为常用 Emoji ⌃'
-          : '展开全部 ' + emojiTotal + ' 个 Emoji ⌄'
-        $('emoji-grid').classList.toggle('expanded', expanded)
-        document
-          .querySelectorAll('#emoji-grid button[data-extra="true"]')
-          .forEach((b) => (b.hidden = !expanded))
-        $('emoji-grid').scrollTo({ top: 0, behavior: 'instant' })
-        $('category-nav')
-          .querySelectorAll('button')
-          .forEach((b, i) => b.setAttribute('aria-pressed', String(i === 0)))
+        categoryExpanded = !categoryExpanded
+        showCategory(activeCategory)
       }
+      showCategory(0)
       $('remove').onclick = () => {
         state.emojis = state.emojis.slice(0, 1)
         state.slot = 0
@@ -3406,6 +3300,7 @@
             $('hex-input').setCustomValidity('')
             autoColor()
             render()
+            if (state.colorMode === 'manual') $('color-dialog').showModal()
           }),
       )
       $('color').oninput = () => {
@@ -3419,12 +3314,13 @@
         if (!/^#[0-9a-f]{6}$/i.test(value)) {
           $('hex-input').setCustomValidity('请输入六位 HEX 色值，例如 #F8D5D3')
           $('hex-input').reportValidity()
-          return
+          return false
         }
         $('hex-input').setCustomValidity('')
         state.manualColor = value.toLowerCase()
         state.bg = state.manualColor
         render()
+        return true
       }
       $('hex-input').oninput = () => {
         $('hex-input').setCustomValidity('')
@@ -3433,6 +3329,25 @@
       $('hex-input').onkeydown = (e) => {
         if (e.key === 'Enter') applyHex()
       }
+      $('color-close').onclick = () => $('color-dialog').close()
+      $('color-done').onclick = () => {
+        if (applyHex()) $('color-dialog').close()
+      }
+      $('color-dialog').addEventListener('close', () => {
+        $('hex-input').setCustomValidity('')
+        colorControls()
+      })
+      $('color-dialog').addEventListener('click', (event) => {
+        if (event.target !== $('color-dialog')) return
+        const box = $('color-dialog').getBoundingClientRect()
+        if (
+          event.clientX < box.left ||
+          event.clientX > box.right ||
+          event.clientY < box.top ||
+          event.clientY > box.bottom
+        )
+          $('color-dialog').close()
+      })
       $('font').onchange = refreshFont
       document.querySelectorAll('[data-ratio]').forEach(
         (button) =>

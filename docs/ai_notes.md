@@ -221,5 +221,5 @@ npm run test:e2e
 - FontFace 由 ArrayBuffer 加载；缓存名 emoji-wallpaper-font-v1，URL版本 v=26.2.1；Cache Storage 不可用时回退 HTTP 缓存，坏缓存删除后重取。拦截字体网络并刷新已验证无字体请求。
 - emojiBackground 返回单 Emoji 的浅背景色；autoColor 根据 colorMode 选择 mix/emoji1/emoji2/manual；mix 是两种最终 HEX 的逐 RGB 算术平均。manualColor 独立保留，单 Emoji 删除路径会将 emoji2 模式回退mix。
 - draw以画布中心为大Emoji锚点，固定大小系数0.13与1/15、alpha=0.52；zoom是唯一滑块。18组横竖方形×三种缩放×两种phase的绘制桩断言验证中心、中心点成对对称和两组斜线交替，不声称字形像素轮廓严格对称。
-- state.ratio + state.resolution 统一计算显示和PNG导出尺寸。quality为4K开关；9分类1867项，折叠每类24项，共216项。slots交换直接交换两个emoji内容，同时更新取色、选中标记及画布。
+- state.ratio + state.resolution 统一计算显示和PNG导出尺寸。quality为4K开关；9分类1696项，活动类别tab独占tabpanel，折叠只显示本类前48项；支持方向键切换，展开也只影响当前类别。slots交换直接交换两个emoji内容，同时更新取色、选中标记及画布。
 - 本轮浏览器验证通过：单标题、混合中点、手动色保持、HEX、单Emoji回退、菜单展开/收起、4K尺寸、320px无溢出。发布状态以GitHub Actions及在线HTML核验为准。
