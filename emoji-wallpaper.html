@@ -2967,6 +2967,7 @@
       let uploadVersion = 0
       let uploadBusy = false
       let exportBusy = false
+      let stickerScale = null
       function syncDownload() {
         $('download').disabled =
           uploadBusy ||
@@ -3022,19 +3023,43 @@
           })
         return applePromise
       }
+      function stickerVisualScale() {
+        if (stickerScale !== null) return stickerScale
+        const canvas = document.createElement('canvas')
+        canvas.width = 160
+        canvas.height = 160
+        const context = canvas.getContext('2d', { willReadFrequently: true })
+        context.font = '100px ' + font()
+        context.textAlign = 'center'
+        context.textBaseline = 'middle'
+        context.fillText('🐰', 80, 80)
+        const pixels = context.getImageData(0, 0, 160, 160).data
+        let left = 160,
+          right = -1,
+          top = 160,
+          bottom = -1
+        for (let y = 0; y < 160; y++)
+          for (let x = 0; x < 160; x++)
+            if (pixels[(y * 160 + x) * 4 + 3] > 8) {
+              left = Math.min(left, x)
+              right = Math.max(right, x)
+              top = Math.min(top, y)
+              bottom = Math.max(bottom, y)
+            }
+        stickerScale = right < left ? 0.85 : Math.max(right - left + 1, bottom - top + 1) / 100
+        return stickerScale
+      }
       function paintEmoji(ctx, emoji, x, y, size) {
         if (typeof emoji !== 'string') {
-          const image = emoji.image
-          const scale = Math.min(size / image.naturalWidth, size / image.naturalHeight)
-          const width = image.naturalWidth * scale
-          const height = image.naturalHeight * scale
-          ctx.drawImage(image, x - width / 2, y - height / 2, width, height)
+          const side = size * stickerVisualScale()
+          ctx.drawImage(emoji.image, x - side / 2, y - side / 2, side, side)
           return
         }
         ctx.font = size + 'px ' + font()
         ctx.fillText(emoji, x, y)
       }
       function styleEmojis() {
+        stickerScale = null
         document.querySelectorAll('.emoji-font').forEach((el) => (el.style.fontFamily = font()))
       }
       async function refreshFont() {
@@ -3415,6 +3440,54 @@
       $('custom').onkeydown = (e) => {
         if (e.key === 'Enter') applyCustom()
       }
+      async function normalizeSticker(image) {
+        const longest = Math.max(image.naturalWidth, image.naturalHeight)
+        const scale = Math.min(1, 1024 / longest)
+        const source = document.createElement('canvas')
+        source.width = Math.max(1, Math.round(image.naturalWidth * scale))
+        source.height = Math.max(1, Math.round(image.naturalHeight * scale))
+        const sourceContext = source.getContext('2d', { willReadFrequently: true })
+        sourceContext.drawImage(image, 0, 0, source.width, source.height)
+        const pixels = sourceContext.getImageData(0, 0, source.width, source.height).data
+        let left = source.width,
+          right = -1,
+          top = source.height,
+          bottom = -1
+        // 透明 PNG 的空白边不参与尺寸计算；JPG 的完整矩形保持原样。
+        for (let y = 0; y < source.height; y++)
+          for (let x = 0; x < source.width; x++)
+            if (pixels[(y * source.width + x) * 4 + 3] > 8) {
+              left = Math.min(left, x)
+              right = Math.max(right, x)
+              top = Math.min(top, y)
+              bottom = Math.max(bottom, y)
+            }
+        const width = right < left ? source.width : right - left + 1
+        const height = bottom < top ? source.height : bottom - top + 1
+        if (right < left) left = top = 0
+        const target = document.createElement('canvas')
+        target.width = 1024
+        target.height = 1024
+        const fit = 1024 / Math.max(width, height)
+        const drawWidth = width * fit
+        const drawHeight = height * fit
+        target
+          .getContext('2d')
+          .drawImage(
+            source,
+            left,
+            top,
+            width,
+            height,
+            (1024 - drawWidth) / 2,
+            (1024 - drawHeight) / 2,
+            drawWidth,
+            drawHeight,
+          )
+        const blob = await new Promise((resolve) => target.toBlob(resolve, 'image/png'))
+        if (!blob) throw new Error('图片处理失败，请换一张重试。')
+        return blob
+      }
       $('sticker-upload').onclick = () => $('sticker-file').click()
       $('sticker-file').onchange = async () => {
         const file = $('sticker-file').files?.[0]
@@ -3446,22 +3519,13 @@
             image.naturalWidth * image.naturalHeight > 32_000_000
           )
             throw new Error('图片尺寸过大，请选择不超过 3200 万像素的贴纸。')
-          // 大图先缩为适合壁纸绘制的透明贴纸，避免重复绘制原始巨图。
-          const longest = Math.max(image.naturalWidth, image.naturalHeight)
-          if (longest > 1024) {
-            const scale = 1024 / longest
-            const canvas = document.createElement('canvas')
-            canvas.width = Math.max(1, Math.round(image.naturalWidth * scale))
-            canvas.height = Math.max(1, Math.round(image.naturalHeight * scale))
-            canvas.getContext('2d').drawImage(image, 0, 0, canvas.width, canvas.height)
-            const blob = await new Promise((resolve) => canvas.toBlob(resolve, 'image/png'))
-            if (!blob) throw new Error('图片处理失败，请换一张重试。')
-            URL.revokeObjectURL(url)
-            url = URL.createObjectURL(blob)
-            image = new Image()
-            image.src = url
-            await image.decode()
-          }
+          const blob = await normalizeSticker(image)
+          if (version !== uploadVersion) return
+          URL.revokeObjectURL(url)
+          url = URL.createObjectURL(blob)
+          image = new Image()
+          image.src = url
+          await image.decode()
           if (version !== uploadVersion) return
           choose({ kind: 'image', image, url, name: file.name }, targetSlot)
           url = null
