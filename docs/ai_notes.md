@@ -219,7 +219,9 @@ npm run test:e2e
 - 根单页 emoji-wallpaper.html 内嵌样式、脚本及分组 Emoji 数据，依赖仅 emoji-assets/apple-emoji.ttf。assemble-site.mjs / verify-site.mjs 精确白名单发布，与游戏资源隔离。
 - 专用彩色 TTF 保留 CBDT/CBLC 与 GSUB。默认 subset-font 裁剪会丢失彩色表，WOFF2 往返失败，故保留 TTF。
 - FontFace 由 ArrayBuffer 加载；缓存名 emoji-wallpaper-font-v1，URL版本 v=26.2.1；Cache Storage 不可用时回退 HTTP 缓存，坏缓存删除后重取。拦截字体网络并刷新已验证无字体请求。
-- emojiBackground 返回单 Emoji 的浅背景色；autoColor 根据 colorMode 选择 mix/emoji1/emoji2/manual；mix 是两种最终 HEX 的逐 RGB 算术平均。manualColor 独立保留，单 Emoji 删除路径会将 emoji2 模式回退mix。
+- emojiBackground 返回单个图案的浅背景色；autoColor 根据 colorMode 选择 mix/emoji1/emoji2/manual；mix 是两种最终 HEX 的逐 RGB 算术平均。manualColor 独立保留，删除第二个图案时会将 emoji2 模式回退 mix。
 - draw以画布中心为大Emoji锚点，固定大小系数0.13与1/15、alpha=0.52；zoom是唯一滑块。18组横竖方形×三种缩放×两种phase的绘制桩断言验证中心、中心点成对对称和两组斜线交替，不声称字形像素轮廓严格对称。
-- state.ratio + state.resolution 统一计算显示和PNG导出尺寸。quality为4K开关；9分类1696项，活动类别tab独占tabpanel，折叠只显示本类前48项；支持方向键切换，展开也只影响当前类别。slots交换直接交换两个emoji内容，同时更新取色、选中标记及画布。
+- state.ratio + state.resolution 统一计算显示和PNG导出尺寸。quality为4K开关；9分类1696项，活动类别tab独占tabpanel，折叠只显示本类前48项；支持方向键切换，展开也只影响当前类别。slots交换两个图案内容，同时更新取色、选中标记及画布。
+- state.emojis 现可包含字符串或 `{kind:'image',image,url,name}`；统一 paintEmoji 绘制/取色，图片按最长边等比居中并沿用 0.52 透明度。上传校验 PNG/JPEG 文件头及解码，限 25 MB、8192 边长和 3200 万像素；超过 1024 边长的图片在内存缩小。替换/删除会释放 object URL，上传版本号防止迟到的解码覆盖新选择；上传中的导出禁用，两张贴纸无需等待苹果字体。图片不会持久化或发布。
+- 新增贴纸浏览器核验：透明 PNG + JPG 槽位和预览、交换与删除、无效文件保持原选择、4K 3840×2160 PNG 实际含贴纸、320px 页面无水平溢出。
 - 本轮浏览器验证通过：单标题、混合中点、手动色保持、HEX、单Emoji回退、菜单展开/收起、4K尺寸、320px无溢出。发布状态以GitHub Actions及在线HTML核验为准。

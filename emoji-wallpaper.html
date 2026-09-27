@@ -852,6 +852,31 @@
         font-size: 10px;
         letter-spacing: 0;
       }
+      .slot-image {
+        display: block;
+        width: 46px;
+        height: 46px;
+        position: absolute;
+        top: 50%;
+        left: 50%;
+        transform: translate(-50%, -50%);
+        object-fit: contain;
+      }
+      .sticker-upload {
+        display: block;
+        width: 100%;
+        min-height: 38px;
+        margin-top: 9px;
+        border: 1px dashed #bdbdbd;
+        border-radius: 10px;
+        background: #fff;
+        color: #555;
+        font-size: 12px;
+      }
+      .sticker-upload:hover {
+        border-color: #777;
+        background: #f6f6f6;
+      }
       .quality-row > span {
         flex: 1;
       }
@@ -986,36 +1011,31 @@
         <div class="panel">
           <section class="section">
             <div class="heading">
-              <h2><span class="number">01</span>选择你的 Emoji</h2>
-              <span class="hint" id="selection-hint">正在选择 Emoji 1</span>
+              <h2><span class="number">01</span>选择 Emoji 或贴纸</h2>
+              <span class="hint" id="selection-hint">正在选择图案 1</span>
             </div>
             <div class="slots">
               <button
                 class="slot active emoji-font"
                 id="slot0"
-                aria-label="编辑第一个 Emoji"
+                aria-label="编辑第一个图案"
                 aria-pressed="true"
               >
                 🐰<small>1</small></button
               ><button
                 class="slot emoji-font"
                 id="slot1"
-                aria-label="编辑第二个 Emoji"
+                aria-label="编辑第二个图案"
                 aria-pressed="false"
               >
                 🍎<small>2</small></button
-              ><button
-                class="shuffle"
-                id="shuffle"
-                title="交换两个 Emoji"
-                aria-label="交换表情位置"
-              >
+              ><button class="shuffle" id="shuffle" title="交换两个图案" aria-label="交换图案位置">
                 ⇄</button
               ><button
                 class="remove"
                 id="remove"
-                aria-label="移除第二个 Emoji"
-                title="移除第二个 Emoji"
+                aria-label="移除第二个图案"
+                title="移除第二个图案"
               >
                 ×
               </button>
@@ -1048,6 +1068,15 @@
                 maxlength="80"
               /><button class="small-btn" id="apply">使用</button>
             </div>
+            <button class="sticker-upload" id="sticker-upload" type="button">
+              ＋ 上传本地 PNG / JPG 贴纸
+            </button>
+            <input
+              id="sticker-file"
+              type="file"
+              accept=".png,.jpg,.jpeg,image/png,image/jpeg"
+              hidden
+            />
             <label class="label" for="font">Emoji 字体</label
             ><select id="font">
               <option value="system">系统 Emoji</option>
@@ -1059,7 +1088,7 @@
             <div class="heading">
               <h2><span class="number">02</span>壁纸设置</h2>
             </div>
-            <p class="font-note">以中央 Emoji 为中心缩放，缩小可显示更多图案。</p>
+            <p class="font-note">以中央图案为中心缩放，缩小可显示更多图案。</p>
             <div class="range-row">
               <label for="zoom">缩放</label
               ><input id="zoom" type="range" min="50" max="160" value="100" step="1" /><output
@@ -1070,8 +1099,8 @@
             <label class="label">背景颜色</label>
             <div class="color-modes" role="group" aria-label="背景取色方式">
               <button data-color-mode="mix" aria-pressed="true">混合</button
-              ><button data-color-mode="emoji1" aria-pressed="false">Emoji 1</button
-              ><button data-color-mode="emoji2" aria-pressed="false">Emoji 2</button
+              ><button data-color-mode="emoji1" aria-pressed="false">图案 1</button
+              ><button data-color-mode="emoji2" aria-pressed="false">图案 2</button
               ><button data-color-mode="manual" aria-pressed="false">手动</button>
             </div>
           </section>
@@ -2933,6 +2962,24 @@
       }
       let saveUrl = null
       let applePromise = null
+      let fontRefreshVersion = 0
+      let fontBusy = false
+      let uploadVersion = 0
+      let uploadBusy = false
+      let exportBusy = false
+      function syncDownload() {
+        $('download').disabled =
+          uploadBusy ||
+          exportBusy ||
+          (fontBusy && state.emojis.some((item) => typeof item === 'string'))
+      }
+      function replaceItems(items) {
+        const previous = state.emojis
+        state.emojis = items
+        previous.forEach((item) => {
+          if (typeof item !== 'string' && !items.includes(item)) URL.revokeObjectURL(item.url)
+        })
+      }
       // 单独缓存带版本的字体；刷新直接读取 Cache Storage，不依赖服务器缓存时长。
       // 隐私模式或存储额度不足时，退回浏览器普通 HTTP 缓存。
       async function loadApple() {
@@ -2976,6 +3023,14 @@
         return applePromise
       }
       function paintEmoji(ctx, emoji, x, y, size) {
+        if (typeof emoji !== 'string') {
+          const image = emoji.image
+          const scale = Math.min(size / image.naturalWidth, size / image.naturalHeight)
+          const width = image.naturalWidth * scale
+          const height = image.naturalHeight * scale
+          ctx.drawImage(image, x - width / 2, y - height / 2, width, height)
+          return
+        }
         ctx.font = size + 'px ' + font()
         ctx.fillText(emoji, x, y)
       }
@@ -2983,22 +3038,32 @@
         document.querySelectorAll('.emoji-font').forEach((el) => (el.style.fontFamily = font()))
       }
       async function refreshFont() {
+        const version = ++fontRefreshVersion
         message('')
-        $('download').disabled = true
+        fontBusy =
+          $('font').value === 'apple' && state.emojis.some((item) => typeof item === 'string')
+        syncDownload()
         try {
-          if ($('font').value === 'apple') {
+          if (fontBusy) {
             $('font-note').textContent = '首次加载苹果字体，请稍候…'
             await loadApple()
+            if (version !== fontRefreshVersion) return
             $('font-note').textContent = '苹果字体已就绪，预览和下载均使用同一套表情。'
-          } else $('font-note').textContent = '使用当前设备的彩色 Emoji，预览与导出保持一致。'
+          } else if ($('font').value === 'apple')
+            $('font-note').textContent = '当前只使用本地贴纸，无需加载 Emoji 字体。'
+          else $('font-note').textContent = '使用当前设备的彩色 Emoji，预览与导出保持一致。'
         } catch {
+          if (version !== fontRefreshVersion) return
           $('font').value = 'system'
           $('font-note').textContent = '苹果字体加载失败，已切换系统 Emoji；可重新选择重试。'
         } finally {
-          $('download').disabled = false
-          styleEmojis()
-          autoColor()
-          render()
+          if (version === fontRefreshVersion) {
+            fontBusy = false
+            syncDownload()
+            styleEmojis()
+            autoColor()
+            render()
+          }
         }
       }
       function message(text) {
@@ -3110,8 +3175,8 @@
           : state.colorMode === 'mix'
             ? state.emojis.length === 2
               ? '两种背景色各占 50%'
-              : '当前使用 Emoji 1 的背景色'
-            : '跟随所选 Emoji 的颜色'
+              : '当前使用图案 1 的背景色'
+            : '跟随所选图案的颜色'
       }
       // 按参考图复现固定错行网格：大图间距 0.6、行距 0.18，小图位于左下空隙。
       // 大图缩小，大小比固定为 1.95:1，所有表情保持正立；相同比例预览与导出共用坐标。
@@ -3175,21 +3240,39 @@
       function slots() {
         for (let i = 0; i < 2; i++) {
           const el = $('slot' + i)
-          el.dataset.emoji = state.emojis[i] || '+'
-          el.replaceChildren(document.createTextNode(state.emojis[i] || '+'))
+          const item = state.emojis[i]
+          el.dataset.emoji = typeof item === 'string' ? item : ''
+          if (item && typeof item !== 'string') {
+            const image = document.createElement('img')
+            image.className = 'slot-image'
+            image.src = item.url
+            image.alt = ''
+            el.replaceChildren(image)
+          } else el.replaceChildren(document.createTextNode(item || '+'))
           const small = document.createElement('small')
-          small.textContent = 'Emoji ' + (i + 1)
+          small.textContent = '图案 ' + (i + 1)
           el.append(small)
+          el.setAttribute(
+            'aria-label',
+            `编辑图案 ${i + 1}${item && typeof item !== 'string' ? '：' + item.name : ''}`,
+          )
+          el.title = item && typeof item !== 'string' ? item.name : ''
           el.classList.toggle('active', state.slot === i)
           el.setAttribute('aria-pressed', String(state.slot === i))
         }
         $('remove').disabled = state.emojis.length < 2
         $('shuffle').disabled = state.emojis.length < 2
-        $('selection-hint').textContent = '正在选择 Emoji ' + (state.slot + 1)
+        $('selection-hint').textContent = '正在选择图案 ' + (state.slot + 1)
         document
           .querySelectorAll('#emoji-grid button')
           .forEach((b) =>
-            b.setAttribute('aria-pressed', String(b.dataset.emoji === state.emojis[state.slot])),
+            b.setAttribute(
+              'aria-pressed',
+              String(
+                typeof state.emojis[state.slot] === 'string' &&
+                  b.dataset.emoji === state.emojis[state.slot],
+              ),
+            ),
           )
         styleEmojis()
       }
@@ -3198,12 +3281,19 @@
           state.slot = i
           slots()
         }
-      function choose(emoji) {
-        state.emojis[state.slot] = emoji
+      function choose(item, slot = state.slot) {
+        uploadVersion++
+        uploadBusy = false
+        const next = state.emojis.slice()
+        next[slot] = item
+        replaceItems(next)
+        state.slot = slot
+        syncDownload()
         slots()
         autoColor()
         render()
         message('')
+        if (typeof item === 'string' && $('font').value === 'apple') void refreshFont()
       }
       let activeCategory = 0
       let categoryExpanded = false
@@ -3281,8 +3371,11 @@
       }
       showCategory(0)
       $('remove').onclick = () => {
-        state.emojis = state.emojis.slice(0, 1)
+        uploadVersion++
+        uploadBusy = false
+        replaceItems(state.emojis.slice(0, 1))
         state.slot = 0
+        syncDownload()
         slots()
         autoColor()
         render()
@@ -3307,16 +3400,81 @@
           return
         }
         if (valid.length === 2) {
-          state.emojis = valid
+          uploadVersion++
+          uploadBusy = false
+          replaceItems(valid)
+          syncDownload()
           slots()
           autoColor()
           render()
+          if ($('font').value === 'apple') void refreshFont()
         } else choose(valid[0])
         message('已使用你的 Emoji')
       }
       $('apply').onclick = applyCustom
       $('custom').onkeydown = (e) => {
         if (e.key === 'Enter') applyCustom()
+      }
+      $('sticker-upload').onclick = () => $('sticker-file').click()
+      $('sticker-file').onchange = async () => {
+        const file = $('sticker-file').files?.[0]
+        $('sticker-file').value = ''
+        if (!file) return
+        const targetSlot = state.slot
+        const version = ++uploadVersion
+        uploadBusy = true
+        syncDownload()
+        let url = null
+        try {
+          if (file.size > 25 * 1024 * 1024) throw new Error('图片不能超过 25 MB。')
+          const bytes = new Uint8Array(await file.slice(0, 8).arrayBuffer())
+          const png =
+            bytes.length === 8 &&
+            [137, 80, 78, 71, 13, 10, 26, 10].every((value, index) => bytes[index] === value)
+          const jpg = bytes[0] === 255 && bytes[1] === 216 && bytes[2] === 255
+          if ((!png && !jpg) || (file.type && file.type !== (png ? 'image/png' : 'image/jpeg')))
+            throw new Error('请选择有效的 PNG 或 JPG 图片。')
+          if (version !== uploadVersion) return
+          url = URL.createObjectURL(file)
+          let image = new Image()
+          image.src = url
+          await image.decode()
+          if (version !== uploadVersion) return
+          if (
+            image.naturalWidth > 8192 ||
+            image.naturalHeight > 8192 ||
+            image.naturalWidth * image.naturalHeight > 32_000_000
+          )
+            throw new Error('图片尺寸过大，请选择不超过 3200 万像素的贴纸。')
+          // 大图先缩为适合壁纸绘制的透明贴纸，避免重复绘制原始巨图。
+          const longest = Math.max(image.naturalWidth, image.naturalHeight)
+          if (longest > 1024) {
+            const scale = 1024 / longest
+            const canvas = document.createElement('canvas')
+            canvas.width = Math.max(1, Math.round(image.naturalWidth * scale))
+            canvas.height = Math.max(1, Math.round(image.naturalHeight * scale))
+            canvas.getContext('2d').drawImage(image, 0, 0, canvas.width, canvas.height)
+            const blob = await new Promise((resolve) => canvas.toBlob(resolve, 'image/png'))
+            if (!blob) throw new Error('图片处理失败，请换一张重试。')
+            URL.revokeObjectURL(url)
+            url = URL.createObjectURL(blob)
+            image = new Image()
+            image.src = url
+            await image.decode()
+          }
+          if (version !== uploadVersion) return
+          choose({ kind: 'image', image, url, name: file.name }, targetSlot)
+          url = null
+          message('已将贴纸用于图案 ' + (targetSlot + 1))
+        } catch (error) {
+          if (version === uploadVersion) message(error.message || '图片读取失败，请重试。')
+        } finally {
+          if (url) URL.revokeObjectURL(url)
+          if (version === uploadVersion) {
+            uploadBusy = false
+            syncDownload()
+          }
+        }
       }
       $('zoom').oninput = () => {
         $('zoom-out').value = $('zoom').value + '%'
@@ -3395,19 +3553,24 @@
       }
       $('shuffle').onclick = () => {
         if (state.emojis.length < 2) return
+        uploadVersion++
+        uploadBusy = false
         state.emojis.reverse()
+        syncDownload()
         slots()
         autoColor()
         render()
-        message('已交换 Emoji 1 和 Emoji 2')
+        message('已交换图案 1 和图案 2')
       }
       $('download').onclick = async () => {
         const button = $('download')
-        button.disabled = true
+        exportBusy = true
+        syncDownload()
         button.textContent = '正在生成…'
         try {
           await document.fonts.ready
-          if ($('font').value === 'apple') await loadApple()
+          if ($('font').value === 'apple' && state.emojis.some((item) => typeof item === 'string'))
+            await loadApple()
           const [w, h] = dimensions()
           const canvas = document.createElement('canvas')
           draw(canvas, w, h)
@@ -3425,7 +3588,8 @@
         } catch (error) {
           message('生成失败，请重试或选择较小尺寸。')
         } finally {
-          button.disabled = false
+          exportBusy = false
+          syncDownload()
           button.textContent = '↓ 下载壁纸 PNG'
         }
       }
