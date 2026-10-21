@@ -1,5 +1,8 @@
 # 个人主页
 
-独立目录页，入口仅包含 [旅行饼狗](https://emmm1e3m.github.io/TravellingBingo/) 和 [Emoji 壁纸](https://emmm1e3m.github.io/emoji_wallpaper/)。声音训练独立部署，不在这里展示。
+集中访问我的小游戏和壁纸工具。
 
-推送 main 后由 GitHub Pages 从根目录自动发布。404.html 为旧游戏和壁纸链接提供跳转。
+[打开主页](https://emmm1e3m.github.io/)
+
+- [旅行饼狗](https://emmm1e3m.github.io/TravellingBingo/)：陪饼狗旅行、收集明信片、换装合拍，安排待办与专注计时。
+- [Emoji 壁纸](https://emmm1e3m.github.io/emoji_wallpaper/)：用 Emoji 和自定义贴纸生成、下载手机或电脑壁纸。
