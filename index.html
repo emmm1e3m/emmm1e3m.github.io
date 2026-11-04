@@ -16,6 +16,9 @@
       --muted: rgba(255,255,255,.6);
       --ring: rgba(255,255,255,.12);
       --shadow: rgba(0,0,0,.35);
+      --button-bg: #353535;
+      --button-hover: #444444;
+      --button-border: #707070;
       --accent: 110 231 183; /* mint */
       --accent2: 59 130 246; /* blue */
     }
@@ -30,6 +33,9 @@
         --muted: rgba(15,23,42,.6);
         --ring: rgba(15,23,42,.10);
         --shadow: rgba(2,6,23,.10);
+        --button-bg: #f6f6f6;
+        --button-hover: #eaeaea;
+        --button-border: #c4c4c4;
         --accent: 99 102 241;  /* indigo */
         --accent2: 16 185 129; /* emerald */
       }
@@ -155,8 +161,8 @@
       gap: 10px;
       padding: 10px 12px;
       border-radius: 14px;
-      border: 2px solid #000;
-      background: rgb(var(--accent) / .18);
+      border: 1px solid var(--button-border);
+      background: var(--button-bg);
       color: var(--text);
       text-decoration:none;
       font-size: 13px;
@@ -165,7 +171,7 @@
     }
     .btn:hover{
       transform: translateY(-1px);
-      background: rgb(var(--accent) / .27);
+      background: var(--button-hover);
     }
 
     .footer{
