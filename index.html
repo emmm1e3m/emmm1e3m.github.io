@@ -155,28 +155,17 @@
       gap: 10px;
       padding: 10px 12px;
       border-radius: 14px;
-      border: 1px solid var(--ring);
-      background: rgba(255,255,255,.08);
+      border: 2px solid #000;
+      background: rgb(var(--accent) / .18);
       color: var(--text);
       text-decoration:none;
       font-size: 13px;
-      transition: transform .12s ease, background .12s ease, border-color .12s ease;
+      font-weight: 650;
+      transition: transform .12s ease, background .12s ease;
     }
     .btn:hover{
       transform: translateY(-1px);
-      background: rgba(255,255,255,.12);
-      border-color: rgba(255,255,255,.18);
-    }
-
-    .btn--primary{
-      background: rgba(var(--accent), .18);
-      border-color: rgba(var(--accent), .38);
-      font-weight: 650;
-    }
-
-    .btn--primary:hover{
-      background: rgba(var(--accent), .27);
-      border-color: rgba(var(--accent), .52);
+      background: rgb(var(--accent) / .27);
     }
 
     .footer{
@@ -207,17 +196,17 @@
       <p>It works.</p>
 
       <div class="actions">
-        <a class="btn btn--primary" href="/TravellingBingo/">
+        <a class="btn" href="/RabbitSurvivor/">
+          <span aria-hidden="true">🐇</span>
+          <span>幸存兔</span>
+        </a>
+        <a class="btn" href="/TravellingBingo/">
           <span aria-hidden="true">🍎</span>
           <span>旅行饼狗</span>
         </a>
         <a class="btn" href="/emoji_wallpaper/">
           <span aria-hidden="true">🫧</span>
           <span>Emoji 壁纸</span>
-        </a>
-        <a class="btn" href="/RabbitSurvivor/">
-          <span aria-hidden="true">🐇</span>
-          <span>RabbitSurvivor · 在线游玩</span>
         </a>
         <a class="btn" href="https://github.com/emmm1e3m/emmm1e3m.github.io" target="_blank" rel="noopener noreferrer">
           <span>GitHub</span>
